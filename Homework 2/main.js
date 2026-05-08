@@ -87,6 +87,6 @@ function reverseEachWord(str) {
 // Test cases
 console.log(getAbbreviation("George Shanidze")); // Output: "G.S."
 console.log(getSumOfDigits(1234)); // Output: 10
-console.log(removeDuplicates("Banana")); // Output: "Bana"
+console.log(removeDuplicates("Banana")); // Output: "Ban"
 console.log(removeSpaces("I NEED SO MUCH SPACE")); // Output: "INEEDSOMUCHSPACE"
 console.log(reverseEachWord("Hello World")); // Output: "olleH dlroW"
