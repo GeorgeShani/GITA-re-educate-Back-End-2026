@@ -1,0 +1,17 @@
+{
+  "name": "homework-12",
+  "version": "1.0.0",
+  "description": "",
+  "bin": {
+    "todo-cli": "todo.js",
+    "weather-cli": "weather.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "chalk": "^5.6.2",
+    "commander": "^15.0.0"
+  }
+}
