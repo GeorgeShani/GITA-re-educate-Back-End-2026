@@ -94,11 +94,11 @@ program
       console.log(`📈 Max: ${data.main.temp_max}°C`);
 
       console.log(chalk.blue("\n💧 Humidity:"), `${data.main.humidity}%`);
-      console.log(chalk.blue("💨 Wind:"), `${data.wind.speed} m/s\n`);
+      console.log(chalk.blue("💨 Wind:"), `${data.wind.speed} m/s`);
 
     } catch (err) {
-      console.log(chalk.red("\n⚠️ Weather request failed"));
-      console.log(chalk.red(err.message), "\n");
+      console.log(chalk.red("⚠️  Weather request failed"));
+      console.log(chalk.red(err.message));
     }
   });
 
