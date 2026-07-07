@@ -113,21 +113,6 @@ npm run dev            # http://localhost:5173
 To run fully locally, point the frontend at your local backend by setting
 `VITE_API_BASE_URL=http://localhost:3000` in `frontend/.env`.
 
-## Demo data
-
-The backend ships a seed script that creates the **John Doe** showcase account
-with a profile photo and ~3 weeks of realistic daily check-ins (including one
-for today, so the dashboard shows the fully populated state):
-
-```bash
-cd backend
-npm run seed:john      # john.doe@example.com / password123
-```
-
-It's re-runnable (wipes John's previous data first) and dates are relative to
-"today," so re-running keeps the demo current. See the backend README's
-**Scripts** section for `clean-db` and options.
-
 ## Deployment
 
 Each app is imported as its own Vercel project (monorepo — set the Root
