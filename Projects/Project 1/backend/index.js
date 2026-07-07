@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { connectToMongoDB } from "./config/db.js";
+import { API_DOCS_HTML } from "./docs/apiDocsPage.js";
 import authRouter from "./routes/auth.route.js";
 import userRouter from "./routes/user.route.js";
 import moodLogRouter from "./routes/moodLog.route.js";
@@ -23,6 +24,10 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.type("html").send(API_DOCS_HTML);
+});
 
 app.use("/auth", authRouter);
 app.use("/users", userRouter);
