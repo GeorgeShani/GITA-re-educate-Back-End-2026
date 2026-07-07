@@ -42,7 +42,7 @@ export const API_DOCS_HTML = `<!doctype html>
   header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 40px; }
   header .title-row { display: flex; align-items: center; gap: 16px; }
   header .logo { flex-shrink: 0; width: 40px; height: 40px; }
-  header h1 { font-size: 32px; font-weight: 700; margin: 0; letter-spacing: -0.3px; }
+  header h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.3px; }
   header p { font-size: 16px; color: var(--neutral-600); margin: 0; }
   section { margin-bottom: 40px; }
   section > h2 {
@@ -98,7 +98,7 @@ export const API_DOCS_HTML = `<!doctype html>
         <path d="M26.1022 17.7765C25.5687 17.9194 25.242 18.4775 25.5125 18.959C25.7972 19.4658 26.191 19.9081 26.6701 20.2514C27.4223 20.7904 28.3381 21.052 29.2616 20.9914C30.185 20.9309 31.0589 20.5521 31.7343 19.9195C32.4098 19.2869 32.8449 18.4396 32.9657 17.5221C33.0865 16.6046 32.8855 15.6736 32.3968 14.8877C31.9081 14.1019 31.162 13.5098 30.2857 13.2123C29.4094 12.9148 28.4571 12.9304 27.591 13.2564C27.0394 13.464 26.5446 13.7893 26.1384 14.2051C25.7525 14.6002 25.9236 15.2239 26.4019 15.5L26.9092 15.7929C27.6807 16.2384 27.5286 17.3943 26.668 17.6249L26.1022 17.7765Z" fill="white"/>
         <path d="M13.8977 17.7765C14.4312 17.9194 14.7579 18.4775 14.4874 18.959C14.2027 19.4658 13.8089 19.9081 13.3299 20.2514C12.5777 20.7904 11.6618 21.052 10.7384 20.9914C9.81496 20.9309 8.94107 20.5521 8.26564 19.9195C7.59021 19.2869 7.15502 18.4396 7.03423 17.5221C6.91344 16.6046 7.11451 15.6736 7.6032 14.8877C8.09188 14.1019 8.83794 13.5098 9.71425 13.2123C10.5905 12.9148 11.5429 12.9304 12.409 13.2564C12.9605 13.464 13.4554 13.7893 13.8616 14.2051C14.2475 14.6002 14.0763 15.2239 13.598 15.5L13.0907 15.7929C12.3192 16.2384 12.4714 17.3943 13.3319 17.6249L13.8977 17.7765Z" fill="white"/>
       </svg>
-      <h1>Mood Tracker API</h1>
+      <h1>Mood tracker API</h1>
     </div>
     <div>
       <p>Express + MongoDB API for auth, profile/avatar management, and daily mood check-ins.</p>
