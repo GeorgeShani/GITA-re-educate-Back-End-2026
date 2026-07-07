@@ -1,0 +1,23 @@
+// Mood Logger Step 2 emotion tags (Figma node 308:2803), in the exact order shown.
+export const EMOTION_TAGS = [
+  "Joyful",
+  "Down",
+  "Anxious",
+  "Calm",
+  "Excited",
+  "Frustrated",
+  "Lonely",
+  "Grateful",
+  "Overwhelmed",
+  "Motivated",
+  "Irritable",
+  "Peaceful",
+  "Tired",
+  "Hopeful",
+  "Confident",
+  "Stressed",
+  "Content",
+  "Disappointed",
+  "Optimistic",
+  "Restless",
+];
