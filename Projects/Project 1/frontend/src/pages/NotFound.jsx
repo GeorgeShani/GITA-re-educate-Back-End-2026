@@ -11,7 +11,10 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   return (
-    <PageContainer className="flex min-h-screen flex-col items-center justify-center gap-8 py-20 text-center">
+    <PageContainer
+      as="main"
+      className="flex min-h-screen flex-col items-center justify-center gap-8 py-20 text-center"
+    >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}

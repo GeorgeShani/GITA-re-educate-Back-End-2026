@@ -32,7 +32,11 @@ export function AvatarUploadField({ avatarUrl, onAvatarChange }) {
 
   return (
     <div className="flex items-start gap-5">
-      <Avatar src={avatarUrl} onClick={() => fileInputRef.current?.click()} />
+      <Avatar
+        src={avatarUrl}
+        aria-label="Upload profile photo"
+        onClick={() => fileInputRef.current?.click()}
+      />
       <input
         ref={fileInputRef}
         type="file"

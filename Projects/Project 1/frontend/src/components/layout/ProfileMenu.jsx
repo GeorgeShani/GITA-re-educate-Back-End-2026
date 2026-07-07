@@ -54,6 +54,7 @@ export function ProfileMenu({ avatarSrc, onProfileUpdated }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-label="Open profile menu"
         className="flex shrink-0 cursor-pointer items-center gap-2.5"
       >
         <Avatar as="div" size="sm" src={avatarSrc} />

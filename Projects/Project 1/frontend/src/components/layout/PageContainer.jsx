@@ -6,15 +6,15 @@ import { cn } from "@/utils/cn";
 // (1440px) replaces the earlier max-w-7xl (1280px) placeholder, which was
 // narrower than the 1440px desktop reference frame and would have clipped
 // the gutter down to 1010px instead of the confirmed 1170px.
-export function PageContainer({ children, className }) {
+export function PageContainer({ children, className, as: Component = "div" }) {
   return (
-    <div
+    <Component
       className={cn(
         "mx-auto w-full max-w-7xl px-4 tablet:px-8 desktop:max-w-360 desktop:px-33.75",
         className,
       )}
     >
       {children}
-    </div>
+    </Component>
   );
 }

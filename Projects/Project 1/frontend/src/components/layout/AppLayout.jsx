@@ -13,7 +13,7 @@ export function AppLayout({ children }) {
   return (
     <div className="min-h-screen">
       <Navbar avatarSrc={user?.avatarUrl} onProfileUpdated={() => setUser(getCurrentUser())} />
-      {children}
+      <main>{children}</main>
     </div>
   );
 }

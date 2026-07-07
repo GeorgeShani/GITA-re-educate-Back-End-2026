@@ -9,9 +9,9 @@ export function AuthLayout() {
   return (
     <div className="flex min-h-screen flex-col items-center gap-8 bg-page-gradient px-4 py-20 tablet:gap-12 tablet:px-0">
       <Logo />
-      <div className="w-full rounded-2xl bg-neutral-0 px-4 py-10 shadow-lg tablet:w-132.5 tablet:px-8">
+      <main className="w-full rounded-2xl bg-neutral-0 px-4 py-10 shadow-lg tablet:w-132.5 tablet:px-8">
         <Outlet />
-      </div>
+      </main>
     </div>
   );
 }
