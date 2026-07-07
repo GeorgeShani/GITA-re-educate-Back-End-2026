@@ -1,19 +1,37 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { AvatarUploadField } from "@/components/ui/AvatarUploadField";
-import { completeOnboarding } from "@/services/auth";
+import { HintIcon } from "@/assets/icons";
+import { fadeRise } from "@/animations/variants";
+import { saveProfile } from "@/services/auth";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(null);
+  // Preview URL (for display) and the raw file (for the multipart upload) are
+  // tracked separately — the API wants the actual file, not a base64 string.
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    completeOnboarding({ name, avatarUrl });
-    navigate("/", { replace: true });
+    setError("");
+    setSubmitting(true);
+    try {
+      const user = await saveProfile({ name, avatarFile });
+      setUser(user);
+      navigate("/", { replace: true });
+    } catch (err) {
+      setError(err.message);
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -38,12 +56,32 @@ export default function Onboarding() {
           />
         </div>
 
-        <AvatarUploadField avatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
+        <AvatarUploadField
+          avatarUrl={avatarPreview}
+          onAvatarChange={({ previewUrl, file }) => {
+            setAvatarPreview(previewUrl);
+            setAvatarFile(file);
+          }}
+        />
       </div>
 
-      <Button type="submit" variant="primary" className="w-full">
-        Start Tracking
-      </Button>
+      <div className="flex flex-col gap-3">
+        <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
+          {submitting ? "Saving..." : "Start Tracking"}
+        </Button>
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              key="onboarding-error"
+              {...fadeRise}
+              className="flex items-center gap-1.5 text-preset-9 text-red-700"
+            >
+              <HintIcon className="size-3 shrink-0" />
+              <span>{error}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </form>
   );
 }

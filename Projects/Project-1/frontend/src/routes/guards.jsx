@@ -1,23 +1,31 @@
 import { Navigate } from "react-router-dom";
-import { getCurrentUser } from "@/services/auth";
+import { useAuth } from "@/context/AuthContext";
+
+// All three guards wait out AuthContext's initial session resolution
+// (`loading`) before deciding, so a hard refresh or deep link doesn't flash
+// the wrong route while GET /auth/current is in flight.
 
 // Logged in (regardless of onboarding status) -> away from sign-up/log-in.
 // RequireAuth is the single place that redirects an un-onboarded user to
 // /onboarding, so that logic isn't duplicated here.
 export function RequireGuest({ children }) {
-  if (getCurrentUser()) return <Navigate to="/" replace />;
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (user) return <Navigate to="/" replace />;
   return children;
 }
 
 export function RequireAuth({ children }) {
-  const user = getCurrentUser();
+  const { user, loading } = useAuth();
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (!user.hasOnboarded) return <Navigate to="/onboarding" replace />;
   return children;
 }
 
 export function RequireNewUser({ children }) {
-  const user = getCurrentUser();
+  const { user, loading } = useAuth();
+  if (loading) return null;
   if (!user) return <Navigate to="/login" replace />;
   if (user.hasOnboarded) return <Navigate to="/" replace />;
   return children;

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Avatar } from "@/components/ui/Avatar";
 import { AngleDownIcon, CogIcon, SignOutIcon } from "@/assets/icons";
-import { getCurrentUser, logOut } from "@/services/auth";
+import { useAuth } from "@/context/AuthContext";
 import { popoverPanel } from "@/animations/variants";
 import { cn } from "@/utils/cn";
 import { ProfileUpdateModal } from "@/components/layout/ProfileUpdateModal";
@@ -16,9 +16,9 @@ import { ProfileUpdateModal } from "@/components/layout/ProfileUpdateModal";
 // wrapper around just the trigger reproduces Figma's "panel right edge lines
 // up with the page content's right edge" without hardcoding a pixel offset
 // that would only hold at one specific viewport width.
-export function ProfileMenu({ avatarSrc, onProfileUpdated }) {
+export function ProfileMenu({ avatarSrc }) {
   const navigate = useNavigate();
-  const user = getCurrentUser();
+  const { user, logOut } = useAuth();
   const [open, setOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const containerRef = useRef(null);
@@ -45,7 +45,7 @@ export function ProfileMenu({ avatarSrc, onProfileUpdated }) {
 
   function handleLogOut() {
     logOut();
-    navigate("/log-in", { replace: true });
+    navigate("/login", { replace: true });
   }
 
   return (
@@ -103,10 +103,7 @@ export function ProfileMenu({ avatarSrc, onProfileUpdated }) {
       <ProfileUpdateModal
         open={isProfileModalOpen}
         onClose={() => setIsProfileModalOpen(false)}
-        onSaved={() => {
-          setIsProfileModalOpen(false);
-          onProfileUpdated?.();
-        }}
+        onSaved={() => setIsProfileModalOpen(false)}
       />
     </div>
   );

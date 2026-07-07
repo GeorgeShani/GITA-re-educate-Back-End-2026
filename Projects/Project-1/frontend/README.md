@@ -55,19 +55,35 @@ src/
 
 ```bash
 npm install
+cp .env.example .env   # optional — defaults to the deployed API if unset
 npm run dev       # start the dev server
 npm run build      # production build to dist/
 npm run preview   # preview the production build locally
 npm run lint       # oxlint
 ```
 
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `VITE_API_BASE_URL` | Base URL of the [Mood Tracker API](../backend) (no trailing slash). Falls back to the deployed API (`https://moodtracker-api.vercel.app`) if unset. On Vercel, set this in Project Settings → Environment Variables. |
+
 ## Backend
 
-There's no real backend yet — `src/services/auth.js` and
-`src/services/moodLogs.js` are `localStorage`-backed mocks so the app is
-fully usable standalone. The API this app is meant to integrate with is
-specced out in [`../backend/API_SPEC.md`](../backend/API_SPEC.md) (models,
-endpoints, auth, CORS, Cloudinary uploads).
+Wired to the real [Mood Tracker API](../backend) (endpoints, auth, and
+Cloudinary uploads documented in [`../backend/README.md`](../backend/README.md)).
+
+- `src/lib/apiClient.js` — thin `fetch` wrapper: attaches the Bearer token,
+  serializes JSON (passing `FormData` through for avatar uploads), and
+  normalizes the API's `{ message }` errors into thrown `Error`s.
+- `src/context/AuthContext.jsx` — resolves the session once on mount from the
+  stored token (`GET /auth/current`) and is the single source of truth for the
+  current user; route guards wait on its `loading` flag.
+- `src/services/{auth,moodLogs}.js` — the API calls.
+
+Auth is a cookieless Bearer JWT, so the token is persisted in `localStorage`
+under a single key (`mood-tracker:token`) — the only client-side storage the
+app uses. There are no more `localStorage`-backed mocks.
 
 ## Deployment
 

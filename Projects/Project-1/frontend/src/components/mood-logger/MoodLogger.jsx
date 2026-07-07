@@ -7,7 +7,6 @@ import { EmotionTagsStep } from "@/components/mood-logger/steps/EmotionTagsStep"
 import { ReflectionStep } from "@/components/mood-logger/steps/ReflectionStep";
 import { SleepStep } from "@/components/mood-logger/steps/SleepStep";
 import { addMoodLog } from "@/services/moodLogs";
-import { getCurrentUser } from "@/services/auth";
 
 const TOTAL_STEPS = 4;
 
@@ -51,14 +50,18 @@ function validateStep(step, state) {
 export function MoodLogger({ open, onClose }) {
   const [state, setState] = useState(INITIAL_STATE);
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   function handleClose() {
     onClose();
     setState(INITIAL_STATE);
     setError(null);
+    setSubmitting(false);
   }
 
-  function handleContinue() {
+  async function handleContinue() {
+    if (submitting) return;
+
     const validationError = validateStep(state.step, state);
     if (validationError) {
       setError(validationError);
@@ -67,15 +70,19 @@ export function MoodLogger({ open, onClose }) {
     setError(null);
 
     if (state.step === TOTAL_STEPS) {
-      const user = getCurrentUser();
-      addMoodLog({
-        mood: state.mood,
-        tags: state.tags,
-        reflection: state.reflection,
-        sleepHours: state.sleepHours,
-        userEmail: user?.email,
-      });
-      handleClose();
+      setSubmitting(true);
+      try {
+        await addMoodLog({
+          mood: state.mood,
+          tags: state.tags,
+          reflection: state.reflection,
+          sleepHours: state.sleepHours,
+        });
+        handleClose();
+      } catch (err) {
+        setError(err.message);
+        setSubmitting(false);
+      }
       return;
     }
     setState((prev) => ({ ...prev, step: prev.step + 1 }));
@@ -143,8 +150,8 @@ export function MoodLogger({ open, onClose }) {
         subheading={stepConfig.subheading}
         error={error}
         footer={
-          <Button variant="primary" size="lg" className="w-full" onClick={handleContinue}>
-            {state.step === TOTAL_STEPS ? "Submit" : "Continue"}
+          <Button variant="primary" size="lg" className="w-full" onClick={handleContinue} disabled={submitting}>
+            {state.step === TOTAL_STEPS ? (submitting ? "Submitting..." : "Submit") : "Continue"}
           </Button>
         }
       >

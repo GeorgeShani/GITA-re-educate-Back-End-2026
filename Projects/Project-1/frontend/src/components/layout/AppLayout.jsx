@@ -1,18 +1,16 @@
-import { useState } from "react";
 import { Navbar } from "@/components/layout/Navbar";
-import { getCurrentUser } from "@/services/auth";
+import { useAuth } from "@/context/AuthContext";
 
 // Shared chrome for authenticated pages (Home and anything added alongside
 // it) — just the Navbar for now, no Figma spec yet for a sidebar or footer.
-// Owns its own snapshot of the current user (rather than Navbar calling
-// getCurrentUser() directly) so the avatar shown in the Navbar can refresh
-// after the Profile Update Modal saves changes.
+// The current user comes from AuthContext, so the Navbar avatar re-renders
+// automatically after the Profile Update Modal saves changes.
 export function AppLayout({ children }) {
-  const [user, setUser] = useState(getCurrentUser);
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen">
-      <Navbar avatarSrc={user?.avatarUrl} onProfileUpdated={() => setUser(getCurrentUser())} />
+      <Navbar avatarSrc={user?.avatarUrl} />
       <main>{children}</main>
     </div>
   );

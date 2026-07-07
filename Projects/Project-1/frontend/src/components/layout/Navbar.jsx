@@ -6,12 +6,12 @@ import { ProfileMenu } from "@/components/layout/ProfileMenu";
 // logo left, profile-icon trigger right. py-10 (40px) is identical across all
 // 3 breakpoints; horizontal alignment reuses PageContainer so the navbar's
 // gutters match the page content beneath it.
-export function Navbar({ avatarSrc, onProfileUpdated }) {
+export function Navbar({ avatarSrc }) {
   return (
     <div className="w-full bg-transparent">
       <PageContainer className="flex items-center justify-between py-10">
         <Logo />
-        <ProfileMenu avatarSrc={avatarSrc} onProfileUpdated={onProfileUpdated} />
+        <ProfileMenu avatarSrc={avatarSrc} />
       </PageContainer>
     </div>
   );

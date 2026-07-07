@@ -1,31 +1,51 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Dialog } from "@/components/ui/Dialog";
 import { TextField } from "@/components/ui/TextField";
 import { Button } from "@/components/ui/Button";
 import { AvatarUploadField } from "@/components/ui/AvatarUploadField";
-import { CloseIcon } from "@/assets/icons";
-import { getCurrentUser, updateProfile } from "@/services/auth";
+import { CloseIcon, HintIcon } from "@/assets/icons";
+import { fadeRise } from "@/animations/variants";
+import { saveProfile } from "@/services/auth";
+import { useAuth } from "@/context/AuthContext";
 
 // Figma "Update your profile" modal (473:6557 desktop, 473:6601 tablet —
 // identical spacing; 473:6627 mobile — smaller px/gap). Pre-fills from the
-// current user and re-syncs whenever the modal opens (discarding any
-// unsaved edits from a previous cancelled open), matching how Home's
-// MoodLogger refreshes its own snapshot of external state.
+// current user and re-syncs whenever the modal opens (discarding any unsaved
+// edits from a previous cancelled open). Saving PATCHes /users/me and updates
+// the shared AuthContext user, so the Navbar avatar refreshes on its own.
 export function ProfileUpdateModal({ open, onClose, onSaved }) {
+  const { user, setUser } = useAuth();
   const [name, setName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState(null);
+  // Display URL (existing remote avatar, or a preview of a newly picked file)
+  // vs. the raw file to upload. A null file means "avatar unchanged" — the
+  // server keeps the current one.
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    const user = getCurrentUser();
     setName(user?.name ?? "");
-    setAvatarUrl(user?.avatarUrl ?? null);
-  }, [open]);
+    setAvatarPreview(user?.avatarUrl ?? null);
+    setAvatarFile(null);
+    setError("");
+  }, [open, user]);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
-    updateProfile({ name, avatarUrl });
-    onSaved();
+    setError("");
+    setSubmitting(true);
+    try {
+      const updatedUser = await saveProfile({ name, avatarFile });
+      setUser(updatedUser);
+      onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -58,12 +78,32 @@ export function ProfileUpdateModal({ open, onClose, onSaved }) {
             <TextField id="profile-name" value={name} onChange={(event) => setName(event.target.value)} required />
           </div>
 
-          <AvatarUploadField avatarUrl={avatarUrl} onAvatarChange={setAvatarUrl} />
+          <AvatarUploadField
+            avatarUrl={avatarPreview}
+            onAvatarChange={({ previewUrl, file }) => {
+              setAvatarPreview(previewUrl);
+              setAvatarFile(file);
+            }}
+          />
         </div>
 
-        <Button type="submit" variant="primary" className="w-full">
-          Save changes
-        </Button>
+        <div className="flex flex-col gap-3">
+          <Button type="submit" variant="primary" className="w-full" disabled={submitting}>
+            {submitting ? "Saving..." : "Save changes"}
+          </Button>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                key="profile-error"
+                {...fadeRise}
+                className="flex items-center gap-1.5 text-preset-9 text-red-700"
+              >
+                <HintIcon className="size-3 shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </form>
     </Dialog>
   );

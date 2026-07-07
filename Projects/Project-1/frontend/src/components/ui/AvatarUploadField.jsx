@@ -9,6 +9,11 @@ import { validateAvatarFile } from "@/utils/validateAvatarFile";
 // Figma "Image Upload [1.0]" — shared between Onboarding (473:7134 error
 // state) and the Profile Update Modal (473:6557/6601/6627): avatar trigger +
 // hidden file input + hint copy + Upload button + inline type/size error.
+//
+// `avatarUrl` is whatever should be shown in the preview (an existing remote
+// URL, or a local data-URL preview of a freshly picked file). onAvatarChange
+// reports both: the `previewUrl` for display and the raw `file` — the API
+// wants the actual file as multipart, not a base64 string.
 export function AvatarUploadField({ avatarUrl, onAvatarChange }) {
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState("");
@@ -26,7 +31,7 @@ export function AvatarUploadField({ avatarUrl, onAvatarChange }) {
 
     setFileError("");
     const reader = new FileReader();
-    reader.onload = () => onAvatarChange(reader.result);
+    reader.onload = () => onAvatarChange({ previewUrl: reader.result, file });
     reader.readAsDataURL(file);
   }
 

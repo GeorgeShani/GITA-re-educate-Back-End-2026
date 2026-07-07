@@ -8,7 +8,13 @@ import express from "express";
 import cors from "cors";
 import dns from "dns";
 
-dns.setServers(["8.8.8.8", "8.8.4.4"]);
+// Local-only DNS override. Some dev networks/ISPs fail to resolve MongoDB
+// Atlas's `mongodb+srv` SRV/TXT records, so we force Google's resolver there.
+// On Vercel this would only add a DNS hop on the (already slow) cold-connect
+// path and override the platform's faster internal resolver, so we skip it.
+if (!process.env.VERCEL) {
+  dns.setServers(["8.8.8.8", "8.8.4.4"]);
+}
 
 const app = express();
 

@@ -1,99 +1,53 @@
-// Mock auth service — localStorage only, no real backend yet (see the
-// project plan's "Next Workstream — Backend"). This exists purely so the
-// Sign Up / Log In / Onboarding pages have something to call; the function
-// signatures here are the contract a real API-backed implementation should
-// match later. Storing plaintext passwords is NOT acceptable in production —
-// this is a placeholder for local development only.
+// Auth data access against the Mood Tracker API. Sign up / sign in store the
+// returned Bearer token; everything else rides on it via apiClient. These are
+// the same function signatures the old localStorage mock exposed, now async
+// and network-backed — most call sites go through AuthContext rather than
+// importing these directly.
 
-const USERS_KEY = "mood-tracker:users";
-const SESSION_KEY = "mood-tracker:session";
+import { request, setToken, clearToken } from "@/lib/apiClient";
 
-function readUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) ?? {};
-  } catch {
-    return {};
-  }
-}
-
-function writeUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function readSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
-  }
-}
-
-function writeSession(session) {
-  if (session) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } else {
-    localStorage.removeItem(SESSION_KEY);
-  }
-}
-
-export function signUp({ email, password }) {
-  const users = readUsers();
-  if (users[email]) {
-    throw new Error("An account with this email already exists.");
-  }
-  const user = { email, password, name: "", avatarUrl: null, hasOnboarded: false };
-  users[email] = user;
-  writeUsers(users);
-  writeSession({ email });
+// POST /auth/sign-up — creates the account and returns a token immediately
+// (no separate login step). The new user has hasOnboarded=false.
+export async function signUp({ email, password }) {
+  const { token, user } = await request("/auth/sign-up", {
+    method: "POST",
+    body: { email, password },
+    auth: false,
+  });
+  setToken(token);
   return user;
 }
 
-export function logIn({ email, password }) {
-  const users = readUsers();
-  const user = users[email];
-  if (!user || user.password !== password) {
-    throw new Error("Incorrect email or password.");
-  }
-  writeSession({ email });
+// POST /auth/sign-in
+export async function signIn({ email, password }) {
+  const { token, user } = await request("/auth/sign-in", {
+    method: "POST",
+    body: { email, password },
+    auth: false,
+  });
+  setToken(token);
+  return user;
+}
+
+// GET /auth/current — resolves the logged-in user from the stored token.
+export async function fetchCurrentUser() {
+  const { user } = await request("/auth/current");
+  return user;
+}
+
+// PATCH /users/me — multipart form: `name` (required) + optional `avatar`
+// file. This one endpoint covers both "complete onboarding" and "update
+// profile"; the avatar is only sent when a new file was chosen, otherwise the
+// server keeps the existing one.
+export async function saveProfile({ name, avatarFile }) {
+  const form = new FormData();
+  form.append("name", name);
+  if (avatarFile) form.append("avatar", avatarFile);
+
+  const { user } = await request("/users/me", { method: "PATCH", body: form });
   return user;
 }
 
 export function logOut() {
-  writeSession(null);
-}
-
-export function getCurrentUser() {
-  const session = readSession();
-  if (!session) return null;
-  const users = readUsers();
-  return users[session.email] ?? null;
-}
-
-export function completeOnboarding({ name, avatarUrl }) {
-  const session = readSession();
-  const users = readUsers();
-  const user = session && users[session.email];
-  if (!user) {
-    throw new Error("No active session.");
-  }
-  user.name = name;
-  user.avatarUrl = avatarUrl ?? null;
-  user.hasOnboarded = true;
-  users[session.email] = user;
-  writeUsers(users);
-  return user;
-}
-
-export function updateProfile({ name, avatarUrl }) {
-  const session = readSession();
-  const users = readUsers();
-  const user = session && users[session.email];
-  if (!user) {
-    throw new Error("No active session.");
-  }
-  user.name = name;
-  user.avatarUrl = avatarUrl ?? null;
-  users[session.email] = user;
-  writeUsers(users);
-  return user;
+  clearToken();
 }

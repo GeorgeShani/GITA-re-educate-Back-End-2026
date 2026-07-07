@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -8,8 +8,8 @@ import { SleepCard } from "@/components/dashboard/SleepCard";
 import { ReflectionCard } from "@/components/dashboard/ReflectionCard";
 import { AverageMoodSection } from "@/components/dashboard/AverageMoodSection";
 import { MoodTrendsSection } from "@/components/dashboard/MoodTrendsSection";
-import { getCurrentUser } from "@/services/auth";
-import { getTodaysMoodLog, getMoodLogs } from "@/services/moodLogs";
+import { useAuth } from "@/context/AuthContext";
+import { getMoodLogs, pickTodaysMoodLog } from "@/services/moodLogs";
 import { pickQuote } from "@/constants/moodQuotes";
 import { homeSections, homeSection, textStagger, textReveal } from "@/animations/variants";
 
@@ -39,15 +39,46 @@ function formatGreetingDate(date) {
 //      Tablet/Mobile stacked). Both derive from history and have their own
 //      empty states, so they show in either state.
 export default function Home() {
-  const user = getCurrentUser();
+  const { user } = useAuth();
   const [isMoodLoggerOpen, setIsMoodLoggerOpen] = useState(false);
-  const [todaysLog, setTodaysLog] = useState(getTodaysMoodLog);
-  const [moodLogs, setMoodLogs] = useState(getMoodLogs);
+  const [moodLogs, setMoodLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  // Bumping this re-runs the load effect (the "Try again" button).
+  const [reloadKey, setReloadKey] = useState(0);
 
-  function handleMoodLoggerClose() {
+  // "Today's log" has no dedicated endpoint — derive it from the full history.
+  const todaysLog = pickTodaysMoodLog(moodLogs);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(false);
+    getMoodLogs()
+      .then((logs) => {
+        if (active) setMoodLogs(logs);
+      })
+      .catch(() => {
+        // Surface the failure instead of silently showing an empty dashboard —
+        // otherwise "couldn't reach the API" looks identical to "no logs yet".
+        if (active) setError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [reloadKey]);
+
+  async function handleMoodLoggerClose() {
     setIsMoodLoggerOpen(false);
-    setTodaysLog(getTodaysMoodLog());
-    setMoodLogs(getMoodLogs());
+    try {
+      setMoodLogs(await getMoodLogs());
+    } catch {
+      // Keep the just-submitted state on a refetch failure rather than wiping
+      // the dashboard; the next load will reconcile.
+    }
   }
 
   return (
@@ -76,7 +107,28 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
-        {todaysLog ? (
+        {/* While the history is loading (a Vercel serverless cold start can
+            take a few seconds) or failed, keep this slot in sync with the
+            stats below instead of blanking just this region — otherwise the
+            page looks half-rendered. */}
+        {loading ? (
+          <motion.div variants={homeSection} className="flex w-full justify-center py-6">
+            <span
+              role="status"
+              aria-label="Loading your dashboard"
+              className="size-8 animate-spin rounded-full border-4 border-blue-100 border-t-blue-600"
+            />
+          </motion.div>
+        ) : error ? (
+          <motion.div variants={homeSection} className="flex w-full flex-col items-center gap-3 py-6">
+            <p className="text-preset-6-regular text-neutral-600">
+              We couldn't load your check-ins. Please check your connection and try again.
+            </p>
+            <Button variant="secondary" onClick={() => setReloadKey((key) => key + 1)}>
+              Try again
+            </Button>
+          </motion.div>
+        ) : todaysLog ? (
           <motion.div variants={homeSection} className="flex w-full flex-col gap-5 desktop:flex-row desktop:gap-8">
             <CurrentMoodCard
               mood={todaysLog.mood}
@@ -99,11 +151,15 @@ export default function Home() {
 
       {/* Desktop: stats (370px) beside the chart, both stretched to the same
           height (the chart is the taller of the two and sets it, so the stat
-          cards fill down to match). Tablet/Mobile: stacked full-width. */}
-      <div className="flex w-full flex-col gap-8 desktop:flex-row desktop:items-stretch">
-        <AverageMoodSection logs={moodLogs} className="desktop:w-92.5 desktop:shrink-0" />
-        <MoodTrendsSection logs={moodLogs} className="desktop:min-w-0 desktop:flex-1" />
-      </div>
+          cards fill down to match). Tablet/Mobile: stacked full-width. Hidden
+          until the history resolves so it doesn't flash empty states mid-load
+          while the section above shows a spinner. */}
+      {!loading && !error && (
+        <div className="flex w-full flex-col gap-8 desktop:flex-row desktop:items-stretch">
+          <AverageMoodSection logs={moodLogs} className="desktop:w-92.5 desktop:shrink-0" />
+          <MoodTrendsSection logs={moodLogs} className="desktop:min-w-0 desktop:flex-1" />
+        </div>
+      )}
 
       <MoodLogger open={isMoodLoggerOpen} onClose={handleMoodLoggerClose} />
     </PageContainer>
