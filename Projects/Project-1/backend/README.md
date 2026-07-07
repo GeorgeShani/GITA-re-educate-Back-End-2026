@@ -4,6 +4,9 @@ REST API for the [Mood Tracker](../frontend) app: accounts, profile/avatar
 management, and daily mood check-ins. Node + Express + MongoDB, layered
 architecture (routes → validation → controllers → services → models).
 
+**Live API:** https://moodtracker-api.vercel.app (the root path serves
+interactive API docs) · **Web app:** https://moodtracker-web-app.vercel.app
+
 ## Tech stack
 
 - **Express 5** (ES modules)
@@ -26,6 +29,8 @@ validations/    zod schemas per route group
 controllers/    request/response handling, maps service errors to HTTP status
 services/       business logic + database access
 routes/         Express routers
+docs/           the HTML API docs page served at GET /
+scripts/        one-off maintenance scripts (see "Scripts" below)
 index.js        app setup, CORS, route mounting, server start
 ```
 
@@ -96,6 +101,26 @@ All of the current user's logs, oldest first. `200 MoodLog[]`.
 - `sleepHours`: `9+` · `7-8` · `5-6` · `3-4` · `0-2`
 - `tags`: 1–3 of the 20 values in `constants/emotionTags.js`
 
+## Scripts
+
+Both run against whatever `MONGODB_URI` points at, so double-check your `.env`
+before using them on the live database.
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the API locally (`node --watch index.js`). |
+| `npm start` | Start the API without watch. |
+
+## Performance notes
+
+On Vercel's serverless runtime the Mongo connection is cached at module scope
+(`config/db.js`) so warm invocations reuse it. The main latency source is
+**cold starts** after the function idles; a periodic external ping to `/`
+(e.g. UptimeRobot every ~5 min) keeps the function and its DB connection warm.
+The `dns.setServers(...)` SRV workaround in `index.js` runs only outside Vercel
+(local dev), and `mongoose.connect` uses an 8s server-selection timeout so a
+cold/unreachable cluster fails fast instead of hanging.
+
 ## Deployment (Vercel)
 
 No `vercel.json` — this relies on Vercel's zero-config Express support, which
@@ -105,15 +130,8 @@ detects `index.js` at the project root, and either its default export or its
 invokes per request) and only calls `app.listen()` when `process.env.VERCEL`
 isn't set, so local dev is unaffected.
 
-(An earlier legacy `vercel.json` with a `builds` array pointing at `index.js`
-failed to deploy here: Vercel derived the serverless function's *name* from
-the full path including the Root Directory, and `Projects/Project 1` has a
-space in it, which function names can't contain. Zero-config detection
-doesn't hit this, since there's no explicit `src` path being turned into a
-name.)
-
 Import as its own Vercel project with **Root Directory** set to
-`Projects/Project 1/backend` (this is a monorepo). Framework Preset
+`Projects/Project-1/backend` (this is a monorepo). Framework Preset
 "Express" (or "Other" — either works); Build Command/Output Directory don't
 apply. Add all five environment variables above in Project Settings, and
 make sure MongoDB Atlas's Network Access allows connections from anywhere

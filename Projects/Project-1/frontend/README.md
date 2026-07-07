@@ -5,6 +5,11 @@ reflection, hours slept) and see it reflected back on a dashboard — your
 current entry, running averages, and a scrollable mood/sleep trends chart
 with per-day details on hover.
 
+**Live app:** https://moodtracker-web-app.vercel.app  ·  **API:** https://moodtracker-api.vercel.app
+
+> **Demo login** — `john.doe@example.com` / `password123`, pre-seeded with three
+> weeks of check-ins so the dashboard is fully populated.
+
 ## Tech stack
 
 - **React 19** + **Vite** (React Compiler enabled)
@@ -44,7 +49,9 @@ src/
     mood-logger/  the 4-step logging dialog and its steps
     ui/           shared primitives (Button, TextField, Tag, Dialog, ...)
   constants/      moods, emotion tags, sleep options, breakpoints
+  context/        AuthProvider — session state shared across the app
   hooks/          useMediaQuery, useReducedMotion
+  lib/            apiClient — fetch wrapper (token, JSON/FormData, errors)
   pages/          route-level screens (Home, auth pages, 404)
   routes/         router config + auth guards
   services/       auth + mood-log data access
