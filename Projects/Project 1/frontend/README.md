@@ -29,7 +29,7 @@ with per-day details on hover.
     today, horizontally scrollable, with the most recent days animating in
     on load. Hover any bar for its mood, sleep, reflection, and tags.
 - **Profile management** — update your name/avatar from the navbar's profile
-  menu (Cloudinary-ready upload, PNG/JPEG up to 250KB).
+  menu (Cloudinary-ready upload, PNG/JPEG up to 3MB).
 - **404 page** and Vercel SPA rewrite config for deployment.
 
 ## Project structure

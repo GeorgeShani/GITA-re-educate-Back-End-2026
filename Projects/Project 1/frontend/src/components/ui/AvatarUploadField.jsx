@@ -47,7 +47,7 @@ export function AvatarUploadField({ avatarUrl, onAvatarChange }) {
       <div className="flex flex-1 flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <p className="text-preset-6-regular text-neutral-900">Upload Image</p>
-          <p className="text-preset-7 text-neutral-600">Max 250KB, PNG or JPEG</p>
+          <p className="text-preset-7 text-neutral-600">Max 3MB, PNG or JPEG</p>
         </div>
         <div className="flex flex-col gap-1">
           <Button
