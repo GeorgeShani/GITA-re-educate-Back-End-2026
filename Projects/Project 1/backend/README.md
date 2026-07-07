@@ -98,15 +98,23 @@ All of the current user's logs, oldest first. `200 MoodLog[]`.
 
 ## Deployment (Vercel)
 
-`vercel.json` uses the `builds`/`routes` format, pointing directly at
-`index.js`. `index.js` exports the Express app as its default export (what
-`@vercel/node` invokes per request) and only calls `app.listen()` when
-`process.env.VERCEL` isn't set, so local dev is unaffected.
+No `vercel.json` — this relies on Vercel's zero-config Express support, which
+detects `index.js` at the project root, and either its default export or its
+`app.listen()` call, without needing manual `builds`/`routes` config or an
+`/api` folder. `index.js` exports the app as its default export (what Vercel
+invokes per request) and only calls `app.listen()` when `process.env.VERCEL`
+isn't set, so local dev is unaffected.
+
+(An earlier legacy `vercel.json` with a `builds` array pointing at `index.js`
+failed to deploy here: Vercel derived the serverless function's *name* from
+the full path including the Root Directory, and `Projects/Project 1` has a
+space in it, which function names can't contain. Zero-config detection
+doesn't hit this, since there's no explicit `src` path being turned into a
+name.)
 
 Import as its own Vercel project with **Root Directory** set to
-`Projects/Project 1/backend` (this is a monorepo). Framework Preset "Other";
-leave Build Command/Output Directory at their defaults — `vercel.json`'s
-`builds` config takes over the build. Add all five environment variables
-above in Project Settings, and make sure MongoDB Atlas's Network Access
-allows connections from anywhere (`0.0.0.0/0`), since serverless functions
-don't have a fixed IP.
+`Projects/Project 1/backend` (this is a monorepo). Framework Preset
+"Express" (or "Other" — either works); Build Command/Output Directory don't
+apply. Add all five environment variables above in Project Settings, and
+make sure MongoDB Atlas's Network Access allows connections from anywhere
+(`0.0.0.0/0`), since serverless functions don't have a fixed IP.
