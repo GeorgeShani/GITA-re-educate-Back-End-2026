@@ -113,8 +113,14 @@ before using them on the live database.
 
 ## Performance notes
 
+**Region co-location is the biggest lever.** The function, the MongoDB Atlas
+cluster, and your users should all be in the same region — a cross-region layout
+(e.g. function in US-East querying a cluster in Singapore) adds hundreds of ms to
+every request. `vercel.json` pins the function to `fra1` (Frankfurt); the Atlas
+cluster should live in the matching region (`eu-central-1`).
+
 On Vercel's serverless runtime the Mongo connection is cached at module scope
-(`config/db.js`) so warm invocations reuse it. The main latency source is
+(`config/db.js`) so warm invocations reuse it. The remaining latency source is
 **cold starts** after the function idles; a periodic external ping to `/`
 (e.g. UptimeRobot every ~5 min) keeps the function and its DB connection warm.
 The `dns.setServers(...)` SRV workaround in `index.js` runs only outside Vercel
@@ -123,12 +129,14 @@ cold/unreachable cluster fails fast instead of hanging.
 
 ## Deployment (Vercel)
 
-No `vercel.json` — this relies on Vercel's zero-config Express support, which
-detects `index.js` at the project root, and either its default export or its
-`app.listen()` call, without needing manual `builds`/`routes` config or an
-`/api` folder. `index.js` exports the app as its default export (what Vercel
-invokes per request) and only calls `app.listen()` when `process.env.VERCEL`
-isn't set, so local dev is unaffected.
+`vercel.json` contains **only** a `regions` pin (`fra1`) — no `builds`/`routes`,
+so Vercel's zero-config Express support still applies: it detects `index.js` at
+the project root and invokes its default export per request. (A `builds` array
+is deliberately avoided — an earlier one derived the serverless function's *name*
+from the full Root Directory path, which broke when that path contained a space.
+A `regions`-only config doesn't create a named build, so it's safe.) `index.js`
+only calls `app.listen()` when `process.env.VERCEL` isn't set, so local dev is
+unaffected.
 
 Import as its own Vercel project with **Root Directory** set to
 `Projects/Project-1/backend` (this is a monorepo). Framework Preset
@@ -136,3 +144,7 @@ Import as its own Vercel project with **Root Directory** set to
 apply. Add all five environment variables above in Project Settings, and
 make sure MongoDB Atlas's Network Access allows connections from anywhere
 (`0.0.0.0/0`), since serverless functions don't have a fixed IP.
+
+The `fra1` region is also selectable in **Project Settings → Functions →
+Function Region** if you prefer the dashboard over `vercel.json`; keep the two
+in agreement.

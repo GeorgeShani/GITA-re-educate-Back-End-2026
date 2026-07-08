@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RequireGuest, RequireAuth, RequireNewUser } from "@/routes/guards";
+import { FullScreenLoader } from "@/components/ui/FullScreenLoader";
 
 const SignUp = lazy(() => import("@/pages/auth/SignUp"));
 const LogIn = lazy(() => import("@/pages/auth/LogIn"));
@@ -11,7 +12,7 @@ const Home = lazy(() => import("@/pages/Home"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function withSuspense(element) {
-  return <Suspense fallback={null}>{element}</Suspense>;
+  return <Suspense fallback={<FullScreenLoader />}>{element}</Suspense>;
 }
 
 const router = createBrowserRouter([

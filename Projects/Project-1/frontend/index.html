@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4865db" />
+
+    <!-- Warm up the connection to the API so the first auth check doesn't also
+         pay for DNS + TLS setup. Harmless when running against a local API. -->
+    <link rel="preconnect" href="https://moodtracker-api.vercel.app" crossorigin />
+    <link rel="dns-prefetch" href="https://moodtracker-api.vercel.app" />
     <meta
       name="description"
       content="Track your daily mood, sleep, and reflections — and see how they connect over time."

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { getToken } from "@/lib/apiClient";
+import { getToken, getCachedUser, setCachedUser } from "@/lib/apiClient";
 import {
   signIn as signInRequest,
   signUp as signUpRequest,
@@ -7,37 +7,49 @@ import {
   logOut as logOutRequest,
 } from "@/services/auth";
 
-// Single source of truth for "who's logged in". On mount it resolves the
-// session from the stored token (GET /auth/current) exactly once, so guards
-// and pages can read `user` synchronously afterward instead of each calling
-// the API. `loading` covers that initial resolution — guards render nothing
-// while it's true rather than bouncing a hard-refreshing user to /login.
+// Single source of truth for "who's logged in", with stale-while-revalidate:
+// the last-known user is cached in localStorage, so on reload the app renders
+// immediately from that cache instead of blocking on GET /auth/current. The
+// server check still runs, just in the background. `loading` is therefore only
+// true in the rare cold case — a token exists but nothing is cached yet — so
+// guards briefly show a loader instead of the whole app going blank.
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // Only trust the cached user when there's actually a token — never show a
+  // logged-in UI without a credential to back it.
+  const hasToken = Boolean(getToken());
+  const cachedUser = hasToken ? getCachedUser() : null;
+  const [user, setUserState] = useState(cachedUser);
+  // Wait only when we have a session to resolve but nothing to show yet.
+  const [loading, setLoading] = useState(hasToken && !cachedUser);
+
+  // Keep the cache in step with every user change, so callers (signIn/signUp,
+  // Onboarding, ProfileUpdateModal) don't each have to remember to persist.
+  function setUser(nextUser) {
+    setCachedUser(nextUser);
+    setUserState(nextUser);
+  }
 
   useEffect(() => {
+    if (!getToken()) return;
+
     let active = true;
 
-    async function loadSession() {
-      if (!getToken()) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const currentUser = await fetchCurrentUser();
+    // Revalidate in the background — updates the cache if the profile changed,
+    // and logs out if the token turned out to be expired/invalid.
+    fetchCurrentUser()
+      .then((currentUser) => {
         if (active) setUser(currentUser);
-      } catch {
-        // Invalid/expired token — apiClient already cleared it on the 401.
+      })
+      .catch(() => {
+        // Invalid/expired token — apiClient already cleared token + cache.
         if (active) setUser(null);
-      } finally {
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    }
+      });
 
-    loadSession();
     return () => {
       active = false;
     };
