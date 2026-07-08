@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include("../partials/head", { title: "Expenses" }) %>
+</head>
+<body>
+  <%
+    const fmtDate = (d) => {
+      const dt = new Date(d);
+      return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    };
+  %>
+  <div class="layout">
+    <%- include("../partials/sidebar", { active: "home" }) %>
+
+    <main class="main">
+      <div class="main__header">
+        <h1 class="page-title">Expenses</h1>
+        <a class="btn btn--primary" href="/create">+ Add Expense</a>
+      </div>
+
+      <%- include("../partials/category-chart", { chart }) %>
+
+      <section class="card">
+        <form class="filter" action="/" method="get">
+          <div class="search">
+            <svg class="search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8" />
+              <path d="m20 20-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+            <input
+              class="search__input"
+              type="text"
+              name="search"
+              value="<%= activeSearch %>"
+              placeholder="Search by name"
+              aria-label="Search expenses by name"
+              autocomplete="off"
+            />
+          </div>
+
+          <div class="select">
+            <select class="select__input" name="category" aria-label="Filter by category" onchange="this.form.submit()">
+              <option value="">All Categories</option>
+              <% categories.forEach((category) => { %>
+                <option value="<%= category %>" <%= activeCategory === category ? "selected" : "" %>>
+                  <%= category %>
+                </option>
+              <% }) %>
+            </select>
+            <svg class="select__chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </div>
+
+          <button class="btn btn--primary" type="submit">Search</button>
+          <% if (activeSearch || activeCategory) { %>
+            <a class="filter__clear" href="/">Clear</a>
+          <% } %>
+        </form>
+
+        <% if (expenses.length === 0) { %>
+          <p class="empty">
+            <% if (activeSearch || activeCategory) { %>
+              No expenses match your filters. <a href="/">Clear filters.</a>
+            <% } else { %>
+              No expenses yet. <a href="/create">Add your first one.</a>
+            <% } %>
+          </p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Date</th>
+                  <th>Payment</th>
+                  <th class="table__right">Amount</th>
+                  <th class="table__right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% expenses.forEach((expense) => { %>
+                  <tr>
+                    <td>
+                      <a class="table__title" href="/expenses/<%= expense.id %>">
+                        <svg class="dot" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                          <circle cx="5" cy="5" r="5" fill="<%= colorFor(expense.category) %>" />
+                        </svg>
+                        <%= expense.title %>
+                      </a>
+                    </td>
+                    <td class="muted"><%= expense.category %></td>
+                    <td class="muted nowrap"><%= fmtDate(expense.date) %></td>
+                    <td class="muted nowrap"><%= expense.paymentMethod %></td>
+                    <td class="table__right amount">-$<%= Number(expense.amount).toFixed(2) %></td>
+                    <td class="table__right">
+                      <div class="row-actions">
+                        <a class="icon-btn" href="/expenses/<%= expense.id %>/edit" title="Edit" aria-label="Edit expense">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 20h4L18.5 9.5a2.12 2.12 0 0 0-3-3L5 17v3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                            <path d="m13.5 6.5 3 3" stroke="currentColor" stroke-width="1.7"/>
+                          </svg>
+                        </a>
+                        <form
+                          action="/api/expenses/<%= expense.id %>/delete"
+                          method="get"
+                          onsubmit="return confirm('Delete this expense? This action cannot be reversed.');"
+                        >
+                          <button class="icon-btn icon-btn--danger" type="submit" title="Delete" aria-label="Delete expense">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m2 0v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

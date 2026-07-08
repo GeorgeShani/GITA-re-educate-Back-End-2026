@@ -1,0 +1,51 @@
+<%
+  const slices = chart && chart.slices ? chart.slices : [];
+  const total = chart && chart.total ? chart.total : 0;
+  const radius = 70;
+  const stroke = 22;
+  const circumference = 2 * Math.PI * radius;
+  const gap = slices.length > 1 ? 4 : 0; // small visual gap between segments
+  let offset = 0; // running length consumed around the ring
+  const totalStr = "$" + total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalFontSize = totalStr.length > 10 ? 18 : totalStr.length > 8 ? 21 : 24;
+%>
+<section class="card chart">
+  <h2 class="card__title">Spending by Category</h2>
+
+  <div class="chart__body">
+    <div class="chart__donut">
+      <svg viewBox="0 0 180 180" width="184" height="184" role="img" aria-label="Spending by category">
+        <circle cx="90" cy="90" r="<%= radius %>" fill="none" stroke="var(--grey-100)" stroke-width="<%= stroke %>" />
+        <% if (total > 0) { slices.forEach((slice) => {
+             const sliceLen = (slice.amount / total) * circumference;
+             const drawLen = Math.max(sliceLen - gap, 1);
+             const dashoffset = -offset;
+             offset += sliceLen; %>
+          <circle
+            cx="90" cy="90" r="<%= radius %>"
+            fill="none"
+            stroke="<%= slice.color %>"
+            stroke-width="<%= stroke %>"
+            stroke-dasharray="<%= drawLen %> <%= circumference - drawLen %>"
+            stroke-dashoffset="<%= dashoffset %>"
+            transform="rotate(-90 90 90)"
+          />
+        <% }) } %>
+        <text x="90" y="88" text-anchor="middle" class="chart__total" font-size="<%= totalFontSize %>"><%= totalStr %></text>
+        <text x="90" y="106" text-anchor="middle" class="chart__caption">Total</text>
+      </svg>
+    </div>
+
+    <ul class="chart__legend">
+      <% if (total === 0) { %>
+        <li class="chart__empty">No expenses to chart yet.</li>
+      <% } else { slices.forEach((slice) => { %>
+        <li class="chart__legend-item">
+          <svg class="chart__legend-bar" width="4" height="22" viewBox="0 0 4 22" aria-hidden="true"><rect width="4" height="22" rx="2" fill="<%= slice.color %>" /></svg>
+          <span class="chart__legend-name"><%= slice.category %></span>
+          <span class="chart__legend-amount"><%= "$" + slice.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+        </li>
+      <% }) } %>
+    </ul>
+  </div>
+</section>

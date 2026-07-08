@@ -1,0 +1,25 @@
+<% const current = typeof active !== "undefined" ? active : ""; %>
+<aside class="sidebar">
+  <div class="sidebar__brand">
+    <svg class="sidebar__logo" width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v1h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.6"/>
+      <circle cx="16.5" cy="13" r="1.4" fill="currentColor"/>
+    </svg>
+    <span class="sidebar__wordmark">Expenses</span>
+  </div>
+
+  <nav class="sidebar__nav">
+    <a href="/" class="sidebar__link <%= current === 'home' ? 'is-active' : '' %>">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4 10 12 4l8 6v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+      <span>All Expenses</span>
+    </a>
+    <a href="/create" class="sidebar__link <%= current === 'create' ? 'is-active' : '' %>">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span>Add Expense</span>
+    </a>
+  </nav>
+</aside>

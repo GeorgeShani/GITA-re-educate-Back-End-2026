@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include("../partials/head", { title: expense.title }) %>
+</head>
+<body>
+  <%
+    const fmtDate = (d) => {
+      const dt = new Date(d);
+      return isNaN(dt) ? d : dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    };
+  %>
+  <div class="layout">
+    <%- include("../partials/sidebar", { active: "" }) %>
+
+    <main class="main">
+      <div class="main__header">
+        <a class="back-link" href="/">&larr; All Expenses</a>
+      </div>
+
+      <section class="card card--modal">
+        <div class="detail__head">
+          <svg class="dot dot--lg" width="18" height="18" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="5" fill="<%= colorFor(expense.category) %>" /></svg>
+          <div>
+            <h2 class="card__title"><%= expense.title %></h2>
+            <p class="card__desc"><%= expense.category %></p>
+          </div>
+          <span class="detail__amount">-$<%= Number(expense.amount).toFixed(2) %></span>
+        </div>
+
+        <dl class="detail__list">
+          <div class="detail__row">
+            <dt>Date</dt>
+            <dd><%= fmtDate(expense.date) %></dd>
+          </div>
+          <div class="detail__row">
+            <dt>Payment Method</dt>
+            <dd><%= expense.paymentMethod %></dd>
+          </div>
+          <div class="detail__row">
+            <dt>Category</dt>
+            <dd><%= expense.category %></dd>
+          </div>
+        </dl>
+
+        <div class="detail__actions">
+          <a class="btn btn--primary" href="/expenses/<%= expense.id %>/edit">Edit</a>
+          <form
+            action="/api/expenses/<%= expense.id %>/delete"
+            method="get"
+            onsubmit="return confirm('Delete this expense? This action cannot be reversed.');"
+          >
+            <button class="btn btn--danger" type="submit">Delete</button>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,154 @@
+[
+  {
+    "id": 1,
+    "title": "McDonald's Big Mac Meal",
+    "category": "Food & Dining",
+    "amount": 25,
+    "date": "2026-06-01",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 3,
+    "title": "Cinema Ticket - Mission Impossible",
+    "category": "Entertainment",
+    "amount": 45,
+    "date": "2026-06-02",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 4,
+    "title": "Nike Air Force 1 Sneakers",
+    "category": "Shopping",
+    "amount": 100,
+    "date": "2026-06-03",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 5,
+    "title": "Wendy's Baconator Combo",
+    "category": "Food & Dining",
+    "amount": 32,
+    "date": "2026-06-03",
+    "paymentMethod": "Cash"
+  },
+  {
+    "id": 6,
+    "title": "Electricity Bill - June",
+    "category": "Utilities",
+    "amount": 85,
+    "date": "2026-06-04",
+    "paymentMethod": "Bank Transfer"
+  },
+  {
+    "id": 7,
+    "title": "Prescription Medicine",
+    "category": "Healthcare",
+    "amount": 60,
+    "date": "2026-06-04",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 8,
+    "title": "Bolt Ride to University",
+    "category": "Transportation",
+    "amount": 18,
+    "date": "2026-06-05",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 9,
+    "title": "Starbucks Caramel Frappuccino",
+    "category": "Food & Dining",
+    "amount": 27,
+    "date": "2026-06-05",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 10,
+    "title": "Udemy React Native Course",
+    "category": "Education",
+    "amount": 150,
+    "date": "2026-06-06",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 11,
+    "title": "Zara Summer Jacket",
+    "category": "Shopping",
+    "amount": 95,
+    "date": "2026-06-07",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 12,
+    "title": "Dunkin' Iced Latte",
+    "category": "Food & Dining",
+    "amount": 22,
+    "date": "2026-06-08",
+    "paymentMethod": "Cash"
+  },
+  {
+    "id": 13,
+    "title": "Spotify Premium Subscription",
+    "category": "Entertainment",
+    "amount": 55,
+    "date": "2026-06-09",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 14,
+    "title": "Fuel Refill",
+    "category": "Transportation",
+    "amount": 26,
+    "date": "2026-06-10",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 15,
+    "title": "Dental Cleaning Appointment",
+    "category": "Healthcare",
+    "amount": 70,
+    "date": "2026-06-11",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 16,
+    "title": "Water & Sewer Bill",
+    "category": "Utilities",
+    "amount": 90,
+    "date": "2026-06-12",
+    "paymentMethod": "Bank Transfer"
+  },
+  {
+    "id": 17,
+    "title": "Carrefour Weekly Groceries",
+    "category": "Groceries",
+    "amount": 40,
+    "date": "2026-06-13",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 18,
+    "title": "Apple AirPods Pro",
+    "category": "Shopping",
+    "amount": 210,
+    "date": "2026-06-14",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 19,
+    "title": "Algorithms Textbook",
+    "category": "Education",
+    "amount": 130,
+    "date": "2026-06-15",
+    "paymentMethod": "Card"
+  },
+  {
+    "id": 20,
+    "title": "Sushi Dinner at Umami",
+    "category": "Food & Dining",
+    "amount": 35,
+    "date": "2026-06-16",
+    "paymentMethod": "Cash"
+  }
+]

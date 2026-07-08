@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include("../partials/head", { title: "Add Expense" }) %>
+</head>
+<body>
+  <div class="layout">
+    <%- include("../partials/sidebar", { active: "create" }) %>
+
+    <main class="main">
+      <div class="main__header">
+        <h1 class="page-title">Add Expense</h1>
+      </div>
+
+      <section class="card card--modal">
+        <h2 class="card__title">New Expense</h2>
+        <p class="card__desc">Record a new expense. Choose a category so it shows up in your spending chart.</p>
+        <%- include("../partials/expense-form", {
+          action: "/api/expenses",
+          submitLabel: "Add Expense",
+          categories,
+          expense: null,
+          backHref: "/"
+        }) %>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

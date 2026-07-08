@@ -1,0 +1,72 @@
+<%
+  const e = typeof expense !== "undefined" && expense ? expense : null;
+  const paymentMethods = ["Card", "Cash", "Bank Transfer"];
+%>
+<form class="form" action="<%= action %>" method="post">
+  <label class="field">
+    <span class="field__label">Title</span>
+    <input
+      class="field__input"
+      type="text"
+      name="title"
+      placeholder="e.g. Weekly groceries"
+      value="<%= e ? e.title : '' %>"
+      required
+    />
+  </label>
+
+  <label class="field">
+    <span class="field__label">Category</span>
+    <select class="field__input" name="category" required>
+      <% categories.forEach((category) => { %>
+        <option value="<%= category %>" <%= e && e.category === category ? "selected" : "" %>>
+          <%= category %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <div class="form__row">
+    <label class="field">
+      <span class="field__label">Amount</span>
+      <div class="field__prefix">
+        <span>$</span>
+        <input
+          class="field__input"
+          type="number"
+          name="amount"
+          min="0"
+          step="0.01"
+          placeholder="0.00"
+          value="<%= e ? e.amount : '' %>"
+          required
+        />
+      </div>
+    </label>
+
+    <label class="field">
+      <span class="field__label">Date</span>
+      <input
+        class="field__input"
+        type="date"
+        name="date"
+        value="<%= e ? e.date : '' %>"
+        required
+      />
+    </label>
+  </div>
+
+  <label class="field">
+    <span class="field__label">Payment Method</span>
+    <select class="field__input" name="paymentMethod" required>
+      <% paymentMethods.forEach((method) => { %>
+        <option value="<%= method %>" <%= e && e.paymentMethod === method ? "selected" : "" %>>
+          <%= method %>
+        </option>
+      <% }) %>
+    </select>
+  </label>
+
+  <button class="btn btn--primary btn--block" type="submit"><%= submitLabel %></button>
+  <a class="form__cancel" href="<%= typeof backHref !== 'undefined' ? backHref : '/' %>">Cancel</a>
+</form>

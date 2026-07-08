@@ -1,0 +1,18 @@
+{
+  "name": "midterm-2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "ejs": "^6.0.1",
+    "express": "^5.2.1"
+  }
+}
