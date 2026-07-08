@@ -1,0 +1,17 @@
+{
+  "name": "homework-18",
+  "version": "1.0.0",
+  "description": "Homework 18 TypeScript Node Project",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.1"
+  }
+}
