@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MOODS } from "@/constants/moods";
 import { SLEEP_OPTIONS } from "@/constants/sleepOptions";
 import { SleepIcon } from "@/assets/icons";
-import { sectionInView, barsStagger, barReveal, popIn } from "@/animations/variants";
+import { sectionInView, barsStagger, barReveal, barRevealOnScroll, popIn } from "@/animations/variants";
 import { cn } from "@/utils/cn";
 
 // Popover sizing (Figma nodes 396:6651/434:7873/434:8097 — identical 175px
@@ -28,10 +28,11 @@ const VIEWPORT_MARGIN = 12;
 const DAYS_SHOWN = 11;
 
 // One day-column's footprint: the bar/label width (`w-10` = 40px) plus the
-// inter-column gap (`gap-4` = 16px). Used to work out how many columns fit the
-// chart's current width.
+// inter-column gap (`gap-4.25` = 17px). Used to work out how many columns fit
+// the chart's current width — must stay in sync with the `gap-4.25` on the bar
+// row and the label row below.
 const COLUMN_WIDTH = 40;
-const COLUMN_GAP = 16;
+const COLUMN_GAP = 17;
 
 // The most columns that fit `width` px at the fixed per-column footprint:
 // n columns span n*COLUMN_WIDTH + (n-1)*COLUMN_GAP, so n = (width + gap) / (col + gap).
@@ -229,13 +230,20 @@ export function MoodTrendsSection({ logs = [], className }) {
     logsByDay.set(dateKey(new Date(log.loggedAt)), log);
   }
 
-  // Land on the last DAYS_SHOWN days by default; re-runs when the range grows
-  // (a new check-in extends it) so the newest day stays in view. Scrolls to
-  // the exact boundary bar's offsetLeft rather than scrollWidth (max scroll)
-  // — scrollWidth reveals however many bars happen to fit the container's
-  // width, which is rarely a clean multiple of one bar's width and so was
-  // clipping a sliver of the 12th-from-last bar in at the left edge.
-  useEffect(() => {
+  // Land on the recent window by default; re-runs when the range grows (a new
+  // check-in extends it) so the newest day stays in view. Scrolls to the exact
+  // boundary bar's offsetLeft rather than scrollWidth (max scroll) — scrollWidth
+  // reveals however many bars happen to fit the container's width, which is
+  // rarely a clean multiple of one bar's width and so was clipping a sliver of
+  // the boundary bar in at the left edge.
+  //
+  // Must be a layout effect (runs before paint): the history bars reveal via
+  // whileInView against this same scroll container, so the scroll has to be at
+  // the recent window *before* their in-view observers first evaluate —
+  // otherwise, at the initial scrollLeft of 0, the leftmost history bars are on
+  // screen and animate in parallel with the recent cascade instead of waiting
+  // to be scrolled to.
+  useLayoutEffect(() => {
     const container = scrollRef.current;
     const marker = recentStartRef.current;
     if (container && marker) container.scrollLeft = marker.offsetLeft;
@@ -268,7 +276,7 @@ export function MoodTrendsSection({ logs = [], className }) {
           className="scrollbar-none min-w-0 flex-1 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden"
         >
           <motion.div
-            className="relative flex h-67 w-fit min-w-full items-end gap-4"
+            className="relative flex h-67 w-fit min-w-full items-end gap-4.25"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: "some" }}
@@ -280,14 +288,26 @@ export function MoodTrendsSection({ logs = [], className }) {
               ))}
             </div>
 
+            {/* Older history bars reveal individually as they're scrolled into
+                view (root = the horizontal scroll container), rather than all
+                at once. Distinct variant labels keep them independent of the
+                barsStagger parent above. */}
             {historyDays.map((date) => (
-              <div key={dateKey(date)} className="flex h-full w-10 shrink-0 items-end justify-center">
+              <motion.div
+                key={dateKey(date)}
+                initial="offscreen"
+                whileInView="onscreen"
+                viewport={{ once: true, root: scrollRef }}
+                variants={barRevealOnScroll}
+                style={{ transformOrigin: "bottom" }}
+                className="flex h-full w-10 shrink-0 items-end justify-center"
+              >
                 <BarPill
                   log={logsByDay.get(dateKey(date))}
                   onHoverStart={handleHoverStart}
                   onHoverEnd={handleHoverEnd}
                 />
-              </div>
+              </motion.div>
             ))}
 
             {recentDays.map((date, index) => (
@@ -307,7 +327,7 @@ export function MoodTrendsSection({ logs = [], className }) {
             ))}
           </motion.div>
 
-          <div className="mt-3 flex w-fit min-w-full gap-4">
+          <div className="mt-3 flex w-fit min-w-full gap-4.25">
             {days.map((date) => (
               <div key={dateKey(date)} className="flex w-10 shrink-0 flex-col items-center gap-1.5 text-center">
                 <p className="text-preset-9 text-neutral-600">{date.toLocaleDateString("en-US", { month: "long" })}</p>

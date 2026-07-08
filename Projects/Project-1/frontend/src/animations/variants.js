@@ -99,15 +99,30 @@ export const textReveal = {
 
 // Mood Trends chart bar cascade, also viewport-triggered. `barsStagger` goes on
 // the bars row (initial="hidden" whileInView="visible") and reveals its
-// children left-to-right; each bar column uses `barReveal` to grow up from the
-// axis baseline (pair with style={{ transformOrigin: "bottom" }}). Slow, evenly
-// spaced growth (0.7s per bar, 0.12s apart) so the chart fills in gracefully.
+// children right-to-left (`staggerDirection: -1`) — the chart opens focused on
+// the most recent days (auto-scrolled to the right), so today grows in first
+// and the cascade runs back through history. Each bar column uses `barReveal`
+// to grow up from the axis baseline (pair with style={{ transformOrigin:
+// "bottom" }}). Slow, evenly spaced growth (0.7s per bar, 0.12s apart) so the
+// chart fills in gracefully.
 export const barsStagger = {
   hidden: {},
-  visible: { transition: { delayChildren: 0.15, staggerChildren: 0.12 } },
+  visible: { transition: { delayChildren: 0.15, staggerChildren: 0.12, staggerDirection: -1 } },
 };
 
 export const barReveal = {
   hidden: { scaleY: 0, opacity: 0 },
   visible: { scaleY: 1, opacity: 1, transition: { duration: 0.7, ease: EASE_STANDARD } },
+};
+
+// Same grow-up as `barReveal`, but for the older history bars off to the left:
+// each plays individually as it's scrolled into the chart's horizontal viewport
+// (pair with whileInView + viewport={{ root: <scroll container> }}), instead of
+// being part of the initial right-to-left cascade. Its label names are
+// deliberately NOT hidden/visible so the barsStagger parent's propagation can't
+// resolve them and force these visible on load — they stay driven purely by
+// their own in-view trigger.
+export const barRevealOnScroll = {
+  offscreen: { scaleY: 0, opacity: 0 },
+  onscreen: { scaleY: 1, opacity: 1, transition: { duration: 0.5, ease: EASE_STANDARD } },
 };

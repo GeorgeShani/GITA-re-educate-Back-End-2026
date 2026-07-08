@@ -51,7 +51,7 @@ export function StatCard({
         </div>
         <div className={cn("relative flex w-full items-start gap-2", mutedDescription && "opacity-70")}>
           {TrendIcon && <TrendIcon className={cn("size-4 shrink-0", textColor)} />}
-          <p className={cn("flex-1 text-preset-7 relative z-10", textColor)}>{description}</p>
+          <p className={cn("flex-1 text-preset-7", textColor)}>{description}</p>
         </div>
         <div className="absolute inset-y-0 right-0 w-16 overflow-hidden">
           <img src={pattern} alt="" className="h-full w-full object-cover" />
