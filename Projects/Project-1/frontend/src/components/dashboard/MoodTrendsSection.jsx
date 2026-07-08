@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { MOODS } from "@/constants/moods";
@@ -18,11 +18,26 @@ const POPOVER_WIDTH = 175;
 const POPOVER_GAP = 12;
 const VIEWPORT_MARGIN = 12;
 
-// How many of the most-recent days play the reveal-cascade animation and sit
-// in view by default. Older history is still rendered (statically, no
-// animation) so the user can scroll left past this window to see their full
-// progress — it just isn't part of the initial "look here" reveal.
+// Minimum size of the visible window: how many of the most-recent days play
+// the reveal-cascade animation and sit in view by default. Older history is
+// still rendered (statically, no animation) so the user can scroll left past
+// this window to see their full progress — it just isn't part of the initial
+// "look here" reveal. The window grows past this floor to fill a wider chart
+// (see `visibleDays` below), so a full-width chart doesn't trail off into empty
+// space; it never shrinks below this.
 const DAYS_SHOWN = 11;
+
+// One day-column's footprint: the bar/label width (`w-10` = 40px) plus the
+// inter-column gap (`gap-4` = 16px). Used to work out how many columns fit the
+// chart's current width.
+const COLUMN_WIDTH = 40;
+const COLUMN_GAP = 16;
+
+// The most columns that fit `width` px at the fixed per-column footprint:
+// n columns span n*COLUMN_WIDTH + (n-1)*COLUMN_GAP, so n = (width + gap) / (col + gap).
+function daysThatFit(width) {
+  return Math.floor((width + COLUMN_GAP) / (COLUMN_WIDTH + COLUMN_GAP));
+}
 
 // Sleep-hours band -> bar height as a fraction of the chart's drawing area,
 // evenly spaced top-to-bottom in the same order as SLEEP_OPTIONS (9+ down to
@@ -169,6 +184,21 @@ export function MoodTrendsSection({ logs = [], className }) {
   const scrollRef = useRef(null);
   const recentStartRef = useRef(null);
   const [hoveredBar, setHoveredBar] = useState(null);
+  // The visible window sizes itself to the chart's current width (at least
+  // DAYS_SHOWN) so a wide, full-width chart is filled with day-columns instead
+  // of leaving empty space to the right. Measured from the scroll container and
+  // kept in sync on resize (e.g. the desktop side-by-side ↔ stacked reflow).
+  const [visibleDays, setVisibleDays] = useState(DAYS_SHOWN);
+
+  useLayoutEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const measure = () => setVisibleDays(Math.max(DAYS_SHOWN, daysThatFit(container.clientWidth)));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   function handleHoverStart(log, rect) {
     setHoveredBar({ log, rect });
@@ -181,18 +211,18 @@ export function MoodTrendsSection({ logs = [], className }) {
     (earliest, log) => (!earliest || log.loggedAt < earliest.loggedAt ? log : earliest),
     null,
   );
-  // The range always spans at least DAYS_SHOWN days (floored at DAYS_SHOWN-1
-  // days ago), even when the earliest log is more recent than that — so a
+  // The range always spans at least `visibleDays` days (enough to fill the
+  // chart width), even when the earliest log is more recent than that — so a
   // handful of recent check-ins still shows bars only on the right, with the
   // emptier days before them rendered too (Figma "Few Moods Logged"), rather
   // than the chart shrinking to fit just the days that have data. It extends
   // further back than that floor when real history goes back further.
   const rangeStart = earliestLog
-    ? new Date(Math.min(new Date(earliestLog.loggedAt).getTime(), lastNDays(DAYS_SHOWN)[0].getTime()))
+    ? new Date(Math.min(new Date(earliestLog.loggedAt).getTime(), lastNDays(visibleDays)[0].getTime()))
     : null;
-  const days = rangeStart ? daysSince(rangeStart) : lastNDays(DAYS_SHOWN);
-  const historyDays = days.slice(0, -DAYS_SHOWN);
-  const recentDays = days.slice(-DAYS_SHOWN);
+  const days = rangeStart ? daysSince(rangeStart) : lastNDays(visibleDays);
+  const historyDays = days.slice(0, -visibleDays);
+  const recentDays = days.slice(-visibleDays);
 
   const logsByDay = new Map();
   for (const log of logs) {
