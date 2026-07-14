@@ -1,0 +1,26 @@
+{
+  "name": "homework-19",
+  "version": "1.0.0",
+  "description": "Homework 19 — Express + TypeScript + Mongoose product API with Joi validation and role-based middleware",
+  "type": "module",
+  "main": "dist/index.js",
+  "keywords": ["express", "typescript", "mongoose", "joi", "rest-api"],
+  "license": "ISC",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "joi": "^18.2.3",
+    "mongoose": "^9.7.4"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
