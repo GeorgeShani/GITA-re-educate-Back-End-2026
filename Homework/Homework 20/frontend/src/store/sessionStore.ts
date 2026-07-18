@@ -5,6 +5,7 @@ import type {
   AnswerResultPayload,
   LeaderboardEntry,
   OnlineUser,
+  SessionKickedPayload,
   SessionUser,
 } from "../types";
 
@@ -25,6 +26,7 @@ interface SessionState {
   onlineCount: number;
   onlineUsers: OnlineUser[];
   lastError: SocketErrorEvent | null;
+  kickedMessage: SocketErrorEvent | null;
   join: (username: string) => Promise<void>;
   submitAnswer: (
     quizId: number,
@@ -69,9 +71,11 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   onlineCount: 0,
   onlineUsers: [],
   lastError: null,
+  kickedMessage: null,
 
   async join(rawUsername: string) {
     const username = rawUsername.trim();
+    set({ kickedMessage: null });
     let session: SessionUser;
 
     try {
@@ -226,6 +230,16 @@ socket.on(SocketEvent.ANSWER_RESULT, (payload: AnswerResultPayload) => {
 socket.on(SocketEvent.ERROR, (payload: { message: string }) => {
   useSessionStore.setState({
     lastError: { id: Date.now(), message: payload.message },
+  });
+});
+
+// The account was opened elsewhere: tear down this session, then surface a
+// message. logout() runs first (it resets lastError among other fields but
+// never touches kickedMessage), so the follow-up setState survives.
+socket.on(SocketEvent.SESSION_KICKED, (payload: SessionKickedPayload) => {
+  useSessionStore.getState().logout();
+  useSessionStore.setState({
+    kickedMessage: { id: Date.now(), message: payload.message },
   });
 });
 

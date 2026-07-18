@@ -4,6 +4,7 @@ import {
   POINTS_PER_CORRECT_ANSWER,
   type AnswerResultPayload,
   type AnswerSubmitPayload,
+  type SessionKickedPayload,
   type UserJoinPayload,
   type UsersOnlinePayload,
 } from "../events";
@@ -43,6 +44,29 @@ export function registerQuizHandlers(io: Server, socket: Socket): void {
       if (!user) {
         socket.emit(SocketEvent.ERROR, { message: "Unknown user" });
         return;
+      }
+
+      // Enforce a single active session per account: evict any socket already
+      // registered for this user before adding the new one, so there is never
+      // a moment with two live sessions for the same userId. We evict rather
+      // than reject the newcomer because a dead connection can take up to ~45s
+      // to be detected, which would otherwise lock the real owner out.
+      const kicked: SessionKickedPayload = {
+        message: `"${user.username}" was opened in another session. You have been signed out.`,
+      };
+
+      for (const staleId of onlineUsers.findSocketIdsByUserId(user.id)) {
+        if (staleId === socket.id) continue;
+
+        const staleSocket = io.sockets.sockets.get(staleId);
+        if (staleSocket) {
+          staleSocket.emit(SocketEvent.SESSION_KICKED, kicked);
+          staleSocket.disconnect(true);
+        }
+
+        // Remove now rather than waiting on the evicted socket's own disconnect
+        // handler; keyed by socketId, so it can never touch the new session.
+        onlineUsers.remove(staleId);
       }
 
       onlineUsers.add(socket.id, { userId: user.id, username: user.username });

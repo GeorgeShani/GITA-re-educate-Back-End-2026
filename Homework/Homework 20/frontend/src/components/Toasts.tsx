@@ -5,19 +5,33 @@ import type { SocketErrorEvent } from "../store/sessionStore";
 
 const AUTO_DISMISS_MS = 4500;
 
-/** Surfaces socket `error` events as transient top-right toasts. */
+type Toast = SocketErrorEvent & { kind: "error" | "kicked" };
+
+/** Surfaces socket `error` and forced-signout events as top-right toasts. */
 export function Toasts() {
   const lastError = useSessionStore((s) => s.lastError);
-  const [visible, setVisible] = useState<SocketErrorEvent[]>([]);
+  const kickedMessage = useSessionStore((s) => s.kickedMessage);
+  const [visible, setVisible] = useState<Toast[]>([]);
 
   useEffect(() => {
     if (!lastError) return;
-    setVisible((current) => [...current, lastError]);
+    const toast: Toast = { ...lastError, kind: "error" };
+    setVisible((current) => [...current, toast]);
     const timeout = setTimeout(() => {
-      setVisible((current) => current.filter((e) => e.id !== lastError.id));
+      setVisible((current) => current.filter((e) => e.id !== toast.id));
     }, AUTO_DISMISS_MS);
     return () => clearTimeout(timeout);
   }, [lastError]);
+
+  useEffect(() => {
+    if (!kickedMessage) return;
+    const toast: Toast = { ...kickedMessage, kind: "kicked" };
+    setVisible((current) => [...current, toast]);
+    const timeout = setTimeout(() => {
+      setVisible((current) => current.filter((e) => e.id !== toast.id));
+    }, AUTO_DISMISS_MS);
+    return () => clearTimeout(timeout);
+  }, [kickedMessage]);
 
   return (
     <div className="pointer-events-none fixed right-4 top-4 z-50 flex flex-col gap-2">
@@ -28,7 +42,11 @@ export function Toasts() {
             initial={{ opacity: 0, x: 40 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 40 }}
-            className="rounded-md border border-term-red/60 bg-term-panel px-4 py-2.5 text-sm text-term-red shadow-lg"
+            className={`rounded-md border bg-term-panel px-4 py-2.5 text-sm shadow-lg ${
+              toast.kind === "kicked"
+                ? "border-term-amber/60 text-term-amber"
+                : "border-term-red/60 text-term-red"
+            }`}
           >
             ! {toast.message}
           </motion.div>

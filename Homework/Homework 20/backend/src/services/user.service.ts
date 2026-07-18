@@ -2,7 +2,6 @@ import { UserModel, type User } from "../models/user.model";
 
 interface UpdateUserInput {
   username?: string;
-  score?: number;
 }
 
 /** Stable key identifying one question across the whole quiz set. */

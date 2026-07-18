@@ -30,34 +30,18 @@ export const userController = {
   },
 
   async update(req: Request, res: Response): Promise<void> {
-    const { username, score } = req.body as {
-      username?: unknown;
-      score?: unknown;
-    };
-    
-    const update: { username?: string; score?: number } = {};
+    const { username } = req.body as { username?: unknown };
 
-    if (username !== undefined) {
-      if (typeof username !== "string" || username.trim() === "") {
-        res
-          .status(400)
-          .json({ message: "'username' must be a non-empty string" });
-        return;
-      }
-      
-      update.username = username.trim();
-    }
-    
-    if (score !== undefined) {
-      if (typeof score !== "number" || Number.isNaN(score)) {
-        res.status(400).json({ message: "'score' must be a number" });
-        return;
-      }
-      
-      update.score = score;
+    if (typeof username !== "string" || username.trim() === "") {
+      res
+        .status(400)
+        .json({ message: "'username' must be a non-empty string" });
+      return;
     }
 
-    const user = await userService.updateUser(req.params.id as string, update);
+    const user = await userService.updateUser(req.params.id as string, {
+      username: username.trim(),
+    });
     if (!user) {
       res.status(404).json({ message: "User not found" });
       return;

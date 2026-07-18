@@ -7,6 +7,7 @@ export const SocketEvent = {
   USERS_ONLINE: "users:online",
   ANSWER_RESULT: "answer:result",
   LEADERBOARD_UPDATE: "leaderboard:update",
+  SESSION_KICKED: "session:kicked",
   ERROR: "error",
 } as const;
 

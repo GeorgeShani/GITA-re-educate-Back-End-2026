@@ -42,6 +42,10 @@ export interface AnswerResultPayload {
   alreadyAnswered: boolean;
 }
 
+export interface SessionKickedPayload {
+  message: string;
+}
+
 export interface ApiUser {
   _id: string;
   username: string;

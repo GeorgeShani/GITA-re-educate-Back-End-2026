@@ -10,6 +10,7 @@ export const SocketEvent = {
   USERS_ONLINE: "users:online",
   ANSWER_RESULT: "answer:result",
   LEADERBOARD_UPDATE: "leaderboard:update",
+  SESSION_KICKED: "session:kicked",
   ERROR: "error",
 } as const;
 
@@ -54,4 +55,13 @@ export interface AnswerResultPayload {
   totalScore: number;
   /** True when this question had already been answered by this user. */
   alreadyAnswered: boolean;
+}
+
+/**
+ * Sent to a socket that is being force-disconnected because the same account
+ * just signed in from another session. The client shows `message`, then
+ * clears its own session.
+ */
+export interface SessionKickedPayload {
+  message: string;
 }
