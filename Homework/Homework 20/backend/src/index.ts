@@ -16,8 +16,11 @@ async function startServer(): Promise<void> {
     // Attach the WebSocket layer to the same HTTP server.
     createSocketServer(httpServer);
 
-    httpServer.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
+    // Bind explicitly to 0.0.0.0: Fly's proxy connects over its private
+    // network, and Node's default host resolution doesn't reliably bind
+    // there in Fly's container networking.
+    httpServer.listen(Number(PORT), "0.0.0.0", () => {
+      console.log(`Server running on http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
     console.error("Failed to start server", error);
