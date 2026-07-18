@@ -1,0 +1,327 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: "JetBrains Mono", ui-monospace, "Fira Code", Consolas, monospace;
+
+  --color-term-bg: #0a0e14;
+  --color-term-panel: #0d1320;
+  --color-term-border: #1e2a3a;
+  --color-term-green: #39ff14;
+  --color-term-green-dim: #1fae0d;
+  --color-term-mint: #00ff9c;
+  --color-term-cyan: #56d8ff;
+  --color-term-amber: #ffb454;
+  --color-term-magenta: #ff5fa2;
+  --color-term-red: #ff5c5c;
+  --color-term-text: #c9d6e3;
+  --color-term-muted: #5b6b7c;
+
+  --animate-blink: blink 1.1s steps(1) infinite;
+  --animate-scan: scan 8s linear infinite;
+  --animate-flicker: flicker 4s ease-in-out infinite;
+  --animate-shake: shake 0.4s ease-in-out 1;
+  --animate-pop: pop 0.5s ease-out 1;
+
+  /* Mascot dance clips. One rig, three clips; see MascotDancer.tsx.
+     Limbs that alternate share a single keyframe set and are phase-shifted
+     with a negative animation-delay, and mirrored via the --dir custom
+     property, so each clip only needs body/arm/leg/antenna. */
+  --animate-hype-body: hype-body 0.55s cubic-bezier(0.33, 0, 0.3, 1) infinite;
+  --animate-hype-arm: hype-arm 0.55s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-hype-leg: hype-leg 0.55s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-hype-antenna: hype-antenna 0.55s cubic-bezier(0.36, 0, 0.24, 1) infinite;
+
+  --animate-floss-body: floss-body 0.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-floss-arm: floss-arm 0.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-floss-leg: floss-leg 0.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-floss-antenna: floss-antenna 0.5s cubic-bezier(0.36, 0, 0.24, 1) infinite;
+
+  --animate-mates-body: mates-body 0.7s cubic-bezier(0.4, 0, 0.3, 1) infinite;
+  --animate-mates-arm: mates-arm 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-mates-leg: mates-leg 0.7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-mates-antenna: mates-antenna 0.7s cubic-bezier(0.36, 0, 0.24, 1) infinite;
+
+  /* Robot: deliberately snaps between held poses (steps(1), no tweening)
+     instead of easing, for a stop-motion/servo feel — the odd one out on
+     purpose, contrasting with the smooth easing everywhere else. */
+  --animate-robot-body: robot-body 0.9s steps(1) infinite;
+  --animate-robot-arm: robot-arm 0.9s steps(1) infinite;
+  --animate-robot-leg: robot-leg 0.9s steps(1) infinite;
+  --animate-robot-antenna: robot-antenna 0.45s steps(1) infinite;
+
+  /* Dab: snap into the pose, hold with a tiny idle wobble, reset. The two
+     arms are genuinely asymmetric (one covers the face, one raises up), so
+     they get separate keyframes instead of sharing one via the --dir
+     sign-flip trick used elsewhere. */
+  --animate-dab-body: dab-body 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-dab-arm-cover: dab-arm-cover 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-dab-arm-raise: dab-arm-raise 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-dab-leg: dab-leg 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-dab-antenna: dab-antenna 1.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+
+  @keyframes blink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+  @keyframes scan {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100%; }
+  }
+  @keyframes flicker {
+    0%, 100% { opacity: 1; }
+    92% { opacity: 1; }
+    93% { opacity: 0.86; }
+    94% { opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(4px); }
+  }
+  @keyframes pop {
+    0% { transform: scale(0.5) translateY(6px); opacity: 0; }
+    60% { transform: scale(1.15) translateY(-2px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  /* --- HYPE: energetic bounce + alternating overhead pumps --- */
+  @keyframes hype-body {
+    0%   { transform: translateY(0) scaleY(1); }
+    25%  { transform: translateY(-5px) scaleY(1.03); }
+    45%  { transform: translateY(-6px) scaleY(1.05); }
+    60%  { transform: translateY(-2px) scaleY(1); }
+    80%  { transform: translateY(1px) scaleY(0.92); }
+    90%  { transform: translateY(0.5px) scaleY(0.97); }
+    100% { transform: translateY(0) scaleY(1); }
+  }
+  @keyframes hype-arm {
+    /* Peak (-144deg) brings the fist up close alongside the head rather
+       than flared out to the side — the compact overhead pump of the
+       reference emote, not a wide diagonal raise. */
+    0%   { transform: rotate(calc(var(--dir) * 10deg)); }
+    20%  { transform: rotate(calc(var(--dir) * -85deg)); }
+    40%  { transform: rotate(calc(var(--dir) * -144deg)); }
+    55%  { transform: rotate(calc(var(--dir) * -136deg)); }
+    72%  { transform: rotate(calc(var(--dir) * -70deg)); }
+    100% { transform: rotate(calc(var(--dir) * 10deg)); }
+  }
+  @keyframes hype-leg {
+    0%   { transform: rotate(calc(var(--dir) * 0deg)); }
+    45%  { transform: rotate(calc(var(--dir) * 15deg)); }
+    70%  { transform: rotate(calc(var(--dir) * 4deg)); }
+    100% { transform: rotate(calc(var(--dir) * 0deg)); }
+  }
+  @keyframes hype-antenna {
+    0%   { transform: rotate(0deg); }
+    30%  { transform: rotate(-9deg); }
+    55%  { transform: rotate(7deg); }
+    78%  { transform: rotate(-3deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  /* --- FLOSS: hips one way, arms swing together the other --- */
+  @keyframes floss-body {
+    0%   { transform: translateX(-4px) rotate(-3deg); }
+    25%  { transform: translateX(0) rotate(0deg); }
+    50%  { transform: translateX(4px) rotate(3deg); }
+    75%  { transform: translateX(0) rotate(0deg); }
+    100% { transform: translateX(-4px) rotate(-3deg); }
+  }
+  @keyframes floss-arm {
+    0%   { transform: rotate(30deg); }
+    25%  { transform: rotate(3deg); }
+    50%  { transform: rotate(-30deg); }
+    75%  { transform: rotate(3deg); }
+    100% { transform: rotate(30deg); }
+  }
+  @keyframes floss-leg {
+    0%   { transform: rotate(-4deg); }
+    25%  { transform: rotate(0deg); }
+    50%  { transform: rotate(4deg); }
+    75%  { transform: rotate(0deg); }
+    100% { transform: rotate(-4deg); }
+  }
+  @keyframes floss-antenna {
+    0%   { transform: rotate(8deg); }
+    50%  { transform: rotate(-8deg); }
+    100% { transform: rotate(8deg); }
+  }
+
+  /* --- BEST MATES: side-to-side rock, arms sway across, legs kick --- */
+  @keyframes mates-body {
+    0%   { transform: translateX(-3px) translateY(0) rotate(-2deg); }
+    25%  { transform: translateX(0) translateY(-3px) rotate(0deg); }
+    50%  { transform: translateX(3px) translateY(0) rotate(2deg); }
+    75%  { transform: translateX(0) translateY(-3px) rotate(0deg); }
+    100% { transform: translateX(-3px) translateY(0) rotate(-2deg); }
+  }
+  @keyframes mates-arm {
+    0%   { transform: rotate(calc(var(--dir) * 26deg)); }
+    30%  { transform: rotate(calc(var(--dir) * 0deg)); }
+    50%  { transform: rotate(calc(var(--dir) * -26deg)); }
+    70%  { transform: rotate(calc(var(--dir) * 0deg)); }
+    100% { transform: rotate(calc(var(--dir) * 26deg)); }
+  }
+  @keyframes mates-leg {
+    0%   { transform: rotate(calc(var(--dir) * 0deg)); }
+    30%  { transform: rotate(calc(var(--dir) * 20deg)); }
+    55%  { transform: rotate(calc(var(--dir) * 2deg)); }
+    100% { transform: rotate(calc(var(--dir) * 0deg)); }
+  }
+  @keyframes mates-antenna {
+    0%   { transform: rotate(-6deg); }
+    25%  { transform: rotate(5deg); }
+    50%  { transform: rotate(-4deg); }
+    75%  { transform: rotate(4deg); }
+    100% { transform: rotate(-6deg); }
+  }
+
+  /* --- ROBOT: mechanical isolations, snapped (not eased) between held poses --- */
+  @keyframes robot-body {
+    0%   { transform: translate(0, 0); }
+    12%  { transform: translate(-3px, 0); }
+    25%  { transform: translate(-3px, 0); }
+    37%  { transform: translate(3px, 0); }
+    50%  { transform: translate(3px, 0); }
+    62%  { transform: translate(0, -3px); }
+    75%  { transform: translate(0, -3px); }
+    87%  { transform: translate(0, 0); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes robot-arm {
+    0%   { transform: rotate(calc(var(--dir) * 0deg)); }
+    12%  { transform: rotate(calc(var(--dir) * -45deg)); }
+    25%  { transform: rotate(calc(var(--dir) * -45deg)); }
+    37%  { transform: rotate(calc(var(--dir) * -90deg)); }
+    50%  { transform: rotate(calc(var(--dir) * -90deg)); }
+    62%  { transform: rotate(calc(var(--dir) * -45deg)); }
+    75%  { transform: rotate(calc(var(--dir) * -45deg)); }
+    87%  { transform: rotate(calc(var(--dir) * 0deg)); }
+    100% { transform: rotate(calc(var(--dir) * 0deg)); }
+  }
+  @keyframes robot-leg {
+    0%   { transform: rotate(calc(var(--dir) * 0deg)); }
+    25%  { transform: rotate(calc(var(--dir) * 0deg)); }
+    37%  { transform: rotate(calc(var(--dir) * 10deg)); }
+    50%  { transform: rotate(calc(var(--dir) * 10deg)); }
+    62%  { transform: rotate(calc(var(--dir) * 0deg)); }
+    100% { transform: rotate(calc(var(--dir) * 0deg)); }
+  }
+  @keyframes robot-antenna {
+    0%   { transform: rotate(0deg); }
+    20%  { transform: rotate(15deg); }
+    40%  { transform: rotate(15deg); }
+    60%  { transform: rotate(-10deg); }
+    80%  { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+  /* --- DAB: snap up into the crossed pose, hold with a tiny wobble, reset --- */
+  @keyframes dab-body {
+    0%   { transform: rotate(0deg) translateY(0); }
+    10%  { transform: rotate(-8deg) translateY(1px); }
+    25%  { transform: rotate(-8deg) translateY(1px); }
+    50%  { transform: rotate(-9deg) translateY(0); }
+    75%  { transform: rotate(-8deg) translateY(1px); }
+    90%  { transform: rotate(-8deg) translateY(1px); }
+    100% { transform: rotate(0deg) translateY(0); }
+  }
+  @keyframes dab-arm-cover {
+    /* Sweeps from its resting down-and-out position, pivoting at the body's
+       left edge, across the front of the body to land squarely over the
+       face. This <g> paints AFTER the body for Dab (see armLeftInFront in
+       MascotDancer), so the whole stroke — including the part crossing the
+       torso — stays visible on top, and because the pivot sits right at the
+       edge, the line visibly crosses it rather than floating detached. */
+    0%   { transform: rotate(10deg); }
+    10%  { transform: rotate(-111deg); }
+    25%  { transform: rotate(-111deg); }
+    55%  { transform: rotate(-114deg); }
+    80%  { transform: rotate(-111deg); }
+    92%  { transform: rotate(-111deg); }
+    100% { transform: rotate(10deg); }
+  }
+  @keyframes dab-arm-raise {
+    /* Swings up and outward from its resting position to end above the
+       shoulder, well clear of the head — the raised arm of the pose. */
+    0%   { transform: rotate(-10deg); }
+    10%  { transform: rotate(-100deg); }
+    25%  { transform: rotate(-100deg); }
+    55%  { transform: rotate(-104deg); }
+    80%  { transform: rotate(-100deg); }
+    92%  { transform: rotate(-100deg); }
+    100% { transform: rotate(-10deg); }
+  }
+  @keyframes dab-leg {
+    0%   { transform: rotate(0deg); }
+    15%  { transform: rotate(3deg); }
+    85%  { transform: rotate(3deg); }
+    100% { transform: rotate(0deg); }
+  }
+  @keyframes dab-antenna {
+    0%   { transform: rotate(0deg); }
+    10%  { transform: rotate(-10deg); }
+    25%  { transform: rotate(-10deg); }
+    55%  { transform: rotate(-12deg); }
+    80%  { transform: rotate(-10deg); }
+    92%  { transform: rotate(-10deg); }
+    100% { transform: rotate(0deg); }
+  }
+}
+
+@layer base {
+  * {
+    scrollbar-color: var(--color-term-green-dim) var(--color-term-bg);
+  }
+
+  html, body, #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-term-bg);
+    color: var(--color-term-text);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-term-green);
+    color: var(--color-term-bg);
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 8px currentColor;
+  }
+
+  .border-glow {
+    box-shadow: 0 0 0 1px currentColor, 0 0 16px -4px currentColor;
+  }
+
+  .crt-scanlines {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

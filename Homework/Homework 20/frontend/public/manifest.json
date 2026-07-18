@@ -1,0 +1,17 @@
+{
+  "name": "cs-quiz.arena | real-time multiplayer CS trivia",
+  "short_name": "cs-quiz.arena",
+  "description": "Real-time multiplayer computer science trivia with a live leaderboard, covering data structures, algorithms, AI theory, design patterns and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e14",
+  "theme_color": "#0a0e14",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

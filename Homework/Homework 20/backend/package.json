@@ -1,0 +1,36 @@
+{
+  "name": "homework-20-backend",
+  "version": "1.0.0",
+  "description": "Homework 20: Express + TypeScript + Socket.IO quiz API with Mongoose, user CRUD, real-time leaderboard, and online users tracking",
+  "type": "module",
+  "main": "dist/index.js",
+  "keywords": [
+    "express",
+    "typescript",
+    "socket.io",
+    "mongoose",
+    "rest-api",
+    "quiz",
+    "leaderboard"
+  ],
+  "license": "ISC",
+  "scripts": {
+    "build": "tsc",
+    "start": "node --import=extensionless/register dist/index.js",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "extensionless": "^2.0.6",
+    "mongoose": "^9.7.4",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}

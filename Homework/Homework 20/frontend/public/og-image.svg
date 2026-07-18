@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="60%">
+      <stop offset="0%" stop-color="#123018" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#0a0e14" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- terminal window -->
+  <rect x="150" y="120" width="900" height="390" rx="14" fill="#0d1320" stroke="#1e2a3a" stroke-width="2"/>
+  <rect x="150" y="120" width="900" height="52" rx="14" fill="#000000" fill-opacity="0.3"/>
+  <circle cx="186" cy="146" r="8" fill="#ff5c5c" fill-opacity="0.8"/>
+  <circle cx="212" cy="146" r="8" fill="#ffb454" fill-opacity="0.8"/>
+  <circle cx="238" cy="146" r="8" fill="#39ff14" fill-opacity="0.8"/>
+  <text x="600" y="152" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="16" fill="#5b6b7c">cs_quiz_arena.ts</text>
+
+  <!-- glyph mark -->
+  <rect x="558" y="216" width="84" height="84" rx="14" fill="#39ff14" fill-opacity="0.12" stroke="#39ff14" stroke-opacity="0.7" stroke-width="2"/>
+  <text x="600" y="270" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="34" font-weight="700" fill="#39ff14">&gt;_</text>
+
+  <!-- wordmark -->
+  <text x="600" y="368" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="52" font-weight="700" fill="#39ff14">cs-quiz.arena</text>
+
+  <!-- tagline -->
+  <text x="600" y="410" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="20" fill="#c9d6e3">real-time multiplayer computer science trivia</text>
+
+  <!-- footer line -->
+  <text x="600" y="470" text-anchor="middle" font-family="ui-monospace, Consolas, monospace" font-size="15" fill="#5b6b7c">12 quizzes · live leaderboard · socket.io</text>
+</svg>
