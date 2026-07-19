@@ -22,6 +22,11 @@ export const userService = {
     return UserModel.find().sort({ score: -1, createdAt: 1 });
   },
 
+  /** The highest-scoring `limit` users, for the leaderboard. */
+  getTopUsers(limit: number) {
+    return UserModel.find().sort({ score: -1, createdAt: 1 }).limit(limit);
+  },
+
   getUserById(id: string) {
     return UserModel.findById(id);
   },
