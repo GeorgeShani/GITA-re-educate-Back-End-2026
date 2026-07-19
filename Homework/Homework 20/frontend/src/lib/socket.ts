@@ -14,4 +14,10 @@ export const SocketEvent = {
 export const socket: Socket = io(import.meta.env.VITE_SOCKET_URL, {
   path: "/socket",
   autoConnect: false,
+  // Connect straight over WebSocket instead of socket.io's default
+  // long-polling-then-upgrade dance. That default costs an extra HTTP
+  // handshake + upgrade round-trip before the real-time channel is live, which
+  // is what delays the first users:online / leaderboard:update. Fly's proxy
+  // supports WebSocket end-to-end, so there's no need to fall back to polling.
+  transports: ["websocket"],
 });
