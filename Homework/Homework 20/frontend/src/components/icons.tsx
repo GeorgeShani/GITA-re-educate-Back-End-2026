@@ -71,6 +71,23 @@ export function ArrowRightIcon({ className = "" }: IconProps) {
   );
 }
 
+export function ChevronDownIcon({ className = "" }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M4 6l4 4 4-4" />
+    </svg>
+  );
+}
+
 export function ArrowLeftIcon({ className = "" }: IconProps) {
   return (
     <svg

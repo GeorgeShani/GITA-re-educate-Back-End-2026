@@ -9,6 +9,7 @@ import { QuizCard } from "../components/QuizCard";
 import { SettingsModal } from "../components/SettingsModal";
 import { LoadingDance } from "../components/LoadingDance";
 import { ArrowLeftIcon, ArrowRightIcon } from "../components/icons";
+import { TerminalSelect } from "../components/TerminalSelect";
 import { useSessionStore } from "../store/sessionStore";
 import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import { apiClient, apiErrorMessage } from "../lib/api";
@@ -154,23 +155,16 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
               available quizzes
             </h2>
             {!showLoader && !loadError && (
-              <label className="flex items-center gap-2 text-xs text-term-muted">
-                <span>sort</span>
-                <select
-                  value={sortValue}
-                  onChange={(e) => {
-                    setSortValue(e.target.value as SortValue);
-                    setPage(1);
-                  }}
-                  className="rounded-md border border-term-border bg-black/30 px-2 py-1 font-mono text-xs text-term-text outline-none focus:border-term-green/70"
-                >
-                  {SORT_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value} className="bg-term-panel">
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <TerminalSelect
+                flag="sort"
+                ariaLabel="sort quizzes"
+                value={sortValue}
+                options={SORT_OPTIONS}
+                onChange={(v) => {
+                  setSortValue(v);
+                  setPage(1);
+                }}
+              />
             )}
           </div>
 
