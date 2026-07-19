@@ -208,9 +208,21 @@ socket.on("connect", () => {
   const user = useSessionStore.getState().user;
   if (user) socket.emit(SocketEvent.USER_JOIN, { userId: user.id });
 });
-socket.on("disconnect", () =>
-  useSessionStore.setState({ status: "disconnected" }),
-);
+socket.on("disconnect", (reason) => {
+  useSessionStore.setState({ status: "disconnected" });
+
+  // socket.io auto-reconnects on transport-level drops (ping timeout /
+  // transport close), and the "connect" handler above re-announces on each.
+  // But when the SERVER initiates the close ("io server disconnect" - e.g. the
+  // host recycles a quiet connection), socket.io deliberately does NOT
+  // reconnect. Left alone that strands the client: still "logged in" but
+  // silently offline, with a frozen leaderboard/online list until a full page
+  // reload. Reconnect ourselves - unless we tore down on purpose (logout and
+  // kick both null out the user first, so this guard skips them).
+  if (reason === "io server disconnect" && useSessionStore.getState().user) {
+    connectSocket();
+  }
+});
 
 socket.on(
   SocketEvent.USERS_ONLINE,
@@ -250,6 +262,26 @@ socket.on(SocketEvent.SESSION_KICKED, (payload: SessionKickedPayload) => {
     kickedMessage: { id: Date.now(), message: payload.message },
   });
 });
+
+// A backgrounded tab or a sleeping device freezes socket.io's heartbeat
+// timers, so the server can time the connection out and drop us while the
+// client never notices (it still believes it's connected). When the tab
+// returns to the foreground, re-sync: reconnect if the socket actually died,
+// otherwise re-announce so the server re-registers us and pushes fresh
+// presence + leaderboard. Re-emitting user:join is idempotent server-side.
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const user = useSessionStore.getState().user;
+    if (!user) return;
+
+    if (socket.connected) {
+      socket.emit(SocketEvent.USER_JOIN, { userId: user.id });
+    } else {
+      connectSocket();
+    }
+  });
+}
 
 // Resume an existing session (e.g. after a page refresh) without requiring
 // the user to go through the join screen again.
