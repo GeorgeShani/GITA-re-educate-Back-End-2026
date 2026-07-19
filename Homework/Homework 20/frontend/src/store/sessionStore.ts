@@ -101,7 +101,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     set({ user: session });
-    connectForUser(session);
+    connectSocket();
   },
 
   submitAnswer(quizId, questionId, answer) {
@@ -192,14 +192,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   },
 }));
 
-function connectForUser(user: SessionUser): void {
+function connectSocket(): void {
   useSessionStore.setState({ status: "connecting" });
-  
   socket.connect();
-  socket.emit(SocketEvent.USER_JOIN, { userId: user.id });
 }
 
-socket.on("connect", () => useSessionStore.setState({ status: "connected" }));
+// Re-announce on every connect, not just the first: socket.io reconnects
+// automatically after a dropped connection (idle proxies commonly close a
+// quiet WebSocket after a while), which gets a fresh socket.id but would
+// otherwise never re-run user:join — leaving the server's online/leaderboard
+// state unaware this client is back.
+socket.on("connect", () => {
+  useSessionStore.setState({ status: "connected" });
+
+  const user = useSessionStore.getState().user;
+  if (user) socket.emit(SocketEvent.USER_JOIN, { userId: user.id });
+});
 socket.on("disconnect", () =>
   useSessionStore.setState({ status: "disconnected" }),
 );
@@ -245,5 +253,4 @@ socket.on(SocketEvent.SESSION_KICKED, (payload: SessionKickedPayload) => {
 
 // Resume an existing session (e.g. after a page refresh) without requiring
 // the user to go through the join screen again.
-const initialUser = useSessionStore.getState().user;
-if (initialUser) connectForUser(initialUser);
+if (useSessionStore.getState().user) connectSocket();
