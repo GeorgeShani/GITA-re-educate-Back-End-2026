@@ -17,6 +17,8 @@ export interface Quiz {
   topic: string;
   title: string;
   description: string;
+  /** Short, themed source-file name shown on the card badge, e.g. "nlp.py". */
+  filename: string;
   questions: QuizQuestion[];
 }
 
@@ -34,4 +36,26 @@ export interface LeaderboardEntry {
   userId: string;
   username: string;
   score: number;
+}
+
+/** Fields the quiz list can be ordered by. `default` keeps source (id) order. */
+export type QuizSortKey = "default" | "title" | "topic";
+export type SortOrder = "asc" | "desc";
+
+/** A page of results plus the metadata a client needs to render pagination. */
+export interface Paginated<T> {
+  data: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** Parsed, validated options for a quiz-list query. */
+export interface QuizListOptions {
+  page: number;
+  limit: number;
+  sort: QuizSortKey;
+  order: SortOrder;
+  withShuffle: boolean;
 }

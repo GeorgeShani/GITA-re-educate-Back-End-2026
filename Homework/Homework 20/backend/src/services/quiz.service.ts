@@ -1,6 +1,25 @@
 import { quizzes } from "../data/quizzes";
 import { shuffle } from "../utils/shuffle";
-import type { PublicQuiz } from "../types/quiz";
+import type {
+  PublicQuiz,
+  Paginated,
+  QuizListOptions,
+  QuizSortKey,
+  SortOrder,
+} from "../types/quiz";
+
+/**
+ * Comparator for the quiz list. `default` preserves source (id) order;
+ * `title`/`topic` compare case-insensitively. `order` flips the direction.
+ */
+function compareQuizzes(sort: QuizSortKey, order: SortOrder) {
+  const dir = order === "desc" ? -1 : 1;
+  return (a: (typeof quizzes)[number], b: (typeof quizzes)[number]): number => {
+    if (sort === "title") return dir * a.title.localeCompare(b.title);
+    if (sort === "topic") return dir * a.topic.localeCompare(b.topic);
+    return dir * (a.id - b.id);
+  };
+}
 
 /**
  * Strip the hidden `answer` from a quiz and (optionally) shuffle the order of
@@ -19,6 +38,7 @@ function toPublicQuiz(quiz: (typeof quizzes)[number], withShuffle: boolean): Pub
     topic: quiz.topic,
     title: quiz.title,
     description: quiz.description,
+    filename: quiz.filename,
     questions: withShuffle ? shuffle(questions) : questions,
   };
 }
@@ -29,11 +49,24 @@ function toPublicQuiz(quiz: (typeof quizzes)[number], withShuffle: boolean): Pub
  */
 export const quizService = {
   /**
-   * All quizzes, stripped of their correct answers, safe for clients.
-   * @param withShuffle when true (default), question and option order is randomized.
+   * A sorted, paginated page of quizzes, stripped of their correct answers.
+   * Sorting is applied to the whole set before slicing; only the page's items
+   * are mapped through `toPublicQuiz`, so we never shuffle quizzes we won't return.
    */
-  getPublicQuizzes(withShuffle = true): PublicQuiz[] {
-    return quizzes.map((quiz) => toPublicQuiz(quiz, withShuffle));
+  getPublicQuizzes(options: QuizListOptions): Paginated<PublicQuiz> {
+    const { page, limit, sort, order, withShuffle } = options;
+
+    const total = quizzes.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const safePage = Math.min(Math.max(page, 1), totalPages);
+    const start = (safePage - 1) * limit;
+
+    const sorted = [...quizzes].sort(compareQuizzes(sort, order));
+    const data = sorted
+      .slice(start, start + limit)
+      .map((quiz) => toPublicQuiz(quiz, withShuffle));
+
+    return { data, page: safePage, limit, total, totalPages };
   },
 
   /** A single public quiz, or `null` when the id does not exist. */

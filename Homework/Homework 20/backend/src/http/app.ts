@@ -12,7 +12,16 @@ import cors from "cors";
 export function createApp(): Express {
   const app = express();
 
-  app.use(cors({ origin: "*" }));
+  // QUERY is listed explicitly: it isn't a CORS "simple" method, so the
+  // browser preflights it, and the default cors method list omits QUERY -
+  // without this the quiz-list request is rejected before it's sent.
+  app.use(
+    cors({
+      origin: "*",
+      methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "QUERY"],
+    }),
+  );
+
   app.use(express.json());
 
   app.get("/", serviceInfo);

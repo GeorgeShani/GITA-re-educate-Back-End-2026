@@ -1,5 +1,18 @@
 import axios, { AxiosError } from "axios";
-import type { ApiUser, PublicQuiz } from "../types";
+import type {
+  ApiUser,
+  Paginated,
+  PublicQuiz,
+  QuizSortKey,
+  SortOrder,
+} from "../types";
+
+interface QuizQuery {
+  page?: number;
+  limit?: number;
+  sort?: QuizSortKey;
+  order?: SortOrder;
+}
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -44,8 +57,15 @@ export const apiClient = {
     await api.delete(`/users/${id}`);
   },
 
-  async getQuizzes(): Promise<PublicQuiz[]> {
-    const { data } = await api.get<PublicQuiz[]>("/quizzes");
+  // Uses the HTTP QUERY method: a safe, idempotent read (like GET) that
+  // carries its pagination + sort params in a JSON body rather than the URL.
+  async getQuizzes(params: QuizQuery = {}): Promise<Paginated<PublicQuiz>> {
+    const { data } = await api.request<Paginated<PublicQuiz>>({
+      method: "QUERY",
+      url: "/quizzes",
+      data: params,
+    });
+    
     return data;
   },
 

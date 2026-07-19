@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import type { PublicQuiz } from "../types";
-import { toFilename } from "../lib/slug";
 import { CheckIcon } from "./icons";
 
 interface QuizCardProps {
@@ -28,8 +27,8 @@ export function QuizCard({ quiz, answeredCount, onPlay }: QuizCardProps) {
         </div>
       )}
 
-      <span className="rounded bg-black/40 px-2 py-0.5 font-mono text-xs text-term-cyan">
-        {toFilename(quiz.topic)}
+      <span className="max-w-full truncate rounded bg-black/40 px-2 py-0.5 font-mono text-xs text-term-cyan">
+        {quiz.filename}
       </span>
 
       <h3 className="text-base font-semibold text-term-text group-hover:text-glow group-hover:text-term-green">

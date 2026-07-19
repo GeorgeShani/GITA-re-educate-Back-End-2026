@@ -12,7 +12,22 @@ export interface PublicQuiz {
   topic: string;
   title: string;
   description: string;
+  /** Short, themed source-file name shown on the card badge, e.g. "nlp.py". */
+  filename: string;
   questions: PublicQuestion[];
+}
+
+/** Fields the quiz list can be ordered by. `default` keeps source (id) order. */
+export type QuizSortKey = "default" | "title" | "topic";
+export type SortOrder = "asc" | "desc";
+
+/** A page of results plus the metadata needed to render pagination. */
+export interface Paginated<T> {
+  data: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
 export interface LeaderboardEntry {

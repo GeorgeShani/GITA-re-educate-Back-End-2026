@@ -4,7 +4,6 @@ import { QuestionCard } from "../components/QuestionCard";
 import { ResultSummary } from "../components/ResultSummary";
 import { LoadingDance } from "../components/LoadingDance";
 import { apiClient, apiErrorMessage } from "../lib/api";
-import { toFilename } from "../lib/slug";
 import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import { ArrowLeftIcon } from "../components/icons";
 import type { AnswerResultPayload, PublicQuiz } from "../types";
@@ -63,7 +62,7 @@ export function QuizScreen({ quizId, onExit }: QuizScreenProps) {
         <ArrowLeftIcon className="h-3 w-3" /> back to lobby
       </button>
 
-      <TerminalWindow filename={quiz && !showLoader ? toFilename(quiz.topic) : "loading.ts"}>
+      <TerminalWindow filename={quiz && !showLoader ? quiz.filename : "loading.ts"}>
         {showLoader && <LoadingDance />}
 
         {!showLoader && loadError && (

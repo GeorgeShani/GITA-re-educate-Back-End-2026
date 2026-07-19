@@ -8,10 +8,27 @@ import { OnlineUsers } from "../components/OnlineUsers";
 import { QuizCard } from "../components/QuizCard";
 import { SettingsModal } from "../components/SettingsModal";
 import { LoadingDance } from "../components/LoadingDance";
+import { ArrowLeftIcon, ArrowRightIcon } from "../components/icons";
 import { useSessionStore } from "../store/sessionStore";
 import { useMinimumLoading } from "../hooks/useMinimumLoading";
 import { apiClient, apiErrorMessage } from "../lib/api";
-import type { PublicQuiz } from "../types";
+import type { PublicQuiz, QuizSortKey, SortOrder } from "../types";
+
+/** The sort dropdown's options, each mapping a single value to a sort + order. */
+const SORT_OPTIONS = [
+  { value: "default", label: "Default order", sort: "default", order: "asc" },
+  { value: "title-asc", label: "Title (A-Z)", sort: "title", order: "asc" },
+  { value: "title-desc", label: "Title (Z-A)", sort: "title", order: "desc" },
+  { value: "topic-asc", label: "Topic (A-Z)", sort: "topic", order: "asc" },
+  { value: "topic-desc", label: "Topic (Z-A)", sort: "topic", order: "desc" },
+] as const satisfies ReadonlyArray<{
+  value: string;
+  label: string;
+  sort: QuizSortKey;
+  order: SortOrder;
+}>;
+
+type SortValue = (typeof SORT_OPTIONS)[number]["value"];
 
 interface LobbyScreenProps {
   onPlay: (quizId: number) => void;
@@ -33,19 +50,52 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
   const [answeredKeys, setAnsweredKeys] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const showLoader = useMinimumLoading(loading);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortValue, setSortValue] = useState<SortValue>("default");
 
+  // The dancing mascot only plays on the very first load; paging/sorting after
+  // that swaps the grid (dimmed) instead of replaying the ~1.8s animation.
+  const showLoader = useMinimumLoading(loading) && !hasLoaded;
+  const isPaging = loading && hasLoaded;
+
+  // Progress is page-independent (answeredKeys covers every quiz), so the
+  // profile is fetched once per user, not on each page/sort change.
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
 
+    apiClient
+      .getUser(user.id)
+      .then((profile) => {
+        if (!cancelled) setAnsweredKeys(profile.answeredQuestions);
+      })
+      .catch(() => {
+        // A failed profile fetch only means progress shows 0; the quiz-page
+        // effect surfaces the real load error, so this one is swallowed.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    const option = SORT_OPTIONS.find((o) => o.value === sortValue)!;
+
     setLoading(true);
-    Promise.all([apiClient.getQuizzes(), apiClient.getUser(user.id)])
-      .then(([quizList, profile]) => {
+    setLoadError(null);
+    apiClient
+      .getQuizzes({ page, sort: option.sort, order: option.order })
+      .then((result) => {
         if (cancelled) return;
-        setQuizzes(quizList);
-        setAnsweredKeys(profile.answeredQuestions);
+        setQuizzes(result.data);
+        setTotalPages(result.totalPages);
+        setHasLoaded(true);
       })
       .catch((err) => {
         if (!cancelled) setLoadError(apiErrorMessage(err));
@@ -57,7 +107,7 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [user, page, sortValue]);
 
   function answeredCountFor(quizId: number): number {
     const prefix = `${quizId}:`;
@@ -99,9 +149,30 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <section>
-          <h2 className="mb-3 text-xs uppercase tracking-widest text-term-muted">
-            available quizzes
-          </h2>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-xs uppercase tracking-widest text-term-muted">
+              available quizzes
+            </h2>
+            {!showLoader && !loadError && (
+              <label className="flex items-center gap-2 text-xs text-term-muted">
+                <span>sort</span>
+                <select
+                  value={sortValue}
+                  onChange={(e) => {
+                    setSortValue(e.target.value as SortValue);
+                    setPage(1);
+                  }}
+                  className="rounded-md border border-term-border bg-black/30 px-2 py-1 font-mono text-xs text-term-text outline-none focus:border-term-green/70"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value} className="bg-term-panel">
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
 
           {showLoader && <LoadingDance />}
           {!showLoader && loadError && (
@@ -109,16 +180,46 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
           )}
 
           {!showLoader && !loadError && (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {quizzes.map((quiz) => (
-                <QuizCard
-                  key={quiz.id}
-                  quiz={quiz}
-                  answeredCount={answeredCountFor(quiz.id)}
-                  onPlay={() => onPlay(quiz.id)}
-                />
-              ))}
-            </div>
+            <>
+              <div
+                className={`grid grid-cols-1 gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${
+                  isPaging ? "pointer-events-none opacity-60" : ""
+                }`}
+              >
+                {quizzes.map((quiz) => (
+                  <QuizCard
+                    key={quiz.id}
+                    quiz={quiz}
+                    answeredCount={answeredCountFor(quiz.id)}
+                    onPlay={() => onPlay(quiz.id)}
+                  />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-center gap-4 text-sm text-term-muted">
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="flex items-center gap-1 rounded border border-term-border px-3 py-1.5 transition-colors hover:border-term-green/60 hover:text-term-green disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ArrowLeftIcon className="h-3.5 w-3.5" /> prev
+                  </button>
+                  <span className="font-mono text-xs">
+                    page {page} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                    className="flex items-center gap-1 rounded border border-term-border px-3 py-1.5 transition-colors hover:border-term-green/60 hover:text-term-green disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    next <ArrowRightIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
 
