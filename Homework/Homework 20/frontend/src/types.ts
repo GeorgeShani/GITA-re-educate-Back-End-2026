@@ -17,8 +17,11 @@ export interface PublicQuiz {
   questions: PublicQuestion[];
 }
 
-/** Fields the quiz list can be ordered by. `default` keeps source (id) order. */
-export type QuizSortKey = "default" | "title" | "topic";
+/**
+ * Fields the quiz list can be ordered by. `default` keeps source (id) order.
+ * `progress` ranks by how much of the quiz the current user has answered.
+ */
+export type QuizSortKey = "default" | "title" | "progress";
 export type SortOrder = "asc" | "desc";
 
 /** A page of results plus the metadata needed to render pagination. */

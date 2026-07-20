@@ -14,7 +14,7 @@ const SERVICE_INFO = {
     base: "/api",
     endpoints: [
       { method: "GET", path: "/api/health", description: "Liveness probe." },
-      { method: "QUERY", path: "/api/quizzes", description: "Paginated, sorted quiz list (answers stripped). JSON body: { page, limit, sort: default|title|topic, order: asc|desc, shuffle }. Returns { data, page, limit, total, totalPages }." },
+      { method: "QUERY", path: "/api/quizzes", description: "Paginated, sorted quiz list (answers stripped). JSON body: { page, limit, sort: default|title|progress, order: asc|desc, shuffle, userId }. userId is required (and looked up server-side) only for sort=progress, to rank by that user's completion. Returns { data, page, limit, total, totalPages }." },
       { method: "GET", path: "/api/quizzes/:id", description: "Fetch a single quiz by id (order shuffled; ?shuffle=false for stable)." },
       { method: "POST", path: "/api/users", description: "Create a user (username)." },
       { method: "GET", path: "/api/users", description: "List users." },

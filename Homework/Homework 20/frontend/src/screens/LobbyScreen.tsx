@@ -20,8 +20,8 @@ const SORT_OPTIONS = [
   { value: "default", label: "Default order", sort: "default", order: "asc" },
   { value: "title-asc", label: "Title (A-Z)", sort: "title", order: "asc" },
   { value: "title-desc", label: "Title (Z-A)", sort: "title", order: "desc" },
-  { value: "topic-asc", label: "Topic (A-Z)", sort: "topic", order: "asc" },
-  { value: "topic-desc", label: "Topic (Z-A)", sort: "topic", order: "desc" },
+  { value: "progress-desc", label: "Completed first", sort: "progress", order: "desc" },
+  { value: "progress-asc", label: "Incomplete first", sort: "progress", order: "asc" },
 ] as const satisfies ReadonlyArray<{
   value: string;
   label: string;
@@ -91,7 +91,7 @@ export function LobbyScreen({ onPlay }: LobbyScreenProps) {
     setLoading(true);
     setLoadError(null);
     apiClient
-      .getQuizzes({ page, sort: option.sort, order: option.order })
+      .getQuizzes({ page, sort: option.sort, order: option.order, userId: user.id })
       .then((result) => {
         if (cancelled) return;
         setQuizzes(result.data);

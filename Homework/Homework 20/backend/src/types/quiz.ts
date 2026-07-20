@@ -38,8 +38,13 @@ export interface LeaderboardEntry {
   score: number;
 }
 
-/** Fields the quiz list can be ordered by. `default` keeps source (id) order. */
-export type QuizSortKey = "default" | "title" | "topic";
+/**
+ * Fields the quiz list can be ordered by. `default` keeps source (id) order.
+ * `progress` ranks by how much of the quiz a specific user has answered (see
+ * `QuizListOptions.answeredQuestions`) — asc surfaces incomplete quizzes
+ * first, desc surfaces completed ones first.
+ */
+export type QuizSortKey = "default" | "title" | "progress";
 export type SortOrder = "asc" | "desc";
 
 /** A page of results plus the metadata a client needs to render pagination. */
@@ -58,4 +63,10 @@ export interface QuizListOptions {
   sort: QuizSortKey;
   order: SortOrder;
   withShuffle: boolean;
+  /**
+   * The requesting user's answered-question keys ("quizId:questionId"), used
+   * only when `sort` is `"progress"`. Empty when no user is known, which
+   * degrades gracefully to "everything looks unanswered" rather than erroring.
+   */
+  answeredQuestions: string[];
 }

@@ -12,6 +12,8 @@ interface QuizQuery {
   limit?: number;
   sort?: QuizSortKey;
   order?: SortOrder;
+  /** Only consulted server-side when sort is "progress". */
+  userId?: string;
 }
 
 const api = axios.create({
