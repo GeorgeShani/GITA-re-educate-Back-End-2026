@@ -14,10 +14,14 @@ export const SocketEvent = {
 export const socket: Socket = io(import.meta.env.VITE_SOCKET_URL, {
   path: "/socket",
   autoConnect: false,
-  // Connect straight over WebSocket instead of socket.io's default
-  // long-polling-then-upgrade dance. That default costs an extra HTTP
-  // handshake + upgrade round-trip before the real-time channel is live, which
-  // is what delays the first users:online / leaderboard:update. Fly's proxy
-  // supports WebSocket end-to-end, so there's no need to fall back to polling.
-  transports: ["websocket"],
+  // Default polling->upgrade transport (NOT websocket-only). A silently-dropped
+  // idle connection recovers more reliably through polling than a wedged
+  // websocket, and the latency reason we once forced websocket for is gone now
+  // that the DB is co-located with the server.
+  // Reconnection settings are mostly the socket.io defaults, made explicit.
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 10000,
 });

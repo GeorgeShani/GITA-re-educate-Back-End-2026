@@ -15,6 +15,17 @@ export function createSocketServer(httpServer: HttpServer): SocketIoServer {
       origin: "*",
       methods: ["GET", "POST"],
     },
+    // Detect a silently-dropped connection in ~10-20s instead of the ~45s the
+    // 25s/20s defaults give, so the client starts reconnecting sooner after an
+    // idle NAT/router timeout kills the TCP without a clean close.
+    pingInterval: 10000,
+    pingTimeout: 10000,
+  });
+
+  // Surface handshake/transport failures that never become a full connection
+  // (CORS rejects, failed upgrades) - otherwise they're invisible server-side.
+  io.engine.on("connection_error", (err) => {
+    console.error(`Engine connection_error: ${err.code} ${err.message}`);
   });
 
   io.on(SocketEvent.CONNECTION, (socket) => {

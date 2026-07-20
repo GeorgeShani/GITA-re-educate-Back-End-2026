@@ -67,7 +67,7 @@ export function TerminalInput({
           className="pointer-events-none absolute top-1/2 -translate-y-1/2"
           style={{ left: `${cursorLeft}px` }}
         >
-          <CursorBlock className={cursorClassName} />
+          <CursorBlock className={`${cursorClassName} translate-y-[0.12em]`} />
         </span>
       )}
     </div>

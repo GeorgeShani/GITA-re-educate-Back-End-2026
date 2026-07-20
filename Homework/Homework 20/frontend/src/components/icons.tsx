@@ -111,7 +111,7 @@ export function CursorBlock({ className = "" }: IconProps) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-block h-[1em] w-[0.4em] translate-y-[0.12em] animate-blink bg-current ${className}`}
+      className={`inline-block h-[1em] w-[0.4em] animate-blink bg-current ${className}`}
     />
   );
 }

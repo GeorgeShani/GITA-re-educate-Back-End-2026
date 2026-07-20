@@ -197,6 +197,19 @@ function connectSocket(): void {
   socket.connect();
 }
 
+/**
+ * Force a clean reconnect. A plain `socket.connect()` reuses the existing
+ * socket.io Manager, which can wedge after the browser suspends/resumes or a
+ * NAT idle-timeout silently kills the TCP - the classic "stuck on connecting
+ * until a page reload" state. Tearing the socket down first gives us the same
+ * fresh start a reload would, without the reload.
+ */
+function reconnectSocket(): void {
+  useSessionStore.setState({ status: "connecting" });
+  socket.disconnect();
+  socket.connect();
+}
+
 // Re-announce on every connect, not just the first: socket.io reconnects
 // automatically after a dropped connection (idle proxies commonly close a
 // quiet WebSocket after a while), which gets a fresh socket.id but would
@@ -223,6 +236,26 @@ socket.on("disconnect", (reason) => {
     connectSocket();
   }
 });
+
+// --- Connection diagnostics ------------------------------------------------
+// Always-on and cheap, and the piece missing from every prior debugging round:
+// when the socket won't come back after idle, these say exactly which stage
+// failed (handshake vs reconnect vs give-up). Manager-level reconnect events
+// live on `socket.io`, not the socket itself. `reconnect_attempt` also drives
+// the UI status to "connecting" so it mirrors what the Manager is actually
+// doing instead of showing a stale value.
+const socketLog = (...args: unknown[]) => console.info("[socket]", ...args);
+
+socket.on("connect_error", (err: Error) => socketLog("connect_error:", err.message));
+socket.io.on("reconnect_attempt", (attempt: number) => {
+  socketLog("reconnect_attempt", attempt);
+  if (useSessionStore.getState().user) {
+    useSessionStore.setState({ status: "connecting" });
+  }
+});
+socket.io.on("reconnect", (attempt: number) => socketLog("reconnected after", attempt, "attempt(s)"));
+socket.io.on("reconnect_error", (err: Error) => socketLog("reconnect_error:", err.message));
+socket.io.on("reconnect_failed", () => socketLog("reconnect_failed - gave up"));
 
 socket.on(
   SocketEvent.USERS_ONLINE,
@@ -264,11 +297,12 @@ socket.on(SocketEvent.SESSION_KICKED, (payload: SessionKickedPayload) => {
 });
 
 // A backgrounded tab or a sleeping device freezes socket.io's heartbeat
-// timers, so the server can time the connection out and drop us while the
-// client never notices (it still believes it's connected). When the tab
-// returns to the foreground, re-sync: reconnect if the socket actually died,
-// otherwise re-announce so the server re-registers us and pushes fresh
-// presence + leaderboard. Re-emitting user:join is idempotent server-side.
+// timers, so the server can time the connection out (or a NAT can silently
+// drop the TCP) while the client never notices. When the tab returns to the
+// foreground: if the socket is genuinely alive, just re-announce (idempotent
+// server-side); otherwise force a clean reconnect - a plain connect() on a
+// Manager that wedged during suspend is exactly what leaves it stuck on
+// "connecting" until a manual refresh.
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible") return;
@@ -278,7 +312,7 @@ if (typeof document !== "undefined") {
     if (socket.connected) {
       socket.emit(SocketEvent.USER_JOIN, { userId: user.id });
     } else {
-      connectSocket();
+      reconnectSocket();
     }
   });
 }
