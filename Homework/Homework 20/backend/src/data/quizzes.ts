@@ -276,9 +276,14 @@ export const quizzes: Quiz[] = [
       },
       {
         id: 9,
-        prompt: "TLS encryption is most commonly associated with which OSI layer?",
-        options: ["Physical layer", "Data link layer", "Presentation layer", "Network layer"],
-        answer: "Presentation layer",
+        prompt: "In the TCP/IP stack, TLS runs:",
+        options: [
+          "Between the transport layer and the application",
+          "Below IP, encrypting each packet in transit",
+          "Inside the Ethernet frame header",
+          "As part of the physical layer's signaling",
+        ],
+        answer: "Between the transport layer and the application",
       },
       {
         id: 10,
@@ -540,9 +545,14 @@ export const quizzes: Quiz[] = [
       },
       {
         id: 7,
-        prompt: "A RISC architecture is characterized by:",
-        options: ["Complex, variable-length instructions", "A small set of simple, fixed-length instructions", "Having no registers", "Executing only microcode"],
-        answer: "A small set of simple, fixed-length instructions",
+        prompt: "The 'reduced' in RISC refers to a reduction in:",
+        options: [
+          "The complexity of each individual instruction",
+          "The total number of instructions in the instruction set",
+          "The number of general-purpose registers available",
+          "The clock speed the processor is able to reach",
+        ],
+        answer: "The complexity of each individual instruction",
       },
       {
         id: 8,
@@ -1127,12 +1137,12 @@ export const quizzes: Quiz[] = [
         id: 8,
         prompt: "Static single assignment (SSA) form requires that:",
         options: [
-          "Each variable is assigned exactly once",
-          "Every variable is global",
-          "No variable is ever reassigned at runtime",
-          "All variables share a single register",
+          "Each variable has exactly one definition site",
+          "Each variable is written at most once at runtime",
+          "Every variable is promoted to a global",
+          "All variables are assigned to a single register",
         ],
-        answer: "Each variable is assigned exactly once",
+        answer: "Each variable has exactly one definition site",
       },
       {
         id: 9,
@@ -1841,14 +1851,14 @@ export const quizzes: Quiz[] = [
       },
       {
         id: 10,
-        prompt: "A digital signature is typically created by:",
+        prompt: "A digital signature is produced by:",
         options: [
-          "Encrypting a message digest with the sender's private key",
+          "Applying a private-key signing operation to the message's hash",
           "Encrypting the whole message with the recipient's public key",
-          "Hashing the message with a shared secret",
-          "Applying a symmetric cipher in ECB mode",
+          "Hashing the message together with a shared secret key",
+          "Encrypting the message with a symmetric session key",
         ],
-        answer: "Encrypting a message digest with the sender's private key",
+        answer: "Applying a private-key signing operation to the message's hash",
       },
     ],
   },
