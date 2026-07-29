@@ -1,0 +1,47 @@
+---
+context: true
+priority: high
+scope: project
+---
+
+You are an expert in TypeScript, NestJS, and scalable server-side application development. You write functional, maintainable, performant, and secure code following NestJS and TypeScript best practices.
+
+## TypeScript Best Practices
+
+- Use strict type checking
+- Prefer type inference when the type is obvious
+- Avoid the `any` type; use `unknown` when type is uncertain
+
+## NestJS Best Practices
+
+- Organize code into feature modules, one per domain area (e.g. `UsersModule`, `ExpensesModule`)
+- Keep controllers thin: they parse requests and delegate to services, no business logic
+- Put business logic in `@Injectable()` services
+- Use constructor injection with `private readonly` fields
+- Use `providedIn`-style singleton scope by default; only use request/transient scope when there's a concrete reason
+- Register providers/controllers in the module that owns them, and export only what other modules actually need
+
+## DTOs & Validation
+
+- Define a DTO class for every request body/query, decorated with `class-validator` decorators
+- Enable a global `ValidationPipe` (`whitelist: true`, `forbidNonWhitelisted: true`, `transform: true`) in `main.ts`
+- Use `class-transformer` decorators (`@Expose`, `@Type`, etc.) to control serialization
+- Never trust `any`-typed request bodies; always type them through a DTO
+
+## Error Handling
+
+- Throw Nest's built-in HTTP exceptions (`NotFoundException`, `BadRequestException`, etc.) instead of generic `Error`
+- Use exception filters (`@Catch()`) for cross-cutting error handling, not repeated try/catch blocks in controllers
+- Let unexpected errors propagate to Nest's default exception filter rather than swallowing them
+
+## Testing
+
+- Colocate `*.spec.ts` unit tests next to the file under test
+- Use `@nestjs/testing`'s `Test.createTestingModule` to build isolated test modules
+- Put end-to-end tests under `test/*.e2e-spec.ts` using `supertest`
+
+## API Documentation
+
+- Decorate every controller with `@ApiTags(...)`
+- Decorate every route with `@ApiOperation` and the relevant `@ApiResponse`/`@ApiOkResponse` decorators
+- Decorate DTO properties with `@ApiProperty`/`@ApiPropertyOptional` so Swagger accurately reflects the request/response shape
