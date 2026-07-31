@@ -3,6 +3,6 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Homework 23 API - Users, Expenses & Products';
+    return 'Homework 24 API - Users, Expenses & Products (MongoDB)';
   }
 }
