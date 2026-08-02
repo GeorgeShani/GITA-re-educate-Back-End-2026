@@ -40,19 +40,30 @@ function daysThatFit(width) {
   return Math.floor((width + COLUMN_GAP) / (COLUMN_WIDTH + COLUMN_GAP));
 }
 
-// Sleep-hours band -> bar height as a fraction of the chart's drawing area,
-// evenly spaced top-to-bottom in the same order as SLEEP_OPTIONS (9+ down to
-// 0-2). These land within a few px of the exact heights confirmed in Figma's
-// populated examples (263/214/165/104px out of a ~268px drawing area is
+// Sleep-hours band -> how far up from the chart's bottom edge it sits, as a
+// fraction of the h-67 drawing area. This is the SINGLE source for both the
+// bars (their height) and the axis gridlines/labels (their vertical
+// position) — see the `top` styles below — so a bar's top always lands
+// exactly on its own gridline by construction, instead of the two being laid
+// out independently (previously the axis used an evenly-spaced
+// `justify-between`, which doesn't match these fractions and visibly put
+// bars a bit above their line). Confirmed pixel-exact against Figma's
+// populated bar heights (263/214/165/104px out of a ~268px drawing area is
 // ~100/80/60/40% — the "0-2 hours" band was never shown populated in any
 // Figma example, so its 20% is a reasonable extrapolation of that pattern).
-const BAR_HEIGHT_CLASS = {
-  "9+": "h-full",
-  "7-8": "h-4/5",
-  "5-6": "h-3/5",
-  "3-4": "h-2/5",
-  "0-2": "h-1/5",
+const SLEEP_BAND_FRACTION = {
+  "9+": 1,
+  "7-8": 0.8,
+  "5-6": 0.6,
+  "3-4": 0.4,
+  "0-2": 0.2,
 };
+
+// The axis label / gridline offset for a band: distance from the TOP of the
+// drawing area, as a percentage — the inverse of its bottom-up bar fraction.
+function axisTopPercent(sleepValue) {
+  return `${(1 - SLEEP_BAND_FRACTION[sleepValue]) * 100}%`;
+}
 
 // Local calendar-day key (not toISOString/UTC) — every other date computation
 // here (lastNDays, the axis labels below) operates in local time. Keying by
@@ -81,7 +92,8 @@ function BarPill({ log, onHoverStart, onHoverEnd }) {
     <div
       onMouseEnter={(event) => onHoverStart(log, event.currentTarget.getBoundingClientRect())}
       onMouseLeave={onHoverEnd}
-      className={cn("relative w-10 rounded-full", BAR_HEIGHT_CLASS[log.sleepHours], MOODS[log.mood].color)}
+      style={{ height: `${SLEEP_BAND_FRACTION[log.sleepHours] * 100}%` }}
+      className={cn("relative w-10 rounded-full", MOODS[log.mood].color)}
     >
       <img src={MOODS[log.mood].iconSm} alt="" className="absolute inset-x-0 top-1.5 mx-auto size-6" />
     </div>
@@ -173,7 +185,7 @@ function MoodBarPopover({ log, rect }) {
 // not inside it).
 export function MoodTrendsSection({ logs = [], className }) {
   const scrollRef = useRef(null);
-  const recentStartRef = useRef(null);
+  const todayRef = useRef(null);
   const [hoveredBar, setHoveredBar] = useState(null);
   // The visible window sizes itself to the chart's current width (at least
   // DAYS_SHOWN) so a wide, full-width chart is filled with day-columns instead
@@ -226,12 +238,19 @@ export function MoodTrendsSection({ logs = [], className }) {
 
   const days = [...historyDays, ...recentDays];
 
-  // Land on the recent window by default; re-runs when the range grows (a new
-  // check-in extends it) so the newest day stays in view. Scrolls to the exact
-  // boundary bar's offsetLeft rather than scrollWidth (max scroll) — scrollWidth
-  // reveals however many bars happen to fit the container's width, which is
-  // rarely a clean multiple of one bar's width and so was clipping a sliver of
-  // the boundary bar in at the left edge.
+  // Land on today by default; re-runs when the range grows (a new check-in
+  // extends it) so the newest day stays in view. Aligns TODAY'S OWN right edge
+  // with the container's right edge — not scrollWidth (max scroll), which
+  // reveals however many bars happen to fit the container's width and can clip
+  // a sliver of the boundary bar. That matters more here than it used to:
+  // scrolling to the *start* of the recent window (the old approach) assumed
+  // the window fit the container, true on desktop where visibleDays is sized
+  // to fit, but not on mobile, where visibleDays is floored at DAYS_SHOWN and
+  // routinely doesn't fit a narrow screen — todayRef then wouldn't be it view
+  // at all, forcing extra scrolling just to see your own latest check-in. This
+  // routinely doesn't fit a narrow screen — today then wouldn't be in view at
+  // all, forcing extra scrolling just to see your own latest check-in. This
+  // way any clipped sliver falls on the older, less important edge instead.
   //
   // Must be a layout effect (runs before paint): the history bars reveal via
   // whileInView against this same scroll container, so the scroll has to be at
@@ -241,8 +260,10 @@ export function MoodTrendsSection({ logs = [], className }) {
   // to be scrolled to.
   useLayoutEffect(() => {
     const container = scrollRef.current;
-    const marker = recentStartRef.current;
-    if (container && marker) container.scrollLeft = marker.offsetLeft;
+    const marker = todayRef.current;
+    if (container && marker) {
+      container.scrollLeft = marker.offsetLeft + marker.offsetWidth - container.clientWidth;
+    }
   }, [days.length]);
 
   return (
@@ -257,9 +278,17 @@ export function MoodTrendsSection({ logs = [], className }) {
       <p className="text-preset-3 text-neutral-900">Mood and sleep trends</p>
 
       <div className="flex w-full items-start gap-4">
-        <div className="flex h-67 w-fit shrink-0 flex-col justify-between">
+        {/* w-17 (68px) matches Figma's "Sleep Bar" column exactly — needed now
+            that the labels are absolutely positioned and can no longer size
+            this container themselves the way in-flow children with w-fit
+            could. */}
+        <div className="relative h-67 w-17 shrink-0">
           {SLEEP_OPTIONS.map((option) => (
-            <div key={option.value} className="flex items-center gap-1.5">
+            <div
+              key={option.value}
+              style={{ top: axisTopPercent(option.value) }}
+              className="absolute left-0 flex -translate-y-1/2 items-center gap-1.5"
+            >
               <SleepIcon className="size-2.5 shrink-0 text-neutral-600" />
               <p className="text-preset-9 whitespace-nowrap text-neutral-600">{option.label}</p>
             </div>
@@ -272,15 +301,19 @@ export function MoodTrendsSection({ logs = [], className }) {
           className="scrollbar-none min-w-0 flex-1 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden"
         >
           <motion.div
-            className="relative flex h-67 w-fit min-w-full items-end gap-4.25"
+            className="relative flex h-67 w-fit min-w-full items-end justify-end gap-4.25"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: "some" }}
             variants={barsStagger}
           >
-            <div className="pointer-events-none absolute inset-0 flex flex-col justify-between">
+            <div className="pointer-events-none absolute inset-0">
               {SLEEP_OPTIONS.map((option) => (
-                <div key={option.value} className="h-px w-full bg-blue-100 opacity-30" />
+                <div
+                  key={option.value}
+                  style={{ top: axisTopPercent(option.value) }}
+                  className="absolute inset-x-0 h-px bg-blue-100 opacity-30"
+                />
               ))}
             </div>
 
@@ -309,7 +342,7 @@ export function MoodTrendsSection({ logs = [], className }) {
             {recentDays.map((date, index) => (
               <motion.div
                 key={dateKey(date)}
-                ref={index === 0 ? recentStartRef : undefined}
+                ref={index === recentDays.length - 1 ? todayRef : undefined}
                 variants={barReveal}
                 style={{ transformOrigin: "bottom" }}
                 className="flex h-full w-10 shrink-0 items-end justify-center"
@@ -323,7 +356,7 @@ export function MoodTrendsSection({ logs = [], className }) {
             ))}
           </motion.div>
 
-          <div className="mt-3 flex w-fit min-w-full gap-4.25">
+          <div className="mt-3 flex w-fit min-w-full justify-end gap-4.25">
             {days.map((date) => (
               <div key={dateKey(date)} className="flex w-10 shrink-0 flex-col items-center gap-1.5 text-center">
                 <p className="text-preset-9 text-neutral-600">{date.toLocaleDateString("en-US", { month: "long" })}</p>
