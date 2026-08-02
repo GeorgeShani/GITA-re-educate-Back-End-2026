@@ -55,10 +55,10 @@ const BAR_HEIGHT_CLASS = {
 };
 
 // Local calendar-day key (not toISOString/UTC) — every other date computation
-// here (lastNDays, daysSince, the axis labels below) operates in local time.
-// Keying by UTC instead would shift by a day for anyone ahead of UTC (local
-// midnight converts to the previous UTC day), silently misaligning which
-// column a log lands in and making an adjacent day look empty.
+// here (lastNDays, the axis labels below) operates in local time. Keying by
+// UTC instead would shift by a day for anyone ahead of UTC (local midnight
+// converts to the previous UTC day), silently misaligning which column a log
+// lands in and making an adjacent day look empty.
 function dateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -71,21 +71,6 @@ function lastNDays(n) {
   return Array.from({ length: n }, (_, i) => {
     const date = new Date(today);
     date.setDate(today.getDate() - (n - 1 - i));
-    return date;
-  });
-}
-
-// Every calendar day from the earliest log through today (inclusive) — the
-// full history to scroll through, not just a fixed recent window.
-function daysSince(earliestDate) {
-  const start = new Date(earliestDate);
-  start.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const dayCount = Math.round((today - start) / 86400000) + 1;
-  return Array.from({ length: dayCount }, (_, i) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + i);
     return date;
   });
 }
@@ -169,13 +154,18 @@ function MoodBarPopover({ log, rect }) {
 // (e.g. the same mood color shows up at two different bar heights), so they
 // aren't derived from each other.
 //
-// Extended beyond the fixed 11-day Figma window: the full range from the
-// earliest log to today renders so scrolling left reveals a user's entire
-// history, not just the last 11 days. Only the most recent DAYS_SHOWN days
-// play the reveal-cascade animation and sit in view on first render (via an
-// auto-scroll-to-the-end effect) — older days are always-visible/static, so
-// the "look here" moment stays on the current window instead of a long
-// animation queue for history the user has to scroll to find.
+// Extended beyond the fixed 11-day Figma window: scrolling left reveals a
+// user's entire history, not just the last 11 days. Only the most recent
+// DAYS_SHOWN/visibleDays days are literal calendar days — including empty
+// ones, exactly like Figma's "Few Moods Logged" example — since that's the
+// window where "did I log yesterday?" matters. Further back, only days that
+// actually have a check-in are rendered (see `historyDays` below): a user
+// who logs sporadically (weekly, monthly) would otherwise have to scroll
+// through dozens or hundreds of empty columns to reach real data, which
+// defeats the point of keeping history scrollable at all. Those bars play the
+// reveal-cascade animation individually as they're scrolled into view, rather
+// than all at once on load — older days are not part of the initial "look
+// here" moment.
 //
 // Only the day columns scroll horizontally — the sleep-hour axis sits
 // outside that scroll region, exactly as structured in Figma (there, the
@@ -208,27 +198,33 @@ export function MoodTrendsSection({ logs = [], className }) {
     setHoveredBar(null);
   }
 
-  const earliestLog = logs.reduce(
-    (earliest, log) => (!earliest || log.loggedAt < earliest.loggedAt ? log : earliest),
-    null,
-  );
-  // The range always spans at least `visibleDays` days (enough to fill the
-  // chart width), even when the earliest log is more recent than that — so a
-  // handful of recent check-ins still shows bars only on the right, with the
-  // emptier days before them rendered too (Figma "Few Moods Logged"), rather
-  // than the chart shrinking to fit just the days that have data. It extends
-  // further back than that floor when real history goes back further.
-  const rangeStart = earliestLog
-    ? new Date(Math.min(new Date(earliestLog.loggedAt).getTime(), lastNDays(visibleDays)[0].getTime()))
-    : null;
-  const days = rangeStart ? daysSince(rangeStart) : lastNDays(visibleDays);
-  const historyDays = days.slice(0, -visibleDays);
-  const recentDays = days.slice(-visibleDays);
+  // The recent window is always literal trailing calendar days — including
+  // empty, unlogged ones (Figma "Few Moods Logged") — so "did I log
+  // yesterday?" stays visible for the stretch that actually matters.
+  const recentDays = lastNDays(visibleDays);
+  const recentDayKeys = new Set(recentDays.map(dateKey));
 
+  // Latest log per calendar day (a day logged more than once collapses to its
+  // most recent entry — same "last one wins" rule Home's todaysLog uses).
   const logsByDay = new Map();
   for (const log of logs) {
     logsByDay.set(dateKey(new Date(log.loggedAt)), log);
   }
+
+  // History (left of the recent window) renders only days that actually have
+  // a check-in — no filler for the days in between, however many real days
+  // that spans. A sporadic logger (weekly, monthly) would otherwise scroll
+  // through huge stretches of empty columns to reach an old entry; skipping
+  // the gaps keeps the chart compact no matter how spread out their logging
+  // history is. Each bar's own date is still shown on hover/label, so no
+  // information is lost — the columns just aren't spaced proportionally to
+  // real elapsed time anymore once you're scrolled past the recent window.
+  const historyDays = [...logsByDay.entries()]
+    .filter(([key]) => !recentDayKeys.has(key))
+    .map(([, log]) => new Date(log.loggedAt))
+    .sort((a, b) => a - b);
+
+  const days = [...historyDays, ...recentDays];
 
   // Land on the recent window by default; re-runs when the range grows (a new
   // check-in extends it) so the newest day stays in view. Scrolls to the exact
