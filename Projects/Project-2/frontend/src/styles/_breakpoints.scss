@@ -1,0 +1,18 @@
+// Breakpoints — SCOPE.md A4.
+// Mobile frames in Figma are 375px, desktop 1440px. No tablet frame exists
+// in the source design; 768px is our own tier.
+$breakpoint-mobile: 375px;
+$breakpoint-tablet: 768px;
+$breakpoint-desktop: 1440px;
+
+@mixin tablet-up {
+  @media (min-width: $breakpoint-tablet) {
+    @content;
+  }
+}
+
+@mixin desktop-up {
+  @media (min-width: $breakpoint-desktop) {
+    @content;
+  }
+}

@@ -1,0 +1,62 @@
+// Design tokens — SCOPE.md Part A. This is the single source; component
+// styles reference these custom properties, they never hardcode a value
+// that has a token here.
+:root {
+  // Fonts — A1. Inter ships as a variable font; Poppins does not (no
+  // variable-font build is published for it), so it's loaded as static
+  // 400/500/600 weight files and the family name carries no "Variable" suffix.
+  --font-poppins: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+  --font-inter: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  // Colour — A3, primary neutral ramp
+  --color-neutral-01: #fefefe;
+  --color-neutral-02: #f3f5f7;
+  --color-neutral-03: #e8ecef;
+  --color-neutral-04: #6c7275;
+  --color-neutral-05: #343839;
+  --color-neutral-06: #232627;
+  --color-neutral-07: #141718;
+
+  // Colour — accents
+  --color-success: #38cb89;
+  --color-info: #377dff;
+  --color-white: #ffffff;
+  --color-brand: #000000;
+
+  // Colour — aliased leftovers from imported Figma libraries that are
+  // genuinely load-bearing in component specs. Nothing else from those
+  // ramps (Black/*, Neutrals/*) is used — see SCOPE.md A3.
+  --color-border-input: #cbcbcb;
+  --color-price: #121212;
+
+  // Colour — semantic additions, NOT extracted from Figma. The template
+  // has no red anywhere (the sale badge is green). Contrast against
+  // --color-neutral-01 is flagged unvalidated in SCOPE.md Open Items —
+  // check WCAG AA before this ships on real body text.
+  --color-error: #e5484d;
+  --color-warning: #f5a524;
+
+  // Radii — A4, measured off real components
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 100px;
+
+  // Spacing — A4, 4px base scale. Two measured paddings (6px on the
+  // primary button, 14px on the badge) fall off this grid and are kept as
+  // local one-off values in those components rather than promoted here.
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+
+  // Effects — A4
+  --shadow-01: 0 8px 16px rgba(0, 0, 0, 0.035);
+  --shadow-depth-1: 0 8px 16px -8px rgba(15, 15, 15, 0.2);
+}

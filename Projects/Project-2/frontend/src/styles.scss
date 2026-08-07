@@ -1,1 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
+// Global styles. Design tokens, mixins, and the reset live in src/styles/ —
+// see SCOPE.md Part A for the source values. Component-level styles should
+// consume the CSS custom properties defined here and the mixins in
+// styles/_typography.scss; nothing here should be duplicated in a component.
+
+// Self-hosted fonts — SCOPE.md A1. Inter ships as a variable font; Poppins
+// does not, so only the three weights actually used (400/500/600) are
+// loaded.
+@use '@fontsource-variable/inter';
+@use '@fontsource/poppins/400.css' as poppins-400;
+@use '@fontsource/poppins/500.css' as poppins-500;
+@use '@fontsource/poppins/600.css' as poppins-600;
+
+@use 'styles/tokens';
+@use 'styles/reset';

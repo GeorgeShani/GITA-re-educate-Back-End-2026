@@ -1,0 +1,94 @@
+// Type scale — SCOPE.md A2. Every value is read directly from the Figma
+// file. Components include these mixins rather than declaring font
+// properties inline, so the scale only ever changes in one place.
+//
+// Usage from a component's own .scss file:
+//   @use 'styles/typography' as type;
+//   h1 { @include type.headline-4; }
+
+@mixin _text($family, $weight, $size, $line-height, $tracking: 0) {
+  font-family: $family;
+  font-weight: $weight;
+  font-size: #{$size}px;
+  line-height: #{$line-height}px;
+
+  @if $tracking != 0 {
+    letter-spacing: #{$tracking}px;
+  }
+}
+
+@mixin headline-2 {
+  @include _text(var(--font-poppins), 500, 72, 76, -2);
+}
+@mixin headline-3 {
+  @include _text(var(--font-poppins), 500, 54, 58, -1);
+}
+@mixin headline-4 {
+  @include _text(var(--font-poppins), 500, 40, 44, -0.4);
+}
+@mixin headline-5 {
+  @include _text(var(--font-poppins), 500, 34, 38, -0.6);
+}
+@mixin headline-6 {
+  @include _text(var(--font-poppins), 500, 28, 34, -0.6);
+}
+@mixin headline-7 {
+  @include _text(var(--font-poppins), 500, 20, 28);
+}
+
+@mixin body-1 {
+  @include _text(var(--font-inter), 400, 20, 32);
+}
+@mixin body-1-semi {
+  @include _text(var(--font-inter), 600, 20, 32);
+}
+@mixin body-2 {
+  @include _text(var(--font-inter), 400, 16, 26);
+}
+@mixin body-2-semi {
+  @include _text(var(--font-inter), 600, 16, 26);
+}
+// Named "Bold" in Figma but bound to Poppins Medium — see SCOPE.md A2
+// "Template inconsistencies". Kept as-is deliberately; don't "fix" this
+// back to Inter Bold.
+@mixin body-2-bold {
+  @include _text(var(--font-poppins), 500, 16, 24);
+}
+
+@mixin caption {
+  @include _text(var(--font-poppins), 400, 14, 24);
+}
+@mixin caption-1 {
+  @include _text(var(--font-inter), 400, 14, 22);
+}
+@mixin caption-1-semi {
+  @include _text(var(--font-inter), 600, 14, 22);
+}
+// Standardised on Inter per SCOPE.md — the Figma file mixes Inter/Poppins
+// for this token across frames.
+@mixin caption-2 {
+  @include _text(var(--font-inter), 400, 12, 20);
+}
+@mixin caption-2-semi {
+  @include _text(var(--font-inter), 600, 12, 20);
+}
+@mixin caption-2-bold {
+  @include _text(var(--font-poppins), 600, 12, 20);
+}
+
+@mixin button-m {
+  @include _text(var(--font-inter), 500, 18, 32, -0.4);
+}
+@mixin button-s {
+  @include _text(var(--font-inter), 500, 16, 28, -0.4);
+}
+@mixin button-xs {
+  @include _text(var(--font-inter), 500, 14, 24);
+}
+
+@mixin hairline-1 {
+  @include _text(var(--font-inter), 700, 16, 16);
+}
+@mixin hairline-2 {
+  @include _text(var(--font-inter), 700, 12, 12);
+}
