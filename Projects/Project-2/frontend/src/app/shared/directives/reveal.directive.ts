@@ -3,6 +3,7 @@ import {
   Directive,
   ElementRef,
   afterNextRender,
+  computed,
   inject,
   input,
   signal,
@@ -24,6 +25,15 @@ import {
  *   <section reveal>...</section>
  *   <section reveal [revealDelay]="150" [revealThreshold]="0.3" [revealOnce]="false">...</section>
  *
+ * Staggering a list (e.g. product cards appearing one after another) —
+ * pass the loop index and a per-item step instead of computing ms by hand:
+ *   @for (product of products(); track product.id; let i = $index) {
+ *     <product-card reveal [revealIndex]="i" [revealStagger]="60" .../>
+ *   }
+ * `revealDelay` and the stagger compose additively (effectiveDelay =
+ * revealDelay + revealIndex * revealStagger), so a section can still open
+ * with its own base delay before its children start staggering in.
+ *
  * Consumer CSS:
  *   [reveal] { transition: opacity var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms),
  *                          transform var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms); }
@@ -35,7 +45,7 @@ import {
   host: {
     '[class.reveal-pending]': 'isPending()',
     '[class.is-revealed]': 'isRevealed()',
-    '[style.--reveal-delay.ms]': 'revealDelay()',
+    '[style.--reveal-delay.ms]': 'effectiveDelay()',
   },
 })
 export class RevealDirective {
@@ -43,8 +53,17 @@ export class RevealDirective {
   readonly revealOnce = input(true);
   /** Fraction of the element that must be visible before it reveals. */
   readonly revealThreshold = input(0.15);
-  /** Transition delay in ms, exposed as --reveal-delay for staggering siblings. */
+  /** Base transition delay in ms. */
   readonly revealDelay = input(0);
+  /** Ms added per step of revealIndex — the stagger interval for a list. */
+  readonly revealStagger = input(0);
+  /** This item's position in a staggered group, typically @for's $index. */
+  readonly revealIndex = input(0);
+
+  /** Exposed as --reveal-delay; combines a base delay with index * stagger. */
+  protected readonly effectiveDelay = computed(
+    () => this.revealDelay() + this.revealIndex() * this.revealStagger(),
+  );
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
