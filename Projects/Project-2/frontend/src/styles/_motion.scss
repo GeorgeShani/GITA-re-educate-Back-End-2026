@@ -1,0 +1,26 @@
+// Default visual treatment for the [reveal] directive
+// (shared/directives/reveal.directive.ts). The directive only manages
+// state (reveal-pending / is-revealed classes + a --reveal-delay custom
+// property); what those classes actually look like lives here so every
+// section doesn't redeclare the same three rules.
+//
+// Reduced-motion is already handled two ways: the directive itself skips
+// the pending state entirely when the media query matches (so there's
+// never a hidden element to transition), and _reset.scss's blanket
+// transition-duration: 0.01ms rule is the backstop if that check is ever
+// bypassed. Nothing extra needed here.
+[reveal] {
+  transition:
+    opacity var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms),
+    transform var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms);
+}
+
+[reveal].reveal-pending {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+[reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
