@@ -92,3 +92,11 @@
 @mixin hairline-2 {
   @include _text(var(--font-inter), 700, 12, 12);
 }
+
+// Navigation Bar links only (Home / Shop / Product / Contact Us). Same
+// metrics as button-xs but bound to Space Grotesk in the Figma file — see
+// SCOPE.md A1 correction. Do not use this for actual <button> elements;
+// use button-xs (Inter) for those.
+@mixin nav-link {
+  @include _text(var(--font-space-grotesk), 500, 14, 24);
+}

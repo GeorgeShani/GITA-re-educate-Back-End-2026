@@ -1,12 +1,23 @@
 // Design tokens — SCOPE.md Part A. This is the single source; component
 // styles reference these custom properties, they never hardcode a value
 // that has a token here.
+//
+// This file is the one place allowed to @use breakpoints for its mixins
+// AND emit the resulting CSS — it's only ever @used once, from the global
+// styles.scss entry point. Components should @use 'styles/breakpoints'
+// directly for the mixins; @use-ing this file from a component would
+// duplicate the entire :root block into that component's scoped CSS.
+@use 'styles/breakpoints' as bp;
+
 :root {
-  // Fonts — A1. Inter ships as a variable font; Poppins does not (no
-  // variable-font build is published for it), so it's loaded as static
-  // 400/500/600 weight files and the family name carries no "Variable" suffix.
+  // Fonts — A1. Inter and Space Grotesk ship as variable fonts; Poppins
+  // does not (no variable-font build is published for it), so it's loaded
+  // as static 400/500/600 weight files and the family name carries no
+  // "Variable" suffix. Space Grotesk renders the Navigation Bar links
+  // (`Button/XSmall` token) — see SCOPE.md correction, it is NOT vestigial.
   --font-poppins: 'Poppins', ui-sans-serif, system-ui, sans-serif;
   --font-inter: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-space-grotesk: 'Space Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
 
   // Colour — A3, primary neutral ramp
   --color-neutral-01: #fefefe;
@@ -59,4 +70,30 @@
   // Effects — A4
   --shadow-01: 0 8px 16px rgba(0, 0, 0, 0.035);
   --shadow-depth-1: 0 8px 16px -8px rgba(15, 15, 15, 0.2);
+
+  // Layout — measured off the Figma frames directly, not in SCOPE.md A4.
+  // Mobile-first: padding starts at 32px and widens to 160px at desktop —
+  // see styles/_breakpoints.scss for the mixin that applies the override.
+  --container-max: 1120px;
+  --page-padding: 32px;
+
+  @include bp.desktop-up {
+    --page-padding: 160px;
+  }
+
+  // Z-index scale — ordered by stacking need, not by component list.
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-overlay: 1200;
+  --z-drawer: 1300;
+  --z-modal: 1400;
+  --z-toast: 1500;
+
+  // Motion — CSS-first animation system (reveal directive, route
+  // transitions). Respect prefers-reduced-motion in styles/_reset.scss
+  // before assuming any of these actually apply.
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
