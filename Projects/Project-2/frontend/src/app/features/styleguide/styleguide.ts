@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 
-import { RevealDirective } from '../../shared/directives/reveal.directive';
+import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 
 /**
  * Dev-only component workshop. Guarded by devOnlyGuard so it never ships
