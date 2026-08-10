@@ -685,3 +685,5 @@ Priority coverage, in order:
 | **Homepage variant** | Plan assumes Homepage 03. 01 / 02 / 04 remain documented alternates |
 | **Admin design language** | Reuse the Poppins/Inter pairing, or drop to Inter-only for data density? |
 | **Sending domain** | B4 assumes `mail.<domain>`. Pick the domain and publish SPF/DKIM/DMARC early — DNS propagation and Resend verification are the kind of thing that blocks a launch day |
+| **Product Card hover state** | Not in the Figma file — no hover/focus/active states exist there for any component. Implemented as image zoom (`scale(1.05)`) + a Quick Add button revealing over the image bottom edge. A deliberate addition, not extracted from a frame — revisit if a real hover spec ever surfaces |
+| **Product Card price row gap** | A5 says the price row has "12px gap" but also says the content block's internal gap is 4px uniformly — ambiguous which one wins for the price row specifically. Shipped using price-tag's existing 8px default; unresolved |
