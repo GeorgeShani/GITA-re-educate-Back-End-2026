@@ -1,0 +1,28 @@
+// CDK overlay/a11y base styles — required, not optional. Overlay positions
+// most things via inline styles, but .cdk-overlay-container's fixed
+// full-viewport layer and the backdrop tint come from this prebuilt CSS;
+// without it the overlay container isn't positioned at all. a11y's is the
+// visually-hidden region LiveAnnouncer injects for screen-reader-only
+// announcements (toast-stack).
+@use '@angular/cdk/overlay-prebuilt.css';
+@use '@angular/cdk/a11y-prebuilt.css';
+
+// Every CDK overlay pane shares the vendor CSS's z-index: 1000 by default,
+// which doesn't respect our semantic scale (a toast should out-rank a
+// modal, a drawer should out-rank a dropdown). Each Tier 3 overlay
+// component adds its class here via OverlayConfig.panelClass.
+.dropdown-overlay-pane {
+  z-index: var(--z-dropdown);
+}
+
+.drawer-overlay-pane {
+  z-index: var(--z-drawer);
+}
+
+.modal-overlay-pane {
+  z-index: var(--z-modal);
+}
+
+.toast-overlay-pane {
+  z-index: var(--z-toast);
+}
