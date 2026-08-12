@@ -23,7 +23,7 @@ import { ToastStack } from '@/app/shared/ui/toast-stack';
     <main id="main-content">
       <router-outlet />
     </main>
-    <site-footer [columns]="footerColumns" [year]="2026">Golf gear built for the course, not the shelf.</site-footer>
+    <site-footer [columns]="footerColumns" [year]="2026">More than just a game. It's a lifestyle.</site-footer>
     <mobile-menu [open]="mobileMenuOpen()" (openChange)="mobileMenuOpen.set($event)" [navItems]="navItems" />
     <cart-drawer [open]="cartOpen()" (openChange)="cartOpen.set($event)" />
   `,
@@ -36,27 +36,26 @@ export class App {
     { label: 'Contact Us', link: ['/'] },
   ];
 
+  // Matches the real Figma footer structure (Page/Info columns), found
+  // while fetching Homepage 03's design context for Phase F4 — not the
+  // earlier Company/Help/Legal columns this started with.
   protected readonly footerColumns: FooterLinkColumn[] = [
     {
-      title: 'Company',
+      title: 'Page',
       links: [
-        { label: 'About', link: ['/'] },
-        { label: 'Careers', link: ['/'] },
+        { label: 'Home', link: ['/'] },
+        { label: 'Shop', link: ['/'] },
+        { label: 'Product', link: ['/'] },
+        { label: 'Articles', link: ['/'] },
+        { label: 'Contact Us', link: ['/'] },
       ],
     },
     {
-      title: 'Help',
+      title: 'Info',
       links: [
-        { label: 'FAQ', link: ['/'] },
-        { label: 'Shipping', link: ['/'] },
-        { label: 'Returns', link: ['/'] },
-      ],
-    },
-    {
-      title: 'Legal',
-      links: [
-        { label: 'Privacy', link: ['/'] },
-        { label: 'Terms', link: ['/'] },
+        { label: 'Shipping Policy', link: ['/'] },
+        { label: 'Support', link: ['/'] },
+        { label: 'FAQs', link: ['/'] },
       ],
     },
   ];

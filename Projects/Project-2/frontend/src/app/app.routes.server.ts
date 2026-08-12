@@ -17,6 +17,10 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 // commit to right now.
 export const serverRoutes: ServerRoute[] = [
   {
+    path: '',
+    renderMode: RenderMode.Prerender,
+  },
+  {
     path: 'styleguide',
     renderMode: RenderMode.Client,
   },
