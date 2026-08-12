@@ -1,12 +1,17 @@
 import { Component, computed, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 export type ActionButtonVariant = 'primary' | 'secondary' | 'ghost' | 'link';
 export type ActionButtonSize = 'm' | 's' | 'xs';
 
 /**
- * Renders <a> when href is set, <button> otherwise — a real native
- * element, not a styled <div>, so Enter/Space activation and :disabled
- * semantics come free.
+ * Renders <a [routerLink]> when routerLink is set, plain <a href> when
+ * only href is set, <button> otherwise — a real native element, not a
+ * styled <div>, so Enter/Space activation and :disabled semantics come
+ * free. routerLink and href are separate on purpose: an internal route
+ * needs Angular's router (no full page reload), an external link needs
+ * a plain href, and conflating them risks silently full-reloading an
+ * internal navigation.
  *
  * Only size-m's height/padding (h40, 6px 40px, radius 8) is a measured
  * Figma fact; s/xs are scaled off the spacing token grid and unverified.
@@ -16,11 +21,25 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
  */
 @Component({
   selector: 'action-button',
+  imports: [RouterLink],
   host: {
     '[class.full-width]': 'fullWidth()',
   },
   template: `
-    @if (href(); as url) {
+    @if (routerLink(); as link) {
+      <a
+        class="btn"
+        [class]="classes()"
+        [routerLink]="disabled() ? null : link"
+        [attr.aria-disabled]="disabled() ? 'true' : null"
+        [attr.tabindex]="disabled() ? -1 : null"
+      >
+        @if (loading()) {
+          <span class="spinner" aria-hidden="true"></span>
+        }
+        <ng-content />
+      </a>
+    } @else if (href(); as url) {
       <a
         class="btn"
         [class]="classes()"
@@ -145,6 +164,7 @@ export class ActionButton {
   readonly variant = input<ActionButtonVariant>('primary');
   readonly size = input<ActionButtonSize>('m');
   readonly type = input<'button' | 'submit' | 'reset'>('button');
+  readonly routerLink = input<string | unknown[]>();
   readonly href = input<string>();
   readonly loading = input(false);
   readonly disabled = input(false);
