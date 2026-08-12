@@ -1,10 +1,15 @@
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
+      // RouterLink (via nav-link, used by site-header/site-footer in the
+      // real app shell as of Phase F2) injects ActivatedRoute directly —
+      // needs a real, even if empty, router config to resolve against.
+      providers: [provideRouter([])],
     }).compileComponents();
   });
 

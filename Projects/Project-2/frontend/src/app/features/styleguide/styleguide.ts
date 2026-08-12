@@ -1,11 +1,17 @@
 import { Component, TemplateRef, inject, signal, viewChild } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Dialog } from '@angular/cdk/dialog';
+import { map } from 'rxjs';
 
+import { CartService } from '@/app/core/services/cart.service';
+import { ProductService } from '@/app/core/services/product.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { WishlistService } from '@/app/core/services/wishlist.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { AccordionGroup } from '@/app/shared/ui/accordion-group';
 import { AccordionPanel } from '@/app/shared/ui/accordion-panel';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { BreadcrumbBar } from '@/app/shared/ui/breadcrumb-bar';
 import { BreadcrumbTrail, type BreadcrumbItem } from '@/app/shared/ui/breadcrumb-trail';
 import { CarouselDots } from '@/app/shared/ui/carousel-dots';
 import { CarouselTrack } from '@/app/shared/ui/carousel-track';
@@ -16,9 +22,12 @@ import { IconGlyph, type IconName } from '@/app/shared/ui/icon-glyph';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { ModalDialog } from '@/app/shared/ui/modal-dialog';
 import { NavLink } from '@/app/shared/ui/nav-link';
+import { NotificationBar } from '@/app/shared/ui/notification-bar';
+import { PageContainer } from '@/app/shared/ui/page-container';
+import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { PriceTag } from '@/app/shared/ui/price-tag';
-import { ProductCard, type ProductCardProduct } from '@/app/shared/ui/product-card';
+import { ProductCard, type ProductCardProduct, toProductCardProduct } from '@/app/shared/ui/product-card';
 import { QuantityStepper } from '@/app/shared/ui/quantity-stepper';
 import { RadioField } from '@/app/shared/ui/radio-field';
 import { RatingStars } from '@/app/shared/ui/rating-stars';
@@ -48,6 +57,7 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
     AccordionGroup,
     AccordionPanel,
     ActionButton,
+    BreadcrumbBar,
     BreadcrumbTrail,
     CarouselDots,
     CarouselTrack,
@@ -58,6 +68,9 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
     ImagePlaceholder,
     ModalDialog,
     NavLink,
+    NotificationBar,
+    PageContainer,
+    PageSection,
     PaginationNav,
     PriceTag,
     ProductCard,
@@ -74,7 +87,7 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
     TooltipHint,
   ],
   template: `
-    <main>
+    <div class="styleguide">
       <h1>Style Guide</h1>
       <p>Dev-only. Components land here section by section as Phase F1 builds them.</p>
 
@@ -372,16 +385,53 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
 
       <section class="demo-section">
         <h2>Product Card</h2>
+        <p>
+          Backed by the real ProductService (MockProductService fixtures) and the real
+          WishlistService/CartService — the heart toggle and Quick Add here are genuine app
+          state, not local demo signals. Quick Add actually lands in the cart-drawer above.
+        </p>
         <div class="product-card-demo-grid">
-          @for (product of demoProducts; track product.slug) {
+          @for (product of demoProducts(); track product.slug) {
             <product-card
               [product]="product"
-              [wishlisted]="wishlistedSlugs().has(product.slug)"
-              (wishlistToggled)="toggleWishlist(product.slug)"
-              (quickAdd)="toastService.show(product.name + ' added to cart', 'success')"
+              [wishlisted]="wishlistService.has(product.slug)"
+              (wishlistToggled)="wishlistService.toggle(product.slug)"
+              (quickAdd)="addToCart(product)"
             />
           }
         </div>
+      </section>
+
+      <section class="demo-section">
+        <h2>Layout Shell</h2>
+        <p>
+          site-header, site-footer, skip-link, mobile-menu, and cart-drawer are the real page
+          chrome around this very page, not re-demoed here — a second sticky header would fight
+          the real one for the same scroll position. Try the menu and cart icons in the header
+          above; they open the real mobile-menu and cart-drawer end to end.
+        </p>
+      </section>
+
+      <section class="demo-section">
+        <h2>Page Container &amp; Section</h2>
+        <div class="page-demo-frame">
+          <page-container class="page-demo-container">
+            <page-section spacing="sm">1120px max-width, responsive page padding.</page-section>
+          </page-container>
+        </div>
+      </section>
+
+      <section class="demo-section">
+        <h2>Notification Bar</h2>
+        <p>Dismiss state persists to localStorage — reload to confirm it stays dismissed.</p>
+        <notification-bar storageKey="styleguide-notification-demo">
+          Free shipping on orders over $75.
+        </notification-bar>
+      </section>
+
+      <section class="demo-section">
+        <h2>Breadcrumb Bar</h2>
+        <breadcrumb-bar [items]="breadcrumbItems" />
       </section>
 
       <section class="motion-demo">
@@ -403,12 +453,14 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
           }
         </div>
       </section>
-    </main>
+    </div>
   `,
   styles: `
     @use 'styles/typography' as type;
 
-    main {
+    // The app shell (app.ts) now provides the page's real <main> landmark
+    // — this is a plain wrapper, not a second one.
+    .styleguide {
       max-width: var(--container-max);
       margin-inline: auto;
       padding: var(--space-8) var(--page-padding);
@@ -512,6 +564,16 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: var(--space-6);
       margin-top: var(--space-4);
+    }
+
+    .page-demo-frame {
+      margin-top: var(--space-4);
+      background: var(--color-neutral-02);
+    }
+
+    .page-demo-container {
+      background: var(--color-white);
+      box-shadow: inset 0 0 0 1px var(--color-neutral-03);
     }
 
     .motion-demo {
@@ -627,43 +689,24 @@ export class Styleguide {
     this.track()?.scrollTo(index);
   }
 
-  protected readonly demoProducts: ProductCardProduct[] = [
-    {
-      slug: 'tour-series-driver',
-      name: 'Tour Series Driver',
-      image: '/demo/placeholder-product.svg',
-      price: 429,
-      originalPrice: 499,
-      rating: 4.5,
-      reviewCount: 128,
-      badges: [{ label: 'Sale', variant: 'sale' }],
-    },
-    {
-      slug: 'premium-leather-glove',
-      name: 'Premium Leather Glove',
-      image: '/demo/placeholder-product.svg',
-      price: 34,
-      rating: 4.8,
-      reviewCount: 52,
-      badges: [{ label: 'New', variant: 'new' }],
-    },
-    {
-      slug: 'classic-blade-putter',
-      name: 'Classic Blade Putter',
-      image: '/demo/placeholder-product.svg',
-      price: 219,
-      rating: 4.2,
-      reviewCount: 19,
-    },
-  ];
-  protected readonly wishlistedSlugs = signal<ReadonlySet<string>>(new Set());
+  protected readonly productService = inject(ProductService);
+  protected readonly wishlistService = inject(WishlistService);
+  private readonly cartService = inject(CartService);
 
-  protected toggleWishlist(slug: string): void {
-    this.wishlistedSlugs.update((current) => {
-      const next = new Set(current);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
+  protected readonly demoProducts = toSignal(
+    this.productService.list().pipe(map((products) => products.map(toProductCardProduct))),
+    { initialValue: [] },
+  );
+
+  protected addToCart(product: ProductCardProduct): void {
+    this.cartService.add({
+      productId: product.slug,
+      slug: product.slug,
+      name: product.name,
+      image: product.image,
+      price: product.price,
+      quantity: 1,
     });
+    this.toastService.show(`${product.name} added to cart`, 'success');
   }
 }

@@ -10,9 +10,14 @@ import {
   withEventReplay,
   withHttpTransferCacheOptions,
 } from '@angular/platform-browser';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 
 import { routes } from './app.routes';
+import { authInterceptor } from '@/app/core/interceptors/auth.interceptor';
+import { correlationIdInterceptor } from '@/app/core/interceptors/correlation-id.interceptor';
+import { errorInterceptor } from '@/app/core/interceptors/error.interceptor';
+import { MockProductService } from '@/app/core/services/mock-product.service';
+import { ProductService } from '@/app/core/services/product.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -32,8 +37,12 @@ export const appConfig: ApplicationConfig = {
       withHttpTransferCacheOptions({ includePostRequests: false }),
     ),
     // withFetch() is deprecated too — FetchBackend is the default HttpBackend
-    // as of v22. Interceptors (auth/error/correlation-id) land in Phase F3
-    // once the data layer exists: provideHttpClient(withInterceptors([...])).
-    provideHttpClient(),
+    // as of v22.
+    provideHttpClient(
+      withInterceptors([correlationIdInterceptor, authInterceptor, errorInterceptor]),
+    ),
+    // MockProductService until a real backend exists — swap this one line
+    // for a real HTTP-backed implementation later, no component changes.
+    { provide: ProductService, useClass: MockProductService },
   ],
 };

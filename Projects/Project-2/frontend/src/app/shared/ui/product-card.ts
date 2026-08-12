@@ -1,6 +1,7 @@
 import { Component, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import type { Product } from '@/app/core/models/product.model';
 import { ActionButton } from './action-button';
 import { IconButton } from './icon-button';
 import { ImagePlaceholder } from './image-placeholder';
@@ -22,6 +23,29 @@ export interface ProductCardProduct {
   readonly rating?: number;
   readonly reviewCount?: number;
   readonly badges?: ProductCardBadge[];
+}
+
+/**
+ * Maps the core Product model to this component's own (deliberately
+ * smaller) input shape — product-card doesn't need variants/inventory/SEO
+ * fields, and staying decoupled from the domain model means it doesn't
+ * grow every time that model does. The 'Sale' badge is the one thing
+ * derived automatically (originalPrice present = objectively on sale);
+ * anything else (e.g. 'New') is presentational/curated, not something to
+ * guess from a field like publishedAt without risking an SSR/client
+ * mismatch on what counts as "recent."
+ */
+export function toProductCardProduct(product: Product): ProductCardProduct {
+  return {
+    slug: product.slug,
+    name: product.name,
+    image: product.images[0]?.url ?? '',
+    price: product.price,
+    originalPrice: product.originalPrice,
+    rating: product.rating,
+    reviewCount: product.reviewCount,
+    badges: product.originalPrice ? [{ label: 'Sale', variant: 'sale' }] : undefined,
+  };
 }
 
 /**
