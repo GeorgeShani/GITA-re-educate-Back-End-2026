@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Service, inject, signal } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 
 export type ToastVariant = 'info' | 'success' | 'error';
@@ -14,7 +14,7 @@ export interface ToastMessage {
 }
 
 /** Call `inject(ToastService).show(...)` from anywhere — toast-stack (mounted once at the app root) renders whatever's in `toasts()`. */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ToastService {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
