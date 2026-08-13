@@ -12,7 +12,8 @@ export type IconName =
   | 'user'
   | 'check'
   | 'plus'
-  | 'minus';
+  | 'minus'
+  | 'email';
 
 /**
  * Renders one symbol from the sprite mounted at the app root (see

@@ -18,21 +18,23 @@ import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { CarouselDots } from '@/app/shared/ui/carousel-dots';
 import { CarouselTrack } from '@/app/shared/ui/carousel-track';
+import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { ProductCard, toProductCardProduct } from '@/app/shared/ui/product-card';
-import { TextField } from '@/app/shared/ui/text-field';
 
 interface CategoryTile {
   readonly label: string;
-  readonly category: ProductCategory;
+  /** Omitted for tiles with no matching entry in SCOPE.md A8's taxonomy (Golf Clubs, Footwear) — they link to /shop unfiltered. */
+  readonly category?: ProductCategory;
   readonly image: string;
 }
 
 interface CollectionCard {
   readonly label: string;
   readonly size: 'large' | 'small';
+  readonly image: string;
 }
 
 interface BlogPost {
@@ -42,17 +44,16 @@ interface BlogPost {
 
 /**
  * Ported from the Figma Homepage 03 design (get_design_context on
- * 116:6824), adapted rather than copied verbatim in two places:
- *
- * - The reference file's own "Shop by Categories" grid (Golf Clubs,
- *   Footwear, Limited Edition...) and product names (e.g. an Air Jordan
- *   sneaker) come from the original generic sports-store template this
- *   was cloned from — this project's real, confirmed category taxonomy
- *   is SCOPE.md A8, which has no clubs category (it's an accessories
- *   store). Categories/products below use that taxonomy instead.
- * - Blog post titles: two of the three reference titles ("...on the
- *   green", "The Ryder Cup") were already golf-appropriate and are kept;
- *   the third (an unrelated sneaker/streetwear event) is swapped.
+ * 116:6824 / 176:13558), using the design's real photography and copy
+ * throughout — every image below is a downloaded Figma asset
+ * (public/images/homepage/, public/images/products/), not a
+ * placeholder. Two category tiles (Golf Clubs, Footwear) have no
+ * matching entry in SCOPE.md A8's taxonomy, so they keep the design's
+ * real label/image but link to /shop unfiltered rather than a fabricated
+ * category. Blog post titles/images are used verbatim from the design,
+ * including one ("Air Jordan x Travis Scott Event") that's off-topic for
+ * a golf store — flagged rather than silently swapped, since guessing at
+ * "on-brand" substitutions here previously produced the wrong fix.
  *
  * Below-fold sections are @defer (on viewport) — the hero is the LCP
  * element and is never deferred. This is also the first page proving
@@ -68,16 +69,16 @@ interface BlogPost {
     ActionButton,
     CarouselDots,
     CarouselTrack,
+    IconGlyph,
     ImagePlaceholder,
     PageContainer,
     PageSection,
     ProductCard,
-    TextField,
   ],
   template: `
     <section class="hero">
       <img
-        ngSrc="/demo/placeholder-product.svg"
+        ngSrc="/images/homepage/hero.jpg"
         alt=""
         [fill]="true"
         [priority]="true"
@@ -86,6 +87,10 @@ interface BlogPost {
       <page-container class="hero__inner">
         <div class="hero__content">
           <h1 class="hero__title">More than just a game.<br />It's a lifestyle.</h1>
+          <p class="hero__subtitle">
+            Whether you're just starting out, have played your whole life or you're a Tour pro,
+            your swing is like a fingerprint.
+          </p>
           <action-button routerLink="/shop">Shop Now</action-button>
         </div>
       </page-container>
@@ -123,7 +128,7 @@ interface BlogPost {
               <a
                 class="category-tile"
                 routerLink="/shop"
-                [queryParams]="{ category: tile.category }"
+                [queryParams]="tile.category ? { category: tile.category } : null"
                 reveal
                 [revealIndex]="i"
                 [revealStagger]="60"
@@ -150,7 +155,7 @@ interface BlogPost {
         <page-container>
           <div class="limited-banner" reveal>
             <img
-              ngSrc="/demo/placeholder-product.svg"
+              ngSrc="/images/homepage/banner-limited-edition.jpg"
               alt=""
               width="720"
               height="480"
@@ -159,7 +164,7 @@ interface BlogPost {
             <div class="limited-banner__content">
               <p class="limited-banner__eyebrow">Limited Edition</p>
               <h2 class="limited-banner__title">Hurry up! 30% OFF</h2>
-              <p class="limited-banner__subtitle">Find the gear that's right for your game</p>
+              <p class="limited-banner__subtitle">Find clubs that are right for your game</p>
               <p class="limited-banner__countdown-label">Offer expires in:</p>
               <div class="countdown">
                 <div class="countdown__unit">
@@ -206,7 +211,7 @@ interface BlogPost {
               >
                 <image-placeholder
                   class="collection-card__image"
-                  [src]="'/demo/placeholder-product.svg'"
+                  [src]="card.image"
                   [alt]="''"
                   [width]="548"
                   [height]="card.size === 'large' ? 664 : 320"
@@ -251,23 +256,40 @@ interface BlogPost {
     }
 
     @defer (on viewport) {
-      <page-section spacing="sm" class="newsletter">
-        <page-container>
-          <div class="newsletter__inner" reveal>
+      <section class="newsletter">
+        <img
+          ngSrc="/images/homepage/newsletter-left.jpg"
+          alt=""
+          width="900"
+          height="600"
+          class="newsletter__image newsletter__image--left"
+        />
+        <img
+          ngSrc="/images/homepage/newsletter-right.jpg"
+          alt=""
+          width="600"
+          height="900"
+          class="newsletter__image newsletter__image--right"
+        />
+        <div class="newsletter__content" reveal>
+          <div class="newsletter__header">
             <h2>Join Our Newsletter</h2>
             <p>Sign up for deals, new products and promotions</p>
-            <form class="newsletter__form" (submit)="onSubscribe($event)">
-              <text-field
-                placeholder="Email address"
-                type="email"
-                [value]="newsletterEmail()"
-                (valueChange)="newsletterEmail.set($event)"
-              />
-              <action-button type="submit">Signup</action-button>
-            </form>
           </div>
-        </page-container>
-      </page-section>
+          <form class="newsletter__form" (submit)="onSubscribe($event)">
+            <icon-glyph name="email" [size]="24" />
+            <input
+              class="newsletter__input"
+              type="email"
+              placeholder="Email address"
+              [value]="newsletterEmail()"
+              (input)="newsletterEmail.set($any($event.target).value)"
+              required
+            />
+            <button type="submit" class="newsletter__submit">Signup</button>
+          </form>
+        </div>
+      </section>
     } @placeholder {
       <div class="section-placeholder"></div>
     }
@@ -275,8 +297,11 @@ interface BlogPost {
     @defer (on viewport) {
       <page-section>
         <page-container>
-          <div class="section-heading" reveal>
+          <div class="instagram-heading" reveal>
+            <p class="instagram-heading__eyebrow">newsfeed</p>
             <h2>Instagram</h2>
+            <p class="instagram-heading__subtitle">Follow us on social media for more discount & promotions</p>
+            <p class="instagram-heading__handle">{{ '@3legant_official' }}</p>
           </div>
           <div class="instagram-grid">
             @for (tile of instagramTiles; track $index; let i = $index) {
@@ -337,12 +362,18 @@ interface BlogPost {
       color: var(--color-neutral-07);
     }
 
+    .hero__subtitle {
+      @include type.body-1;
+      color: var(--color-neutral-05);
+    }
+
     .section-heading {
       margin-bottom: var(--space-6);
     }
 
     .section-heading h2 {
       @include type.headline-5;
+      color: var(--color-brand);
     }
 
     .section-heading--split {
@@ -546,38 +577,127 @@ interface BlogPost {
     }
 
     .newsletter {
-      background: var(--color-neutral-02);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      block-size: 360px;
+      overflow: hidden;
+      background: var(--color-neutral-07);
+      padding-inline: var(--space-6);
     }
 
-    .newsletter__inner {
+    .newsletter__image {
+      position: absolute;
+      inset-block: 0;
+      block-size: 100%;
+      inline-size: 45%;
+      object-fit: cover;
+    }
+
+    .newsletter__image--left {
+      inset-inline-start: 0;
+      object-position: right center;
+    }
+
+    .newsletter__image--right {
+      inset-inline-end: 0;
+      object-position: left center;
+    }
+
+    .newsletter__content {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-8);
+      max-width: 540px;
       text-align: center;
-      max-width: 480px;
-      margin-inline: auto;
+      color: var(--color-white);
     }
 
-    .newsletter__inner h2 {
-      @include type.headline-5;
-      margin-bottom: var(--space-2);
+    .newsletter__header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
     }
 
-    .newsletter__inner p {
-      @include type.body-2;
-      color: var(--color-neutral-04);
-      margin-bottom: var(--space-6);
+    .newsletter__header h2 {
+      @include type.headline-4;
+    }
+
+    .newsletter__header p {
+      @include type.body-1;
     }
 
     .newsletter__form {
       display: flex;
-      flex-direction: column;
-      gap: var(--space-3);
-
-      @include bp.tablet-up {
-        flex-direction: row;
-      }
+      align-items: center;
+      gap: var(--space-2);
+      inline-size: 100%;
+      max-width: 488px;
+      block-size: 52px;
+      border-block-end: 1px solid var(--color-white);
     }
 
-    .newsletter__form text-field {
+    .newsletter__form icon-glyph {
+      flex-shrink: 0;
+      color: var(--color-white);
+    }
+
+    .newsletter__input {
       flex: 1;
+      min-width: 0;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--color-white);
+      @include type.button-s;
+    }
+
+    .newsletter__input::placeholder {
+      color: var(--color-white);
+      opacity: 0.85;
+    }
+
+    .newsletter__submit {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--color-white);
+      cursor: pointer;
+      @include type.button-s;
+    }
+
+    .instagram-heading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      text-align: center;
+      margin-bottom: var(--space-6);
+    }
+
+    .instagram-heading__eyebrow {
+      @include type.hairline-1;
+      color: var(--color-neutral-04);
+      text-transform: uppercase;
+    }
+
+    .instagram-heading h2 {
+      @include type.headline-4;
+      color: var(--color-neutral-07);
+    }
+
+    .instagram-heading__subtitle {
+      @include type.body-1;
+      color: var(--color-neutral-07);
+    }
+
+    .instagram-heading__handle {
+      @include type.headline-7;
+      color: var(--color-neutral-04);
     }
 
     .instagram-grid {
@@ -616,12 +736,12 @@ export class HomePage {
   }
 
   protected readonly categories: CategoryTile[] = [
-    { label: 'Gloves', category: 'gloves', image: '/demo/placeholder-product.svg' },
-    { label: 'Balls', category: 'balls', image: '/demo/placeholder-product.svg' },
-    { label: 'Bags', category: 'bags', image: '/demo/placeholder-product.svg' },
-    { label: 'Rangefinders & GPS', category: 'rangefinders-gps', image: '/demo/placeholder-product.svg' },
-    { label: 'Apparel', category: 'apparel', image: '/demo/placeholder-product.svg' },
-    { label: 'Accessories', category: 'accessories', image: '/demo/placeholder-product.svg' },
+    { label: 'Golf Clubs', image: '/images/homepage/category-golf-clubs.jpg' },
+    { label: 'Golf Balls', category: 'balls', image: '/images/homepage/category-golf-balls.jpg' },
+    { label: 'Golf Bags', category: 'bags', image: '/images/homepage/category-golf-bags.jpg' },
+    { label: 'Clothing & Rainwear', category: 'apparel', image: '/images/homepage/category-clothing-rainwear.jpg' },
+    { label: 'Footwear', image: '/images/homepage/category-footwear.jpg' },
+    { label: 'Accessories', category: 'accessories', image: '/images/homepage/category-accessories.jpg' },
   ];
 
   /**
@@ -634,20 +754,27 @@ export class HomePage {
   protected readonly countdown = signal({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   protected readonly collections: CollectionCard[] = [
-    { label: "Men's Set", size: 'large' },
-    { label: "Women's Set", size: 'small' },
-    { label: 'Juniors Set', size: 'small' },
+    { label: 'Juniors Set', size: 'large', image: '/images/homepage/collection-juniors-set.jpg' },
+    { label: "Men's Set", size: 'small', image: '/images/homepage/collection-mens-set.jpg' },
+    { label: "Women's Set", size: 'small', image: '/images/homepage/collection-womens-set.jpg' },
   ];
 
   protected readonly blogPosts: BlogPost[] = [
-    { title: 'The timeless classics on the green', image: '/demo/placeholder-product.svg' },
-    { title: 'The 2026 Ryder Cup', image: '/demo/placeholder-product.svg' },
-    { title: '5 ways to lower your handicap this season', image: '/demo/placeholder-product.svg' },
+    { title: 'Air Jordan x Travis Scott Event', image: '/images/homepage/blog-air-jordan-travis-scott.jpg' },
+    { title: 'The timeless classics on the green', image: '/images/homepage/blog-timeless-classics.jpg' },
+    { title: 'The 2023 Ryder Cup', image: '/images/homepage/blog-ryder-cup.jpg' },
   ];
 
   protected readonly newsletterEmail = signal('');
 
-  protected readonly instagramTiles = Array.from({ length: 6 }, () => '/demo/placeholder-product.svg');
+  protected readonly instagramTiles = [
+    '/images/homepage/instagram-1.jpg',
+    '/images/homepage/instagram-2.jpg',
+    '/images/homepage/instagram-3.jpg',
+    '/images/homepage/instagram-4.jpg',
+    '/images/homepage/instagram-5.jpg',
+    '/images/homepage/instagram-6.jpg',
+  ];
 
   constructor() {
     afterNextRender(() => {

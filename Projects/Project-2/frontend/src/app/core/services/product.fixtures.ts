@@ -7,6 +7,14 @@ const IMAGE = { url: '/demo/placeholder-product.svg', alt: '' };
  * categories don't include clubs), so no drivers/putters/irons here,
  * unlike some earlier ad-hoc styleguide demo data that predated this
  * being the canonical fixture source.
+ *
+ * Products that appear in the homepage's Featured carousel use real
+ * downloaded photography (public/images/products/) rather than the
+ * placeholder SVG — swapped in because they're on-screen by default,
+ * not deferred. `isFeatured` on p7/p8 was flipped for the same reason:
+ * no real rangefinder photo was available in the source design, and a
+ * placeholder in an otherwise-real carousel reads as more broken than a
+ * different featured product would.
  */
 export const PRODUCT_FIXTURES: Product[] = [
   {
@@ -18,7 +26,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     category: 'gloves',
     description: 'Cabretta leather glove with reinforced palm for grip in wet conditions.',
     price: 34,
-    images: [{ ...IMAGE, alt: 'Premium Leather Glove' }],
+    images: [{ url: '/images/products/glove-shark.jpg', alt: 'Premium Leather Glove' }],
     variants: [
       { id: 'p1-v1', sku: 'GLV-001-RM', attributes: { hand: 'left', size: 'M' }, price: 34, stock: 40 },
       { id: 'p1-v2', sku: 'GLV-001-RL', attributes: { hand: 'left', size: 'L' }, price: 34, stock: 25 },
@@ -38,7 +46,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     description: 'Three-piece urethane cover balls tuned for greenside spin.',
     price: 44.99,
     originalPrice: 49.99,
-    images: [{ ...IMAGE, alt: 'Tour Performance Golf Balls' }],
+    images: [{ url: '/images/products/balls-taylormade.jpg', alt: 'Tour Performance Golf Balls' }],
     variants: [
       { id: 'p2-v1', sku: 'BAL-002-LOW', attributes: { compression: 'low' }, price: 44.99, stock: 80 },
       { id: 'p2-v2', sku: 'BAL-002-HIGH', attributes: { compression: 'high' }, price: 44.99, stock: 60 },
@@ -109,7 +117,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     description: '14-way top organizer with full-length dividers and a rain hood.',
     price: 189.99,
     originalPrice: 229.99,
-    images: [{ ...IMAGE, alt: 'Cart Bag 14-Way' }],
+    images: [{ url: '/images/products/bag-utility-rover.jpg', alt: 'Cart Bag 14-Way' }],
     variants: [
       { id: 'p6-v1', sku: 'BAG-006-BLK', attributes: { colourway: 'Black' }, price: 189.99, stock: 10 },
       { id: 'p6-v2', sku: 'BAG-006-GRN', attributes: { colourway: 'Forest Green' }, price: 189.99, stock: 6 },
@@ -132,7 +140,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     variants: [{ id: 'p7-v1', sku: 'RNG-007', attributes: {}, price: 249.99, stock: 15 }],
     rating: 4.9,
     reviewCount: 87,
-    isFeatured: true,
+    isFeatured: false,
     publishedAt: '2026-02-20T00:00:00.000Z',
   },
   {
@@ -144,7 +152,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     category: 'apparel',
     description: 'Moisture-wicking stretch polo with UV protection.',
     price: 59.99,
-    images: [{ ...IMAGE, alt: 'Performance Polo Shirt' }],
+    images: [{ url: '/images/products/polo-greg-norman.jpg', alt: 'Performance Polo Shirt' }],
     variants: [
       { id: 'p8-v1', sku: 'APP-008-S-WHT', attributes: { size: 'S', colourway: 'White' }, price: 59.99, stock: 20 },
       { id: 'p8-v2', sku: 'APP-008-M-WHT', attributes: { size: 'M', colourway: 'White' }, price: 59.99, stock: 28 },
@@ -152,7 +160,7 @@ export const PRODUCT_FIXTURES: Product[] = [
     ],
     rating: 4.2,
     reviewCount: 15,
-    isFeatured: false,
+    isFeatured: true,
     publishedAt: '2026-03-10T00:00:00.000Z',
   },
 ];
