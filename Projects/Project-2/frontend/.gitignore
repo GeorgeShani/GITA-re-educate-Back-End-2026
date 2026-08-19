@@ -11,6 +11,11 @@
 npm-debug.log
 yarn-error.log
 
+# Secrets — API keys for tooling scripts (e.g. scripts/fetch-pexels-images.mjs)
+.env
+.env.*
+scripts/.env
+
 # IDEs and editors
 .idea/
 .project
