@@ -1,7 +1,7 @@
 # 3legant Golf — Project Scope
 
 **A full-stack e-commerce platform for a Golf Accessories retailer.**
-Angular 22 (SSR) · NestJS 11 · Neon Postgres · Event-driven architecture · AI shopping assistant
+Angular 22 (SSR) · NestJS 11 · MongoDB Atlas · Event-driven architecture · AI shopping assistant
 
 This document is the single source of truth for the project: the complete design system extracted from Figma, the architecture, and the build plan. Keep it current — if a decision changes, it changes here first.
 
@@ -231,6 +231,14 @@ Pull icons and imagery with the Figma **`download_assets`** tool, not `get_desig
 
 **Product fields beyond the basics:** brand, SKU, barcode, weight + dimensions (shipping), care instructions, spec sheet, `isFeatured`, `publishedAt`, SEO title / description / OG image.
 
+## A9. Data-modelling consequences (MongoDB)
+
+Mongo doesn't enforce what Postgres would have — these are explicit decisions, not schema guarantees, and they need to be settled before Phase 1's schema-definition pass rather than discovered mid-phase.
+
+- **Money** — store integer **minor units** (`priceMinor: 4499`), never floats and never `Decimal128`. Decimal128 survives the database fine but is painful across the driver/JSON/DTO boundary; one documented rule beats a per-field judgement call.
+- **No foreign keys — embed vs. reference is decided per aggregate.** Embed where the child has no independent lifecycle: `OrderItem` in `Order` (an order is an immutable snapshot after placement, so this is a real win), `CartItem` in `Cart`. Reference where the child is queried independently: `Product → Category`, `Review → Product`, `InventoryItem → variant`. Write the ownership rule for each aggregate during Phase 1's schema definition rather than deciding ad hoc during Phase 3.
+- **Cascades are application-level.** Deleting a `Category` doesn't orphan-check `Product`s for you, and deleting a `Product` doesn't clean up its `Review`s. Each delete path needs an explicit rule, enforced in the command handler — Mongo will not stop you from creating an orphan.
+
 ---
 
 # Part B — Architecture
@@ -239,14 +247,14 @@ Pull icons and imagery with the Figma **`download_assets`** tool, not `get_desig
 
 | Area | Decision |
 |---|---|
-| Data layer | **Neon Postgres + TypeORM** with migrations — orders, stock, coupons, and the outbox all need real transactions |
+| Data layer | **MongoDB Atlas + Mongoose** — orders, stock, coupons, and the outbox all need real transactions; Atlas gives every tier, including free M0, a replica set, and Mongo's multi-document ACID transactions run on top of that |
 | Backend architecture | **Event-driven** — `@nestjs/cqrs` command/query/event buses + transactional outbox + BullMQ/Redis consumers + sagas |
 | Frontend styling | **SCSS + CSS custom properties**, no Tailwind — keeps `inlineStyleLanguage: scss` and the existing Angular config |
 | Payments | **Stripe test mode** — PaymentIntents + webhook-confirmed orders, behind a `PaymentProvider` interface |
-| Media | **S3 + CloudFront** via AWS SDK v3; image processing is our own `sharp` consumer, not a vendor feature |
+| Media | **Cloudinary** — signed direct-to-Cloudinary uploads, URL-based transformations, CDN included |
 | Email | **Resend + MJML/Handlebars** behind a `MailProvider` interface. Every send is event-triggered, logged, idempotent, and suppression-checked — see B4 |
 | Environments | **Managed services throughout, no local Docker** |
-| AI assistant | **Read + act** — Claude tool-use agent that searches, compares, and mutates the cart, streamed over SSE |
+| AI assistant | **Read + act** — Google Gemini tool-use agent that searches, compares, and mutates the cart, streamed over SSE |
 
 ## B2. The event-driven core
 
@@ -267,7 +275,7 @@ HTTP/SSE ─▶ Controller ─▶ CommandBus ─▶ Handler ──┐ one DB tra
                                                    ├─ write entity
                                                    └─ write outbox_events row
                                                         │
-                        OutboxRelay (poll ~1s, SKIP LOCKED)
+                        OutboxRelay (change stream on outbox_events)
                                                         │
                                                    BullMQ queues
                                           ┌─────────────┼─────────────┐
@@ -275,9 +283,11 @@ HTTP/SSE ─▶ Controller ─▶ CommandBus ─▶ Handler ──┐ one DB tra
                                       analytics    audit-log   webhooks
 ```
 
-**`outbox_events`** — `id`, `aggregate_type`, `aggregate_id`, `event_name`, `payload jsonb`, `occurred_at`, `published_at`, `attempts`, `correlation_id`.
+**`outbox_events`** — a collection with `_id`, `aggregateType`, `aggregateId`, `eventName`, `payload`, `occurredAt`, `publishedAt`, `attempts`, `correlationId`.
 
-The relay uses `SELECT … FOR UPDATE SKIP LOCKED LIMIT 100` so multiple instances never double-publish. Consumers are idempotent, keyed on `event.id`. Poll at ~1s rather than 500ms — Neon's round-trip is higher than a local socket, and the extra latency is invisible to users while halving query volume.
+A change stream on the `outbox_events` collection notifies the relay the moment a row is written — no polling. Each relay instance claims a row with `findOneAndUpdate({ _id, publishedAt: null }, { $set: { publishedAt: now } })` before publishing to BullMQ, so concurrent relay instances never double-publish; that atomic claim is what `SELECT … FOR UPDATE SKIP LOCKED` did for Postgres. Consumers stay idempotent, keyed on `event._id`.
+
+**Resume tokens are load-bearing.** The change stream's resume token is persisted after every batch, in a `stream_checkpoints` collection keyed by stream name, so a relay restart resumes exactly where it left off instead of dropping or replaying the window. A startup sweep also republishes any `outbox_events` row with `publishedAt: null` older than N seconds — the safety net for the rarer case where a resume token itself is lost.
 
 ### Domain event catalog
 
@@ -294,7 +304,7 @@ Classes in `src/<domain>/events/`, all extending a `DomainEvent` base carrying `
 | Return | `requested`, `approved`, `rejected`, `received`, `refunded` |
 | Review | `submitted`, `approved`, `rejected`, `replied` |
 | Coupon | `redeemed`, `limit_reached`, `expired` |
-| Media | `uploaded`, `variants_generated`, `deleted` |
+| Media | `uploaded`, `deleted` |
 | Content | `post_published`, `post_unpublished`, `page_updated` |
 | Marketing | `newsletter_subscribed`, `newsletter_unsubscribed`, `back_in_stock_requested` |
 | Wishlist | `item_added`, `item_removed` |
@@ -305,8 +315,8 @@ Classes in `src/<domain>/events/`, all extending a `DomainEvent` base carrying `
 | Queue | Subscribes to | Does |
 |---|---|---|
 | `notifications` | `user.*`, `order.*`, `return.*`, `review.*`, `inventory.back_in_stock`, `cart.abandoned`, `marketing.*` | Resolves recipient + preferences, checks suppression, renders MJML/Handlebars, sends via `MailProvider`, writes an `EmailMessage` row. See B4 |
-| `media` | `media.uploaded`, `media.deleted` | `sharp` variant ladder + blurhash, EXIF strip, derivative cleanup |
-| `search` | `product.*`, `inventory.*`, `content.post_published` | Rebuilds the `tsvector` document + facet cache |
+| `media` | `media.uploaded`, `media.deleted` | Registers the Cloudinary asset, persists metadata (width/height, blur-placeholder URL), calls `destroy` on delete |
+| `search` | `product.*`, `inventory.*`, `content.post_published` | Re-indexes the Atlas Search document + facet cache |
 | `analytics` | Order, cart, product-view events | Writes rollup tables that feed the admin dashboard |
 | `audit-log` | **Every** event (wildcard) | Append-only `audit_log` — powers the admin activity feed |
 | `webhooks` | Configurable subset | Outbound HTTP, HMAC-signed, exponential backoff |
@@ -324,8 +334,8 @@ Classes in `src/<domain>/events/`, all extending a `DomainEvent` base carrying `
 
 - **`nestjs-cls`** — AsyncLocalStorage request context (`userId`, `correlationId`, role). Every command, event, and outbox row carries the correlation id, so one trace spans HTTP → command → event → queue job → email.
 - **`nestjs-pino`** — structured JSON logs keyed on that correlation id.
-- **`@nestjs/schedule`** — outbox sweep, abandoned-cart scan, analytics rollups, sitemap regen, expired-reservation cleanup.
-- **`@nestjs/terminus`** — health checks for Neon, Redis, Stripe, S3.
+- **`@nestjs/schedule`** — outbox startup sweep (unpublished rows past their threshold), abandoned-cart scan, analytics rollups, sitemap regen. Reservation expiry is a Mongo **TTL index**, not a scheduled job — see Phase 3.
+- **`@nestjs/terminus`** — health checks for MongoDB Atlas, Redis, Stripe, Cloudinary.
 - **Read models** — the admin dashboard and storefront facets query denormalised projection tables maintained by consumers, never the write model.
 
 ## B3. Hosting
@@ -334,22 +344,23 @@ No local Postgres or Redis. Development points at real free-tier infrastructure,
 
 | Concern | Service | Why |
 |---|---|---|
-| Postgres | **Neon** | Branching — a branch per environment, a throwaway branch per risky migration |
+| MongoDB | **MongoDB Atlas** | M0 free tier is a 3-node replica set — required for both multi-document transactions and the change-stream-driven outbox relay |
 | Redis | **Railway Redis**, co-located with the backend | BullMQ holds blocking connections (`BRPOPLPUSH`) and polls continuously; per-command serverless Redis pricing burns quota fast. Upstash works if preferred — set `maxRetriesPerRequest: null`, `enableReadyCheck: false` |
 | Backend API | **Railway** (Render/Fly equivalent) | Must be a **persistent container** — the outbox relay, BullMQ workers, and SSE streams all need long-lived processes. Vercel/Lambda cannot host this backend |
 | Workers | Second Railway service, same image, `ROLE=worker` | API and consumers scale independently; a stuck image job can't stall HTTP traffic |
-| Object storage | **S3 + CloudFront** | Private bucket, CDN-fronted, CORS locked to our origins |
+| Media storage | **Cloudinary** | Signed direct uploads, URL-based transformations, CDN included — no separate CDN service to wire up |
 | Frontend SSR | **Railway/Render alongside the backend** | `frontend/src/server.ts` is already an Express 5 app — `npm run serve:ssr:3legant` deploys as-is |
 | Email | **Resend** | Generous free tier, simple SDK |
 | Errors | **Sentry** + Railway logs | |
 
-### Neon gotchas — handle in Phase 1, not on deploy day
+### Atlas gotchas — handle in Phase 1, not on deploy day
 
-1. **Two connection strings.** The app uses the **pooled** host (`…-pooler.…`); **migrations must use the direct host** — PgBouncer in transaction mode breaks the session state DDL and advisory locks rely on. Wrong way round produces migrations that appear to hang.
-2. **SSL is mandatory** — `?sslmode=require` plus `ssl: { rejectUnauthorized: true }`.
-3. **Scale-to-zero cold starts** — raise `connectTimeoutMS`; don't let a health check read a cold start as an outage. The outbox poll keeps the branch permanently awake; that's the trade for reliable delivery. To let it sleep, switch to `LISTEN/NOTIFY`, which **requires the direct connection**.
-4. **Modest pool size** (10–20) — serverless Postgres punishes large idle pools; let the pooler multiplex.
-5. **Branches as environments** — `main` = production, `dev` = day-to-day, throwaway branches to rehearse destructive migrations. Copy-on-write, so this is nearly free.
+1. **Replica set is mandatory, not a preference.** Multi-document transactions and change streams both require one. Atlas gives every tier, including free M0, a 3-node replica set; a local standalone `mongod` supports neither, so the outbox relay and any transactional command handler will fail against it.
+2. **Connection string** — `retryWrites=true&w=majority` on the single Atlas SRV URI. There's no pooled/direct split to get backwards the way Neon had — one connection string, one code path.
+3. **IP allowlist** — Atlas blocks all connections by default. Railway's egress IPs aren't static on the lower tiers, so either allowlist `0.0.0.0/0` behind a strong, unique credential, or move to VPC peering once on a paid tier. Settle this in Phase 1; it's the kind of thing that blocks deploy day if left late.
+4. **M0 limits** — 512MB storage, 500 connections, shared CPU. Comfortable through Phase 5; revisit before seeding heavy media metadata or analytics rollups.
+5. **No branching.** Neon's branch-per-environment/PR model has no Atlas equivalent on free tiers. Use separate *databases* within one cluster for dev/test, and a separate cluster for production. Preview-environment-per-PR gets materially worse as a result — see Open items.
+6. **Atlas Search indexes are provisioned separately.** They're defined through the Atlas API or UI, not in application code, so they don't come along for free with a Mongoose schema — budget a provisioning step in Phase 3.
 
 ## B4. Email & notifications
 
@@ -435,18 +446,18 @@ The infrastructure lands in **Phase 1** alongside auth — `MailProvider`, the M
 **Dependencies**
 
 ```
-@nestjs/config @nestjs/typeorm typeorm pg @nestjs/cqrs @nestjs/bullmq bullmq ioredis
+@nestjs/config @nestjs/mongoose mongoose @nestjs/cqrs @nestjs/bullmq bullmq ioredis
 @nestjs/schedule @nestjs/jwt @nestjs/passport passport passport-jwt bcrypt
 class-validator class-transformer nestjs-cls nestjs-pino pino-http @nestjs/terminus
-@nestjs/throttler helmet slugify @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
-sharp blurhash file-type stripe resend mjml handlebars html-to-text
+@nestjs/throttler helmet slugify cloudinary
+file-type stripe resend mjml handlebars html-to-text
 ```
 
-> `sharp` ships prebuilt per-platform binaries — pin the version and make sure the deploy image matches the dev platform. A Windows-built `node_modules` copied into a Linux container fails at require time.
+Dev-only: `migrate-mongo` — Mongoose has no migration framework of its own, so this covers data backfills that can't wait for application code to roll out.
 
 **`backend/src/main.ts`** — add the global `ValidationPipe` (`whitelist`, `forbidNonWhitelisted`, `transform`) that `backend/AGENTS.md` mandates and that is currently missing, plus `enableCors()`, `helmet()`, a `/api/v1` prefix, and `rawBody: true` (Stripe signature verification needs the unparsed body). Keep the existing Swagger setup; add bearer auth to it.
 
-**`backend/src/app.module.ts`** — `ConfigModule.forRoot({ isGlobal: true })` with Joi schema validation, `TypeOrmModule.forRootAsync` reading `DATABASE_URL` via `ConfigService.getOrThrow` (same async-factory shape as `Homework/Homework 24/src/app.module.ts`), `BullModule.forRootAsync`, `CqrsModule`, `ClsModule`, `ScheduleModule`.
+**`backend/src/app.module.ts`** — `ConfigModule.forRoot({ isGlobal: true })` with Joi schema validation, `MongooseModule.forRootAsync` reading `MONGODB_URI` via `ConfigService.getOrThrow` (same async-factory shape as `Homework/Homework 24/src/app.module.ts`), `BullModule.forRootAsync`, `CqrsModule`, `ClsModule`, `ScheduleModule`.
 
 **`backend/src/core/`** — the event infrastructure, written **before** any feature module:
 
@@ -454,11 +465,12 @@ sharp blurhash file-type stripe resend mjml handlebars html-to-text
 core/
 ├── events/domain-event.base.ts
 ├── outbox/
-│   ├── outbox.entity.ts
+│   ├── outbox.schema.ts
 │   ├── outbox.repository.ts
-│   ├── outbox-relay.service.ts     # cron + SKIP LOCKED
+│   ├── outbox-relay.service.ts     # change stream + findOneAndUpdate claim
+│   ├── stream-checkpoint.schema.ts # persisted resume token
 │   └── outbox.publisher.ts
-├── bus/transactional-command.handler.ts   # runInTransaction(manager => …)
+├── bus/transactional-command.handler.ts   # withTransaction(session => …)
 ├── queues/
 │   ├── queue-names.enum.ts
 │   └── base.consumer.ts            # idempotency + retry policy
@@ -467,44 +479,41 @@ core/
 
 **`backend/src/common/`** — reuse the Homework 24 layout: `dto/pagination-query.dto.ts` (extended with `sort`/`order`), `filters/all-exceptions.filter.ts`, `interceptors/`, `decorators/{current-user,roles}.decorator.ts`, `guards/{jwt-auth,roles}.guard.ts`, `enums/role.enum.ts` (ADMIN, MANAGER, SUPPORT, EDITOR, CUSTOMER), `pipes/`.
 
-**Schema + first migration** — define all entities up front; retrofitting TypeORM migrations is painful.
+**Schema definition** — define all ~40 models up front for coherence. Mongo is schema-on-read and Mongoose has no migration framework, so this is no longer about avoiding a painful retrofit the way TypeORM migrations were — it's about keeping the domain model consistent from day one. `migrate-mongo` covers data backfills only, not schema changes. Indexes are declared directly in the schemas (`schema.index(...)`) and need a deliberate review before Phase 3 — Mongo won't warn about a missing index the way a slow SQL query plan would.
 
-`User` · `Address` · `Category` · `Product` · `ProductVariant` · `ProductImage` · `InventoryItem` · `InventoryReservation` · `StockAdjustment` · `Review` · `Cart` · `CartItem` · `Order` · `OrderItem` · `Shipment` · `Return` · `ReturnItem` · `Payment` · `Refund` · `Coupon` · `CouponRedemption` · `GiftCard` · `ShippingZone` · `ShippingRate` · `TaxRate` · `WishlistItem` · `BackInStockRequest` · `Post` · `PostCategory` · `Tag` · `Page` · `Media` · `ContactMessage` · `NewsletterSubscriber` · `EmailMessage` · `EmailSuppression` · `NotificationPreference` · `ChatSession` · `ChatMessage` · `OutboxEvent` · `AuditLog` · analytics rollup projections
+`User` · `Address` · `Category` · `Product` · `ProductVariant` · `ProductImage` · `InventoryItem` · `InventoryReservation` · `StockAdjustment` · `Review` · `Cart` · `CartItem` · `Order` · `OrderItem` · `Shipment` · `Return` · `ReturnItem` · `Payment` · `Refund` · `Coupon` · `CouponRedemption` · `GiftCard` · `ShippingZone` · `ShippingRate` · `TaxRate` · `WishlistItem` · `BackInStockRequest` · `Post` · `PostCategory` · `Tag` · `Page` · `Media` · `ContactMessage` · `NewsletterSubscriber` · `EmailMessage` · `EmailSuppression` · `NotificationPreference` · `ChatSession` · `ChatMessage` · `OutboxEvent` · `StreamCheckpoint` · `AuditLog` · analytics rollup projections
 
 **`.env.example`**
 
 ```
-DATABASE_URL=            # Neon POOLED  — runtime
-DIRECT_DATABASE_URL=     # Neon DIRECT  — migrations only
+MONGODB_URI=               # Atlas SRV string, retryWrites=true&w=majority
 REDIS_URL=
-ROLE=all                 # api | worker | all
+ROLE=all                   # api | worker | all
 JWT_SECRET=
 JWT_REFRESH_SECRET=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-S3_REGION=
-S3_BUCKET=
-S3_ACCESS_KEY_ID=
-S3_SECRET_ACCESS_KEY=
-S3_PUBLIC_BASE_URL=      # CloudFront origin
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+CLOUDINARY_UPLOAD_PRESET=  # signed preset for direct browser uploads
+CLOUDINARY_WEBHOOK_SECRET=
 
-MAIL_PROVIDER=console    # console | resend | noop
+MAIL_PROVIDER=console      # console | resend | noop
 RESEND_API_KEY=
 MAIL_FROM=orders@mail.<domain>
 MAIL_FROM_NAME=3legant Golf
 MAIL_REPLY_TO=
-MAIL_WEBHOOK_SECRET=     # Resend webhook signature
-MAIL_DEV_REDIRECT=       # non-prod: every recipient rewritten to this
-MAIL_DEV_ALLOWLIST=      # comma-separated addresses exempt from the redirect
-MAIL_ADMIN_RECIPIENTS=   # who gets the Ops-category mail
+MAIL_WEBHOOK_SECRET=       # Resend webhook signature
+MAIL_DEV_REDIRECT=         # non-prod: every recipient rewritten to this
+MAIL_DEV_ALLOWLIST=        # comma-separated addresses exempt from the redirect
+MAIL_ADMIN_RECIPIENTS=     # who gets the Ops-category mail
 
-ANTHROPIC_API_KEY=
+GEMINI_API_KEY=
 PORT=3000
 CORS_ORIGIN=http://localhost:4200
 APP_URL=
 ```
-
-> **Two data sources.** `data-source.ts` (the TypeORM CLI entry used by `migration:generate` / `migration:run`) reads `DIRECT_DATABASE_URL`; the runtime `TypeOrmModule.forRootAsync` reads `DATABASE_URL`. Getting this backwards produces migrations that appear to hang — comment it in both files.
 
 **`auth/` module** — register, verify email, login, refresh, logout, forgot/reset password, `/me`. Stateless Bearer JWT + rotating refresh tokens; `JwtAuthGuard` sets `req.user` and the CLS context. Same client contract as Project-1: token in `localStorage`, client never sends a user id. Emits `user.registered` → verification email.
 
@@ -522,39 +531,39 @@ APP_URL=
 
 ## Phase 2 — Media service · MVP
 
-Built early because catalog, blog, reviews, and avatars all depend on it — and because owning the pipeline is the clearest demonstration of the async-consumer half of the architecture.
+Built early because catalog, blog, reviews, and avatars all depend on it. Cloudinary collapses most of what would have been a custom pipeline, so this phase is no longer the architecture's clearest demonstration of the async-consumer half — that role moves to the `notifications`, `search`, `analytics`, and `audit-log` consumers, which are untouched by this swap.
 
-**Storage abstraction** — one `StorageProvider` interface (`getUploadUrl`, `getObject`, `putObject`, `deleteObjects`, `publicUrl`) with a single `S3StorageProvider` on `@aws-sdk/client-s3`. Because the SDK speaks S3 to any compatible endpoint, switching vendors is an `.env` change: leave `S3_ENDPOINT` unset for AWS, or set it plus `S3_FORCE_PATH_STYLE=true` for Cloudflare R2 / Backblaze B2.
+**Storage abstraction** — one `StorageProvider` interface (`getUploadSignature`, `destroy`, `url(publicId, transform)`) with a `CloudinaryStorageProvider`. The interface exists for the same reason it always did — swappability — even though there's currently one implementation behind it.
 
-Two buckets — `golf-media-dev` and `golf-media-prod` — same code, separated by IAM policy. Dev hits real S3 exactly as production does, so signature, CORS, and cache-header bugs surface while building rather than on deploy day.
+Two Cloudinary folders — `dev/` and `prod/` — same code, separated by folder prefix and API credentials. Dev hits real Cloudinary exactly as production does, so signature and delivery-URL bugs surface while building rather than on deploy day.
 
-**Upload flow — bytes never touch Nest.** The browser requests a presigned `PUT` (short TTL, content-type and content-length locked into the signature), uploads straight to S3, then calls back to register the object. The backend validates the declared MIME against the real magic bytes with `file-type` and deletes anything that lied. Keys are content-addressed: `products/{uuid}/original.{ext}`.
+**Upload flow — bytes never touch Nest.** The backend generates a signed upload (short TTL, folder and resource-type locked into the signature), the browser `POST`s the file straight to Cloudinary, then calls back with the returned `public_id` and Cloudinary's own detected format/dimensions to register the asset. The backend cross-checks the declared MIME against Cloudinary's detected `resource_type`/`format` and against real magic bytes via `file-type`, and calls `destroy` on anything that lied. Assets are content-addressed via the `public_id`: `products/{uuid}/original`.
 
-**Processing pipeline** — `media.uploaded` → the `media` consumer streams the original and with `sharp`:
+**Transformations are URL parameters, not a pipeline.** There's no `media` consumer doing `sharp` work anymore — Cloudinary serves every derivative on demand from one stored original, driven entirely by URL transformation strings:
 
-- generates a responsive ladder (320 / 640 / 960 / 1440 / 2048 wide) in **WebP and AVIF**, plus a JPEG fallback
-- computes a **blurhash** for the LQIP placeholder
-- extracts intrinsic width/height (fed to `NgOptimizedImage` so it reserves layout and avoids CLS)
-- **strips EXIF** — customer review photos carry GPS data; this is a privacy requirement, not a nicety
-- writes derivatives to `products/{uuid}/{width}.{fmt}` and emits `media.variants_generated`
+- `f_auto,q_auto` negotiates format (WebP/AVIF/JPEG) and quality per requesting browser — no responsive ladder to generate or store
+- `w_640` (or any width) requests a specific size on demand, so `NgOptimizedImage` `srcset` entries are just URL variants, not pre-generated files
+- a low-quality placeholder is a URL too — `e_blur:1000,q_1,w_100` — replacing the planned blurhash computation
+- **EXIF is stripped by default** by Cloudinary on delivery — customer review photos carry GPS data, and this privacy requirement is satisfied without any code of ours
+- Cloudinary returns `width`/`height` on upload; persist those on the `Media` doc so `NgOptimizedImage` can reserve layout and avoid CLS without a round-trip to compute them
 
-Until that event lands the UI shows the blurhash — an honest use of eventual consistency rather than blocking the upload response.
+**The `media` consumer shrinks accordingly** — for `media.uploaded` it registers the asset and persists metadata (including the width/height Cloudinary returned); there's no `media.variants_generated` event because there's nothing left to generate. Cloudinary's `notification_url` webhook is a genuine eventing hook worth wiring if async processing (e.g. moderation) is ever added.
 
-**Deletion** is soft-then-hard: the `Media` row is marked deleted immediately, `media.deleted` goes on the queue, and the consumer issues a batched `DeleteObjects` covering the original and every derivative. A nightly cron reconciles both directions — bucket keys with no `Media` row, and `Media` rows whose keys 404 — and reports orphans to the admin.
+**Deletion** is soft-then-hard: the `Media` row is marked deleted immediately, `media.deleted` goes on the queue, and the consumer calls `destroy` on the `public_id` — a single call, since Cloudinary regenerates every transformed variant on demand rather than storing them as separate objects to clean up. A nightly cron reconciles both directions — Cloudinary assets with no `Media` row, and `Media` rows whose asset 404s — and reports orphans to the admin.
 
-**Serving** — public bucket behind CloudFront with long-lived immutable cache headers, since keys are content-addressed. Private objects (invoices, data exports) use short-lived presigned `GET`s.
+**Serving** — Cloudinary's own CDN fronts every delivery URL; no separate CloudFront distribution to provision or invalidate. Private assets (invoices, data exports) use Cloudinary's signed-URL delivery mode with a short TTL instead of a public delivery type.
 
-**Frontend `shared/ui/media/`** — dropzone with drag-drop and paste, direct-to-bucket upload with real `PUT` progress, client-side crop, a **required alt-text field** (accessibility is graded), reorderable gallery, and an admin media-library browser with search, usage counts, and bulk delete.
+**Frontend `shared/ui/media/`** — dropzone with drag-drop and paste, direct-to-Cloudinary upload with real upload progress, client-side crop, a **required alt-text field** (accessibility is graded), reorderable gallery, and an admin media-library browser with search, usage counts, and bulk delete.
 
 ## Phase 3 — Catalog · MVP
 
 Modules `products/`, `categories/`, `reviews/`, `inventory/`, `search/`.
 
-Commands `CreateProduct`, `UpdateProduct`, `PublishProduct`, `ArchiveProduct`, `AdjustStock`, `SubmitReview`, `ModerateReview` — each emitting its domain event via the outbox. Category tree via TypeORM materialized-path with drag-reorder.
+Commands `CreateProduct`, `UpdateProduct`, `PublishProduct`, `ArchiveProduct`, `AdjustStock`, `SubmitReview`, `ModerateReview` — each emitting its domain event via the outbox. Category tree via a materialized-path field with drag-reorder; `$graphLookup` is the Mongo-native alternative for recursive reads if the materialized path ever falls short.
 
-**Search behind an interface** — ship Postgres full-text search (`tsvector` column + GIN index, weighted title > brand > description > tags) maintained by the `search` consumer. Keep `SearchProvider` abstract so Meilisearch can drop in later without touching callers. Typeahead endpoint, faceted filters, price histogram, sort by price / newest / rating / popularity.
+**Search behind an interface** — ship **Atlas Search** (the `$search` aggregation stage, Lucene-backed), weighted title > brand > description > tags, maintained by the `search` consumer re-indexing on `product.*` / `inventory.*` / `content.post_published`. Atlas Search indexes are provisioned through the Atlas API or UI, not the Mongoose schema — budget that as its own setup step, separate from the query code. Keep `SearchProvider` abstract so Meilisearch can still drop in later without touching callers — Atlas Search buys fuzzy matching, autocomplete, and faceting essentially for free, which the Postgres plan would have hand-rolled. Typeahead endpoint, faceted filters, price histogram, sort by price / newest / rating / popularity.
 
-**Inventory** — per-variant stock, reservations with TTL, an adjustment ledger with reason codes, `low_stock_reached` → admin alert, `back_in_stock` → notify everyone on `BackInStockRequest`.
+**Inventory** — per-variant stock, reservations expired via a **TTL index** rather than a cron sweep (a cleaner fit than the polling job the Postgres plan needed), an adjustment ledger with reason codes, `low_stock_reached` → admin alert, `back_in_stock` → notify everyone on `BackInStockRequest`. Reservation creation and stock decrement both run inside a Mongo transaction.
 
 **Reviews** — verified-purchase flag (checks `order.paid` history), photo attachments via Phase 2, moderation queue, admin replies, aggregate rating maintained by a consumer rather than recomputed per request.
 
@@ -614,13 +623,16 @@ Blog list + post + category + tag + author (`52:4112`, `54:5208`), comments with
 
 ## Phase 8 — AI shopping assistant
 
-**Backend `assistant/`** — add `@anthropic-ai/sdk`. Model **`claude-opus-5`** with adaptive thinking (`thinking: { type: 'adaptive' }`) and `output_config: { effort: 'medium' }`.
+**Backend `assistant/`** — add `@google/genai` (the current unified Google SDK; the older `@google/generative-ai` is deprecated, don't reach for it). Model **`gemini-2.5-pro`**, or `gemini-2.5-flash` if cost matters more than reasoning depth, with `thinkingConfig: { thinkingBudget: ... }` in place of adaptive-thinking effort levels.
 
-- Drive the loop with the SDK tool runner (`client.beta.messages.toolRunner`, tools defined via `betaTool` with raw JSON Schema — no Zod dependency needed). Its per-turn hooks provide exactly the approval gating the cart tools require. Stream to the browser over **SSE** (`@Sse()` in Nest) so a long turn never trips an HTTP timeout.
+> ⚠️ Verify the `@google/genai` SDK surface against current Google documentation at implementation time rather than trusting the specifics below — this API has moved quickly and these details are the most likely thing here to be stale. The **`source-driven-development`** skill exists for exactly this.
+
+- **The agent loop is ours to write.** Gemini `functionDeclarations` replace Anthropic's `betaTool` + raw JSON Schema — the eight tools below are otherwise unchanged. But Gemini has no equivalent to the Claude SDK's `client.beta.messages.toolRunner` and its per-turn approval-gating hooks, which is what the cart-mutation confirmation flow leaned on. That approval gate becomes explicit application code in our own loop: intercept any mutating tool call before execution, return a "pending confirmation" result instead of running it, and only dispatch the command once the user approves. This is the single largest behavioural change in the swap.
+- Stream to the browser over **SSE** (`@Sse()` in Nest); Gemini's `generateContentStream` maps onto that the same way Anthropic's streaming did — unchanged at the transport layer.
 - **Tools:** `search_products`, `get_product`, `compare_products`, `get_categories`, `check_stock`, `add_to_cart`, `update_cart_item`, `apply_coupon`.
-- **Security invariant:** every tool resolves the user/session id from the CLS request context, **never** from model input — the model must have no way to address another user's cart. Tool handlers dispatch through the same CommandBus as the HTTP layer, so assistant-driven mutations emit identical domain events and land in the audit log tagged with their source.
+- **Security invariant, provider-agnostic and unchanged:** every tool resolves the user/session id from the CLS request context, **never** from model input — the model must have no way to address another user's cart. Tool handlers dispatch through the same CommandBus as the HTTP layer, so assistant-driven mutations emit identical domain events and land in the audit log tagged with their source.
 - Cart-mutating tools return a "pending confirmation" result and the UI renders an approve/decline chip; read-only tools execute immediately.
-- System prompt carries the golf vocabulary, the live category/attribute taxonomy, and a scope-discipline instruction. Cache it with `cache_control: { type: 'ephemeral' }` on the last system block, and keep the tool list deterministically ordered so the prefix stays stable across turns.
+- System prompt carries the golf vocabulary, the live category/attribute taxonomy, and a scope-discipline instruction. Cache it with Gemini context caching (`caches.create()`, an explicit TTL, subject to a minimum-token threshold) rather than Anthropic's `cache_control: ephemeral` — different enough that "keep the tool list deterministically ordered so the prefix stays stable" needs re-verifying against how Gemini's cache actually keys, not assumed to carry over unchanged.
 - Persist turns to `ChatSession` / `ChatMessage` so the panel survives a reload.
 
 **Frontend `features/assistant/`** — navbar launcher, slide-over panel, streamed markdown, inline product cards rendered from `search_products` results linking to the PDP, confirmation chips for cart actions.
@@ -637,7 +649,7 @@ Runbook covers: "an outbox row is stuck", "a consumer is failing", and "a custom
 
 Full mobile pass across all 23 screens using the mobile node IDs, AXE / WCAG-AA audit (mandated by `frontend/AGENTS.md`), `NgOptimizedImage` everywhere, SSR meta + JSON-LD product / breadcrumb / article schema, Core Web Vitals pass, and a **deliberate** raise of the `angular.json` 500 kB warn / 1 MB error budget — a design-heavy build will exceed it, and that should be a decision rather than a deploy-day surprise.
 
-**Deploy** per B3: Neon `main`, Railway for API + worker + Redis + SSR services, S3 + CloudFront for media. GitHub Actions runs lint/test/build on PRs and applies migrations against `DIRECT_DATABASE_URL` on merge to `main`, with a Neon branch per PR so preview environments get their own database.
+**Deploy** per B3: MongoDB Atlas cluster, Railway for API + worker + Redis + SSR services, Cloudinary for media. GitHub Actions runs lint/test/build on PRs; schema changes ship as application code (Mongoose is schema-on-read), with `migrate-mongo` handling any data backfill on merge to `main`. Preview-environment-per-PR loses the Neon-branch-per-PR database isolation it would have had — see Open items for the accepted trade-off.
 
 ---
 
@@ -650,7 +662,7 @@ Follow the conventions already configured rather than inventing new ones: coloca
 Priority coverage, in order:
 
 1. The **checkout saga's compensating path** — payment fails → inventory released → order cancelled
-2. Outbox relay idempotency under concurrent relays
+2. **The outbox relay resumes correctly from its persisted resume token after a restart** — no events dropped, none duplicated. This is the highest-risk case now that delivery is change-stream-driven rather than polled; concurrent-relay double-publish (via the `findOneAndUpdate` claim) is worth covering alongside it
 3. **Email idempotency** — replaying the same `order.paid` event sends exactly one receipt (unique `dedupe_key`)
 4. **Suppression is honoured** — a suppressed address is never sent to, whatever the trigger
 5. **The dev safety gate** — with `NODE_ENV !== 'production'`, a send to a non-allowlisted address is rewritten to `MAIL_DEV_REDIRECT`. Test this one properly; the failure mode is mailing real strangers
@@ -660,16 +672,18 @@ Priority coverage, in order:
 9. RBAC on every admin route
 10. Per-user scoping of every assistant tool
 
+**CI needs a replica set.** Transaction and change-stream tests fail against a standalone Mongo — point CI at a dedicated Atlas test database, or run `mongodb-memory-server` in replica-set mode locally and in CI.
+
 ## Verification
 
-1. Create a fresh Neon branch, run `npm run typeorm migration:run` against `DIRECT_DATABASE_URL`, confirm it applies cleanly from empty; the seed script populates ~80 products and images. Rehearse **every** migration on a throwaway branch — that's what branching is for.
-2. `cd backend && npm run start:dev` → Swagger at `/api` lists every module; `/health` reports Neon, Redis, Stripe, and S3 green (allow for a Neon cold start on the first hit).
+1. Point at a fresh Atlas database (a new database within the dev cluster, not a new cluster), run the seed script, confirm it populates ~80 products and images cleanly against empty collections. There's no migration-rehearsal step to substitute for Neon branching — Mongoose is schema-on-read, so this step is just seeding, not schema application.
+2. `cd backend && npm run start:dev` → Swagger at `/api` lists every module; `/health` reports MongoDB Atlas, Redis, Stripe, and Cloudinary green.
 3. **Event trace** — place an order and confirm one correlation id links HTTP request → `OrderPlaced` command → outbox row → BullMQ job → sent email → audit-log entry. This single check proves the architecture works.
 4. **Compensation** — force a Stripe test decline; confirm inventory released, order `cancelled`, no confirmation email sent.
 5. `cd frontend && npm start` → walk `/`, `/shop`, `/product/:slug`, `/cart`, `/checkout`, `/account`, `/blog`, `/admin` against real API data.
 6. `npm run build && npm run serve:ssr:3legant` → SSR renders, no hydration mismatch warnings, per-route render modes took effect.
 7. **Stripe end-to-end** — test card → webhook → order PAID → stock decremented exactly once. Replay the webhook to prove idempotency.
-8. **Media** — upload a photo; confirm bytes went browser→S3 directly (nothing large in the Nest request log), blurhash renders first, the WebP/AVIF ladder appears once `media.variants_generated` lands, EXIF is stripped, and deleting removes the original *and* every derivative key.
+8. **Media** — upload a photo; confirm bytes went browser→Cloudinary directly (nothing large in the Nest request log), the blur-placeholder URL renders first, `f_auto` serves WebP/AVIF depending on the requesting browser, EXIF is absent from the delivered asset, and deleting calls `destroy` on the asset (no separate derivative keys to clean up — they were never stored).
 9. **Email** — `npm run mail:preview` renders every template; check the order-confirmation in Gmail, Outlook, and on mobile (Outlook is where MJML earns its keep). Register a user and confirm the verify email arrives with a working link, a plain-text part, and an `EmailMessage` row. Replay `order.paid` and confirm exactly one receipt. Add an address to `EmailSuppression` and confirm the next send skips it. With `NODE_ENV=development`, send to a non-allowlisted address and confirm it lands at `MAIL_DEV_REDIRECT` instead. Check SPF/DKIM/DMARC pass on a real delivery before going live.
 10. **Assistant** — "show me waterproof golf gloves under $30 for a left-handed player" streams a tool call with inline product cards; "add the second one to my cart" surfaces a confirmation chip before anything mutates; the resulting event appears in the admin audit log tagged assistant-sourced.
 11. **Design fidelity** — cross-check three built screens against their Figma nodes with `get_screenshot` at 1440px and 375px; run AXE on Home, Shop, PDP, Checkout.
@@ -687,3 +701,8 @@ Priority coverage, in order:
 | **Sending domain** | B4 assumes `mail.<domain>`. Pick the domain and publish SPF/DKIM/DMARC early — DNS propagation and Resend verification are the kind of thing that blocks a launch day |
 | **Product Card hover state** | Not in the Figma file — no hover/focus/active states exist there for any component. Implemented as image zoom (`scale(1.05)`) + a Quick Add button revealing over the image bottom edge. A deliberate addition, not extracted from a frame — revisit if a real hover spec ever surfaces |
 | **Product Card price row gap** | A5 says the price row has "12px gap" but also says the content block's internal gap is 4px uniformly — ambiguous which one wins for the price row specifically. Shipped using price-tag's existing 8px default; unresolved |
+| **Atlas M0 ceiling** | 512MB storage / 500 connections — define the upgrade trigger before it's hit |
+| **Cloudinary free tier** | 25 monthly credits — define the upgrade trigger |
+| **Gemini SDK surface** | `@google/genai` is moving fast — verify against live docs before Phase 8 lands, don't trust Phase 8's specifics here as final |
+| **Atlas Search index provisioning** | UI, API, or IaC (Terraform/Atlas CLI)? Not yet decided |
+| **Preview-environment-per-PR** | Materially worse without Neon's branch-per-PR database isolation — accept the loss, or find an Atlas-native equivalent |

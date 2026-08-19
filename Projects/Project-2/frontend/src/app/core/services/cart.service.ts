@@ -1,15 +1,13 @@
 import { Service, afterNextRender, computed, effect, signal } from '@angular/core';
-
 import type { CartItem } from '@/app/core/models/cart.model';
 
 const STORAGE_KEY = 'cart';
 
 /**
  * Plain signal store, not NgRx, per AGENTS.md. Persists to localStorage
- * using the same read-after-render / guarded-write pattern established
- * by notification-bar: SSR can't know a client's stored cart, so the
- * initial read only happens client-side, and every write is guarded so
- * it's a no-op server-side.
+ * using a read-after-render / guarded-write pattern: SSR can't know a
+ * client's stored cart, so the initial read only happens client-side,
+ * and every write is guarded so it's a no-op server-side.
  */
 @Service()
 export class CartService {

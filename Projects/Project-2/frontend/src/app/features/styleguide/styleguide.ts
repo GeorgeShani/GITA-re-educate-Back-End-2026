@@ -11,7 +11,6 @@ import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { AccordionGroup } from '@/app/shared/ui/accordion-group';
 import { AccordionPanel } from '@/app/shared/ui/accordion-panel';
 import { ActionButton } from '@/app/shared/ui/action-button';
-import { BreadcrumbBar } from '@/app/shared/ui/breadcrumb-bar';
 import { BreadcrumbTrail, type BreadcrumbItem } from '@/app/shared/ui/breadcrumb-trail';
 import { CarouselDots } from '@/app/shared/ui/carousel-dots';
 import { CarouselTrack } from '@/app/shared/ui/carousel-track';
@@ -22,7 +21,6 @@ import { IconGlyph, type IconName } from '@/app/shared/ui/icon-glyph';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { ModalDialog } from '@/app/shared/ui/modal-dialog';
 import { NavLink } from '@/app/shared/ui/nav-link';
-import { NotificationBar } from '@/app/shared/ui/notification-bar';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
@@ -57,7 +55,6 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
     AccordionGroup,
     AccordionPanel,
     ActionButton,
-    BreadcrumbBar,
     BreadcrumbTrail,
     CarouselDots,
     CarouselTrack,
@@ -68,7 +65,6 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
     ImagePlaceholder,
     ModalDialog,
     NavLink,
-    NotificationBar,
     PageContainer,
     PageSection,
     PaginationNav,
@@ -388,7 +384,7 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
         <p>
           Backed by the real ProductService (MockProductService fixtures) and the real
           WishlistService/CartService — the heart toggle and Quick Add here are genuine app
-          state, not local demo signals. Quick Add actually lands in the cart-drawer above.
+          state, not local demo signals. Quick Add writes to the real CartService cart.
         </p>
         <div class="product-card-demo-grid">
           @for (product of demoProducts(); track product.slug) {
@@ -403,35 +399,12 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
       </section>
 
       <section class="demo-section">
-        <h2>Layout Shell</h2>
-        <p>
-          site-header, site-footer, skip-link, mobile-menu, and cart-drawer are the real page
-          chrome around this very page, not re-demoed here — a second sticky header would fight
-          the real one for the same scroll position. Try the menu and cart icons in the header
-          above; they open the real mobile-menu and cart-drawer end to end.
-        </p>
-      </section>
-
-      <section class="demo-section">
         <h2>Page Container &amp; Section</h2>
         <div class="page-demo-frame">
           <page-container class="page-demo-container">
             <page-section spacing="sm">1120px max-width, responsive page padding.</page-section>
           </page-container>
         </div>
-      </section>
-
-      <section class="demo-section">
-        <h2>Notification Bar</h2>
-        <p>Dismiss state persists to localStorage — reload to confirm it stays dismissed.</p>
-        <notification-bar storageKey="styleguide-notification-demo">
-          Free shipping on orders over $75.
-        </notification-bar>
-      </section>
-
-      <section class="demo-section">
-        <h2>Breadcrumb Bar</h2>
-        <breadcrumb-bar [items]="breadcrumbItems" />
       </section>
 
       <section class="motion-demo">

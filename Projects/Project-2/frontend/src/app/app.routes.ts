@@ -2,12 +2,11 @@ import { Routes } from '@angular/router';
 
 import { devOnlyGuard } from './core/guards/dev-only.guard';
 
+// The '' home route was demolished along with the navbar/footer/homepage
+// composition (see the reset-and-re-platform plan) — no real page exists
+// to serve at '/' yet. /styleguide stays as the only route until the
+// shell is rebuilt.
 export const routes: Routes = [
-  {
-    path: '',
-    loadComponent: () => import('./features/home/home').then((m) => m.HomePage),
-    title: '3legant Golf — Golf Accessories & Gear',
-  },
   {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
