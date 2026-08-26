@@ -3,7 +3,11 @@ import { join } from 'node:path';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import type { MailMessage, MailProvider, MailSendResult } from './mail-provider.interface';
+import type {
+  MailMessage,
+  MailProvider,
+  MailSendResult,
+} from './mail-provider.interface';
 
 // Dev default (MAIL_PROVIDER=console) — no network call, no Resend account
 // needed. Writes rendered HTML to dist/mail-out/ and logs the plain-text
@@ -18,7 +22,9 @@ export class ConsoleMailProvider implements MailProvider {
     const fileName = `${Date.now()}-${message.to.replace(/[^a-z0-9]/gi, '_')}.html`;
     writeFileSync(join(this.outDir, fileName), message.html, 'utf8');
 
-    this.logger.log(`[mail:console] To: ${message.to} | Subject: ${message.subject}`);
+    this.logger.log(
+      `[mail:console] To: ${message.to} | Subject: ${message.subject}`,
+    );
     this.logger.log(`[mail:console] ${message.text}`);
     this.logger.log(`[mail:console] HTML written to dist/mail-out/${fileName}`);
 

@@ -4,7 +4,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
-import type { MailMessage, MailProvider, MailSendResult } from './mail-provider.interface';
+import type {
+  MailMessage,
+  MailProvider,
+  MailSendResult,
+} from './mail-provider.interface';
 
 export const RESEND_CLIENT_TOKEN = Symbol('RESEND_CLIENT');
 
@@ -22,7 +26,8 @@ export class ResendMailProvider implements MailProvider {
 
   async send(message: MailMessage): Promise<MailSendResult> {
     const from = `${this.configService.getOrThrow<string>('MAIL_FROM_NAME')} <${this.configService.getOrThrow<string>('MAIL_FROM')}>`;
-    const replyTo = this.configService.get<string>('MAIL_REPLY_TO') || undefined;
+    const replyTo =
+      this.configService.get<string>('MAIL_REPLY_TO') || undefined;
 
     const { data, error } = await this.client.emails.send({
       from,
@@ -44,7 +49,10 @@ export class ResendMailProvider implements MailProvider {
     return Promise.all(messages.map((message) => this.send(message)));
   }
 
-  verifyWebhook(payload: string, headers: Record<string, string | undefined>): boolean {
+  verifyWebhook(
+    payload: string,
+    headers: Record<string, string | undefined>,
+  ): boolean {
     const secret = this.configService.getOrThrow<string>('MAIL_WEBHOOK_SECRET');
     const svixId = headers['svix-id'];
     const svixTimestamp = headers['svix-timestamp'];
@@ -65,7 +73,10 @@ export class ResendMailProvider implements MailProvider {
       const [, sig] = candidate.split(',');
       if (!sig) return false;
       try {
-        return timingSafeEqual(Buffer.from(sig, 'base64'), Buffer.from(expectedSignature, 'base64'));
+        return timingSafeEqual(
+          Buffer.from(sig, 'base64'),
+          Buffer.from(expectedSignature, 'base64'),
+        );
       } catch {
         return false; // length mismatch -> not a match, not a crash
       }

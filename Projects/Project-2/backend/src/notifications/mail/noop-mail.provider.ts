@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-import type { MailMessage, MailProvider, MailSendResult } from './mail-provider.interface';
+import type {
+  MailMessage,
+  MailProvider,
+  MailSendResult,
+} from './mail-provider.interface';
 
 // MAIL_PROVIDER=noop — for tests. No I/O, no filesystem writes, nothing
 // to assert against except that NotificationsService's own logic (dedupe,

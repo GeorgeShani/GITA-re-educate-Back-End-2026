@@ -19,7 +19,10 @@ export interface MailProvider {
   send(message: MailMessage): Promise<MailSendResult>;
   sendBatch(messages: MailMessage[]): Promise<MailSendResult[]>;
   /** Verifies a provider webhook signature. Throws if the provider can't sign at all (e.g. Console/Noop). */
-  verifyWebhook(payload: string, headers: Record<string, string | undefined>): boolean;
+  verifyWebhook(
+    payload: string,
+    headers: Record<string, string | undefined>,
+  ): boolean;
 }
 
 export const MAIL_PROVIDER_TOKEN = Symbol('MAIL_PROVIDER');
