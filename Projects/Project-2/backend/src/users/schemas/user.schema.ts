@@ -27,6 +27,26 @@ export class User {
   @Prop({ default: false })
   emailVerified!: boolean;
 
+  // Hashes only, never the raw token — same principle as password
+  // storage (S5). The raw token is a one-time secret that only ever
+  // exists client-side and briefly in the outbox event payload that
+  // carries it to the email consumer; a DB leak shouldn't hand out
+  // live verify/reset links.
+  @Prop({ select: false })
+  emailVerificationTokenHash?: string;
+
+  @Prop({ select: false })
+  emailVerificationExpiresAt?: Date;
+
+  @Prop({ select: false })
+  passwordResetTokenHash?: string;
+
+  @Prop({ select: false })
+  passwordResetExpiresAt?: Date;
+
+  @Prop()
+  lastLoginAt?: Date;
+
   @Prop({ trim: true })
   phone?: string;
 

@@ -20,6 +20,8 @@ import { HealthModule } from './health/health.module';
 import { CoreModule } from './core/core.module';
 import { LoggingModule } from './core/logging.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -99,6 +101,8 @@ import { NotificationsModule } from './notifications/notifications.module';
     HealthModule,
     CoreModule,
     NotificationsModule,
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [
