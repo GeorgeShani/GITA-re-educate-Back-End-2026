@@ -39,6 +39,7 @@ import { QueueName } from './queues/queue-names.enum';
     BullModule.registerQueue(
       { name: QueueName.AUDIT_LOG },
       { name: QueueName.NOTIFICATIONS },
+      { name: QueueName.MEDIA },
     ),
   ],
   providers: [

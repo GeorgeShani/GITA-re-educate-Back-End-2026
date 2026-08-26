@@ -28,10 +28,12 @@ export class OutboxPublisher {
   constructor(
     @InjectQueue(QueueName.AUDIT_LOG) auditLogQueue: Queue,
     @InjectQueue(QueueName.NOTIFICATIONS) notificationsQueue: Queue,
+    @InjectQueue(QueueName.MEDIA) mediaQueue: Queue,
   ) {
     this.queues = new Map([
       [QueueName.AUDIT_LOG, auditLogQueue],
       [QueueName.NOTIFICATIONS, notificationsQueue],
+      [QueueName.MEDIA, mediaQueue],
     ]);
   }
 

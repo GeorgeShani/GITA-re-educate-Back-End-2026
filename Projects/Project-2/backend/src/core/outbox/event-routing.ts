@@ -25,6 +25,12 @@ export const EVENT_ROUTES: EventRoute[] = [
   // against these rails"). See notifications.consumer.ts's EMAIL_TEMPLATES.
   { pattern: 'user.registered', queue: QueueName.NOTIFICATIONS },
   { pattern: 'user.password_reset_requested', queue: QueueName.NOTIFICATIONS },
+
+  // S6 — media.uploaded needs no consumer (registration is pure
+  // bookkeeping, done synchronously in RegisterMediaHandler); only
+  // deletion has a real external side effect (Cloudinary destroy()) to
+  // move out of the transaction. See media.consumer.ts.
+  { pattern: 'media.deleted', queue: QueueName.MEDIA },
 ];
 
 export function resolveQueuesForEvent(eventName: string): QueueName[] {

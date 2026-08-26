@@ -22,6 +22,7 @@ import { LoggingModule } from './core/logging.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { AuthModule } from './auth/auth.module';
     NotificationsModule,
     UsersModule,
     AuthModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [
