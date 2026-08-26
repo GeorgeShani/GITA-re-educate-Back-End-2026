@@ -26,6 +26,7 @@ import { MediaModule } from './media/media.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -111,6 +112,7 @@ import { ReviewsModule } from './reviews/reviews.module';
     CatalogModule,
     InventoryModule,
     ReviewsModule,
+    CartModule,
   ],
   controllers: [AppController],
   providers: [

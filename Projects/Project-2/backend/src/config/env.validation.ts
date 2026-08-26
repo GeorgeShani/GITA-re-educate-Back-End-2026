@@ -30,6 +30,10 @@ export const envValidationSchema = Joi.object({
   JWT_EXPIRES_IN: Joi.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('30d'),
 
+  // Signs the guest-cart cookie (S8) — separate from JWT_SECRET so
+  // rotating one doesn't invalidate the other.
+  COOKIE_SECRET: Joi.string().min(16).required(),
+
   STRIPE_SECRET_KEY: optionalString(),
   STRIPE_WEBHOOK_SECRET: optionalString(),
 

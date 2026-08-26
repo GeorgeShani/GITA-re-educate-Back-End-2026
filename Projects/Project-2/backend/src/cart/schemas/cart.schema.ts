@@ -35,8 +35,13 @@ export class Cart {
   @Prop({ index: true, sparse: true })
   guestToken?: string;
 
+  // Types.DocumentArray, not a plain CartItem[] — needed for Mongoose's
+  // subdocument-array methods (.id(), push() casting a plain object,
+  // etc.) that S8's command handlers rely on. Mongoose gives this at
+  // runtime regardless; spelling it out here is what makes TypeScript
+  // agree.
   @Prop({ type: [CartItemSchema], default: [] })
-  items!: CartItem[];
+  items!: Types.DocumentArray<CartItem>;
 
   @Prop({ trim: true, uppercase: true })
   couponCode?: string;

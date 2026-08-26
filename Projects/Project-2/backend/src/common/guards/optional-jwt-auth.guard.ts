@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type {
   AuthenticatedUser,
@@ -11,12 +6,13 @@ import type {
 } from '../interfaces/request-with-user.interface';
 import { extractBearerToken } from '../utils/extract-bearer-token.util';
 
-// Hand-rolled guard, ported from Homework 25/26 rather than passport-jwt
-// (SCOPE.md decision — fewer moving parts, code already understood).
-// Extended with `role` in the verified payload so RolesGuard has
-// something to check downstream.
+// For routes that behave for both guests and authenticated users (S8's
+// cart endpoints) — populates request.user when a valid token is
+// present, but never rejects the request for a missing or invalid one.
+// Unlike JwtAuthGuard, an expired/malformed token here just means the
+// caller is treated as a guest rather than a 401.
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class OptionalJwtAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -24,21 +20,20 @@ export class JwtAuthGuard implements CanActivate {
     const token = extractBearerToken(request);
 
     if (!token) {
-      throw new UnauthorizedException('Missing authentication token');
+      return true;
     }
 
     try {
       const payload = await this.jwtService.verifyAsync<
         AuthenticatedUser & { sub: string }
       >(token);
-
       request.user = {
         userId: payload.sub,
         email: payload.email,
         role: payload.role,
       };
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      // Invalid/expired token on an optional-auth route — proceed as a guest.
     }
 
     return true;
