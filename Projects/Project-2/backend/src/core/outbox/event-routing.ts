@@ -19,6 +19,12 @@ export interface EventRoute {
 // the start.
 export const EVENT_ROUTES: EventRoute[] = [
   { pattern: '*', queue: QueueName.AUDIT_LOG },
+
+  // S4 — only the two events with a shipped template (SCOPE.md Phase 1's
+  // own scope: "two templates... every later phase adds templates
+  // against these rails"). See notifications.consumer.ts's EMAIL_TEMPLATES.
+  { pattern: 'user.registered', queue: QueueName.NOTIFICATIONS },
+  { pattern: 'user.password_reset_requested', queue: QueueName.NOTIFICATIONS },
 ];
 
 export function resolveQueuesForEvent(eventName: string): QueueName[] {

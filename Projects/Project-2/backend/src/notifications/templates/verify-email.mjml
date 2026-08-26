@@ -1,0 +1,47 @@
+<mjml>
+  <mj-head>
+    <mj-title>Verify your email — 3legant Golf</mj-title>
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-text font-size="16px" line-height="26px" color="#343839" />
+    </mj-attributes>
+  </mj-head>
+  <mj-body background-color="#F3F5F7">
+    <mj-section padding="32px 0 16px 0">
+      <mj-column>
+        <mj-text align="center" font-size="20px" font-weight="600" color="#141718">
+          3legant Golf
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section background-color="#FEFEFE" border-radius="8px" padding="40px 32px">
+      <mj-column>
+        <mj-text font-size="24px" font-weight="600" color="#141718" padding-bottom="16px">
+          Verify your email
+        </mj-text>
+        <mj-text padding-bottom="24px">
+          Hi {{firstName}}, thanks for creating an account. Confirm this is your email address to finish setting up your account.
+        </mj-text>
+        <mj-button background-color="#141718" color="#FEFEFE" border-radius="8px" font-weight="500" href="{{{verificationUrl}}}">
+          Verify email
+        </mj-button>
+        <mj-text padding-top="24px" font-size="14px" color="#6C7275">
+          Or paste this link into your browser:<br />
+          <a href="{{{verificationUrl}}}" style="color:#377DFF">{{{verificationUrl}}}</a>
+        </mj-text>
+        <mj-text padding-top="16px" font-size="14px" color="#6C7275">
+          If you didn't create this account, you can safely ignore this email.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <mj-section padding="24px 0">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#6C7275">
+          3legant Golf — 123 Fairway Ave, Suite 400
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

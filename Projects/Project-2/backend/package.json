@@ -17,7 +17,9 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "mail:preview": "ts-node -r tsconfig-paths/register scripts/mail-preview.ts",
+    "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.5",
@@ -36,15 +38,22 @@
     "bullmq": "^6.2.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
+    "cloudinary": "^2.10.1",
+    "handlebars": "^4.7.9",
     "helmet": "^8.3.0",
+    "html-to-text": "^10.0.1",
     "ioredis": "^6.0.0",
     "joi": "^18.2.5",
+    "mjml": "^5.4.0",
     "mongoose": "^9.9.3",
     "nestjs-cls": "^6.2.1",
     "nestjs-pino": "^4.6.1",
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "resend": "^6.24.0",
+    "rxjs": "^7.8.1",
+    "slugify": "^1.6.9",
+    "stripe": "^22.5.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -54,7 +63,9 @@
     "@nestjs/testing": "11.1.28",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.0",
+    "@types/html-to-text": "^9.0.4",
     "@types/jest": "^30.0.0",
+    "@types/mjml": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",

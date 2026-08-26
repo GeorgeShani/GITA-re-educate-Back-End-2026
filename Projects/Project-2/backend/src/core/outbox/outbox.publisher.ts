@@ -25,8 +25,14 @@ export interface OutboxJobData {
 export class OutboxPublisher {
   private readonly queues: Map<QueueName, Queue>;
 
-  constructor(@InjectQueue(QueueName.AUDIT_LOG) auditLogQueue: Queue) {
-    this.queues = new Map([[QueueName.AUDIT_LOG, auditLogQueue]]);
+  constructor(
+    @InjectQueue(QueueName.AUDIT_LOG) auditLogQueue: Queue,
+    @InjectQueue(QueueName.NOTIFICATIONS) notificationsQueue: Queue,
+  ) {
+    this.queues = new Map([
+      [QueueName.AUDIT_LOG, auditLogQueue],
+      [QueueName.NOTIFICATIONS, notificationsQueue],
+    ]);
   }
 
   async publish(event: OutboxEventDocument): Promise<void> {

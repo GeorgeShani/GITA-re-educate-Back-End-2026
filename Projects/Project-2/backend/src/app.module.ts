@@ -19,6 +19,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HealthModule } from './health/health.module';
 import { CoreModule } from './core/core.module';
 import { LoggingModule } from './core/logging.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -97,6 +98,7 @@ import { LoggingModule } from './core/logging.module';
     ScheduleModule.forRoot(),
     HealthModule,
     CoreModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

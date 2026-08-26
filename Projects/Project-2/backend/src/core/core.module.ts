@@ -31,10 +31,12 @@ import { QueueName } from './queues/queue-names.enum';
       { name: StreamCheckpoint.name, schema: StreamCheckpointSchema },
       { name: AuditLogEntry.name, schema: AuditLogEntrySchema },
     ]),
-    // Additional queues (notifications, media, search, analytics,
-    // webhooks) are registered by their own feature module when that
-    // module's consumer ships — see queue-names.enum.ts.
-    BullModule.registerQueue({ name: QueueName.AUDIT_LOG }),
+    // OutboxPublisher needs a Queue binding for every queue it publishes
+    // to, which is why each one is registered here too, not just in its
+    // owning feature module. Additional queues (media, search, analytics,
+    // webhooks) join this list when their own consumer ships — see
+    // queue-names.enum.ts.
+    BullModule.registerQueue({ name: QueueName.AUDIT_LOG }, { name: QueueName.NOTIFICATIONS }),
   ],
   providers: [
     OutboxRepository,
