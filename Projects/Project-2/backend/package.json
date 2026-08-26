@@ -19,7 +19,8 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "mail:preview": "ts-node -r tsconfig-paths/register scripts/mail-preview.ts",
-    "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts"
+    "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts",
+    "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.5",

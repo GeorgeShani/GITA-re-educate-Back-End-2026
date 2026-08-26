@@ -17,7 +17,9 @@ async function main() {
     const { html, text } = await renderer.render(template, variables);
     writeFileSync(join(outDir, `${template}.html`), html, 'utf8');
     writeFileSync(join(outDir, `${template}.txt`), text, 'utf8');
-    console.log(`Rendered "${template}" -> dist/mail-preview/${template}.html (+ .txt)`);
+    console.log(
+      `Rendered "${template}" -> dist/mail-preview/${template}.html (+ .txt)`,
+    );
   }
 }
 

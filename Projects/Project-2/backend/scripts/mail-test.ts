@@ -2,12 +2,14 @@
 // email via Resend, regardless of MAIL_PROVIDER (that env var only
 // controls the running app; this script's whole purpose is a live-send
 // check, so it always talks to Resend directly).
+import { existsSync } from 'node:fs';
+
 import { Resend } from 'resend';
 
 import { TemplateRendererService } from '../src/notifications/template-renderer.service';
 import { MAIL_FIXTURES } from './mail-fixtures';
 
-if (require('node:fs').existsSync('.env')) {
+if (existsSync('.env')) {
   process.loadEnvFile('.env'); // Node 20.6+ built-in, no dotenv dependency needed
 }
 
@@ -21,7 +23,9 @@ async function main() {
 
   const variables = MAIL_FIXTURES[template];
   if (!variables) {
-    console.error(`Unknown template "${template}". Known: ${Object.keys(MAIL_FIXTURES).join(', ')}`);
+    console.error(
+      `Unknown template "${template}". Known: ${Object.keys(MAIL_FIXTURES).join(', ')}`,
+    );
     process.exit(1);
   }
 
