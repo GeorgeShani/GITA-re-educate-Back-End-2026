@@ -23,6 +23,9 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { MediaModule } from './media/media.module';
+import { CatalogModule } from './catalog/catalog.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { ReviewsModule } from './reviews/reviews.module';
 
 @Module({
   imports: [
@@ -105,6 +108,9 @@ import { MediaModule } from './media/media.module';
     UsersModule,
     AuthModule,
     MediaModule,
+    CatalogModule,
+    InventoryModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [

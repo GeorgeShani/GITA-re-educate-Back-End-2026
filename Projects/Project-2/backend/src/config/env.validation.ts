@@ -52,4 +52,11 @@ export const envValidationSchema = Joi.object({
   MAIL_ADMIN_RECIPIENTS: optionalString(),
 
   GEMINI_API_KEY: optionalString(),
+
+  // Admin moderation is Phase 6, out of scope for the storefront
+  // backend (see the plan's "Consequences of excluding admin CRUD") —
+  // without this, submitted reviews would sit `pending` forever with
+  // nothing able to approve them. Defaults false so production behaves
+  // correctly even if this is never set.
+  REVIEWS_AUTO_APPROVE: Joi.boolean().default(false),
 });

@@ -85,6 +85,13 @@ export class Product {
   @Prop({ required: true })
   description!: string;
 
+  // The lowest-weighted field in Atlas Search's title > brand >
+  // description > tags ranking (SCOPE.md Phase 3) — free-text attributes
+  // like "waterproof" or "left-handed" that don't fit description prose
+  // but should still surface a product in search.
+  @Prop({ type: [String], default: [], index: true })
+  tags!: string[];
+
   @Prop({
     type: Types.ObjectId,
     ref: Category.name,
