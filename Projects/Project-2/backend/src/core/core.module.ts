@@ -36,7 +36,10 @@ import { QueueName } from './queues/queue-names.enum';
     // owning feature module. Additional queues (media, search, analytics,
     // webhooks) join this list when their own consumer ships — see
     // queue-names.enum.ts.
-    BullModule.registerQueue({ name: QueueName.AUDIT_LOG }, { name: QueueName.NOTIFICATIONS }),
+    BullModule.registerQueue(
+      { name: QueueName.AUDIT_LOG },
+      { name: QueueName.NOTIFICATIONS },
+    ),
   ],
   providers: [
     OutboxRepository,

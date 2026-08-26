@@ -1,5 +1,18 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
 import { AUTH_THROTTLE } from '../common/constants/throttle.constant';
@@ -18,7 +31,10 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService, private readonly usersService: UsersService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly usersService: UsersService,
+  ) {}
 
   @Throttle(AUTH_THROTTLE)
   @Post('register')
@@ -37,7 +53,9 @@ export class AuthController {
   }
 
   @Post('refresh')
-  @ApiOperation({ summary: 'Exchange a refresh token for a new access + refresh token pair' })
+  @ApiOperation({
+    summary: 'Exchange a refresh token for a new access + refresh token pair',
+  })
   @ApiOkResponse({ type: AuthResponseDto })
   refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponseDto> {
     return this.authService.refresh(dto.refreshToken);
@@ -53,7 +71,10 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @Post('forgot-password')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Request a password reset email — always succeeds, whether or not the address is registered' })
+  @ApiOperation({
+    summary:
+      'Request a password reset email — always succeeds, whether or not the address is registered',
+  })
   async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<void> {
     await this.authService.forgotPassword(dto);
   }
@@ -68,7 +89,9 @@ export class AuthController {
 
   @Post('verify-email')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Confirm an email address using a verification token' })
+  @ApiOperation({
+    summary: 'Confirm an email address using a verification token',
+  })
   async verifyEmail(@Body() dto: VerifyEmailDto): Promise<void> {
     await this.authService.verifyEmail(dto);
   }

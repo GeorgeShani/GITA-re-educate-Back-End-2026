@@ -17,7 +17,11 @@ export class ConsoleMailProvider implements MailProvider {
   private readonly logger = new Logger(ConsoleMailProvider.name);
   private readonly outDir = join(process.cwd(), 'dist', 'mail-out');
 
-  async send(message: MailMessage): Promise<MailSendResult> {
+  // Not async — every step here is synchronous fs/logger work, and
+  // `require-await` (rightly) flags an async function with no await in
+  // it. Promise.resolve() satisfies the MailProvider interface without
+  // pretending there's asynchronous work happening.
+  send(message: MailMessage): Promise<MailSendResult> {
     mkdirSync(this.outDir, { recursive: true });
     const fileName = `${Date.now()}-${message.to.replace(/[^a-z0-9]/gi, '_')}.html`;
     writeFileSync(join(this.outDir, fileName), message.html, 'utf8');
@@ -28,7 +32,7 @@ export class ConsoleMailProvider implements MailProvider {
     this.logger.log(`[mail:console] ${message.text}`);
     this.logger.log(`[mail:console] HTML written to dist/mail-out/${fileName}`);
 
-    return { providerMessageId: `console-${fileName}` };
+    return Promise.resolve({ providerMessageId: `console-${fileName}` });
   }
 
   async sendBatch(messages: MailMessage[]): Promise<MailSendResult[]> {

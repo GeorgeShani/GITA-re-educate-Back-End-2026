@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { CqrsModule } from '@nestjs/cqrs';
 import { JwtService } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -15,7 +15,10 @@ import { RecordLoginHandler } from './commands/handlers/record-login.handler';
 import { RequestPasswordResetHandler } from './commands/handlers/request-password-reset.handler';
 import { ResetPasswordHandler } from './commands/handlers/reset-password.handler';
 import { REFRESH_JWT_SERVICE_TOKEN } from './refresh-jwt.token';
-import { RefreshToken, RefreshTokenSchema } from './schemas/refresh-token.schema';
+import {
+  RefreshToken,
+  RefreshTokenSchema,
+} from './schemas/refresh-token.schema';
 
 const COMMAND_HANDLERS = [
   RegisterUserHandler,
@@ -30,7 +33,9 @@ const COMMAND_HANDLERS = [
     CqrsModule,
     CoreModule,
     UsersModule,
-    MongooseModule.forFeature([{ name: RefreshToken.name, schema: RefreshTokenSchema }]),
+    MongooseModule.forFeature([
+      { name: RefreshToken.name, schema: RefreshTokenSchema },
+    ]),
   ],
   controllers: [AuthController],
   providers: [
@@ -48,7 +53,10 @@ const COMMAND_HANDLERS = [
         new JwtService({
           secret: configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
           signOptions: {
-            expiresIn: configService.get<string>('JWT_REFRESH_EXPIRES_IN', '30d') as StringValue,
+            expiresIn: configService.get<string>(
+              'JWT_REFRESH_EXPIRES_IN',
+              '30d',
+            ) as StringValue,
           },
         }),
     },

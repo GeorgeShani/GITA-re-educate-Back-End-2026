@@ -9,7 +9,9 @@ import { UsersService } from './users.service';
 // lives on AuthController for now (auth is what resolves "who is this
 // request" in the first place).
 @Module({
-  imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+  ],
   providers: [UsersService],
   exports: [UsersService],
 })

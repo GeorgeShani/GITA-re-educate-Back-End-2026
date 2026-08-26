@@ -13,8 +13,15 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { Model } from 'mongoose';
 import type { Request } from 'express';
 
-import { EmailMessage, EmailMessageDocument, EmailStatus } from './schemas/email-message.schema';
-import { EmailSuppression, EmailSuppressionDocument } from './schemas/email-suppression.schema';
+import {
+  EmailMessage,
+  EmailMessageDocument,
+  EmailStatus,
+} from './schemas/email-message.schema';
+import {
+  EmailSuppression,
+  EmailSuppressionDocument,
+} from './schemas/email-suppression.schema';
 import { MAIL_PROVIDER_TOKEN } from './mail/mail-provider.interface';
 import type { MailProvider } from './mail/mail-provider.interface';
 
@@ -39,7 +46,8 @@ export class NotificationsController {
   private readonly logger = new Logger(NotificationsController.name);
 
   constructor(
-    @InjectModel(EmailMessage.name) private readonly emailMessageModel: Model<EmailMessageDocument>,
+    @InjectModel(EmailMessage.name)
+    private readonly emailMessageModel: Model<EmailMessageDocument>,
     @InjectModel(EmailSuppression.name)
     private readonly emailSuppressionModel: Model<EmailSuppressionDocument>,
     @Inject(MAIL_PROVIDER_TOKEN) private readonly mailProvider: MailProvider,
@@ -59,7 +67,9 @@ export class NotificationsController {
     try {
       isValid = this.mailProvider.verifyWebhook(rawBody, headers);
     } catch {
-      throw new BadRequestException('This mail provider does not support webhooks');
+      throw new BadRequestException(
+        'This mail provider does not support webhooks',
+      );
     }
     if (!isValid) {
       throw new BadRequestException('Invalid webhook signature');
@@ -78,14 +88,20 @@ export class NotificationsController {
     );
 
     if (!emailMessage) {
-      this.logger.warn(`Webhook for unknown providerMessageId ${payload.data.email_id}`);
+      this.logger.warn(
+        `Webhook for unknown providerMessageId ${payload.data.email_id}`,
+      );
       return { received: true };
     }
 
     if (newStatus === 'bounced' || newStatus === 'complained') {
       await this.emailSuppressionModel.updateOne(
         { email: emailMessage.to },
-        { $setOnInsert: { reason: newStatus === 'bounced' ? 'bounce' : 'complaint' } },
+        {
+          $setOnInsert: {
+            reason: newStatus === 'bounced' ? 'bounce' : 'complaint',
+          },
+        },
         { upsert: true },
       );
     }

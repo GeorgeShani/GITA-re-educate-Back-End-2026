@@ -36,10 +36,12 @@ export class RequestPasswordResetHandler
 
     await this.withTransaction(async (session) => {
       const rawToken = generateRawToken();
-      const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000);
+      const expiresAt = new Date(
+        Date.now() + RESET_TOKEN_TTL_MINUTES * 60 * 1000,
+      );
 
       await this.usersService.setPasswordResetToken(
-        user.id as string,
+        user.id,
         hashToken(rawToken),
         expiresAt,
         session,
@@ -49,7 +51,7 @@ export class RequestPasswordResetHandler
 
       await this.outboxRepository.write(
         new PasswordResetRequestedEvent(
-          user.id as string,
+          user.id,
           user.email,
           user.firstName,
           resetUrl,

@@ -11,12 +11,12 @@ import type {
 // suppression, dev gate) ran correctly.
 @Injectable()
 export class NoopMailProvider implements MailProvider {
-  async send(): Promise<MailSendResult> {
-    return { providerMessageId: 'noop' };
+  send(): Promise<MailSendResult> {
+    return Promise.resolve({ providerMessageId: 'noop' });
   }
 
-  async sendBatch(messages: MailMessage[]): Promise<MailSendResult[]> {
-    return messages.map(() => ({ providerMessageId: 'noop' }));
+  sendBatch(messages: MailMessage[]): Promise<MailSendResult[]> {
+    return Promise.resolve(messages.map(() => ({ providerMessageId: 'noop' })));
   }
 
   verifyWebhook(): boolean {

@@ -4,7 +4,10 @@ export class UserLoggedInEvent extends DomainEvent {
   readonly eventName = 'user.logged_in';
   readonly aggregateType = 'User';
 
-  constructor(readonly aggregateId: string, correlationId: string) {
+  constructor(
+    readonly aggregateId: string,
+    correlationId: string,
+  ) {
     super(correlationId);
   }
 }

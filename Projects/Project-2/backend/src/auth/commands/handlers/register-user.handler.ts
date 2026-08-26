@@ -51,7 +51,7 @@ export class RegisterUserHandler
 
       await this.outboxRepository.write(
         new UserRegisteredEvent(
-          user.id as string,
+          user.id,
           user.email,
           user.firstName,
           verificationUrl,

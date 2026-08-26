@@ -1,12 +1,18 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Resend } from 'resend';
 
 import { QueueName } from '../core/queues/queue-names.enum';
-import { EmailMessage, EmailMessageSchema } from './schemas/email-message.schema';
-import { EmailSuppression, EmailSuppressionSchema } from './schemas/email-suppression.schema';
+import {
+  EmailMessage,
+  EmailMessageSchema,
+} from './schemas/email-message.schema';
+import {
+  EmailSuppression,
+  EmailSuppressionSchema,
+} from './schemas/email-suppression.schema';
 import {
   NotificationPreference,
   NotificationPreferenceSchema,
@@ -14,7 +20,10 @@ import {
 import { ConsoleMailProvider } from './mail/console-mail.provider';
 import { NoopMailProvider } from './mail/noop-mail.provider';
 import { MAIL_PROVIDER_TOKEN } from './mail/mail-provider.interface';
-import { RESEND_CLIENT_TOKEN, ResendMailProvider } from './mail/resend-mail.provider';
+import {
+  RESEND_CLIENT_TOKEN,
+  ResendMailProvider,
+} from './mail/resend-mail.provider';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationsConsumer } from './notifications.consumer';
@@ -25,7 +34,10 @@ import { TemplateRendererService } from './template-renderer.service';
     MongooseModule.forFeature([
       { name: EmailMessage.name, schema: EmailMessageSchema },
       { name: EmailSuppression.name, schema: EmailSuppressionSchema },
-      { name: NotificationPreference.name, schema: NotificationPreferenceSchema },
+      {
+        name: NotificationPreference.name,
+        schema: NotificationPreferenceSchema,
+      },
     ]),
     // Re-registered here (also registered in CoreModule for
     // OutboxPublisher's producer side) so this module gets its own Queue
@@ -52,7 +64,12 @@ import { TemplateRendererService } from './template-renderer.service';
     },
     {
       provide: MAIL_PROVIDER_TOKEN,
-      inject: [ConfigService, ConsoleMailProvider, NoopMailProvider, ResendMailProvider],
+      inject: [
+        ConfigService,
+        ConsoleMailProvider,
+        NoopMailProvider,
+        ResendMailProvider,
+      ],
       useFactory: (
         configService: ConfigService,
         consoleProvider: ConsoleMailProvider,

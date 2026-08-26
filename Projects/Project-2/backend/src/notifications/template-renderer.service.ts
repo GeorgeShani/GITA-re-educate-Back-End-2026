@@ -25,7 +25,10 @@ export interface RenderedEmail {
 export class TemplateRendererService {
   private readonly htmlCache = new Map<string, string>();
 
-  async render(templateName: string, variables: Record<string, unknown>): Promise<RenderedEmail> {
+  async render(
+    templateName: string,
+    variables: Record<string, unknown>,
+  ): Promise<RenderedEmail> {
     const compiledHtml = await this.getCompiledHtml(templateName);
     const html = Handlebars.compile(compiledHtml)(variables);
     const text = this.renderText(templateName, variables, html);
@@ -38,7 +41,9 @@ export class TemplateRendererService {
 
     const mjmlPath = join(TEMPLATES_DIR, `${templateName}.mjml`);
     if (!existsSync(mjmlPath)) {
-      throw new InternalServerErrorException(`No email template named "${templateName}"`);
+      throw new InternalServerErrorException(
+        `No email template named "${templateName}"`,
+      );
     }
 
     const { html, errors } = await mjml2html(readFileSync(mjmlPath, 'utf8'));

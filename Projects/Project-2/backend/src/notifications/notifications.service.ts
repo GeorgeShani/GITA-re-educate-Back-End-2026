@@ -3,8 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { EmailCategory, EmailMessage, EmailMessageDocument } from './schemas/email-message.schema';
-import { EmailSuppression, EmailSuppressionDocument } from './schemas/email-suppression.schema';
+import {
+  EmailCategory,
+  EmailMessage,
+  EmailMessageDocument,
+} from './schemas/email-message.schema';
+import {
+  EmailSuppression,
+  EmailSuppressionDocument,
+} from './schemas/email-suppression.schema';
 import { MAIL_PROVIDER_TOKEN } from './mail/mail-provider.interface';
 import type { MailProvider } from './mail/mail-provider.interface';
 import { TemplateRendererService } from './template-renderer.service';
@@ -26,7 +33,8 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   constructor(
-    @InjectModel(EmailMessage.name) private readonly emailMessageModel: Model<EmailMessageDocument>,
+    @InjectModel(EmailMessage.name)
+    private readonly emailMessageModel: Model<EmailMessageDocument>,
     @InjectModel(EmailSuppression.name)
     private readonly emailSuppressionModel: Model<EmailSuppressionDocument>,
     @Inject(MAIL_PROVIDER_TOKEN) private readonly mailProvider: MailProvider,
@@ -40,9 +48,13 @@ export class NotificationsService {
    * already-sent dedupeKey).
    */
   async send(params: SendEmailParams): Promise<boolean> {
-    const isSuppressed = await this.emailSuppressionModel.exists({ email: params.to });
+    const isSuppressed = await this.emailSuppressionModel.exists({
+      email: params.to,
+    });
     if (isSuppressed) {
-      this.logger.warn(`Skipped "${params.template}" to ${params.to} — address is suppressed`);
+      this.logger.warn(
+        `Skipped "${params.template}" to ${params.to} — address is suppressed`,
+      );
       return false;
     }
 
@@ -51,7 +63,10 @@ export class NotificationsService {
     // EmailMessage row always reflects what actually happened.
     const deliveryTo = this.resolveDeliveryTarget(params.to);
 
-    const { html, text } = await this.templateRenderer.render(params.template, params.variables);
+    const { html, text } = await this.templateRenderer.render(
+      params.template,
+      params.variables,
+    );
 
     let emailMessage: EmailMessageDocument;
     try {
@@ -68,7 +83,9 @@ export class NotificationsService {
       });
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
-        this.logger.log(`Duplicate send suppressed for dedupeKey ${params.dedupeKey}`);
+        this.logger.log(
+          `Duplicate send suppressed for dedupeKey ${params.dedupeKey}`,
+        );
         return false;
       }
       throw error;
@@ -88,7 +105,8 @@ export class NotificationsService {
       return true;
     } catch (error) {
       emailMessage.status = 'failed';
-      emailMessage.error = error instanceof Error ? error.message : String(error);
+      emailMessage.error =
+        error instanceof Error ? error.message : String(error);
       await emailMessage.save();
       throw error;
     }
@@ -99,7 +117,9 @@ export class NotificationsService {
       return to;
     }
 
-    const allowlist = (this.configService.get<string>('MAIL_DEV_ALLOWLIST') ?? '')
+    const allowlist = (
+      this.configService.get<string>('MAIL_DEV_ALLOWLIST') ?? ''
+    )
       .split(',')
       .map((address) => address.trim().toLowerCase())
       .filter(Boolean);
@@ -124,7 +144,7 @@ export class NotificationsService {
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
-      (error as { code: unknown }).code === MONGO_DUPLICATE_KEY_ERROR
+      error.code === MONGO_DUPLICATE_KEY_ERROR
     );
   }
 }

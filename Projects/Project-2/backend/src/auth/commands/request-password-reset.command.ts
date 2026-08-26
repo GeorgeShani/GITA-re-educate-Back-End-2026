@@ -1,3 +1,6 @@
 export class RequestPasswordResetCommand {
-  constructor(readonly email: string, readonly correlationId: string) {}
+  constructor(
+    readonly email: string,
+    readonly correlationId: string,
+  ) {}
 }

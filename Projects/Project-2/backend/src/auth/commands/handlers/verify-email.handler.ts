@@ -24,19 +24,25 @@ export class VerifyEmailHandler
   }
 
   async execute(command: VerifyEmailCommand): Promise<void> {
-    const user = await this.usersService.findByEmailVerificationTokenHash(hashToken(command.token));
+    const user = await this.usersService.findByEmailVerificationTokenHash(
+      hashToken(command.token),
+    );
 
     // Same generic message whether the token doesn't exist, was already
     // used (cleared by a prior verification), or expired — nothing here
     // needs to distinguish those cases for the caller.
-    if (!user || !user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+    if (
+      !user ||
+      !user.emailVerificationExpiresAt ||
+      user.emailVerificationExpiresAt < new Date()
+    ) {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
     await this.withTransaction(async (session) => {
-      await this.usersService.markEmailVerified(user.id as string, session);
+      await this.usersService.markEmailVerified(user.id, session);
       await this.outboxRepository.write(
-        new UserEmailVerifiedEvent(user.id as string, user.email, command.correlationId),
+        new UserEmailVerifiedEvent(user.id, user.email, command.correlationId),
         session,
       );
     });

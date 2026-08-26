@@ -19,7 +19,10 @@ import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { REFRESH_JWT_SERVICE_TOKEN } from './refresh-jwt.token';
-import { RefreshToken, RefreshTokenDocument } from './schemas/refresh-token.schema';
+import {
+  RefreshToken,
+  RefreshTokenDocument,
+} from './schemas/refresh-token.schema';
 import { hashToken } from './utils/token-hash.util';
 import { UsersService } from '../users/users.service';
 import { UserDocument } from '../users/schemas/user.schema';
@@ -38,14 +41,19 @@ export class AuthService {
     private readonly commandBus: CommandBus,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    @Inject(REFRESH_JWT_SERVICE_TOKEN) private readonly refreshJwtService: JwtService,
-    @InjectModel(RefreshToken.name) private readonly refreshTokenModel: Model<RefreshTokenDocument>,
+    @Inject(REFRESH_JWT_SERVICE_TOKEN)
+    private readonly refreshJwtService: JwtService,
+    @InjectModel(RefreshToken.name)
+    private readonly refreshTokenModel: Model<RefreshTokenDocument>,
     private readonly cls: ClsService,
   ) {}
 
   async register(dto: RegisterDto): Promise<AuthResponseDto> {
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
-    const user = await this.commandBus.execute<RegisterUserCommand, UserDocument>(
+    const user = await this.commandBus.execute<
+      RegisterUserCommand,
+      UserDocument
+    >(
       new RegisterUserCommand(
         dto.firstName,
         dto.lastName,
@@ -64,13 +72,17 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    await this.commandBus.execute(new RecordLoginCommand(user.id as string, this.correlationId()));
+    await this.commandBus.execute(
+      new RecordLoginCommand(user.id, this.correlationId()),
+    );
     return this.issueTokens(user);
   }
 
   async refresh(rawRefreshToken: string): Promise<AuthResponseDto> {
     await this.verifyRefreshJwt(rawRefreshToken); // signature + expiry only; DB state is the source of truth below
-    const stored = await this.refreshTokenModel.findOne({ tokenHash: hashToken(rawRefreshToken) });
+    const stored = await this.refreshTokenModel.findOne({
+      tokenHash: hashToken(rawRefreshToken),
+    });
 
     if (!stored) {
       throw new UnauthorizedException('Invalid refresh token');
@@ -85,7 +97,9 @@ export class AuthService {
         { userId: stored.userId, revokedAt: null },
         { revokedAt: new Date() },
       );
-      throw new UnauthorizedException('Refresh token reuse detected — please log in again');
+      throw new UnauthorizedException(
+        'Refresh token reuse detected — please log in again',
+      );
     }
 
     if (stored.expiresAt < new Date()) {
@@ -93,7 +107,9 @@ export class AuthService {
     }
 
     const user = await this.usersService.findById(stored.userId.toString());
-    const { refreshToken, doc: newDoc } = await this.createRefreshToken(user.id as string);
+    const { refreshToken, doc: newDoc } = await this.createRefreshToken(
+      user.id,
+    );
 
     stored.revokedAt = new Date();
     stored.replacedByTokenId = newDoc._id;
@@ -111,35 +127,51 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto): Promise<void> {
-    await this.commandBus.execute(new RequestPasswordResetCommand(dto.email, this.correlationId()));
+    await this.commandBus.execute(
+      new RequestPasswordResetCommand(dto.email, this.correlationId()),
+    );
   }
 
   async resetPassword(dto: ResetPasswordDto): Promise<void> {
     const newPasswordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
     await this.commandBus.execute(
-      new ResetPasswordCommand(dto.token, newPasswordHash, this.correlationId()),
+      new ResetPasswordCommand(
+        dto.token,
+        newPasswordHash,
+        this.correlationId(),
+      ),
     );
   }
 
   async verifyEmail(dto: VerifyEmailDto): Promise<void> {
-    await this.commandBus.execute(new VerifyEmailCommand(dto.token, this.correlationId()));
+    await this.commandBus.execute(
+      new VerifyEmailCommand(dto.token, this.correlationId()),
+    );
   }
 
   private async issueTokens(user: UserDocument): Promise<AuthResponseDto> {
     const accessToken = await this.signAccessToken(user);
-    const { refreshToken } = await this.createRefreshToken(user.id as string);
+    const { refreshToken } = await this.createRefreshToken(user.id);
     return { accessToken, refreshToken };
   }
 
   private signAccessToken(user: UserDocument): Promise<string> {
-    return this.jwtService.signAsync({ sub: user.id, email: user.email, role: user.roles[0] ?? Role.CUSTOMER });
+    return this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.roles[0] ?? Role.CUSTOMER,
+    });
   }
 
   private async createRefreshToken(
     userId: string,
   ): Promise<{ refreshToken: string; doc: RefreshTokenDocument }> {
-    const refreshToken = await this.refreshJwtService.signAsync({ sub: userId, jti: crypto.randomUUID() });
-    const payload = this.refreshJwtService.decode<RefreshJwtPayload>(refreshToken);
+    const refreshToken = await this.refreshJwtService.signAsync({
+      sub: userId,
+      jti: crypto.randomUUID(),
+    });
+    const payload =
+      this.refreshJwtService.decode<RefreshJwtPayload>(refreshToken);
 
     const doc = await this.refreshTokenModel.create({
       userId,

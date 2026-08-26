@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
 
@@ -18,27 +22,39 @@ const MONGO_DUPLICATE_KEY_ERROR = 11000;
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectModel(User.name) private readonly userModel: Model<UserDocument>) {}
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+  ) {}
 
-  async create(input: CreateUserInput, session: ClientSession): Promise<UserDocument> {
+  async create(
+    input: CreateUserInput,
+    session: ClientSession,
+  ): Promise<UserDocument> {
     const { passwordHash, ...rest } = input;
     try {
       // Named passwordHash on the input (the caller has already hashed
       // it — this service never sees a plaintext password) but mapped
       // onto the schema's `password` field, which is what it's actually
       // called at rest.
-      const [user] = await this.userModel.create([{ ...rest, password: passwordHash }], { session });
+      const [user] = await this.userModel.create(
+        [{ ...rest, password: passwordHash }],
+        { session },
+      );
       return user;
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
-        throw new ConflictException('An account with this email already exists');
+        throw new ConflictException(
+          'An account with this email already exists',
+        );
       }
       throw error;
     }
   }
 
   async findById(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findOne({ _id: id, isDeleted: false }).exec();
+    const user = await this.userModel
+      .findOne({ _id: id, isDeleted: false })
+      .exec();
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -46,7 +62,9 @@ export class UsersService {
   }
 
   findByEmail(email: string): Promise<UserDocument | null> {
-    return this.userModel.findOne({ email: email.toLowerCase(), isDeleted: false }).exec();
+    return this.userModel
+      .findOne({ email: email.toLowerCase(), isDeleted: false })
+      .exec();
   }
 
   findByEmailWithPassword(email: string): Promise<UserDocument | null> {
@@ -70,19 +88,29 @@ export class UsersService {
       .exec();
   }
 
-  async markEmailVerified(userId: string, session: ClientSession): Promise<void> {
+  async markEmailVerified(
+    userId: string,
+    session: ClientSession,
+  ): Promise<void> {
     await this.userModel.updateOne(
       { _id: userId },
       {
         emailVerified: true,
-        $unset: { emailVerificationTokenHash: '', emailVerificationExpiresAt: '' },
+        $unset: {
+          emailVerificationTokenHash: '',
+          emailVerificationExpiresAt: '',
+        },
       },
       { session },
     );
   }
 
   async updateLastLogin(userId: string, session: ClientSession): Promise<void> {
-    await this.userModel.updateOne({ _id: userId }, { lastLoginAt: new Date() }, { session });
+    await this.userModel.updateOne(
+      { _id: userId },
+      { lastLoginAt: new Date() },
+      { session },
+    );
   }
 
   async setPasswordResetToken(
@@ -98,7 +126,11 @@ export class UsersService {
     );
   }
 
-  async resetPassword(userId: string, passwordHash: string, session: ClientSession): Promise<void> {
+  async resetPassword(
+    userId: string,
+    passwordHash: string,
+    session: ClientSession,
+  ): Promise<void> {
     await this.userModel.updateOne(
       { _id: userId },
       {
@@ -114,7 +146,7 @@ export class UsersService {
       typeof error === 'object' &&
       error !== null &&
       'code' in error &&
-      (error as { code: unknown }).code === MONGO_DUPLICATE_KEY_ERROR
+      error.code === MONGO_DUPLICATE_KEY_ERROR
     );
   }
 }

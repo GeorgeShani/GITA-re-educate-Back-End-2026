@@ -13,7 +13,10 @@ interface EmailTemplateSpec {
   subject: string;
   category: EmailCategory;
   /** Builds Handlebars variables + the recipient from the event payload. */
-  toVariables: (payload: Record<string, unknown>) => { to: string; variables: Record<string, unknown> };
+  toVariables: (payload: Record<string, unknown>) => {
+    to: string;
+    variables: Record<string, unknown>;
+  };
 }
 
 // SCOPE.md B4's event->email catalogue, one entry per template that has
@@ -52,14 +55,19 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplateSpec> = {
 
 @Processor(QueueName.NOTIFICATIONS)
 export class NotificationsConsumer extends BaseConsumer {
-  constructor(cls: ClsService, private readonly notificationsService: NotificationsService) {
+  constructor(
+    cls: ClsService,
+    private readonly notificationsService: NotificationsService,
+  ) {
     super(cls);
   }
 
   protected async handle(job: Job<OutboxJobData>): Promise<unknown> {
     const spec = EMAIL_TEMPLATES[job.data.eventName];
     if (!spec) {
-      this.logger.warn(`No email template mapped for event "${job.data.eventName}" — skipping`);
+      this.logger.warn(
+        `No email template mapped for event "${job.data.eventName}" — skipping`,
+      );
       return;
     }
 
