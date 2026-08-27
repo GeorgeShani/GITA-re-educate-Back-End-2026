@@ -15,13 +15,21 @@ import {
   WishlistItemSchema,
 } from '../wishlist/schemas/wishlist-item.schema';
 import { AccountExportService } from './account-export.service';
+import { AdminUsersController } from './admin-users.controller';
 import { DeleteAccountHandler } from './commands/handlers/delete-account.handler';
+import { SetUserBannedHandler } from './commands/handlers/set-user-banned.handler';
 import { UpdateProfileHandler } from './commands/handlers/update-profile.handler';
+import { UpdateUserRolesHandler } from './commands/handlers/update-user-roles.handler';
 import { User, UserSchema } from './schemas/user.schema';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 
-const COMMAND_HANDLERS = [UpdateProfileHandler, DeleteAccountHandler];
+const COMMAND_HANDLERS = [
+  UpdateProfileHandler,
+  DeleteAccountHandler,
+  SetUserBannedHandler,
+  UpdateUserRolesHandler,
+];
 
 @Module({
   imports: [
@@ -36,7 +44,7 @@ const COMMAND_HANDLERS = [UpdateProfileHandler, DeleteAccountHandler];
       { name: WishlistItem.name, schema: WishlistItemSchema },
     ]),
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, AdminUsersController],
   providers: [UsersService, AccountExportService, ...COMMAND_HANDLERS],
   exports: [UsersService],
 })

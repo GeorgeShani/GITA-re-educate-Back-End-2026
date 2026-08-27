@@ -65,6 +65,13 @@ export class User {
   @Prop({ default: false })
   isDeleted!: boolean; // GDPR account deletion — soft delete, see S10
 
+  // Admin moderation (Phase 6) — distinct from isDeleted: a ban is
+  // reversible and doesn't touch the account's PII, unlike deletion's
+  // anonymize-and-soft-delete. Checked at login only, not per-request —
+  // see BanUserHandler.
+  @Prop({ default: false })
+  isBanned!: boolean;
+
   // Created lazily on first saved-payment-method or checkout request
   // that needs one (S10) — most users never save a card, so there's no
   // reason to create a Stripe Customer at registration time.

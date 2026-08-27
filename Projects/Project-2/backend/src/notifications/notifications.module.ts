@@ -24,6 +24,7 @@ import {
   RESEND_CLIENT_TOKEN,
   ResendMailProvider,
 } from './mail/resend-mail.provider';
+import { AdminEmailController } from './admin-email.controller';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationPreferencesService } from './notification-preferences.service';
@@ -46,7 +47,7 @@ import { TemplateRendererService } from './template-renderer.service';
     // BullMQ+Nest producer/consumer module split.
     BullModule.registerQueue({ name: QueueName.NOTIFICATIONS }),
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, AdminEmailController],
   providers: [
     NotificationsService,
     NotificationPreferencesService,

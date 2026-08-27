@@ -71,6 +71,11 @@ export class AuthService {
     if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid email or password');
     }
+    // Doesn't reveal *why* — same posture as a wrong-password response,
+    // so a banned account can't be distinguished from a mistyped one.
+    if (user.isBanned) {
+      throw new UnauthorizedException('Invalid email or password');
+    }
 
     await this.commandBus.execute(
       new RecordLoginCommand(user.id, this.correlationId()),

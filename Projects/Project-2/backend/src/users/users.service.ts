@@ -4,9 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Model } from 'mongoose';
+import { QueryFilter, ClientSession, Model } from 'mongoose';
 
 import { AddressDto } from '../common/dto/address.dto';
+import { PaginatedResult } from '../catalog/products.service';
+import { escapeRegExp } from '../common/utils/escape-regexp.util';
+import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { User, UserDocument } from './schemas/user.schema';
 
 export interface CreateUserInput {
@@ -199,6 +202,28 @@ export class UsersService {
       .findOne({ _id: userId, isDeleted: false })
       .select('+stripeCustomerId')
       .exec();
+  }
+
+  async findAllAdmin(
+    query: FindUsersAdminDto,
+  ): Promise<PaginatedResult<UserDocument>> {
+    const { page = 1, take = 30 } = query;
+    const filter: QueryFilter<UserDocument> = { isDeleted: false };
+    if (query.email) {
+      filter.email = new RegExp(escapeRegExp(query.email), 'i');
+    }
+
+    const [items, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * take)
+        .limit(take)
+        .exec(),
+      this.userModel.countDocuments(filter),
+    ]);
+
+    return { items, total, page, take };
   }
 
   private isDuplicateKeyError(error: unknown): boolean {

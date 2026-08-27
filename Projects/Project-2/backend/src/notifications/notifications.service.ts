@@ -1,8 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { QueryFilter, Model } from 'mongoose';
 
+import { PaginatedResult } from '../catalog/products.service';
+import { escapeRegExp } from '../common/utils/escape-regexp.util';
+import { FindEmailMessagesAdminDto } from './dto/find-email-messages-admin.dto';
 import {
   EmailCategory,
   EmailMessage,
@@ -137,6 +140,72 @@ export class NotificationsService {
 
     this.logger.warn(`Dev gate: redirecting "${to}" -> "${redirect}"`);
     return redirect;
+  }
+
+  async listMessages(
+    query: FindEmailMessagesAdminDto,
+  ): Promise<PaginatedResult<EmailMessageDocument>> {
+    const { page = 1, take = 30 } = query;
+    const filter: QueryFilter<EmailMessageDocument> = {};
+    if (query.status) filter.status = query.status;
+    if (query.category) filter.category = query.category;
+    if (query.to) filter.to = new RegExp(escapeRegExp(query.to), 'i');
+
+    const [items, total] = await Promise.all([
+      this.emailMessageModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * take)
+        .limit(take)
+        .exec(),
+      this.emailMessageModel.countDocuments(filter),
+    ]);
+
+    return { items, total, page, take };
+  }
+
+  /** Re-dispatches through the same send() path, using the original's stored payload — never re-sends with the same dedupeKey. */
+  async resend(emailMessageId: string): Promise<boolean> {
+    const original = await this.emailMessageModel
+      .findById(emailMessageId)
+      .exec();
+    if (!original) {
+      throw new NotFoundException(
+        `Email message with id ${emailMessageId} not found`,
+      );
+    }
+
+    return this.send({
+      template: original.template,
+      to: original.to,
+      subject: original.subject,
+      category: original.category,
+      dedupeKey: `${original.dedupeKey}:resend:${Date.now()}`,
+      variables: original.payload,
+    });
+  }
+
+  /** The one code path that ever writes reason: 'manual' — every other EmailSuppression row comes from a provider webhook. */
+  async addSuppression(email: string): Promise<EmailSuppressionDocument> {
+    const normalized = email.toLowerCase();
+    try {
+      return await this.emailSuppressionModel.create({
+        email: normalized,
+        reason: 'manual',
+      });
+    } catch (error) {
+      if (this.isDuplicateKeyError(error)) {
+        const existing = await this.emailSuppressionModel
+          .findOne({ email: normalized })
+          .exec();
+        if (existing) return existing;
+      }
+      throw error;
+    }
+  }
+
+  async removeSuppression(email: string): Promise<void> {
+    await this.emailSuppressionModel.deleteOne({ email: email.toLowerCase() });
   }
 
   private isDuplicateKeyError(error: unknown): boolean {

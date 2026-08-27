@@ -1,17 +1,14 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model, Types } from 'mongoose';
+import { Connection, Model, Types } from 'mongoose';
 
 import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
 import { OutboxRepository } from '../../../core/outbox/outbox.repository';
 import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
 import { OrderStatus } from '../../../orders/enums/order-status.enum';
-import {
-  Product,
-  ProductDocument,
-} from '../../../catalog/schemas/product.schema';
 import { ReviewSubmittedEvent } from '../../events/review-submitted.event';
+import { ProductRatingService } from '../../product-rating.service';
 import {
   Review,
   ReviewDocument,
@@ -38,11 +35,10 @@ export class SubmitReviewHandler
     @InjectConnection() connection: Connection,
     @InjectModel(Review.name)
     private readonly reviewModel: Model<ReviewDocument>,
-    @InjectModel(Product.name)
-    private readonly productModel: Model<ProductDocument>,
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     private readonly outboxRepository: OutboxRepository,
     private readonly configService: ConfigService,
+    private readonly productRatingService: ProductRatingService,
   ) {
     super(connection);
   }
@@ -78,7 +74,7 @@ export class SubmitReviewHandler
       );
 
       if (status === 'approved') {
-        await this.recomputeProductRating(command.productId, session);
+        await this.productRatingService.recompute(command.productId, session);
       }
 
       await this.outboxRepository.write(
@@ -93,28 +89,5 @@ export class SubmitReviewHandler
 
       return review;
     });
-  }
-
-  private async recomputeProductRating(
-    productId: string,
-    session: ClientSession,
-  ): Promise<void> {
-    const [stats] = await this.reviewModel
-      .aggregate<{ avg: number; count: number }>([
-        {
-          $match: {
-            productId: new Types.ObjectId(productId),
-            status: 'approved',
-          },
-        },
-        { $group: { _id: null, avg: { $avg: '$rating' }, count: { $sum: 1 } } },
-      ])
-      .session(session);
-
-    await this.productModel.updateOne(
-      { _id: productId },
-      { ratingAverage: stats?.avg ?? 0, ratingCount: stats?.count ?? 0 },
-      { session },
-    );
   }
 }
