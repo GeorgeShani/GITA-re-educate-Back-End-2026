@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { CoreModule } from '../core/core.module';
 import { QueueName } from '../core/queues/queue-names.enum';
+import { AdminMediaController } from './admin-media.controller';
 import { DeleteMediaHandler } from './commands/handlers/delete-media.handler';
 import { RegisterMediaHandler } from './commands/handlers/register-media.handler';
 import { MediaController } from './media.controller';
@@ -23,7 +24,7 @@ const COMMAND_HANDLERS = [RegisterMediaHandler, DeleteMediaHandler];
     MongooseModule.forFeature([{ name: Media.name, schema: MediaSchema }]),
     BullModule.registerQueue({ name: QueueName.MEDIA }),
   ],
-  controllers: [MediaController],
+  controllers: [MediaController, AdminMediaController],
   providers: [
     MediaService,
     MediaConsumer,

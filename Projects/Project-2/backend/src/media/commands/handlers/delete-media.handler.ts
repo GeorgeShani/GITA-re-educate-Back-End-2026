@@ -30,7 +30,10 @@ export class DeleteMediaHandler
     if (!media) {
       throw new NotFoundException(`Media with id ${command.mediaId} not found`);
     }
-    if (media.uploadedByUserId?.toString() !== command.requestedByUserId) {
+    if (
+      !command.bypassOwnership &&
+      media.uploadedByUserId?.toString() !== command.requestedByUserId
+    ) {
       throw new ForbiddenException('You can only delete your own uploads');
     }
 

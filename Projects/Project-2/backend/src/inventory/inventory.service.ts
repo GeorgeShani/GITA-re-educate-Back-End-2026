@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { ClsService } from 'nestjs-cls';
 
+import { AdjustStockCommand } from './commands/adjust-stock.command';
 import { CreateBackInStockRequestDto } from './dto/create-back-in-stock-request.dto';
 import {
   BackInStockRequest,
@@ -28,6 +31,8 @@ export class InventoryService {
     private readonly inventoryItemModel: Model<InventoryItemDocument>,
     @InjectModel(BackInStockRequest.name)
     private readonly backInStockRequestModel: Model<BackInStockRequestDocument>,
+    private readonly commandBus: CommandBus,
+    private readonly cls: ClsService,
   ) {}
 
   async checkStock(
@@ -71,6 +76,42 @@ export class InventoryService {
       }
     }
     return { requested: true };
+  }
+
+  /** Admin manual correction — TransactionalCommandHandler, see AdjustStockHandler. */
+  adjustStock(
+    inventoryItemId: string,
+    delta: number,
+    reasonCode: string,
+    note: string | undefined,
+    adjustedByUserId: string,
+  ): Promise<InventoryItemDocument> {
+    return this.commandBus.execute(
+      new AdjustStockCommand(
+        inventoryItemId,
+        delta,
+        reasonCode,
+        note,
+        adjustedByUserId,
+        this.correlationId(),
+      ),
+    );
+  }
+
+  /** Backs the dashboard's low-stock tile and its own admin list route. */
+  findLowStock(limit = 50): Promise<InventoryItemDocument[]> {
+    return this.inventoryItemModel
+      .find({ $expr: { $lte: ['$quantityOnHand', '$lowStockThreshold'] } })
+      .limit(limit)
+      .exec();
+  }
+
+  findAllAdmin(): Promise<InventoryItemDocument[]> {
+    return this.inventoryItemModel.find({}).exec();
+  }
+
+  private correlationId(): string {
+    return this.cls.get<string>('correlationId');
   }
 
   private isDuplicateKeyError(error: unknown): boolean {

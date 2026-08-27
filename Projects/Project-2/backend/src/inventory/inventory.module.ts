@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
+import { CoreModule } from '../core/core.module';
+import { AdjustStockHandler } from './commands/handlers/adjust-stock.handler';
 import {
   BackInStockRequest,
   BackInStockRequestSchema,
@@ -17,11 +20,14 @@ import {
   StockAdjustment,
   StockAdjustmentSchema,
 } from './schemas/stock-adjustment.schema';
+import { AdminInventoryController } from './admin-inventory.controller';
 import { InventoryController } from './inventory.controller';
 import { InventoryService } from './inventory.service';
 
 @Module({
   imports: [
+    CqrsModule,
+    CoreModule,
     MongooseModule.forFeature([
       { name: InventoryItem.name, schema: InventoryItemSchema },
       { name: InventoryReservation.name, schema: InventoryReservationSchema },
@@ -29,8 +35,8 @@ import { InventoryService } from './inventory.service';
       { name: BackInStockRequest.name, schema: BackInStockRequestSchema },
     ]),
   ],
-  controllers: [InventoryController],
-  providers: [InventoryService],
+  controllers: [InventoryController, AdminInventoryController],
+  providers: [InventoryService, AdjustStockHandler],
   exports: [InventoryService, MongooseModule],
 })
 export class InventoryModule {}
