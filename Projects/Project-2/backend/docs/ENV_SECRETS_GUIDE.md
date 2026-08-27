@@ -35,6 +35,7 @@ JWT_REFRESH_SECRET/COOKIE_SECRET, per `src/config/env.validation.ts`).
 | `PEXELS_API_KEY` | `npm run seed:catalog` only | Pexels — [§7](#7-pexels-seed-script-only) |
 | `GEMINI_API_KEY` | nothing yet (S12, unbuilt) | Google AI Studio — [§8](#8-gemini-future-s12-not-needed-yet) |
 | `products_search` index | S7 catalog search/typeahead | **not an env var** — Atlas UI — [§9](#9-atlas-search-index-not-an-env-var) |
+| first admin account | Phase 6 `/admin/*` routes | **not an env var** — `npm run promote-admin` — [§10](#10-bootstrapping-the-first-admin-not-an-env-var) |
 
 ## 1. MongoDB Atlas (required)
 
@@ -196,6 +197,24 @@ without it (the endpoints just return empty results until the index exists).
    `categoryId`, `basePriceMinor`, and `publishedAt` deliberately aren't in this mapping — the provider filters those with a plain `$match` stage after `$search`, not Atlas Search filter clauses, so they don't need to be indexed here.
 4. Create, then wait for status to flip from *Build in Progress* to **Active** (a minute or two on an empty/freshly-seeded collection). Search endpoints 500 or return nothing sensible until it's Active.
 5. Re-run this whenever `Product`'s searchable fields change — the index doesn't auto-update its mapping when the Mongoose schema does.
+
+## 10. Bootstrapping the first admin (not an env var)
+
+Every `/admin/*` route added in Phase 6 requires an `ADMIN`/`MANAGER`/
+`SUPPORT`/`EDITOR` role, and registration always assigns a brand-new account
+`[Role.CUSTOMER]` — no route can promote a user who isn't already staff, so
+the very first admin has to come from a script, not the API:
+
+```bash
+# after the account has registered normally through /auth/register
+npm run promote-admin -- you@example.com
+```
+
+Defaults to `Role.ADMIN`; pass a second argument (`manager` | `support` |
+`editor`) for a narrower role instead — see
+`src/common/constants/admin-roles.constant.ts` for what each one can reach.
+Once you have one admin, `PATCH /admin/users/:id/roles` handles promoting
+everyone else.
 
 ## Verifying it all works
 
