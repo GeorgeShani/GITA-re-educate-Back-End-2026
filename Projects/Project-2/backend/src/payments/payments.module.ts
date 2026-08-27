@@ -6,8 +6,11 @@ import Stripe from 'stripe';
 
 import { CoreModule } from '../core/core.module';
 import { Order, OrderSchema } from '../orders/schemas/order.schema';
+import { UsersModule } from '../users/users.module';
 import { CreatePaymentIntentHandler } from './commands/handlers/create-payment-intent.handler';
 import { RecordPaymentResultHandler } from './commands/handlers/record-payment-result.handler';
+import { PaymentCustomerService } from './payment-customer.service';
+import { PaymentMethodsController } from './payment-methods.controller';
 import { MockPaymentProvider } from './providers/mock-payment.provider';
 import { PAYMENT_PROVIDER_TOKEN } from './providers/payment-provider.interface';
 import {
@@ -27,15 +30,17 @@ const COMMAND_HANDLERS = [
   imports: [
     CqrsModule,
     CoreModule,
+    UsersModule,
     MongooseModule.forFeature([
       { name: Payment.name, schema: PaymentSchema },
       { name: Refund.name, schema: RefundSchema },
       { name: Order.name, schema: OrderSchema },
     ]),
   ],
-  controllers: [PaymentsController],
+  controllers: [PaymentsController, PaymentMethodsController],
   providers: [
     ...COMMAND_HANDLERS,
+    PaymentCustomerService,
     {
       // Only constructed when PAYMENT_PROVIDER=stripe, matching
       // NotificationsModule's RESEND_CLIENT_TOKEN pattern — a dev/test

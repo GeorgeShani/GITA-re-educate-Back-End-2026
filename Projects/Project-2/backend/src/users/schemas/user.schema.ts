@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Address, AddressSchema } from '../../common/schemas/address.schema';
@@ -54,14 +54,22 @@ export class User {
   roles!: Role[];
 
   // The address book — SCOPE.md A9 embed rule: no independent lifecycle.
+  // Types.DocumentArray, not a plain Address[] — S10 needs
+  // addresses.id(addressId) to update/remove a specific one.
   @Prop({ type: [AddressSchema], default: [] })
-  addresses!: Address[];
+  addresses!: Types.DocumentArray<Address>;
 
   @Prop()
   avatarUrl?: string; // Cloudinary secure_url, set once S6 lands
 
   @Prop({ default: false })
   isDeleted!: boolean; // GDPR account deletion — soft delete, see S10
+
+  // Created lazily on first saved-payment-method or checkout request
+  // that needs one (S10) — most users never save a card, so there's no
+  // reason to create a Stripe Customer at registration time.
+  @Prop({ select: false })
+  stripeCustomerId?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

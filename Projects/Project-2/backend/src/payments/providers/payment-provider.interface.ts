@@ -18,6 +18,18 @@ export interface WebhookEvent {
   failureReason?: string;
 }
 
+export interface SetupIntentResult {
+  clientSecret: string;
+}
+
+export interface SavedPaymentMethod {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
 // SCOPE.md Phase 4 — same provider-abstraction shape as MailProvider,
 // StorageProvider, SearchProvider. StripePaymentProvider for real
 // checkouts, MockPaymentProvider for offline dev — selected by
@@ -30,6 +42,14 @@ export interface PaymentProvider {
     payload: string,
     signature: string | undefined,
   ): WebhookEvent;
+
+  // Saved payment methods (S10) — a customer id is provider-scoped (a
+  // Stripe Customer id here), created lazily via PaymentCustomerService
+  // and cached on User.stripeCustomerId so it's never re-created per call.
+  createCustomer(email: string): Promise<string>;
+  createSetupIntent(customerId: string): Promise<SetupIntentResult>;
+  listPaymentMethods(customerId: string): Promise<SavedPaymentMethod[]>;
+  detachPaymentMethod(paymentMethodId: string): Promise<void>;
 }
 
 export const PAYMENT_PROVIDER_TOKEN = Symbol('PAYMENT_PROVIDER');

@@ -5,6 +5,8 @@ import { Injectable } from '@nestjs/common';
 import type {
   PaymentIntentResult,
   PaymentProvider,
+  SavedPaymentMethod,
+  SetupIntentResult,
   WebhookEvent,
 } from './payment-provider.interface';
 
@@ -28,5 +30,25 @@ export class MockPaymentProvider implements PaymentProvider {
     throw new Error(
       'MockPaymentProvider has no real webhooks — use POST /payments/mock/:id/succeed|fail instead',
     );
+  }
+
+  createCustomer(): Promise<string> {
+    return Promise.resolve(`mock_cus_${randomUUID()}`);
+  }
+
+  createSetupIntent(): Promise<SetupIntentResult> {
+    return Promise.resolve({
+      clientSecret: `mock_seti_secret_${randomUUID()}`,
+    });
+  }
+
+  // No real card storage behind a mock customer id — dev/test callers
+  // should expect an empty list rather than a fabricated card.
+  listPaymentMethods(): Promise<SavedPaymentMethod[]> {
+    return Promise.resolve([]);
+  }
+
+  detachPaymentMethod(): Promise<void> {
+    return Promise.resolve();
   }
 }

@@ -32,6 +32,8 @@ import { TaxModule } from './tax/tax.module';
 import { PaymentsModule } from './payments/payments.module';
 import { OrdersModule } from './orders/orders.module';
 import { CheckoutModule } from './checkout/checkout.module';
+import { WishlistModule } from './wishlist/wishlist.module';
+import { ReturnsModule } from './returns/returns.module';
 
 @Module({
   imports: [
@@ -123,6 +125,8 @@ import { CheckoutModule } from './checkout/checkout.module';
     PaymentsModule,
     OrdersModule,
     CheckoutModule,
+    WishlistModule,
+    ReturnsModule,
   ],
   controllers: [AppController],
   providers: [

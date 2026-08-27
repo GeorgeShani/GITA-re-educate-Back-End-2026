@@ -26,6 +26,7 @@ import {
 } from './mail/resend-mail.provider';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
+import { NotificationPreferencesService } from './notification-preferences.service';
 import { NotificationsConsumer } from './notifications.consumer';
 import { TemplateRendererService } from './template-renderer.service';
 
@@ -48,6 +49,7 @@ import { TemplateRendererService } from './template-renderer.service';
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    NotificationPreferencesService,
     NotificationsConsumer,
     TemplateRendererService,
     {
@@ -90,6 +92,6 @@ import { TemplateRendererService } from './template-renderer.service';
     NoopMailProvider,
     ResendMailProvider,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, NotificationPreferencesService],
 })
 export class NotificationsModule {}

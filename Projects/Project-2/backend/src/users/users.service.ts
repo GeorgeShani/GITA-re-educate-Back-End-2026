@@ -6,6 +6,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Model } from 'mongoose';
 
+import { AddressDto } from '../common/dto/address.dto';
 import { User, UserDocument } from './schemas/user.schema';
 
 export interface CreateUserInput {
@@ -139,6 +140,65 @@ export class UsersService {
       },
       { session },
     );
+  }
+
+  // No SCOPE.md domain event covers plain address-book CRUD, so these
+  // stay outside CQRS — same reasoning as CartService.removeCoupon.
+  async addAddress(userId: string, address: AddressDto): Promise<UserDocument> {
+    const user = await this.findById(userId);
+    if (address.isDefault) {
+      user.addresses.forEach((existing) => (existing.isDefault = false));
+    }
+    user.addresses.push(address);
+    await user.save();
+    return user;
+  }
+
+  async updateAddress(
+    userId: string,
+    addressId: string,
+    address: Partial<AddressDto>,
+  ): Promise<UserDocument> {
+    const user = await this.findById(userId);
+    const existing = user.addresses.id(addressId);
+    if (!existing) {
+      throw new NotFoundException(`Address ${addressId} not found`);
+    }
+
+    if (address.isDefault) {
+      user.addresses.forEach((entry) => (entry.isDefault = false));
+    }
+    Object.assign(existing, address);
+    await user.save();
+    return user;
+  }
+
+  async removeAddress(
+    userId: string,
+    addressId: string,
+  ): Promise<UserDocument> {
+    const user = await this.findById(userId);
+    const existing = user.addresses.id(addressId);
+    if (!existing) {
+      throw new NotFoundException(`Address ${addressId} not found`);
+    }
+    existing.deleteOne();
+    await user.save();
+    return user;
+  }
+
+  async setStripeCustomerId(
+    userId: string,
+    stripeCustomerId: string,
+  ): Promise<void> {
+    await this.userModel.updateOne({ _id: userId }, { stripeCustomerId });
+  }
+
+  findByIdWithStripeCustomerId(userId: string): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ _id: userId, isDeleted: false })
+      .select('+stripeCustomerId')
+      .exec();
   }
 
   private isDuplicateKeyError(error: unknown): boolean {
