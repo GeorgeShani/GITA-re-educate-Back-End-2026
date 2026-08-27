@@ -37,6 +37,10 @@ import { ReturnsModule } from './returns/returns.module';
 import { AdminModule } from './admin/admin.module';
 import { CouponsModule } from './coupons/coupons.module';
 import { GiftCardsModule } from './gift-cards/gift-cards.module';
+import { BlogModule } from './blog/blog.module';
+import { PagesModule } from './pages/pages.module';
+import { ContactModule } from './contact/contact.module';
+import { NewsletterModule } from './newsletter/newsletter.module';
 
 @Module({
   imports: [
@@ -133,6 +137,10 @@ import { GiftCardsModule } from './gift-cards/gift-cards.module';
     AdminModule,
     CouponsModule,
     GiftCardsModule,
+    BlogModule,
+    PagesModule,
+    ContactModule,
+    NewsletterModule,
   ],
   controllers: [AppController],
   providers: [
