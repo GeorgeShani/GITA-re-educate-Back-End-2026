@@ -21,7 +21,8 @@
     "mail:preview": "ts-node -r tsconfig-paths/register scripts/mail-preview.ts",
     "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts",
     "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts",
-    "seed:commerce": "ts-node -r tsconfig-paths/register scripts/seed-commerce.ts"
+    "seed:commerce": "ts-node -r tsconfig-paths/register scripts/seed-commerce.ts",
+    "promote-admin": "ts-node -r tsconfig-paths/register scripts/promote-admin.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.5",

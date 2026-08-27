@@ -34,6 +34,7 @@ import { OrdersModule } from './orders/orders.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ReturnsModule } from './returns/returns.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -127,6 +128,7 @@ import { ReturnsModule } from './returns/returns.module';
     CheckoutModule,
     WishlistModule,
     ReturnsModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

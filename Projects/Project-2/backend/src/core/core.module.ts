@@ -7,6 +7,7 @@ import {
   AuditLogEntrySchema,
 } from './audit-log/audit-log-entry.schema';
 import { AuditLogConsumer } from './audit-log/audit-log.consumer';
+import { AuditLogService } from './audit-log/audit-log.service';
 import { OutboxEvent, OutboxEventSchema } from './outbox/outbox.schema';
 import { OutboxPublisher } from './outbox/outbox.publisher';
 import { OutboxRelayService } from './outbox/outbox-relay.service';
@@ -49,7 +50,11 @@ import { QueueName } from './queues/queue-names.enum';
     OutboxPublisher,
     OutboxRelayService,
     AuditLogConsumer,
+    AuditLogService,
   ],
-  exports: [OutboxRepository],
+  // AuditLogService (Phase 6's admin activity feed/audit-log viewer) is
+  // the first thing outside CoreModule to ever need to read this
+  // collection back — everything else here stays internal plumbing.
+  exports: [OutboxRepository, AuditLogService],
 })
 export class CoreModule {}
