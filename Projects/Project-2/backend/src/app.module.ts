@@ -35,6 +35,8 @@ import { CheckoutModule } from './checkout/checkout.module';
 import { WishlistModule } from './wishlist/wishlist.module';
 import { ReturnsModule } from './returns/returns.module';
 import { AdminModule } from './admin/admin.module';
+import { CouponsModule } from './coupons/coupons.module';
+import { GiftCardsModule } from './gift-cards/gift-cards.module';
 
 @Module({
   imports: [
@@ -129,6 +131,8 @@ import { AdminModule } from './admin/admin.module';
     WishlistModule,
     ReturnsModule,
     AdminModule,
+    CouponsModule,
+    GiftCardsModule,
   ],
   controllers: [AppController],
   providers: [

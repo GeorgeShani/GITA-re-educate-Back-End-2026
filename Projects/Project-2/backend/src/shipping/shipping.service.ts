@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CommandBus } from '@nestjs/cqrs';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { ClsService } from 'nestjs-cls';
 
+import { CreateShippingZoneCommand } from './commands/create-shipping-zone.command';
+import { UpdateShippingZoneCommand } from './commands/update-shipping-zone.command';
+import { CreateShippingZoneDto } from './dto/create-shipping-zone.dto';
+import { UpdateShippingZoneDto } from './dto/update-shipping-zone.dto';
 import {
   ShippingRate,
   ShippingZone,
@@ -20,6 +26,8 @@ export class ShippingService {
   constructor(
     @InjectModel(ShippingZone.name)
     private readonly zoneModel: Model<ShippingZoneDocument>,
+    private readonly commandBus: CommandBus,
+    private readonly cls: ClsService,
   ) {}
 
   async getQuotes(
@@ -84,5 +92,36 @@ export class ShippingService {
       return 0;
     }
     return rate.priceMinor;
+  }
+
+  findAllAdmin(): Promise<ShippingZoneDocument[]> {
+    return this.zoneModel.find({}).exec();
+  }
+
+  async findByIdAdmin(zoneId: string): Promise<ShippingZoneDocument> {
+    const zone = await this.zoneModel.findById(zoneId).exec();
+    if (!zone) {
+      throw new NotFoundException(`Shipping zone with id ${zoneId} not found`);
+    }
+    return zone;
+  }
+
+  create(dto: CreateShippingZoneDto): Promise<ShippingZoneDocument> {
+    return this.commandBus.execute(
+      new CreateShippingZoneCommand(dto, this.correlationId()),
+    );
+  }
+
+  update(
+    zoneId: string,
+    dto: UpdateShippingZoneDto,
+  ): Promise<ShippingZoneDocument> {
+    return this.commandBus.execute(
+      new UpdateShippingZoneCommand(zoneId, dto, this.correlationId()),
+    );
+  }
+
+  private correlationId(): string {
+    return this.cls.get<string>('correlationId');
   }
 }
