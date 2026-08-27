@@ -61,7 +61,9 @@ export class AdminBlogController {
 
   @Throttle(WRITE_THROTTLE)
   @Post('posts')
-  @ApiOperation({ summary: 'Create a post (draft unless publish: true)' })
+  @ApiOperation({
+    summary: 'Create a post — draft unless publishedAt is set',
+  })
   createPost(
     @Body() dto: CreatePostDto,
     @CurrentUser('userId') userId: string,
@@ -72,7 +74,8 @@ export class AdminBlogController {
   @Throttle(WRITE_THROTTLE)
   @Patch('posts/:id')
   @ApiOperation({
-    summary: 'Update a post — set publish: true/false to publish/unpublish',
+    summary:
+      'Update a post — set publishedAt to (re)publish/schedule, null to revert to draft',
   })
   updatePost(
     @Param('id', ParseObjectIdPipe) id: string,

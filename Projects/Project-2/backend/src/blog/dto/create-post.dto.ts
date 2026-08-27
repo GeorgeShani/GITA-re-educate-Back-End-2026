@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayUnique,
   IsArray,
-  IsBoolean,
+  IsDateString,
   IsMongoId,
   IsOptional,
   IsString,
@@ -45,12 +45,12 @@ export class CreatePostDto {
   tagIds?: string[];
 
   @ApiPropertyOptional({
-    description: 'true = publish immediately, false/omitted = draft',
-    default: false,
+    description:
+      'ISO 8601. In the past/now = publish immediately, in the future = scheduled, omitted = draft.',
   })
   @IsOptional()
-  @IsBoolean()
-  publish?: boolean;
+  @IsDateString()
+  publishedAt?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

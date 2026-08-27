@@ -59,7 +59,7 @@ export class CreatePostHandler
                 ? new Types.ObjectId(dto.categoryId)
                 : undefined,
               tagIds: (dto.tagIds ?? []).map((id) => new Types.ObjectId(id)),
-              publishedAt: dto.publish ? new Date() : null,
+              publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : null,
               seoTitle: dto.seoTitle,
               seoDescription: dto.seoDescription,
             },

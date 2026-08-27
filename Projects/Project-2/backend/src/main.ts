@@ -34,7 +34,11 @@ async function bootstrap() {
     origin: configService.get<string>('CORS_ORIGIN'),
     credentials: true,
   });
-  app.setGlobalPrefix('api/v1', { exclude: ['health', 'admin/queues'] });
+  // sitemap.xml/robots.txt (S11) join health/admin-queues here — crawlers
+  // expect both at the domain root, not under the API prefix.
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health', 'admin/queues', 'sitemap.xml', 'robots.txt'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

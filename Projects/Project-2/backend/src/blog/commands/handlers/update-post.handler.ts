@@ -55,12 +55,12 @@ export class UpdatePostHandler
         if (dto.seoDescription !== undefined) {
           post.seoDescription = dto.seoDescription;
         }
-        // Idempotent either direction — same convention as
-        // UpdateProductHandler's publish toggle.
-        if (dto.publish === true && !post.publishedAt) {
-          post.publishedAt = new Date();
-        } else if (dto.publish === false) {
-          post.publishedAt = null;
+        // Supports scheduling (a future date) per the schema's own
+        // comment — not just immediate publish/unpublish like
+        // UpdateProductHandler's simpler boolean toggle. Explicit null
+        // reverts to draft; omitted (undefined) leaves it untouched.
+        if (dto.publishedAt !== undefined) {
+          post.publishedAt = dto.publishedAt ? new Date(dto.publishedAt) : null;
         }
 
         await post.save({ session });

@@ -34,6 +34,15 @@ export class PagesService {
     return page;
   }
 
+  /** Public read — every row is live the moment it's created, no draft filter needed. */
+  async findBySlug(slug: string): Promise<PageDocument> {
+    const page = await this.pageModel.findOne({ slug }).exec();
+    if (!page) {
+      throw new NotFoundException(`Page "${slug}" not found`);
+    }
+    return page;
+  }
+
   async create(dto: PageDto): Promise<PageDocument> {
     try {
       return await this.pageModel.create({
