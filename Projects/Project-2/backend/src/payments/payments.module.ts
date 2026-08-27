@@ -8,6 +8,7 @@ import { CoreModule } from '../core/core.module';
 import { Order, OrderSchema } from '../orders/schemas/order.schema';
 import { UsersModule } from '../users/users.module';
 import { CreatePaymentIntentHandler } from './commands/handlers/create-payment-intent.handler';
+import { IssueRefundHandler } from './commands/handlers/issue-refund.handler';
 import { RecordPaymentResultHandler } from './commands/handlers/record-payment-result.handler';
 import { PaymentCustomerService } from './payment-customer.service';
 import { PaymentMethodsController } from './payment-methods.controller';
@@ -24,6 +25,7 @@ import { Refund, RefundSchema } from './schemas/refund.schema';
 const COMMAND_HANDLERS = [
   CreatePaymentIntentHandler,
   RecordPaymentResultHandler,
+  IssueRefundHandler,
 ];
 
 @Module({

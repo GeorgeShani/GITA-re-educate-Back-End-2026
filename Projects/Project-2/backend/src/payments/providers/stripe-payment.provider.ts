@@ -6,6 +6,7 @@ import type {
   CreatePaymentIntentParams,
   PaymentIntentResult,
   PaymentProvider,
+  RefundResult,
   SavedPaymentMethod,
   SetupIntentResult,
   WebhookEvent,
@@ -120,5 +121,20 @@ export class StripePaymentProvider implements PaymentProvider {
 
   async detachPaymentMethod(paymentMethodId: string): Promise<void> {
     await this.client.paymentMethods.detach(paymentMethodId);
+  }
+
+  async createRefund(
+    providerPaymentIntentId: string,
+    amountMinor: number,
+    reason?: string,
+  ): Promise<RefundResult> {
+    const refund = await this.client.refunds.create({
+      payment_intent: providerPaymentIntentId,
+      amount: amountMinor,
+      reason: reason ? 'requested_by_customer' : undefined,
+      metadata: reason ? { reason } : undefined,
+    });
+
+    return { providerRefundId: refund.id };
   }
 }

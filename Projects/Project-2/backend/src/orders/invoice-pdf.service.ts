@@ -65,4 +65,50 @@ export class InvoicePdfService {
       doc.end();
     });
   }
+
+  /** Admin fulfillment document — shipping address + quantities, no pricing. */
+  generatePackingSlip(order: OrderDocument): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const doc = new PDFDocument({ margin: 50 });
+      const chunks: Buffer[] = [];
+
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      doc.fontSize(20).text('3legant Golf', { align: 'left' });
+      doc.fontSize(10).text('Packing Slip', { align: 'left' });
+      doc.moveDown();
+
+      doc.fontSize(12).text(`Order: ${order.orderNumber}`);
+      doc.text(`Date: ${(order.get('createdAt') as Date).toDateString()}`);
+      doc.moveDown();
+
+      doc.fontSize(11).text('Ship to:');
+      doc.fontSize(10).text(order.shippingAddress.fullName);
+      doc.text(order.shippingAddress.line1);
+      if (order.shippingAddress.line2) doc.text(order.shippingAddress.line2);
+      doc.text(
+        `${order.shippingAddress.city}, ${order.shippingAddress.region ?? ''} ${order.shippingAddress.postalCode}`,
+      );
+      doc.text(order.shippingAddress.countryCode);
+      doc.moveDown();
+
+      doc.fontSize(11).text('Items:');
+      for (const item of order.items) {
+        doc
+          .fontSize(10)
+          .text(
+            `${item.nameSnapshot} (${item.variantSku}) — qty ${item.quantity}`,
+          );
+      }
+
+      if (order.customerNote) {
+        doc.moveDown();
+        doc.fontSize(10).text(`Note: ${order.customerNote}`);
+      }
+
+      doc.end();
+    });
+  }
 }

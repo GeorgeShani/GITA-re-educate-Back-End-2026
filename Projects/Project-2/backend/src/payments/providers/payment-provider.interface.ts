@@ -30,6 +30,10 @@ export interface SavedPaymentMethod {
   expYear: number;
 }
 
+export interface RefundResult {
+  providerRefundId: string;
+}
+
 // SCOPE.md Phase 4 — same provider-abstraction shape as MailProvider,
 // StorageProvider, SearchProvider. StripePaymentProvider for real
 // checkouts, MockPaymentProvider for offline dev — selected by
@@ -50,6 +54,15 @@ export interface PaymentProvider {
   createSetupIntent(customerId: string): Promise<SetupIntentResult>;
   listPaymentMethods(customerId: string): Promise<SavedPaymentMethod[]>;
   detachPaymentMethod(paymentMethodId: string): Promise<void>;
+
+  // Admin refunds (Phase 6) — amountMinor less than the original charge
+  // is a partial refund; the caller (IssueRefundHandler) decides what
+  // that means for Order.status, not the provider.
+  createRefund(
+    providerPaymentIntentId: string,
+    amountMinor: number,
+    reason?: string,
+  ): Promise<RefundResult>;
 }
 
 export const PAYMENT_PROVIDER_TOKEN = Symbol('PAYMENT_PROVIDER');

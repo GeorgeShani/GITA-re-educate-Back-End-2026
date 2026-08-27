@@ -5,6 +5,7 @@ import { Injectable } from '@nestjs/common';
 import type {
   PaymentIntentResult,
   PaymentProvider,
+  RefundResult,
   SavedPaymentMethod,
   SetupIntentResult,
   WebhookEvent,
@@ -50,5 +51,9 @@ export class MockPaymentProvider implements PaymentProvider {
 
   detachPaymentMethod(): Promise<void> {
     return Promise.resolve();
+  }
+
+  createRefund(): Promise<RefundResult> {
+    return Promise.resolve({ providerRefundId: `mock_re_${randomUUID()}` });
   }
 }

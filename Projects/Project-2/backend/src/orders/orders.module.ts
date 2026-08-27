@@ -24,16 +24,26 @@ import {
   StockAdjustmentSchema,
 } from '../inventory/schemas/stock-adjustment.schema';
 import { MediaModule } from '../media/media.module';
+import { AdminOrdersController } from './admin-orders.controller';
+import { AdminOrdersService } from './admin-orders.service';
 import { CancelOrderHandler } from './commands/handlers/cancel-order.handler';
 import { ConfirmOrderHandler } from './commands/handlers/confirm-order.handler';
+import { MarkOrderDeliveredHandler } from './commands/handlers/mark-order-delivered.handler';
+import { ShipOrderHandler } from './commands/handlers/ship-order.handler';
 import { InvoiceConsumer } from './invoice.consumer';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
 import { Order, OrderSchema } from './schemas/order.schema';
+import { Shipment, ShipmentSchema } from './schemas/shipment.schema';
 import { StaleOrderSweepService } from './stale-order-sweep.service';
 
-const COMMAND_HANDLERS = [ConfirmOrderHandler, CancelOrderHandler];
+const COMMAND_HANDLERS = [
+  ConfirmOrderHandler,
+  CancelOrderHandler,
+  ShipOrderHandler,
+  MarkOrderDeliveredHandler,
+];
 
 @Module({
   imports: [
@@ -43,6 +53,7 @@ const COMMAND_HANDLERS = [ConfirmOrderHandler, CancelOrderHandler];
     MediaModule,
     MongooseModule.forFeature([
       { name: Order.name, schema: OrderSchema },
+      { name: Shipment.name, schema: ShipmentSchema },
       { name: Coupon.name, schema: CouponSchema },
       { name: CouponRedemption.name, schema: CouponRedemptionSchema },
       { name: InventoryItem.name, schema: InventoryItemSchema },
@@ -51,9 +62,10 @@ const COMMAND_HANDLERS = [ConfirmOrderHandler, CancelOrderHandler];
     ]),
     BullModule.registerQueue({ name: QueueName.INVOICES }),
   ],
-  controllers: [OrdersController],
+  controllers: [OrdersController, AdminOrdersController],
   providers: [
     OrdersService,
+    AdminOrdersService,
     InvoicePdfService,
     InvoiceConsumer,
     StaleOrderSweepService,
