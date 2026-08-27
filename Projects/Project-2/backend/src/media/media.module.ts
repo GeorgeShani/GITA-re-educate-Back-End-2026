@@ -31,6 +31,8 @@ const COMMAND_HANDLERS = [RegisterMediaHandler, DeleteMediaHandler];
     CloudinaryStorageProvider,
     { provide: STORAGE_PROVIDER_TOKEN, useExisting: CloudinaryStorageProvider },
   ],
-  exports: [MediaService],
+  // STORAGE_PROVIDER_TOKEN exported for OrdersModule's invoice consumer
+  // (S9) — the one server-side (non-browser-signed) upload case.
+  exports: [MediaService, STORAGE_PROVIDER_TOKEN],
 })
 export class MediaModule {}

@@ -21,6 +21,8 @@ export interface CartLineItem {
   unitPriceMinor: number;
   quantity: number;
   lineTotalMinor: number;
+  /** Used for shipping-rate weight tiers at checkout (S9) — 0 when the variant has no weight recorded. */
+  weightGrams: number;
 }
 
 // Deliberately NOT a price snapshot on CartItem itself — SCOPE.md A9's
@@ -67,6 +69,7 @@ export class CartPricingService {
         unitPriceMinor,
         quantity: item.quantity,
         lineTotalMinor: unitPriceMinor * item.quantity,
+        weightGrams: variant?.weightGrams ?? 0,
       });
     }
 

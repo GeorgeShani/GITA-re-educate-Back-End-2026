@@ -4,6 +4,7 @@ import { v2 as cloudinary } from 'cloudinary';
 
 import type {
   StorageProvider,
+  UploadBufferParams,
   UploadedAssetMetadata,
   UploadSignatureParams,
   UploadSignatureResult,
@@ -70,6 +71,28 @@ export class CloudinaryStorageProvider
     const resource = (await cloudinary.api.resource(
       publicId,
     )) as CloudinaryResourceResponse;
+    return {
+      publicId: resource.public_id,
+      url: resource.secure_url,
+      width: resource.width,
+      height: resource.height,
+      format: resource.format,
+      bytes: resource.bytes,
+      resourceType: resource.resource_type,
+    };
+  }
+
+  async uploadBuffer(
+    params: UploadBufferParams,
+  ): Promise<UploadedAssetMetadata> {
+    const dataUri = `data:application/octet-stream;base64,${params.buffer.toString('base64')}`;
+    const resource = (await cloudinary.uploader.upload(dataUri, {
+      folder: params.folder,
+      public_id: params.publicId,
+      resource_type: params.resourceType,
+      overwrite: true,
+    })) as CloudinaryResourceResponse;
+
     return {
       publicId: resource.public_id,
       url: resource.secure_url,

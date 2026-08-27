@@ -34,6 +34,7 @@ export const envValidationSchema = Joi.object({
   // rotating one doesn't invalidate the other.
   COOKIE_SECRET: Joi.string().min(16).required(),
 
+  PAYMENT_PROVIDER: Joi.string().valid('stripe', 'mock').default('mock'),
   STRIPE_SECRET_KEY: optionalString(),
   STRIPE_WEBHOOK_SECRET: optionalString(),
 

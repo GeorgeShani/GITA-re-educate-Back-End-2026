@@ -45,8 +45,13 @@ export class CartService {
 
   async resolveCart(identity: CartIdentity): Promise<ResolvedCart> {
     if (identity.userId) {
+      // isConverted: false — without this, a user who's checked out
+      // before would keep resolving to their old, already-converted
+      // cart forever instead of getting a fresh one (S9's PlaceOrderHandler
+      // sets isConverted: true on successful checkout; this is the read
+      // side of that same invariant).
       let cart = await this.cartModel
-        .findOne({ userId: identity.userId })
+        .findOne({ userId: identity.userId, isConverted: false })
         .exec();
       cart ??= await this.cartModel.create({
         userId: identity.userId,

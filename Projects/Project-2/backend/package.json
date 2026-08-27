@@ -20,7 +20,8 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "mail:preview": "ts-node -r tsconfig-paths/register scripts/mail-preview.ts",
     "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts",
-    "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts"
+    "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts",
+    "seed:commerce": "ts-node -r tsconfig-paths/register scripts/seed-commerce.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.5",
@@ -50,6 +51,7 @@
     "mongoose": "^9.9.3",
     "nestjs-cls": "^6.2.1",
     "nestjs-pino": "^4.6.1",
+    "pdfkit": "^0.20.1",
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.24.0",
@@ -70,6 +72,7 @@
     "@types/jest": "^30.0.0",
     "@types/mjml": "^5.0.0",
     "@types/node": "^24.0.0",
+    "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.0.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",

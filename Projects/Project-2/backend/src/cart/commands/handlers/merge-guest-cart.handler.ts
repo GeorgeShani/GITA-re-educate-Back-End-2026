@@ -31,8 +31,10 @@ export class MergeGuestCartHandler
         return null; // nothing to merge — not an error, just a no-op
       }
 
+      // isConverted: false — same reasoning as CartService.resolveCart
+      // (S9): don't fold a guest cart into an already-checked-out cart.
       let userCart = await this.cartModel
-        .findOne({ userId: command.userId })
+        .findOne({ userId: command.userId, isConverted: false })
         .session(session);
       userCart ??= (
         await this.cartModel.create([{ userId: command.userId, items: [] }], {

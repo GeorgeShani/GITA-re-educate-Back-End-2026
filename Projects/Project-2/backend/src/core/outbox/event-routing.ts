@@ -31,6 +31,10 @@ export const EVENT_ROUTES: EventRoute[] = [
   // deletion has a real external side effect (Cloudinary destroy()) to
   // move out of the transaction. See media.consumer.ts.
   { pattern: 'media.deleted', queue: QueueName.MEDIA },
+
+  // S9 — invoice PDF generation. See queue-names.enum.ts for why this
+  // is its own queue rather than folded into notifications.
+  { pattern: 'order.paid', queue: QueueName.INVOICES },
 ];
 
 export function resolveQueuesForEvent(eventName: string): QueueName[] {

@@ -40,6 +40,7 @@ import { QueueName } from './queues/queue-names.enum';
       { name: QueueName.AUDIT_LOG },
       { name: QueueName.NOTIFICATIONS },
       { name: QueueName.MEDIA },
+      { name: QueueName.INVOICES },
     ),
   ],
   providers: [

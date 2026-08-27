@@ -27,6 +27,11 @@ import { CatalogModule } from './catalog/catalog.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CartModule } from './cart/cart.module';
+import { ShippingModule } from './shipping/shipping.module';
+import { TaxModule } from './tax/tax.module';
+import { PaymentsModule } from './payments/payments.module';
+import { OrdersModule } from './orders/orders.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -113,6 +118,11 @@ import { CartModule } from './cart/cart.module';
     InventoryModule,
     ReviewsModule,
     CartModule,
+    ShippingModule,
+    TaxModule,
+    PaymentsModule,
+    OrdersModule,
+    CheckoutModule,
   ],
   controllers: [AppController],
   providers: [

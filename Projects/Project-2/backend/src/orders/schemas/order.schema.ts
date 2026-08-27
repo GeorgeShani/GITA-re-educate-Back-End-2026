@@ -48,8 +48,11 @@ export class Order {
   @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
   userId!: Types.ObjectId;
 
+  // Types.DocumentArray, not a plain OrderItem[] — same reasoning as
+  // Cart.items (S8): Return (S10) needs order.items.id(orderItemId) to
+  // validate a return request against the specific line it's returning.
   @Prop({ type: [OrderItemSchema], required: true })
-  items!: OrderItem[];
+  items!: Types.DocumentArray<OrderItem>;
 
   @Prop({ type: AddressSchema, required: true })
   shippingAddress!: Address;
@@ -89,6 +92,11 @@ export class Order {
 
   @Prop({ trim: true })
   customerNote?: string;
+
+  // Set by the invoice queue consumer (S9) once generated — a Cloudinary
+  // raw-resource URL, uploaded via StorageProvider.uploadBuffer.
+  @Prop()
+  invoiceUrl?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
