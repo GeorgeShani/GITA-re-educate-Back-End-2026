@@ -31,6 +31,10 @@
 $ npm install
 ```
 
+Then copy `.env.example` to `.env` and fill it in — see
+[`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md) for exactly where
+every value comes from.
+
 ## Compile and run the project
 
 ```bash
