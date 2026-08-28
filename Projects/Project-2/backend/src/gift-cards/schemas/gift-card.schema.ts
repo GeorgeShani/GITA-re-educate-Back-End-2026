@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -25,7 +25,7 @@ export class GiftCard {
   @Prop({ required: true, default: 'usd' })
   currency!: string;
 
-  @Prop({ type: Types.ObjectId, ref: User.name })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name })
   issuedToUserId?: Types.ObjectId;
 
   @Prop()

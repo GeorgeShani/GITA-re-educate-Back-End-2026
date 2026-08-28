@@ -53,7 +53,7 @@ export class PostCategoriesService {
         .findByIdAndUpdate(
           categoryId,
           { name: dto.name, slug: dto.slug.toLowerCase() },
-          { new: true },
+          { returnDocument: 'after' },
         )
         .exec();
       if (!category) {

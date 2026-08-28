@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -25,13 +25,17 @@ export class Post {
   @Prop()
   coverImageUrl?: string;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, required: true })
   authorId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: PostCategory.name, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: PostCategory.name,
+    index: true,
+  })
   categoryId?: Types.ObjectId;
 
-  @Prop({ type: [Types.ObjectId], ref: Tag.name, default: [] })
+  @Prop({ type: [MongooseSchema.Types.ObjectId], ref: Tag.name, default: [] })
   tagIds!: Types.ObjectId[];
 
   // null = draft/scheduled — a future publishedAt is how "scheduled

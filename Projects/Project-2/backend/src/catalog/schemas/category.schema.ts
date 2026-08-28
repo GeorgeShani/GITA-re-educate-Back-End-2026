@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 
@@ -21,7 +21,11 @@ export class Category {
   @Prop({ trim: true })
   description?: string;
 
-  @Prop({ type: Types.ObjectId, ref: Category.name, default: null })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Category.name,
+    default: null,
+  })
   parentId!: Types.ObjectId | null;
 
   @Prop({ required: true, index: true })

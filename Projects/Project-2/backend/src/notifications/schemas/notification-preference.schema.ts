@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -13,7 +13,12 @@ export type NotificationPreferenceDocument =
 // itself; this only ever gates marketing/opt-in sends.
 @Schema(baseSchemaOptions)
 export class NotificationPreference {
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, unique: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    unique: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({

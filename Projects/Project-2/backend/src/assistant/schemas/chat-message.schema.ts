@@ -16,14 +16,14 @@ export type ChatMessageRole = 'user' | 'assistant' | 'tool';
 @Schema(baseSchemaOptions)
 export class ChatMessage {
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: ChatSession.name,
     required: true,
     index: true,
   })
   sessionId!: Types.ObjectId;
 
-  @Prop({ required: true })
+  @Prop({ type: String, enum: ['user', 'assistant', 'tool'], required: true })
   role!: ChatMessageRole;
 
   @Prop()

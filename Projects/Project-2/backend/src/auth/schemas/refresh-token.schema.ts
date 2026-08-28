@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -14,7 +14,12 @@ export type RefreshTokenDocument = HydratedDocument<RefreshToken>;
 // signed JWT string, never the raw token itself.
 @Schema(baseSchemaOptions)
 export class RefreshToken {
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
@@ -32,7 +37,11 @@ export class RefreshToken {
   // signal — AuthService revokes every active token for the user,
   // forcing a full re-login rather than trying to track finer-grained
   // "token families".
-  @Prop({ type: Types.ObjectId, ref: 'RefreshToken', default: null })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'RefreshToken',
+    default: null,
+  })
   replacedByTokenId!: Types.ObjectId | null;
 }
 

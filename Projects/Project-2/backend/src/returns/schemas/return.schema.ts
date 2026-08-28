@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Order } from '../../orders/schemas/order.schema';
@@ -11,7 +11,7 @@ import { ReturnStatus } from '../enums/return-status.enum';
 @Schema({ _id: true })
 export class ReturnItem {
   // References the embedded OrderItem's own _id on the parent Order.
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   orderItemId!: Types.ObjectId;
 
   @Prop({ required: true, min: 1 })
@@ -26,16 +26,32 @@ export type ReturnDocument = HydratedDocument<Return>;
 
 @Schema(baseSchemaOptions)
 export class Return {
-  @Prop({ type: Types.ObjectId, ref: Order.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Order.name,
+    required: true,
+    index: true,
+  })
   orderId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ type: [ReturnItemSchema], required: true })
   items!: ReturnItem[];
 
-  @Prop({ required: true, default: ReturnStatus.REQUESTED, index: true })
+  @Prop({
+    type: String,
+    enum: ReturnStatus,
+    required: true,
+    default: ReturnStatus.REQUESTED,
+    index: true,
+  })
   status!: ReturnStatus;
 
   // Customer-side flow is fully built here (S10); approval/rejection is
@@ -44,7 +60,7 @@ export class Return {
   @Prop()
   adminNote?: string;
 
-  @Prop({ type: Types.ObjectId })
+  @Prop({ type: MongooseSchema.Types.ObjectId })
   refundId?: Types.ObjectId;
 }
 

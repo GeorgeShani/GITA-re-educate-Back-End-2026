@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Product } from '../../catalog/schemas/product.schema';
@@ -13,10 +13,19 @@ export type WishlistItemDocument = HydratedDocument<WishlistItem>;
 // (user, product) pair, enforced by the unique index below.
 @Schema(baseSchemaOptions)
 export class WishlistItem {
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: Product.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Product.name,
+    required: true,
+  })
   productId!: Types.ObjectId;
 }
 

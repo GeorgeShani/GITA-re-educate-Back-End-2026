@@ -93,7 +93,7 @@ export class Product {
   tags!: string[];
 
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: Category.name,
     required: true,
     index: true,

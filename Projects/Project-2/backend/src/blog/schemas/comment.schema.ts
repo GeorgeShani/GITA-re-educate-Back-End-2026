@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -14,12 +14,17 @@ export type CommentStatus = 'pending' | 'approved' | 'rejected';
 // the two sections rather than treat SCOPE.md's list as exhaustive.
 @Schema(baseSchemaOptions)
 export class Comment {
-  @Prop({ type: Types.ObjectId, ref: Post.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Post.name,
+    required: true,
+    index: true,
+  })
   postId!: Types.ObjectId;
 
   // Guests can comment — userId is set when the commenter is logged in,
   // authorName/authorEmail are always stored either way for display.
-  @Prop({ type: Types.ObjectId, ref: User.name })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name })
   userId?: Types.ObjectId;
 
   @Prop({ required: true, trim: true })
@@ -31,10 +36,16 @@ export class Comment {
   @Prop({ required: true })
   body!: string;
 
-  @Prop({ type: Types.ObjectId, ref: Comment.name })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: Comment.name })
   parentId?: Types.ObjectId; // threaded replies
 
-  @Prop({ required: true, default: 'pending', index: true })
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    required: true,
+    default: 'pending',
+    index: true,
+  })
   status!: CommentStatus;
 }
 

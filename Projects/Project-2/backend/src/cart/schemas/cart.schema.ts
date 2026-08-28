@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Product } from '../../catalog/schemas/product.schema';
@@ -11,7 +11,11 @@ import { User } from '../../users/schemas/user.schema';
 // current pricing until checkout freezes it onto the order.
 @Schema({ _id: true })
 export class CartItem {
-  @Prop({ type: Types.ObjectId, ref: Product.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Product.name,
+    required: true,
+  })
   productId!: Types.ObjectId;
 
   @Prop({ required: true, trim: true, uppercase: true })
@@ -28,7 +32,7 @@ export type CartDocument = HydratedDocument<Cart>;
 export class Cart {
   // Set once the guest cart is claimed on login (cart.merged); absent
   // for guest carts, which are found by signed cookie token instead.
-  @Prop({ type: Types.ObjectId, ref: User.name, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name, index: true })
   userId?: Types.ObjectId;
 
   // Guest identity — a random token embedded in a signed cookie.

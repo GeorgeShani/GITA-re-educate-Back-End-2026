@@ -47,7 +47,7 @@ export class OutboxRepository {
     return this.outboxModel.findOneAndUpdate(
       { _id: id, publishedAt: null },
       { $set: { publishedAt: new Date() }, $inc: { attempts: 1 } },
-      { new: true },
+      { returnDocument: 'after' },
     );
   }
 

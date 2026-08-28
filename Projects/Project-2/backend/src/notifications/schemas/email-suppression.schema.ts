@@ -13,7 +13,11 @@ export class EmailSuppression {
   @Prop({ required: true, unique: true, lowercase: true, trim: true })
   email!: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    enum: ['bounce', 'complaint', 'manual'],
+    required: true,
+  })
   reason!: 'bounce' | 'complaint' | 'manual';
 }
 

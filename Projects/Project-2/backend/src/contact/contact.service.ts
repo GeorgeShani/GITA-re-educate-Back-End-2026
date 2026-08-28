@@ -52,7 +52,11 @@ export class ContactService {
 
   async markRead(messageId: string): Promise<ContactMessageDocument> {
     const message = await this.contactMessageModel
-      .findByIdAndUpdate(messageId, { isRead: true }, { new: true })
+      .findByIdAndUpdate(
+        messageId,
+        { isRead: true },
+        { returnDocument: 'after' },
+      )
       .exec();
     if (!message) {
       throw new NotFoundException(

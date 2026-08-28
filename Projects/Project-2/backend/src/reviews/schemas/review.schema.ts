@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Product } from '../../catalog/schemas/product.schema';
@@ -13,14 +13,19 @@ export type ReviewStatus = 'pending' | 'approved' | 'rejected';
 @Schema(baseSchemaOptions)
 export class Review {
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: Product.name,
     required: true,
     index: true,
   })
   productId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, min: 1, max: 5 })
@@ -46,7 +51,12 @@ export class Review {
   // backend — see the plan's "Consequences of excluding admin CRUD".
   // Default here is deliberately dev-only permissive; production
   // moderation arrives with Phase 6.
-  @Prop({ required: true, default: 'pending' })
+  @Prop({
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    required: true,
+    default: 'pending',
+  })
   status!: ReviewStatus;
 
   @Prop()

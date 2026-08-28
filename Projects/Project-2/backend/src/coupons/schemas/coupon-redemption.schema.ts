@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Coupon } from './coupon.schema';
@@ -13,13 +13,27 @@ export type CouponRedemptionDocument = HydratedDocument<CouponRedemption>;
 // counter that could drift.
 @Schema(baseSchemaOptions)
 export class CouponRedemption {
-  @Prop({ type: Types.ObjectId, ref: Coupon.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Coupon.name,
+    required: true,
+    index: true,
+  })
   couponId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: Order.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Order.name,
+    required: true,
+  })
   orderId!: Types.ObjectId;
 
   @Prop({ required: true })

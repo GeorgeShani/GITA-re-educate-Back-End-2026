@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Payment } from './payment.schema';
@@ -10,7 +10,7 @@ export type RefundStatus = 'pending' | 'succeeded' | 'failed';
 @Schema(baseSchemaOptions)
 export class Refund {
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: Payment.name,
     required: true,
     index: true,
@@ -23,7 +23,12 @@ export class Refund {
   @Prop({ trim: true })
   reason?: string;
 
-  @Prop({ required: true, default: 'pending' })
+  @Prop({
+    type: String,
+    enum: ['pending', 'succeeded', 'failed'],
+    required: true,
+    default: 'pending',
+  })
   status!: RefundStatus;
 
   @Prop({ index: true, sparse: true })

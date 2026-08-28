@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 
@@ -11,7 +11,11 @@ export class Coupon {
   @Prop({ required: true, unique: true, trim: true, uppercase: true })
   code!: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    enum: ['percentage', 'fixed', 'free_shipping'],
+    required: true,
+  })
   type!: CouponType;
 
   // percentage: 0-100. fixed: minor units. free_shipping: ignored.
@@ -22,10 +26,10 @@ export class Coupon {
   minSpendMinor!: number;
 
   // Empty arrays = applies store-wide.
-  @Prop({ type: [Types.ObjectId], default: [] })
+  @Prop({ type: [MongooseSchema.Types.ObjectId], default: [] })
   productIds!: Types.ObjectId[];
 
-  @Prop({ type: [Types.ObjectId], default: [] })
+  @Prop({ type: [MongooseSchema.Types.ObjectId], default: [] })
   categoryIds!: Types.ObjectId[];
 
   @Prop()

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { InventoryItem } from './inventory-item.schema';
@@ -20,7 +20,7 @@ export type InventoryReservationStatus = 'active' | 'consumed' | 'released';
 @Schema(baseSchemaOptions)
 export class InventoryReservation {
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: InventoryItem.name,
     required: true,
     index: true,
@@ -28,16 +28,21 @@ export class InventoryReservation {
   inventoryItemId!: Types.ObjectId;
 
   // Whichever cart or order this reservation backs — exactly one is set.
-  @Prop({ type: Types.ObjectId, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, index: true })
   cartId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, index: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, index: true })
   orderId?: Types.ObjectId;
 
   @Prop({ required: true, min: 1 })
   quantity!: number;
 
-  @Prop({ required: true, default: 'active' })
+  @Prop({
+    type: String,
+    enum: ['active', 'consumed', 'released'],
+    required: true,
+    default: 'active',
+  })
   status!: InventoryReservationStatus;
 
   @Prop({ required: true })

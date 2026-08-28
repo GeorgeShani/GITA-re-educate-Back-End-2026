@@ -131,7 +131,11 @@ export class CartService {
 
   async removeCoupon(cartId: string): Promise<CartDocument> {
     const cart = await this.cartModel
-      .findByIdAndUpdate(cartId, { $unset: { couponCode: '' } }, { new: true })
+      .findByIdAndUpdate(
+        cartId,
+        { $unset: { couponCode: '' } },
+        { returnDocument: 'after' },
+      )
       .exec();
     if (!cart) {
       throw new NotFoundException(`Cart with id ${cartId} not found`);

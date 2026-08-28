@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Address, AddressSchema } from '../../common/schemas/address.schema';
@@ -13,7 +13,11 @@ import { OrderStatus } from '../enums/order-status.enum';
 // change or even product deletion can never alter a past order's total.
 @Schema({ _id: true })
 export class OrderItem {
-  @Prop({ type: Types.ObjectId, ref: Product.name, required: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Product.name,
+    required: true,
+  })
   productId!: Types.ObjectId;
 
   @Prop({ required: true, trim: true, uppercase: true })
@@ -45,7 +49,12 @@ export class Order {
   @Prop({ required: true, unique: true })
   orderNumber!: string;
 
-  @Prop({ type: Types.ObjectId, ref: User.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: User.name,
+    required: true,
+    index: true,
+  })
   userId!: Types.ObjectId;
 
   // Types.DocumentArray, not a plain OrderItem[] — same reasoning as
@@ -81,10 +90,22 @@ export class Order {
   @Prop({ trim: true, uppercase: true })
   couponCode?: string;
 
-  @Prop({ required: true, default: OrderStatus.PLACED, index: true })
+  // type: String explicit — @nestjs/mongoose's reflect-metadata type
+  // inference is otherwise ambiguous for a string-enum property under
+  // ts-jest specifically (nest build's own tsc emits fine; verified by
+  // loading the compiled dist/ output directly — this is a compiler-
+  // pipeline quirk, not a real runtime bug, but the explicit type avoids
+  // depending on inference at all).
+  @Prop({
+    type: String,
+    enum: OrderStatus,
+    required: true,
+    default: OrderStatus.PLACED,
+    index: true,
+  })
   status!: OrderStatus;
 
-  @Prop({ type: Types.ObjectId })
+  @Prop({ type: MongooseSchema.Types.ObjectId })
   paymentId?: Types.ObjectId;
 
   @Prop()

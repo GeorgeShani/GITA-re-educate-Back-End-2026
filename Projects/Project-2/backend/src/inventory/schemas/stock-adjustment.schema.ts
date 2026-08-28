@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { InventoryItem } from './inventory-item.schema';
@@ -12,7 +12,7 @@ export type StockAdjustmentDocument = HydratedDocument<StockAdjustment>;
 @Schema(baseSchemaOptions)
 export class StockAdjustment {
   @Prop({
-    type: Types.ObjectId,
+    type: MongooseSchema.Types.ObjectId,
     ref: InventoryItem.name,
     required: true,
     index: true,
@@ -30,7 +30,7 @@ export class StockAdjustment {
 
   // Absent for system-driven adjustments (the common case here, since
   // admin-initiated manual corrections are Phase 6, out of scope).
-  @Prop({ type: Types.ObjectId })
+  @Prop({ type: MongooseSchema.Types.ObjectId })
   adjustedByUserId?: Types.ObjectId;
 }
 

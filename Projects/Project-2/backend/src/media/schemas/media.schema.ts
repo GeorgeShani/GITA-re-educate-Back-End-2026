@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { User } from '../../users/schemas/user.schema';
@@ -42,7 +42,7 @@ export class Media {
   @Prop({ trim: true })
   ownerContext?: string; // e.g. "review", "avatar", "product"
 
-  @Prop({ type: Types.ObjectId, ref: User.name })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: User.name })
   uploadedByUserId?: Types.ObjectId;
 
   @Prop({ default: false })

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Order } from '../../orders/schemas/order.schema';
@@ -12,10 +12,20 @@ export type PaymentDocument = HydratedDocument<Payment>;
 // webhooks target a specific PaymentIntent, not an order.
 @Schema(baseSchemaOptions)
 export class Payment {
-  @Prop({ type: Types.ObjectId, ref: Order.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Order.name,
+    required: true,
+    index: true,
+  })
   orderId!: Types.ObjectId;
 
-  @Prop({ required: true, default: 'stripe' })
+  @Prop({
+    type: String,
+    enum: ['stripe', 'mock'],
+    required: true,
+    default: 'stripe',
+  })
   provider!: 'stripe' | 'mock';
 
   @Prop({ index: true, sparse: true })
@@ -27,7 +37,16 @@ export class Payment {
   @Prop({ required: true, default: 'usd' })
   currency!: string;
 
-  @Prop({ required: true, default: PaymentStatus.INTENT_CREATED, index: true })
+  // type/enum explicit — see order.schema.ts's status field for why
+  // (reflect-metadata's design:type inference is ambiguous for a
+  // string-enum property under ts-jest specifically).
+  @Prop({
+    type: String,
+    enum: PaymentStatus,
+    required: true,
+    default: PaymentStatus.INTENT_CREATED,
+    index: true,
+  })
   status!: PaymentStatus;
 
   // Stripe idempotency key for the PaymentIntent create call — SCOPE.md

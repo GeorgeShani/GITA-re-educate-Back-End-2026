@@ -30,7 +30,10 @@ export class UpdateProfileHandler
       if (command.phone !== undefined) update.phone = command.phone;
 
       const user = await this.userModel
-        .findByIdAndUpdate(command.userId, update, { new: true, session })
+        .findByIdAndUpdate(command.userId, update, {
+          returnDocument: 'after',
+          session,
+        })
         .exec();
 
       await this.outboxRepository.write(

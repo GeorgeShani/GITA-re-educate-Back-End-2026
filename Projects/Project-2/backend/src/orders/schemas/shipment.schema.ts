@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument, Types } from 'mongoose';
+import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
 import { Order } from './order.schema';
@@ -13,10 +13,20 @@ export type ShipmentStatus = 'pending' | 'shipped' | 'delivered';
 // shipment, not the order.
 @Schema(baseSchemaOptions)
 export class Shipment {
-  @Prop({ type: Types.ObjectId, ref: Order.name, required: true, index: true })
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: Order.name,
+    required: true,
+    index: true,
+  })
   orderId!: Types.ObjectId;
 
-  @Prop({ required: true, default: 'pending' })
+  @Prop({
+    type: String,
+    enum: ['pending', 'shipped', 'delivered'],
+    required: true,
+    default: 'pending',
+  })
   status!: ShipmentStatus;
 
   @Prop({ trim: true })

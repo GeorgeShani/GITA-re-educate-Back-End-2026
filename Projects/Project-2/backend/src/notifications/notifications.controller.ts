@@ -86,7 +86,7 @@ export class NotificationsController {
     const emailMessage = await this.emailMessageModel.findOneAndUpdate(
       { providerMessageId: payload.data.email_id },
       { status: newStatus },
-      { new: true },
+      { returnDocument: 'after' },
     );
 
     if (!emailMessage) {

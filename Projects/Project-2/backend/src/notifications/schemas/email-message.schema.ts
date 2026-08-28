@@ -22,7 +22,11 @@ export class EmailMessage {
   @Prop({ required: true })
   subject!: string;
 
-  @Prop({ required: true })
+  @Prop({
+    type: String,
+    enum: ['transactional', 'security', 'ops', 'marketing', 'opt-in'],
+    required: true,
+  })
   category!: EmailCategory;
 
   @Prop({ type: MongooseSchema.Types.Mixed, default: {} })
@@ -33,7 +37,12 @@ export class EmailMessage {
   @Prop({ required: true, unique: true })
   dedupeKey!: string;
 
-  @Prop({ required: true, default: 'queued' })
+  @Prop({
+    type: String,
+    enum: ['queued', 'sent', 'delivered', 'bounced', 'complained', 'failed'],
+    required: true,
+    default: 'queued',
+  })
   status!: EmailStatus;
 
   @Prop()
