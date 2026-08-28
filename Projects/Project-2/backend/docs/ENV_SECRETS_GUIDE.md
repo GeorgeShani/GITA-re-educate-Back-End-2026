@@ -33,7 +33,7 @@ JWT_REFRESH_SECRET/COOKIE_SECRET, per `src/config/env.validation.ts`).
 | `MAIL_PROVIDER=console` | nothing — this is the default | already set, skip §6 entirely |
 | `RESEND_API_KEY`, `MAIL_*` | only if you switch `MAIL_PROVIDER=resend` | Resend Dashboard — [§6](#6-resend-s4-email-optional) |
 | `PEXELS_API_KEY` | `npm run seed:catalog` only | Pexels — [§7](#7-pexels-seed-script-only) |
-| `GEMINI_API_KEY` | nothing yet (S12, unbuilt) | Google AI Studio — [§8](#8-gemini-future-s12-not-needed-yet) |
+| `GEMINI_API_KEY` | S12 AI shopping assistant | Google AI Studio — [§8](#8-gemini-s12--the-ai-shopping-assistant) |
 | `products_search` index | S7 catalog search/typeahead | **not an env var** — Atlas UI — [§9](#9-atlas-search-index-not-an-env-var) |
 | first admin account | Phase 6 `/admin/*` routes | **not an env var** — `npm run promote-admin` — [§10](#10-bootstrapping-the-first-admin-not-an-env-var) |
 
@@ -157,14 +157,19 @@ Only `npm run seed:catalog` reads this — the running API never does.
    PEXELS_API_KEY=...
    ```
 
-## 8. Gemini (future S12, not needed yet)
+## 8. Gemini (S12 — the AI shopping assistant)
 
-Nothing in S4–S10 calls this — it's in the Joi schema as `optional()` purely
-so S12 (the AI assistant slice, not yet built) doesn't need another env
-validation pass later. Skip it for now; when S12 lands:
+Powers `POST /assistant/sessions/:id/messages`. Without it, every assistant
+route still works — it just returns an SSE `error` event ("The assistant is
+not configured") instead of failing app boot, same conditional-provider
+pattern as Stripe/Resend.
 
 1. [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → Create API key. The free tier is enough for development.
-2. `GEMINI_API_KEY=...`
+2. ```
+   GEMINI_API_KEY=...
+   GEMINI_MODEL=gemini-2.5-flash
+   ```
+   `GEMINI_MODEL` defaults to `gemini-2.5-flash` if unset — swap in `gemini-2.5-pro` for better reasoning at higher cost/latency per SCOPE.md Phase 8's own guidance.
 
 ## 9. Atlas Search index (not an env var)
 
