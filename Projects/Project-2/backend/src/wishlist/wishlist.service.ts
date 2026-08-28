@@ -12,6 +12,17 @@ import {
   WishlistItemDocument,
 } from './schemas/wishlist-item.schema';
 
+// .lean()'s default inferred type is the schema's own class fields only —
+// createdAt/updatedAt come from baseSchemaOptions' `timestamps: true` at
+// runtime but aren't declared on the WishlistItem class, so TS doesn't
+// know about them unless the lean generic says so explicitly.
+interface WishlistItemLean {
+  _id: Types.ObjectId;
+  userId: Types.ObjectId;
+  productId: Types.ObjectId;
+  createdAt: Date;
+}
+
 export interface WishlistEntry {
   productId: string;
   addedAt: Date;
@@ -42,7 +53,7 @@ export class WishlistService {
     const items = await this.wishlistItemModel
       .find({ userId: new Types.ObjectId(userId) })
       .sort({ createdAt: -1 })
-      .lean();
+      .lean<WishlistItemLean[]>();
 
     if (items.length === 0) return [];
 
@@ -63,7 +74,7 @@ export class WishlistService {
 
       return {
         productId: item.productId.toString(),
-        addedAt: (item as unknown as { createdAt: Date }).createdAt,
+        addedAt: item.createdAt,
         product: product
           ? {
               name: product.name,

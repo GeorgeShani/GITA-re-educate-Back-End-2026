@@ -75,7 +75,9 @@ export class OrdersService {
       status: order.status,
       city: order.shippingAddress.city,
       countryCode: order.shippingAddress.countryCode,
-      placedAt: order.get('createdAt') as Date,
+      // Document.get() is typed `any` by mongoose — no cast needed, the
+      // TrackingInfo return type above already tells TS what this is.
+      placedAt: order.get('createdAt'),
     };
   }
 

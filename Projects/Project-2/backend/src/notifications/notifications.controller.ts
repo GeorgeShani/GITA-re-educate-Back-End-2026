@@ -75,7 +75,9 @@ export class NotificationsController {
       throw new BadRequestException('Invalid webhook signature');
     }
 
-    const payload = JSON.parse(rawBody) as ResendWebhookPayload;
+    // JSON.parse returns `any` — no cast needed, this annotation alone
+    // gives TS everything it needs.
+    const payload: ResendWebhookPayload = JSON.parse(rawBody);
     const newStatus = STATUS_BY_EVENT_TYPE[payload.type];
     if (!newStatus) {
       return { received: true }; // an event type we don't track (e.g. email.sent, email.opened)

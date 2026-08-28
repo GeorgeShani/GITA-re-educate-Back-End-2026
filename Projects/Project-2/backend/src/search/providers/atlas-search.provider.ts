@@ -9,26 +9,6 @@ import {
   SearchProvider,
 } from '../search-provider.interface';
 
-// mongoose's PipelineStage union doesn't include $search or $searchMeta —
-// they're Atlas-only, not part of vanilla MongoDB's aggregation grammar
-// mongoose types against. Cast at the aggregate() call site rather than
-// losing type safety on every other stage in the pipeline.
-interface AtlasSearchStage {
-  $search: {
-    index: string;
-    compound: {
-      should: Array<{
-        text: {
-          query: string;
-          path: string;
-          score: { boost: { value: number } };
-        };
-      }>;
-      minimumShouldMatch: number;
-    };
-  };
-}
-
 const SEARCH_INDEX_NAME = 'products_search';
 
 // SCOPE.md Phase 3 — weighted title > brand > description > tags via
@@ -51,7 +31,12 @@ export class AtlasSearchProvider implements SearchProvider {
       return { productIds: [], total: 0 };
     }
 
-    const searchStage: AtlasSearchStage = {
+    // mongoose 9's PipelineStage union includes $search/$searchMeta
+    // directly (PipelineStage.Search) — its `compound`/`autocomplete`
+    // operators are typed as `[operator: string]: any` since Atlas
+    // Search's query syntax is too varied to model exhaustively, but the
+    // stage itself needs no cast.
+    const searchStage: PipelineStage.Search = {
       $search: {
         index: SEARCH_INDEX_NAME,
         compound: {
@@ -106,7 +91,7 @@ export class AtlasSearchProvider implements SearchProvider {
       };
     }
 
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       searchStage,
       { $match: matchStage },
       {
@@ -119,7 +104,7 @@ export class AtlasSearchProvider implements SearchProvider {
           totalCount: [{ $count: 'count' }],
         },
       },
-    ] as unknown as PipelineStage[];
+    ];
 
     const [result] = await this.productModel.aggregate<{
       items: { _id: Types.ObjectId }[];
@@ -133,7 +118,7 @@ export class AtlasSearchProvider implements SearchProvider {
   }
 
   async typeahead(prefix: string, limit: number): Promise<string[]> {
-    const pipeline = [
+    const pipeline: PipelineStage[] = [
       {
         $search: {
           index: SEARCH_INDEX_NAME,
@@ -143,7 +128,7 @@ export class AtlasSearchProvider implements SearchProvider {
       { $match: { publishedAt: { $ne: null } } },
       { $limit: limit },
       { $project: { _id: 0, name: 1 } },
-    ] as unknown as PipelineStage[];
+    ];
 
     const results = await this.productModel.aggregate<{ name: string }>(
       pipeline,

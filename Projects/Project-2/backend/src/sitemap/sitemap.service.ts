@@ -66,18 +66,21 @@ export class SitemapService {
       this.pageModel.find({}).select('slug').exec(),
     ]);
 
+    // Document.get() is typed `any` by mongoose — no cast needed, the
+    // SitemapUrl[] annotation on `urls` already tells TS what each of
+    // these object literals is.
     const urls: SitemapUrl[] = [
       ...products.map((p) => ({
         path: `/product/${p.slug}`,
-        updatedAt: p.get('updatedAt') as Date,
+        updatedAt: p.get('updatedAt'),
       })),
       ...posts.map((p) => ({
         path: `/blog/${p.slug}`,
-        updatedAt: p.get('updatedAt') as Date,
+        updatedAt: p.get('updatedAt'),
       })),
       ...pages.map((p) => ({
         path: `/${p.slug}`,
-        updatedAt: p.get('updatedAt') as Date,
+        updatedAt: p.get('updatedAt'),
       })),
     ];
 

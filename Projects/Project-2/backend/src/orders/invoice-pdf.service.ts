@@ -23,7 +23,8 @@ export class InvoicePdfService {
       doc.moveDown();
 
       doc.fontSize(12).text(`Order: ${order.orderNumber}`);
-      doc.text(`Date: ${(order.get('createdAt') as Date).toDateString()}`);
+      const createdAt: Date = order.get('createdAt');
+      doc.text(`Date: ${createdAt.toDateString()}`);
       doc.moveDown();
 
       doc.fontSize(11).text('Bill to:');
@@ -81,7 +82,8 @@ export class InvoicePdfService {
       doc.moveDown();
 
       doc.fontSize(12).text(`Order: ${order.orderNumber}`);
-      doc.text(`Date: ${(order.get('createdAt') as Date).toDateString()}`);
+      const createdAt: Date = order.get('createdAt');
+      doc.text(`Date: ${createdAt.toDateString()}`);
       doc.moveDown();
 
       doc.fontSize(11).text('Ship to:');
