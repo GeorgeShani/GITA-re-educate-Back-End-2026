@@ -42,6 +42,7 @@ import { PagesModule } from './pages/pages.module';
 import { ContactModule } from './contact/contact.module';
 import { NewsletterModule } from './newsletter/newsletter.module';
 import { SitemapModule } from './sitemap/sitemap.module';
+import { AssistantModule } from './assistant/assistant.module';
 
 @Module({
   imports: [
@@ -143,6 +144,7 @@ import { SitemapModule } from './sitemap/sitemap.module';
     ContactModule,
     NewsletterModule,
     SitemapModule,
+    AssistantModule,
   ],
   controllers: [AppController],
   providers: [

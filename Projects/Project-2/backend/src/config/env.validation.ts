@@ -57,6 +57,7 @@ export const envValidationSchema = Joi.object({
   MAIL_ADMIN_RECIPIENTS: optionalString(),
 
   GEMINI_API_KEY: optionalString(),
+  GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
 
   // Admin moderation is Phase 6, out of scope for the storefront
   // backend (see the plan's "Consequences of excluding admin CRUD") —

@@ -36,7 +36,10 @@ const COMMAND_HANDLERS = [
   controllers: [CartController],
   providers: [CartService, CartPricingService, ...COMMAND_HANDLERS],
   // CartPricingService + the Cart model binding: CheckoutModule (S9)
-  // reuses both rather than re-deriving cart pricing logic.
-  exports: [CartPricingService, MongooseModule],
+  // reuses both rather than re-deriving cart pricing logic. CartService
+  // itself: OrdersModule's reorder flow and the assistant's cart tools
+  // (S12) both call it directly rather than duplicating its
+  // resolveCart/addItem/etc. logic.
+  exports: [CartService, CartPricingService, MongooseModule],
 })
 export class CartModule {}
