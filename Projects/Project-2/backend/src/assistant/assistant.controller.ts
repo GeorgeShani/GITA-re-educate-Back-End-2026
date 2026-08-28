@@ -12,7 +12,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Observable } from 'rxjs';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
+import {
+  ASSISTANT_THROTTLE,
+  WRITE_THROTTLE,
+} from '../common/constants/throttle.constant';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
@@ -54,7 +57,7 @@ export class AssistantController {
     return this.assistantService.findMessages(id, userId);
   }
 
-  @Throttle(WRITE_THROTTLE)
+  @Throttle(ASSISTANT_THROTTLE)
   @Post(':id/messages')
   @Sse()
   @ApiOperation({
@@ -71,7 +74,7 @@ export class AssistantController {
     );
   }
 
-  @Throttle(WRITE_THROTTLE)
+  @Throttle(ASSISTANT_THROTTLE)
   @Post(':id/messages/:messageId/confirm')
   @Sse()
   @ApiOperation({

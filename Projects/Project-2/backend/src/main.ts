@@ -1,3 +1,5 @@
+import './instrument';
+
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -6,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { setupBullBoard } from './bull-board.setup';
 
 async function bootstrap() {
   // rawBody: true — Stripe webhook signature verification (S9) needs the
@@ -39,6 +42,11 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1', {
     exclude: ['health', 'admin/queues', 'sitemap.xml', 'robots.txt'],
   });
+
+  // Own Basic-Auth gate, own Express router (not a Nest controller) — see
+  // bull-board.setup.ts. Only mounts when BULL_BOARD_USERNAME/PASSWORD
+  // are both set.
+  setupBullBoard(app, configService);
 
   app.useGlobalPipes(
     new ValidationPipe({

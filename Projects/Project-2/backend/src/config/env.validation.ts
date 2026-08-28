@@ -59,6 +59,13 @@ export const envValidationSchema = Joi.object({
   GEMINI_API_KEY: optionalString(),
   GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
 
+  // S13 — read directly via process.env in instrument.ts, before
+  // ConfigModule exists, so this Joi entry is for validation/docs only.
+  SENTRY_DSN: optionalString(),
+
+  BULL_BOARD_USERNAME: optionalString(),
+  BULL_BOARD_PASSWORD: optionalString(),
+
   // Admin moderation is Phase 6, out of scope for the storefront
   // backend (see the plan's "Consequences of excluding admin CRUD") —
   // without this, submitted reviews would sit `pending` forever with

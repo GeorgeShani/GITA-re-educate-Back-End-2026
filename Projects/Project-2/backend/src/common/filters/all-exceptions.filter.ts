@@ -1,11 +1,12 @@
 import {
-  ArgumentsHost,
   Catch,
   ExceptionFilter,
   HttpException,
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import type { ArgumentsHost } from '@nestjs/common';
+import { SentryExceptionCaptured } from '@sentry/nestjs';
 import type { Response } from 'express';
 import { ClsService } from 'nestjs-cls';
 
@@ -26,6 +27,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   constructor(private readonly cls: ClsService) {}
 
+  // Reports every exception this filter catches to Sentry when
+  // SENTRY_DSN is set (src/instrument.ts) — a no-op otherwise. Source:
+  // https://docs.sentry.io/platforms/javascript/guides/nestjs/ — "with a
+  // custom global filter, add @SentryExceptionCaptured() to catch()"
+  // rather than registering SentryGlobalFilter, which would replace this
+  // filter instead of composing with it.
+  @SentryExceptionCaptured()
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();

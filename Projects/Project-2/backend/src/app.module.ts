@@ -9,6 +9,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import type { StringValue } from 'ms';
 import { ClsModule } from 'nestjs-cls';
 
@@ -46,6 +47,12 @@ import { AssistantModule } from './assistant/assistant.module';
 
 @Module({
   imports: [
+    // Registered even when SENTRY_DSN is unset — Sentry.init() (see
+    // instrument.ts) is the actual on/off switch; this just wires up the
+    // Nest-level plumbing @SentryExceptionCaptured() (all-exceptions.filter.ts)
+    // needs, which no-ops safely if Sentry was never initialized.
+    SentryModule.forRoot(),
+
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: envValidationSchema,
