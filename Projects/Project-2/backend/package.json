@@ -68,7 +68,7 @@
     "@eslint/eslintrc": "^3.2.0",
     "@eslint/js": "^9.18.0",
     "@nestjs/cli": "11.0.24",
-    "@nestjs/schematics": "11.0.9",
+    "@nestjs/schematics": "^11.1.0",
     "@nestjs/testing": "11.1.28",
     "@types/bcrypt": "^6.0.0",
     "@types/cookie-parser": "^1.4.10",
@@ -117,6 +117,9 @@
     "bcrypt@6.0.0": true,
     "unrs-resolver@1.12.2": true,
     "msgpackr-extract@3.0.4": true,
-    "@scarf/scarf": false
+    "@scarf/scarf": false,
+    "@google/genai@2.19.0": true,
+    "mongodb-memory-server@11.2.0": true,
+    "protobufjs@7.6.6": true
   }
 }
