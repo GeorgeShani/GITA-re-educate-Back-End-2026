@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class ShippingZoneUpdatedEvent extends DomainEvent {
   readonly eventName = 'shipping_zone.updated';

@@ -1,11 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
-import { Address, AddressSchema } from '../../common/schemas/address.schema';
-import { Product } from '../../catalog/schemas/product.schema';
-import { User } from '../../users/schemas/user.schema';
-import { OrderStatus } from '../enums/order-status.enum';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
+import { Address, AddressSchema } from '@/common/schemas/address.schema';
+import { Product } from '@/catalog/schemas/product.schema';
+import { User } from '@/users/schemas/user.schema';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
 
 // Embedded, immutable — SCOPE.md A9's clearest embed case: an order is a
 // frozen snapshot the moment it's placed. Deliberately duplicates

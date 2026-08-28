@@ -3,20 +3,20 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import {
   InventoryItem,
   InventoryItemDocument,
-} from '../../../inventory/schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   InventoryReservation,
   InventoryReservationDocument,
-} from '../../../inventory/schemas/inventory-reservation.schema';
-import { OrderCancelledEvent } from '../../events/order-cancelled.event';
-import { Order, OrderDocument } from '../../schemas/order.schema';
-import { OrderStatus } from '../../enums/order-status.enum';
-import { CancelOrderCommand } from '../cancel-order.command';
+} from '@/inventory/schemas/inventory-reservation.schema';
+import { OrderCancelledEvent } from '@/orders/events/order-cancelled.event';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { CancelOrderCommand } from '@/orders/commands/cancel-order.command';
 
 // SCOPE.md's checkout saga description ("on failure or 15-min
 // reservation timeout -> release inventory, order.cancelled") treats

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdjustStockHandler } from './commands/handlers/adjust-stock.handler';
 import {
   BackInStockRequest,

@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import {
   InventoryItem,
   InventoryItemSchema,
-} from '../inventory/schemas/inventory-item.schema';
-import { Order, OrderSchema } from '../orders/schemas/order.schema';
+} from '@/inventory/schemas/inventory-item.schema';
+import { Order, OrderSchema } from '@/orders/schemas/order.schema';
 import { AdminAuditLogController } from './admin-audit-log.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminDashboardService } from './admin-dashboard.service';

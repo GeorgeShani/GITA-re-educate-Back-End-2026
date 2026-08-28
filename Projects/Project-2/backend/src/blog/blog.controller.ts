@@ -10,10 +10,10 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { OptionalJwtAuthGuard } from '@/common/guards/optional-jwt-auth.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { FindPostsDto } from './dto/find-posts.dto';
 import { SubmitCommentDto } from './dto/submit-comment.dto';
 import { PublicBlogService } from './public-blog.service';

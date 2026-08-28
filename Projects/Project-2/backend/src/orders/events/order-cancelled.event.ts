@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class OrderCancelledEvent extends DomainEvent {
   readonly eventName = 'order.cancelled';

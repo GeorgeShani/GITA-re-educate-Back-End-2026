@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Product, ProductSchema } from '../catalog/schemas/product.schema';
-import { CoreModule } from '../core/core.module';
-import { Order, OrderSchema } from '../orders/schemas/order.schema';
+import { Product, ProductSchema } from '@/catalog/schemas/product.schema';
+import { CoreModule } from '@/core/core.module';
+import { Order, OrderSchema } from '@/orders/schemas/order.schema';
 import { AdminReviewsController } from './admin-reviews.controller';
 import { ApproveReviewHandler } from './commands/handlers/approve-review.handler';
 import { RejectReviewHandler } from './commands/handlers/reject-review.handler';

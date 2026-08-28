@@ -2,14 +2,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { WishlistItemRemovedEvent } from '../../events/wishlist-item-removed.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { WishlistItemRemovedEvent } from '@/wishlist/events/wishlist-item-removed.event';
 import {
   WishlistItem,
   WishlistItemDocument,
-} from '../../schemas/wishlist-item.schema';
-import { RemoveWishlistItemCommand } from '../remove-wishlist-item.command';
+} from '@/wishlist/schemas/wishlist-item.schema';
+import { RemoveWishlistItemCommand } from '@/wishlist/commands/remove-wishlist-item.command';
 
 @CommandHandler(RemoveWishlistItemCommand)
 export class RemoveWishlistItemHandler

@@ -1,4 +1,4 @@
-import { Role } from '../enums/role.enum';
+import { Role } from '@/common/enums/role.enum';
 
 // The Role enum's four staff values are already named by function, not
 // decoration (SCOPE.md Phase 1) — each admin route accepts Role.ADMIN plus

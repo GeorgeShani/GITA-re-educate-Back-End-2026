@@ -5,8 +5,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginatedResult } from '@/catalog/products.service';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { DeleteMediaCommand } from './commands/delete-media.command';
 import { RegisterMediaCommand } from './commands/register-media.command';
 import { AnyMediaOwnerContext } from './media-owner-context';

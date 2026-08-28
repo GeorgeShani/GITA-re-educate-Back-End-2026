@@ -13,10 +13,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { RegisterMediaDto } from './dto/register-media.dto';
 import { UploadSignatureQueryDto } from './dto/upload-signature-query.dto';
 import { MediaService } from './media.service';

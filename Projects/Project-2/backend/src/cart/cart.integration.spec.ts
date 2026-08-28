@@ -6,23 +6,23 @@ import {
   Category,
   CategoryDocument,
   CategorySchema,
-} from '../catalog/schemas/category.schema';
+} from '@/catalog/schemas/category.schema';
 import {
   Product,
   ProductDocument,
   ProductSchema,
-} from '../catalog/schemas/product.schema';
+} from '@/catalog/schemas/product.schema';
 import {
   Coupon,
   CouponDocument,
   CouponSchema,
-} from '../coupons/schemas/coupon.schema';
-import { OutboxRepository } from '../core/outbox/outbox.repository';
+} from '@/coupons/schemas/coupon.schema';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import {
   OutboxEvent,
   OutboxEventDocument,
   OutboxEventSchema,
-} from '../core/outbox/outbox.schema';
+} from '@/core/outbox/outbox.schema';
 import { ApplyCouponCommand } from './commands/apply-coupon.command';
 import { ApplyCouponHandler } from './commands/handlers/apply-coupon.handler';
 import { MergeGuestCartHandler } from './commands/handlers/merge-guest-cart.handler';

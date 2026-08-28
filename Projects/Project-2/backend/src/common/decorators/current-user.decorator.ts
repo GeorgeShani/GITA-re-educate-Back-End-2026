@@ -2,7 +2,7 @@ import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type {
   AuthenticatedUser,
   RequestWithUser,
-} from '../interfaces/request-with-user.interface';
+} from '@/common/interfaces/request-with-user.interface';
 
 // Ported verbatim from Homework 25/26. Usage: @CurrentUser() for the
 // whole user, or @CurrentUser('userId') for a single field — this is the

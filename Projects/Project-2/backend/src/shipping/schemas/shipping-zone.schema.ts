@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
 
 // Embedded — SCOPE.md A9: a rate only means something in the context of
 // its zone, and zones/rates/methods are edited together as one unit.

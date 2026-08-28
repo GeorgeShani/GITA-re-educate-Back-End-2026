@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
 import { Coupon } from './coupon.schema';
-import { Order } from '../../orders/schemas/order.schema';
-import { User } from '../../users/schemas/user.schema';
+import { Order } from '@/orders/schemas/order.schema';
+import { User } from '@/users/schemas/user.schema';
 
 export type CouponRedemptionDocument = HydratedDocument<CouponRedemption>;
 

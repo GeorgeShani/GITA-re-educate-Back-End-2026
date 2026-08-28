@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class ReturnApprovedEvent extends DomainEvent {
   readonly eventName = 'return.approved';

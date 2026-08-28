@@ -3,15 +3,15 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import {
   RefreshToken,
   RefreshTokenDocument,
-} from '../../../auth/schemas/refresh-token.schema';
-import { UserDeletedEvent } from '../../events/user-deleted.event';
-import { User, UserDocument } from '../../schemas/user.schema';
-import { DeleteAccountCommand } from '../delete-account.command';
+} from '@/auth/schemas/refresh-token.schema';
+import { UserDeletedEvent } from '@/users/events/user-deleted.event';
+import { User, UserDocument } from '@/users/schemas/user.schema';
+import { DeleteAccountCommand } from '@/users/commands/delete-account.command';
 
 // Soft delete + anonymize, not a hard delete — SCOPE.md A9's cascade
 // rule ("app-level, not automatic"): Order/Review rows reference this

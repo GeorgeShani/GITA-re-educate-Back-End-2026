@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model } from 'mongoose';
 
-import { PaginatedResult } from '../catalog/products.service';
-import { escapeRegExp } from '../common/utils/escape-regexp.util';
+import { PaginatedResult } from '@/catalog/products.service';
+import { escapeRegExp } from '@/common/utils/escape-regexp.util';
 import { FindEmailMessagesAdminDto } from './dto/find-email-messages-admin.dto';
 import {
   EmailCategory,

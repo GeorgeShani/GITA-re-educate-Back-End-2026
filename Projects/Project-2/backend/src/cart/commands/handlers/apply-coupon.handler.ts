@@ -3,17 +3,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import {
-  Product,
-  ProductDocument,
-} from '../../../catalog/schemas/product.schema';
-import { Coupon, CouponDocument } from '../../../coupons/schemas/coupon.schema';
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CartPricingService } from '../../cart-pricing.service';
-import { CartCouponAppliedEvent } from '../../events/cart-coupon-applied.event';
-import { Cart, CartDocument } from '../../schemas/cart.schema';
-import { ApplyCouponCommand } from '../apply-coupon.command';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CartPricingService } from '@/cart/cart-pricing.service';
+import { CartCouponAppliedEvent } from '@/cart/events/cart-coupon-applied.event';
+import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
+import { ApplyCouponCommand } from '@/cart/commands/apply-coupon.command';
 
 @CommandHandler(ApplyCouponCommand)
 export class ApplyCouponHandler

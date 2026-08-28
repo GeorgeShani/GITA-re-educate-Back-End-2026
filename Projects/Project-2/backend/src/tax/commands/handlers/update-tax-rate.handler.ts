@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { TaxRateUpdatedEvent } from '../../events/tax-rate-updated.event';
-import { TaxRate, TaxRateDocument } from '../../schemas/tax-rate.schema';
-import { UpdateTaxRateCommand } from '../update-tax-rate.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { TaxRateUpdatedEvent } from '@/tax/events/tax-rate-updated.event';
+import { TaxRate, TaxRateDocument } from '@/tax/schemas/tax-rate.schema';
+import { UpdateTaxRateCommand } from '@/tax/commands/update-tax-rate.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

@@ -1,4 +1,4 @@
-import { ShipOrderDto } from '../dto/ship-order.dto';
+import { ShipOrderDto } from '@/orders/dto/ship-order.dto';
 
 export class ShipOrderCommand {
   constructor(

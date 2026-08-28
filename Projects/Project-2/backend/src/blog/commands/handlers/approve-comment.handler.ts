@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CommentApprovedEvent } from '../../events/comment-approved.event';
-import { Comment, CommentDocument } from '../../schemas/comment.schema';
-import { ApproveCommentCommand } from '../approve-comment.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CommentApprovedEvent } from '@/blog/events/comment-approved.event';
+import { Comment, CommentDocument } from '@/blog/schemas/comment.schema';
+import { ApproveCommentCommand } from '@/blog/commands/approve-comment.command';
 
 @CommandHandler(ApproveCommentCommand)
 export class ApproveCommentHandler

@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminTaxController } from './admin-tax.controller';
 import { CreateTaxRateHandler } from './commands/handlers/create-tax-rate.handler';
 import { UpdateTaxRateHandler } from './commands/handlers/update-tax-rate.handler';

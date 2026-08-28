@@ -3,16 +3,16 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import {
   RefreshToken,
   RefreshTokenDocument,
-} from '../../../auth/schemas/refresh-token.schema';
-import { UserBannedEvent } from '../../events/user-banned.event';
-import { UserUnbannedEvent } from '../../events/user-unbanned.event';
-import { User, UserDocument } from '../../schemas/user.schema';
-import { SetUserBannedCommand } from '../set-user-banned.command';
+} from '@/auth/schemas/refresh-token.schema';
+import { UserBannedEvent } from '@/users/events/user-banned.event';
+import { UserUnbannedEvent } from '@/users/events/user-unbanned.event';
+import { User, UserDocument } from '@/users/schemas/user.schema';
+import { SetUserBannedCommand } from '@/users/commands/set-user-banned.command';
 
 @CommandHandler(SetUserBannedCommand)
 export class SetUserBannedHandler

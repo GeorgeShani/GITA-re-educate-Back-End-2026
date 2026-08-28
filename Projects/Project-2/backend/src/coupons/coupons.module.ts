@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminCouponsController } from './admin-coupons.controller';
 import { CreateCouponHandler } from './commands/handlers/create-coupon.handler';
 import { UpdateCouponHandler } from './commands/handlers/update-coupon.handler';

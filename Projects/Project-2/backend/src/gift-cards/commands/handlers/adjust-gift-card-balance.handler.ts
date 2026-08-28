@@ -3,11 +3,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { GiftCardBalanceAdjustedEvent } from '../../events/gift-card-balance-adjusted.event';
-import { GiftCard, GiftCardDocument } from '../../schemas/gift-card.schema';
-import { AdjustGiftCardBalanceCommand } from '../adjust-gift-card-balance.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { GiftCardBalanceAdjustedEvent } from '@/gift-cards/events/gift-card-balance-adjusted.event';
+import {
+  GiftCard,
+  GiftCardDocument,
+} from '@/gift-cards/schemas/gift-card.schema';
+import { AdjustGiftCardBalanceCommand } from '@/gift-cards/commands/adjust-gift-card-balance.command';
 
 @CommandHandler(AdjustGiftCardBalanceCommand)
 export class AdjustGiftCardBalanceHandler

@@ -2,37 +2,37 @@ import mongoose from 'mongoose';
 
 import { MongoTestContext } from '../../test/support/mongo-memory-server';
 import { getTestModel } from '../../test/support/test-model';
-import { OutboxRepository } from '../core/outbox/outbox.repository';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import {
   OutboxEvent,
   OutboxEventDocument,
   OutboxEventSchema,
-} from '../core/outbox/outbox.schema';
+} from '@/core/outbox/outbox.schema';
 import {
   CouponRedemption,
   CouponRedemptionDocument,
   CouponRedemptionSchema,
-} from '../coupons/schemas/coupon-redemption.schema';
+} from '@/coupons/schemas/coupon-redemption.schema';
 import {
   Coupon,
   CouponDocument,
   CouponSchema,
-} from '../coupons/schemas/coupon.schema';
+} from '@/coupons/schemas/coupon.schema';
 import {
   InventoryItem,
   InventoryItemDocument,
   InventoryItemSchema,
-} from '../inventory/schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   InventoryReservation,
   InventoryReservationDocument,
   InventoryReservationSchema,
-} from '../inventory/schemas/inventory-reservation.schema';
+} from '@/inventory/schemas/inventory-reservation.schema';
 import {
   StockAdjustment,
   StockAdjustmentDocument,
   StockAdjustmentSchema,
-} from '../inventory/schemas/stock-adjustment.schema';
+} from '@/inventory/schemas/stock-adjustment.schema';
 import { CancelOrderCommand } from './commands/cancel-order.command';
 import { CancelOrderHandler } from './commands/handlers/cancel-order.handler';
 import { ConfirmOrderCommand } from './commands/confirm-order.command';

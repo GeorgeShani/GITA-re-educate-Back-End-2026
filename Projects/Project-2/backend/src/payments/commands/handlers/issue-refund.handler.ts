@@ -3,17 +3,17 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { OrderStatus } from '../../../orders/enums/order-status.enum';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { PaymentRefundedEvent } from '../../events/payment-refunded.event';
-import { PaymentStatus } from '../../enums/payment-status.enum';
-import { PAYMENT_PROVIDER_TOKEN } from '../../providers/payment-provider.interface';
-import type { PaymentProvider } from '../../providers/payment-provider.interface';
-import { Payment, PaymentDocument } from '../../schemas/payment.schema';
-import { Refund, RefundDocument } from '../../schemas/refund.schema';
-import { IssueRefundCommand } from '../issue-refund.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { PaymentRefundedEvent } from '@/payments/events/payment-refunded.event';
+import { PaymentStatus } from '@/payments/enums/payment-status.enum';
+import { PAYMENT_PROVIDER_TOKEN } from '@/payments/providers/payment-provider.interface';
+import type { PaymentProvider } from '@/payments/providers/payment-provider.interface';
+import { Payment, PaymentDocument } from '@/payments/schemas/payment.schema';
+import { Refund, RefundDocument } from '@/payments/schemas/refund.schema';
+import { IssueRefundCommand } from '@/payments/commands/issue-refund.command';
 
 // Mirrors CreatePaymentIntentHandler's shape — the Stripe call is a real
 // external side effect, so it happens BEFORE withTransaction() opens,

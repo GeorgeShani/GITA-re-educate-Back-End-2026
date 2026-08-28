@@ -14,11 +14,11 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '@/common/guards/optional-jwt-auth.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { CartIdentity, CartService } from './cart.service';
 import { AddCartItemDto } from './dto/add-cart-item.dto';
 import { ApplyCouponDto } from './dto/apply-coupon.dto';

@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
-import { Order } from '../../orders/schemas/order.schema';
-import { PaymentStatus } from '../enums/payment-status.enum';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
+import { Order } from '@/orders/schemas/order.schema';
+import { PaymentStatus } from '@/payments/enums/payment-status.enum';
 
 export type PaymentDocument = HydratedDocument<Payment>;
 

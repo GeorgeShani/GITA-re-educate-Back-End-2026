@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class PasswordChangedEvent extends DomainEvent {
   readonly eventName = 'user.password_changed';

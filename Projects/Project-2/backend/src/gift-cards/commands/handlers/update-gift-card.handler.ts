@@ -3,11 +3,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { GiftCardUpdatedEvent } from '../../events/gift-card-updated.event';
-import { GiftCard, GiftCardDocument } from '../../schemas/gift-card.schema';
-import { UpdateGiftCardCommand } from '../update-gift-card.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { GiftCardUpdatedEvent } from '@/gift-cards/events/gift-card-updated.event';
+import {
+  GiftCard,
+  GiftCardDocument,
+} from '@/gift-cards/schemas/gift-card.schema';
+import { UpdateGiftCardCommand } from '@/gift-cards/commands/update-gift-card.command';
 
 @CommandHandler(UpdateGiftCardCommand)
 export class UpdateGiftCardHandler

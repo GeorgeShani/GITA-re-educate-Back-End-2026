@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class CartItemAddedEvent extends DomainEvent {
   readonly eventName = 'cart.item_added';

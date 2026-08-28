@@ -4,9 +4,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 
-import { Product, ProductDocument } from '../catalog/schemas/product.schema';
-import { Post, PostDocument } from '../blog/schemas/post.schema';
-import { Page, PageDocument } from '../pages/schemas/page.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { Post, PostDocument } from '@/blog/schemas/post.schema';
+import { Page, PageDocument } from '@/pages/schemas/page.schema';
 
 interface SitemapUrl {
   path: string;

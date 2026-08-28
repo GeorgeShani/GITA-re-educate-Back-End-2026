@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { Product, ProductDocument } from '../catalog/schemas/product.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
 import { AddWishlistItemCommand } from './commands/add-wishlist-item.command';
 import { RemoveWishlistItemCommand } from './commands/remove-wishlist-item.command';
 import {

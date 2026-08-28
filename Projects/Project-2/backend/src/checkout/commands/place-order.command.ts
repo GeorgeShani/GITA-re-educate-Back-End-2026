@@ -1,4 +1,4 @@
-import { AddressDto } from '../../common/dto/address.dto';
+import { AddressDto } from '@/common/dto/address.dto';
 
 export class PlaceOrderCommand {
   constructor(

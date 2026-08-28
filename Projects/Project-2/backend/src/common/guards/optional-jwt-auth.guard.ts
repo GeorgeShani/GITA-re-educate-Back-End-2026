@@ -3,8 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import type {
   AuthenticatedUser,
   RequestWithUser,
-} from '../interfaces/request-with-user.interface';
-import { extractBearerToken } from '../utils/extract-bearer-token.util';
+} from '@/common/interfaces/request-with-user.interface';
+import { extractBearerToken } from '@/common/utils/extract-bearer-token.util';
 
 // For routes that behave for both guests and authenticated users (S8's
 // cart endpoints) — populates request.user when a valid token is

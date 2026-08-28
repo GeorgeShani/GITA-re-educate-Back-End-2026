@@ -2,11 +2,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CartMergedEvent } from '../../events/cart-merged.event';
-import { Cart, CartDocument } from '../../schemas/cart.schema';
-import { MergeGuestCartCommand } from '../merge-guest-cart.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CartMergedEvent } from '@/cart/events/cart-merged.event';
+import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
+import { MergeGuestCartCommand } from '@/cart/commands/merge-guest-cart.command';
 
 @CommandHandler(MergeGuestCartCommand)
 export class MergeGuestCartHandler

@@ -3,13 +3,13 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { OrderDeliveredEvent } from '../../events/order-delivered.event';
-import { OrderStatus } from '../../enums/order-status.enum';
-import { Order, OrderDocument } from '../../schemas/order.schema';
-import { Shipment, ShipmentDocument } from '../../schemas/shipment.schema';
-import { MarkOrderDeliveredCommand } from '../mark-order-delivered.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { OrderDeliveredEvent } from '@/orders/events/order-delivered.event';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { Shipment, ShipmentDocument } from '@/orders/schemas/shipment.schema';
+import { MarkOrderDeliveredCommand } from '@/orders/commands/mark-order-delivered.command';
 
 @CommandHandler(MarkOrderDeliveredCommand)
 export class MarkOrderDeliveredHandler

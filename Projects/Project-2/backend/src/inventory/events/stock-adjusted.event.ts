@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class StockAdjustedEvent extends DomainEvent {
   readonly eventName = 'inventory.stock_adjusted';

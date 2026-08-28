@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
-import { PaginationQueryDto } from '../../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 
 export class FindAuditLogDto extends PaginationQueryDto {
   @ApiPropertyOptional({

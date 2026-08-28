@@ -3,12 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UsersService } from '../../../users/users.service';
-import { PasswordResetRequestedEvent } from '../../events/password-reset-requested.event';
-import { generateRawToken, hashToken } from '../../utils/token-hash.util';
-import { RequestPasswordResetCommand } from '../request-password-reset.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UsersService } from '@/users/users.service';
+import { PasswordResetRequestedEvent } from '@/auth/events/password-reset-requested.event';
+import { generateRawToken, hashToken } from '@/auth/utils/token-hash.util';
+import { RequestPasswordResetCommand } from '@/auth/commands/request-password-reset.command';
 
 const RESET_TOKEN_TTL_MINUTES = 60;
 

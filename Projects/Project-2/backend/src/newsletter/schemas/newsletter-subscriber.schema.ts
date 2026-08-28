@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
 
 export type NewsletterSubscriberDocument =
   HydratedDocument<NewsletterSubscriber>;

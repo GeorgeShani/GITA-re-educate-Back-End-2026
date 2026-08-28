@@ -3,13 +3,13 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { MediaUploadedEvent } from '../../events/media-uploaded.event';
-import { Media, MediaDocument } from '../../schemas/media.schema';
-import { STORAGE_PROVIDER_TOKEN } from '../../providers/storage-provider.interface';
-import type { StorageProvider } from '../../providers/storage-provider.interface';
-import { RegisterMediaCommand } from '../register-media.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { MediaUploadedEvent } from '@/media/events/media-uploaded.event';
+import { Media, MediaDocument } from '@/media/schemas/media.schema';
+import { STORAGE_PROVIDER_TOKEN } from '@/media/providers/storage-provider.interface';
+import type { StorageProvider } from '@/media/providers/storage-provider.interface';
+import { RegisterMediaCommand } from '@/media/commands/register-media.command';
 
 @CommandHandler(RegisterMediaCommand)
 export class RegisterMediaHandler

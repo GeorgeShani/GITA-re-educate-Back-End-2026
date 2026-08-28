@@ -5,8 +5,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginatedResult } from '@/catalog/products.service';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { ConfirmNewsletterSubscriptionCommand } from './commands/confirm-newsletter-subscription.command';
 import { verifyNewsletterToken } from './newsletter-token.util';
 import {

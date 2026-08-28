@@ -3,16 +3,16 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UsersService } from '../../../users/users.service';
-import { PasswordChangedEvent } from '../../events/password-changed.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UsersService } from '@/users/users.service';
+import { PasswordChangedEvent } from '@/auth/events/password-changed.event';
 import {
   RefreshToken,
   RefreshTokenDocument,
-} from '../../schemas/refresh-token.schema';
-import { hashToken } from '../../utils/token-hash.util';
-import { ResetPasswordCommand } from '../reset-password.command';
+} from '@/auth/schemas/refresh-token.schema';
+import { hashToken } from '@/auth/utils/token-hash.util';
+import { ResetPasswordCommand } from '@/auth/commands/reset-password.command';
 
 @CommandHandler(ResetPasswordCommand)
 export class ResetPasswordHandler

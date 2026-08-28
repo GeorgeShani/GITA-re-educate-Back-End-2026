@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Product, ProductSchema } from '../catalog/schemas/product.schema';
-import { CoreModule } from '../core/core.module';
-import { Coupon, CouponSchema } from '../coupons/schemas/coupon.schema';
+import { Product, ProductSchema } from '@/catalog/schemas/product.schema';
+import { CoreModule } from '@/core/core.module';
+import { Coupon, CouponSchema } from '@/coupons/schemas/coupon.schema';
 import { AddCartItemHandler } from './commands/handlers/add-cart-item.handler';
 import { ApplyCouponHandler } from './commands/handlers/apply-coupon.handler';
 import { MergeGuestCartHandler } from './commands/handlers/merge-guest-cart.handler';

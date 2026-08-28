@@ -4,11 +4,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { GiftCardIssuedEvent } from '../../events/gift-card-issued.event';
-import { GiftCard, GiftCardDocument } from '../../schemas/gift-card.schema';
-import { IssueGiftCardCommand } from '../issue-gift-card.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { GiftCardIssuedEvent } from '@/gift-cards/events/gift-card-issued.event';
+import {
+  GiftCard,
+  GiftCardDocument,
+} from '@/gift-cards/schemas/gift-card.schema';
+import { IssueGiftCardCommand } from '@/gift-cards/commands/issue-gift-card.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

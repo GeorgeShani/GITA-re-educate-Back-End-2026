@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 // SCOPE.md B4 lists a "giftcard.issued" email — no MJML template exists
 // yet (S4 only shipped verify-email/reset-password), so this event

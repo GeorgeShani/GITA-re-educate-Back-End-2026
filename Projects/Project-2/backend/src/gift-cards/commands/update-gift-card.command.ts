@@ -1,4 +1,4 @@
-import { UpdateGiftCardDto } from '../dto/update-gift-card.dto';
+import { UpdateGiftCardDto } from '@/gift-cards/dto/update-gift-card.dto';
 
 export class UpdateGiftCardCommand {
   constructor(

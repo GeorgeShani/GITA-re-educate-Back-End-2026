@@ -4,9 +4,9 @@ import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 import Stripe from 'stripe';
 
-import { CoreModule } from '../core/core.module';
-import { Order, OrderSchema } from '../orders/schemas/order.schema';
-import { UsersModule } from '../users/users.module';
+import { CoreModule } from '@/core/core.module';
+import { Order, OrderSchema } from '@/orders/schemas/order.schema';
+import { UsersModule } from '@/users/users.module';
 import { CreatePaymentIntentHandler } from './commands/handlers/create-payment-intent.handler';
 import { IssueRefundHandler } from './commands/handlers/issue-refund.handler';
 import { RecordPaymentResultHandler } from './commands/handlers/record-payment-result.handler';

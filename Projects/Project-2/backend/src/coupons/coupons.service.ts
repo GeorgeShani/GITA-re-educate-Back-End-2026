@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model, Types } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { CreateCouponCommand } from './commands/create-coupon.command';
 import { UpdateCouponCommand } from './commands/update-coupon.command';
 import { CreateCouponDto } from './dto/create-coupon.dto';

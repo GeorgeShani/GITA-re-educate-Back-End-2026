@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class UserEmailVerifiedEvent extends DomainEvent {
   readonly eventName = 'user.email_verified';

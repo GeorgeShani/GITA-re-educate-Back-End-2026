@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
-import { SearchModule } from '../search/search.module';
+import { CoreModule } from '@/core/core.module';
+import { SearchModule } from '@/search/search.module';
 import { AdminCategoriesController } from './admin-categories.controller';
 import { AdminCategoriesService } from './admin-categories.service';
 import { AdminProductsController } from './admin-products.controller';

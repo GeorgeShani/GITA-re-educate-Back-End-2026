@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { Order, OrderDocument } from '../orders/schemas/order.schema';
-import { Review, ReviewDocument } from '../reviews/schemas/review.schema';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { Review, ReviewDocument } from '@/reviews/schemas/review.schema';
 import {
   WishlistItem,
   WishlistItemDocument,
-} from '../wishlist/schemas/wishlist-item.schema';
+} from '@/wishlist/schemas/wishlist-item.schema';
 import { UsersService } from './users.service';
 
 export interface AccountExport {

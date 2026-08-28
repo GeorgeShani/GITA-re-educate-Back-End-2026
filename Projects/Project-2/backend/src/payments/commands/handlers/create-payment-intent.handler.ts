@@ -4,15 +4,15 @@ import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { PaymentIntentCreatedEvent } from '../../events/payment-intent-created.event';
-import { PAYMENT_PROVIDER_TOKEN } from '../../providers/payment-provider.interface';
-import type { PaymentProvider } from '../../providers/payment-provider.interface';
-import { Payment, PaymentDocument } from '../../schemas/payment.schema';
-import { PaymentStatus } from '../../enums/payment-status.enum';
-import { CreatePaymentIntentCommand } from '../create-payment-intent.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { PaymentIntentCreatedEvent } from '@/payments/events/payment-intent-created.event';
+import { PAYMENT_PROVIDER_TOKEN } from '@/payments/providers/payment-provider.interface';
+import type { PaymentProvider } from '@/payments/providers/payment-provider.interface';
+import { Payment, PaymentDocument } from '@/payments/schemas/payment.schema';
+import { PaymentStatus } from '@/payments/enums/payment-status.enum';
+import { CreatePaymentIntentCommand } from '@/payments/commands/create-payment-intent.command';
 
 export interface CreatePaymentIntentResult {
   payment: PaymentDocument;

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Product, ProductSchema } from '../catalog/schemas/product.schema';
+import { Product, ProductSchema } from '@/catalog/schemas/product.schema';
 import { AtlasSearchProvider } from './providers/atlas-search.provider';
 import { SEARCH_PROVIDER_TOKEN } from './search-provider.interface';
 

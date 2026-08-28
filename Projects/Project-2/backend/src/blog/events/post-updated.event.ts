@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class PostUpdatedEvent extends DomainEvent {
   readonly eventName = 'post.updated';

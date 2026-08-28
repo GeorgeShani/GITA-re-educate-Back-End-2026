@@ -1,4 +1,4 @@
-import { CreateTaxRateDto } from '../dto/create-tax-rate.dto';
+import { CreateTaxRateDto } from '@/tax/dto/create-tax-rate.dto';
 
 export class CreateTaxRateCommand {
   constructor(

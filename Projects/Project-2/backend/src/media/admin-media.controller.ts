@@ -13,14 +13,14 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { ADMIN_ROLES } from '../common/constants/admin-roles.constant';
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { Roles } from '../common/decorators/roles.decorator';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { ADMIN_ROLES } from '@/common/constants/admin-roles.constant';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { RegisterProductMediaDto } from './dto/register-product-media.dto';
 import { MediaService } from './media.service';
 

@@ -3,15 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import {
-  Product,
-  ProductDocument,
-} from '../../../catalog/schemas/product.schema';
-import { CartItemAddedEvent } from '../../events/cart-item-added.event';
-import { Cart, CartDocument } from '../../schemas/cart.schema';
-import { AddCartItemCommand } from '../add-cart-item.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { CartItemAddedEvent } from '@/cart/events/cart-item-added.event';
+import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
+import { AddCartItemCommand } from '@/cart/commands/add-cart-item.command';
 
 @CommandHandler(AddCartItemCommand)
 export class AddCartItemHandler

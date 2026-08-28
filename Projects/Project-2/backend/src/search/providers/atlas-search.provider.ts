@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, PipelineStage, Types } from 'mongoose';
 
-import { Product, ProductDocument } from '../../catalog/schemas/product.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
 import {
   ProductSearchQuery,
   ProductSearchResult,
   SearchProvider,
-} from '../search-provider.interface';
+} from '@/search/search-provider.interface';
 
 const SEARCH_INDEX_NAME = 'products_search';
 

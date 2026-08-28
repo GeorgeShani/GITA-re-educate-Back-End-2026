@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ArrayMinSize, ArrayUnique, IsArray, IsEnum } from 'class-validator';
 
-import { Role } from '../../common/enums/role.enum';
+import { Role } from '@/common/enums/role.enum';
 
 // Replaces the array wholesale — the app's single-active-role decision
 // means only roles[0] is ever authorized against (see

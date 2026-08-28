@@ -3,12 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ReturnReceivedEvent } from '../../events/return-received.event';
-import { ReturnStatus } from '../../enums/return-status.enum';
-import { Return, ReturnDocument } from '../../schemas/return.schema';
-import { ReceiveReturnCommand } from '../receive-return.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ReturnReceivedEvent } from '@/returns/events/return-received.event';
+import { ReturnStatus } from '@/returns/enums/return-status.enum';
+import { Return, ReturnDocument } from '@/returns/schemas/return.schema';
+import { ReceiveReturnCommand } from '@/returns/commands/receive-return.command';
 
 // APPROVED -> RECEIVED — the point at which the returned goods are
 // physically back, a separate step from approval since the two can be

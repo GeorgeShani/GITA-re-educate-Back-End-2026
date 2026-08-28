@@ -3,8 +3,8 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
-import { QueueName } from '../core/queues/queue-names.enum';
+import { CoreModule } from '@/core/core.module';
+import { QueueName } from '@/core/queues/queue-names.enum';
 import { AdminMediaController } from './admin-media.controller';
 import { DeleteMediaHandler } from './commands/handlers/delete-media.handler';
 import { RegisterMediaHandler } from './commands/handlers/register-media.handler';

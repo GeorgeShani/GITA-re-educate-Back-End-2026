@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, QueryFilter } from 'mongoose';
 
-import { PaginatedResult } from '../../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { FindAuditLogDto } from './dto/find-audit-log.dto';
 import { AuditLogEntry, AuditLogEntryDocument } from './audit-log-entry.schema';
 

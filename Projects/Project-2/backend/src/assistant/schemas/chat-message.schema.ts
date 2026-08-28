@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
 import { ChatSession } from './chat-session.schema';
 
 export type ChatMessageDocument = HydratedDocument<ChatMessage>;

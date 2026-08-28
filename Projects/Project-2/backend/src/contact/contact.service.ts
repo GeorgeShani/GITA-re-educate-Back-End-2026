@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model } from 'mongoose';
 
-import { PaginatedResult } from '../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { FindContactMessagesAdminDto } from './dto/find-contact-messages-admin.dto';
 import { SubmitContactMessageDto } from './dto/submit-contact-message.dto';
 import {

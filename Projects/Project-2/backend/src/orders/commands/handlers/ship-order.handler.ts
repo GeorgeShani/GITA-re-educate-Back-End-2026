@@ -3,13 +3,13 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { OrderShippedEvent } from '../../events/order-shipped.event';
-import { OrderStatus } from '../../enums/order-status.enum';
-import { Order, OrderDocument } from '../../schemas/order.schema';
-import { Shipment, ShipmentDocument } from '../../schemas/shipment.schema';
-import { ShipOrderCommand } from '../ship-order.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { OrderShippedEvent } from '@/orders/events/order-shipped.event';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { Shipment, ShipmentDocument } from '@/orders/schemas/shipment.schema';
+import { ShipOrderCommand } from '@/orders/commands/ship-order.command';
 
 // v1 ships the whole order in one Shipment — no per-line partial
 // fulfillment tracking (see the plan's deferred-items note). Wires up a

@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 
-import { UsersService } from '../users/users.service';
+import { UsersService } from '@/users/users.service';
 import { PAYMENT_PROVIDER_TOKEN } from './providers/payment-provider.interface';
 import type { PaymentProvider } from './providers/payment-provider.interface';
 

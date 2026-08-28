@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Post, PostSchema } from '../blog/schemas/post.schema';
-import { Product, ProductSchema } from '../catalog/schemas/product.schema';
-import { Page, PageSchema } from '../pages/schemas/page.schema';
+import { Post, PostSchema } from '@/blog/schemas/post.schema';
+import { Product, ProductSchema } from '@/catalog/schemas/product.schema';
+import { Page, PageSchema } from '@/pages/schemas/page.schema';
 import { SitemapController } from './sitemap.controller';
 import { SitemapService } from './sitemap.service';
 

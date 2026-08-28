@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { AdjustGiftCardBalanceCommand } from './commands/adjust-gift-card-balance.command';
 import { IssueGiftCardCommand } from './commands/issue-gift-card.command';
 import { UpdateGiftCardCommand } from './commands/update-gift-card.command';

@@ -3,14 +3,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { OrderStatus } from '../../../orders/enums/order-status.enum';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { ReturnRequestedEvent } from '../../events/return-requested.event';
-import { ReturnStatus } from '../../enums/return-status.enum';
-import { Return, ReturnDocument } from '../../schemas/return.schema';
-import { RequestReturnCommand } from '../request-return.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { ReturnRequestedEvent } from '@/returns/events/return-requested.event';
+import { ReturnStatus } from '@/returns/enums/return-status.enum';
+import { Return, ReturnDocument } from '@/returns/schemas/return.schema';
+import { RequestReturnCommand } from '@/returns/commands/request-return.command';
 
 // Fulfillment (shipped/delivered) is admin-driven and out of scope
 // (SCOPE.md Phase 6), so CONFIRMED is the only status any order reaches

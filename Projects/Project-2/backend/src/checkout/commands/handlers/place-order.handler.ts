@@ -5,28 +5,28 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { Cart, CartDocument } from '../../../cart/schemas/cart.schema';
-import { CartPricingService } from '../../../cart/cart-pricing.service';
-import { Coupon, CouponDocument } from '../../../coupons/schemas/coupon.schema';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
+import { CartPricingService } from '@/cart/cart-pricing.service';
+import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
 import {
   CouponRedemption,
   CouponRedemptionDocument,
-} from '../../../coupons/schemas/coupon-redemption.schema';
+} from '@/coupons/schemas/coupon-redemption.schema';
 import {
   InventoryItem,
   InventoryItemDocument,
-} from '../../../inventory/schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   InventoryReservation,
   InventoryReservationDocument,
-} from '../../../inventory/schemas/inventory-reservation.schema';
-import { ShippingService } from '../../../shipping/shipping.service';
-import { TaxService } from '../../../tax/tax.service';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { OrderPlacedEvent } from '../../../orders/events/order-placed.event';
-import { PlaceOrderCommand } from '../place-order.command';
+} from '@/inventory/schemas/inventory-reservation.schema';
+import { ShippingService } from '@/shipping/shipping.service';
+import { TaxService } from '@/tax/tax.service';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { OrderPlacedEvent } from '@/orders/events/order-placed.event';
+import { PlaceOrderCommand } from '@/checkout/commands/place-order.command';
 
 const RESERVATION_TTL_MINUTES = 15;
 

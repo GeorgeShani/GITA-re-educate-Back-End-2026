@@ -2,9 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CartModule } from '../cart/cart.module';
-import { CatalogModule } from '../catalog/catalog.module';
-import { InventoryModule } from '../inventory/inventory.module';
+import { CartModule } from '@/cart/cart.module';
+import { CatalogModule } from '@/catalog/catalog.module';
+import { InventoryModule } from '@/inventory/inventory.module';
 import { AssistantController } from './assistant.controller';
 import { AssistantService } from './assistant.service';
 import {

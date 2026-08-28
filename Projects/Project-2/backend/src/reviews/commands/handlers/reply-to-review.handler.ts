@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ReviewRepliedEvent } from '../../events/review-replied.event';
-import { Review, ReviewDocument } from '../../schemas/review.schema';
-import { ReplyToReviewCommand } from '../reply-to-review.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ReviewRepliedEvent } from '@/reviews/events/review-replied.event';
+import { Review, ReviewDocument } from '@/reviews/schemas/review.schema';
+import { ReplyToReviewCommand } from '@/reviews/commands/reply-to-review.command';
 
 @CommandHandler(ReplyToReviewCommand)
 export class ReplyToReviewHandler

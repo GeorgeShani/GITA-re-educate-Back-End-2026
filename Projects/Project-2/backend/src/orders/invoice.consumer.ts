@@ -5,11 +5,11 @@ import { Job } from 'bullmq';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { BaseConsumer } from '../core/queues/base.consumer';
-import { QueueName } from '../core/queues/queue-names.enum';
-import { OutboxJobData } from '../core/outbox/outbox.publisher';
-import { STORAGE_PROVIDER_TOKEN } from '../media/providers/storage-provider.interface';
-import type { StorageProvider } from '../media/providers/storage-provider.interface';
+import { BaseConsumer } from '@/core/queues/base.consumer';
+import { QueueName } from '@/core/queues/queue-names.enum';
+import { OutboxJobData } from '@/core/outbox/outbox.publisher';
+import { STORAGE_PROVIDER_TOKEN } from '@/media/providers/storage-provider.interface';
+import type { StorageProvider } from '@/media/providers/storage-provider.interface';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { Order, OrderDocument } from './schemas/order.schema';
 

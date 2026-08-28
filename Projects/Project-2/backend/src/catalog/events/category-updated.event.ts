@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 // Also fired for a re-parent (move) — the payload written by
 // TransactionalCommandHandler's caller distinguishes it, no separate

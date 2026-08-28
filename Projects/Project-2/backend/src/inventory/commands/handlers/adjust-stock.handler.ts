@@ -3,18 +3,18 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { StockAdjustedEvent } from '../../events/stock-adjusted.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { StockAdjustedEvent } from '@/inventory/events/stock-adjusted.event';
 import {
   InventoryItem,
   InventoryItemDocument,
-} from '../../schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   StockAdjustment,
   StockAdjustmentDocument,
-} from '../../schemas/stock-adjustment.schema';
-import { AdjustStockCommand } from '../adjust-stock.command';
+} from '@/inventory/schemas/stock-adjustment.schema';
+import { AdjustStockCommand } from '@/inventory/commands/adjust-stock.command';
 
 // The manual-correction counterpart to ConfirmOrderHandler's
 // decrementStockAndConsumeReservations — same InventoryItem +

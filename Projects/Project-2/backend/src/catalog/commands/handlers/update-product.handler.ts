@@ -3,12 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ProductUpdatedEvent } from '../../events/product-updated.event';
-import { Category, CategoryDocument } from '../../schemas/category.schema';
-import { Product, ProductDocument } from '../../schemas/product.schema';
-import { UpdateProductCommand } from '../update-product.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ProductUpdatedEvent } from '@/catalog/events/product-updated.event';
+import { Category, CategoryDocument } from '@/catalog/schemas/category.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { UpdateProductCommand } from '@/catalog/commands/update-product.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

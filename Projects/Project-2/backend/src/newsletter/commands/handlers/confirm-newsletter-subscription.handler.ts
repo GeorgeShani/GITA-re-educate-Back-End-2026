@@ -3,14 +3,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { NewsletterSubscriptionConfirmedEvent } from '../../events/newsletter-subscription-confirmed.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { NewsletterSubscriptionConfirmedEvent } from '@/newsletter/events/newsletter-subscription-confirmed.event';
 import {
   NewsletterSubscriber,
   NewsletterSubscriberDocument,
-} from '../../schemas/newsletter-subscriber.schema';
-import { ConfirmNewsletterSubscriptionCommand } from '../confirm-newsletter-subscription.command';
+} from '@/newsletter/schemas/newsletter-subscriber.schema';
+import { ConfirmNewsletterSubscriptionCommand } from '@/newsletter/commands/confirm-newsletter-subscription.command';
 
 @CommandHandler(ConfirmNewsletterSubscriptionCommand)
 export class ConfirmNewsletterSubscriptionHandler

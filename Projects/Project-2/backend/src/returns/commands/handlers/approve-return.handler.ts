@@ -3,12 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ReturnApprovedEvent } from '../../events/return-approved.event';
-import { ReturnStatus } from '../../enums/return-status.enum';
-import { Return, ReturnDocument } from '../../schemas/return.schema';
-import { ApproveReturnCommand } from '../approve-return.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ReturnApprovedEvent } from '@/returns/events/return-approved.event';
+import { ReturnStatus } from '@/returns/enums/return-status.enum';
+import { Return, ReturnDocument } from '@/returns/schemas/return.schema';
+import { ApproveReturnCommand } from '@/returns/commands/approve-return.command';
 
 @CommandHandler(ApproveReturnCommand)
 export class ApproveReturnHandler

@@ -2,7 +2,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsBoolean, IsMongoId, IsOptional, IsString } from 'class-validator';
 
-import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 
 // Deliberately plain Mongo filters, no Atlas Search integration — admin
 // listing needs precise control (including drafts), not fuzzy relevance

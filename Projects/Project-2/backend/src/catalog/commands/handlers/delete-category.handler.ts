@@ -3,12 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CategoryDeletedEvent } from '../../events/category-deleted.event';
-import { Category, CategoryDocument } from '../../schemas/category.schema';
-import { Product, ProductDocument } from '../../schemas/product.schema';
-import { DeleteCategoryCommand } from '../delete-category.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CategoryDeletedEvent } from '@/catalog/events/category-deleted.event';
+import { Category, CategoryDocument } from '@/catalog/schemas/category.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { DeleteCategoryCommand } from '@/catalog/commands/delete-category.command';
 
 @CommandHandler(DeleteCategoryCommand)
 export class DeleteCategoryHandler

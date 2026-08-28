@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class ReviewSubmittedEvent extends DomainEvent {
   readonly eventName = 'review.submitted';

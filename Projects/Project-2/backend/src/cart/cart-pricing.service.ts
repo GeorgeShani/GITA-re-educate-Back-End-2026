@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 
-import { Product, ProductDocument } from '../catalog/schemas/product.schema';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
 import { CartItem } from './schemas/cart.schema';
 
 // CartItem itself doesn't declare _id (Mongoose adds it at runtime for

@@ -6,9 +6,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, ClientSession, Model } from 'mongoose';
 
-import { AddressDto } from '../common/dto/address.dto';
-import { PaginatedResult } from '../catalog/products.service';
-import { escapeRegExp } from '../common/utils/escape-regexp.util';
+import { AddressDto } from '@/common/dto/address.dto';
+import { PaginatedResult } from '@/catalog/products.service';
+import { escapeRegExp } from '@/common/utils/escape-regexp.util';
 import { FindUsersAdminDto } from './dto/find-users-admin.dto';
 import { User, UserDocument } from './schemas/user.schema';
 

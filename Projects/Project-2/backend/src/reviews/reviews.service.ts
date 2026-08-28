@@ -4,7 +4,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model, Types } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { ApproveReviewCommand } from './commands/approve-review.command';
 import { RejectReviewCommand } from './commands/reject-review.command';
 import { ReplyToReviewCommand } from './commands/reply-to-review.command';

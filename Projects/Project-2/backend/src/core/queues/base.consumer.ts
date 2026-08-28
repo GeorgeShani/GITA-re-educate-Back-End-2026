@@ -3,7 +3,7 @@ import { WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ClsService } from 'nestjs-cls';
 
-import { OutboxJobData } from '../outbox/outbox.publisher';
+import { OutboxJobData } from '@/core/outbox/outbox.publisher';
 
 // Every queue consumer extends this rather than WorkerHost directly.
 // Handles the two things every consumer needs regardless of what it

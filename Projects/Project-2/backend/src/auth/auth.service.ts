@@ -6,7 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { Role } from '../common/enums/role.enum';
+import { Role } from '@/common/enums/role.enum';
 import { RecordLoginCommand } from './commands/record-login.command';
 import { RegisterUserCommand } from './commands/register-user.command';
 import { RequestPasswordResetCommand } from './commands/request-password-reset.command';
@@ -24,8 +24,8 @@ import {
   RefreshTokenDocument,
 } from './schemas/refresh-token.schema';
 import { hashToken } from './utils/token-hash.util';
-import { UsersService } from '../users/users.service';
-import { UserDocument } from '../users/schemas/user.schema';
+import { UsersService } from '@/users/users.service';
+import { UserDocument } from '@/users/schemas/user.schema';
 
 const SALT_ROUNDS = 10;
 

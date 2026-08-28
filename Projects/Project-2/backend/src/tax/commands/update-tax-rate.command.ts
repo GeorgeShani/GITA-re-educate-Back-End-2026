@@ -1,4 +1,4 @@
-import { UpdateTaxRateDto } from '../dto/update-tax-rate.dto';
+import { UpdateTaxRateDto } from '@/tax/dto/update-tax-rate.dto';
 
 export class UpdateTaxRateCommand {
   constructor(

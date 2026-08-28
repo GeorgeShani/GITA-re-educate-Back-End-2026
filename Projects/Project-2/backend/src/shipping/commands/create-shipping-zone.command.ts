@@ -1,4 +1,4 @@
-import { CreateShippingZoneDto } from '../dto/create-shipping-zone.dto';
+import { CreateShippingZoneDto } from '@/shipping/dto/create-shipping-zone.dto';
 
 export class CreateShippingZoneCommand {
   constructor(

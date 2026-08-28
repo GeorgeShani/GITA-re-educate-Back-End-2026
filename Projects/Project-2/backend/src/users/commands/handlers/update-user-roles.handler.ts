@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UserRolesUpdatedEvent } from '../../events/user-roles-updated.event';
-import { User, UserDocument } from '../../schemas/user.schema';
-import { UpdateUserRolesCommand } from '../update-user-roles.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UserRolesUpdatedEvent } from '@/users/events/user-roles-updated.event';
+import { User, UserDocument } from '@/users/schemas/user.schema';
+import { UpdateUserRolesCommand } from '@/users/commands/update-user-roles.command';
 
 @CommandHandler(UpdateUserRolesCommand)
 export class UpdateUserRolesHandler

@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CategoryCreatedEvent } from '../../events/category-created.event';
-import { Category, CategoryDocument } from '../../schemas/category.schema';
-import { CreateCategoryCommand } from '../create-category.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CategoryCreatedEvent } from '@/catalog/events/category-created.event';
+import { Category, CategoryDocument } from '@/catalog/schemas/category.schema';
+import { CreateCategoryCommand } from '@/catalog/commands/create-category.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

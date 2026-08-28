@@ -3,18 +3,18 @@ import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { OrderStatus } from '../../../orders/enums/order-status.enum';
-import { ReviewSubmittedEvent } from '../../events/review-submitted.event';
-import { ProductRatingService } from '../../product-rating.service';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { ReviewSubmittedEvent } from '@/reviews/events/review-submitted.event';
+import { ProductRatingService } from '@/reviews/product-rating.service';
 import {
   Review,
   ReviewDocument,
   ReviewStatus,
-} from '../../schemas/review.schema';
-import { SubmitReviewCommand } from '../submit-review.command';
+} from '@/reviews/schemas/review.schema';
+import { SubmitReviewCommand } from '@/reviews/commands/submit-review.command';
 
 // Orders that never completed payment don't count toward "verified
 // purchase" — everything past that gate does, including a later

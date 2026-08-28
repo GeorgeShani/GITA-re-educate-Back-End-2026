@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ProductDeletedEvent } from '../../events/product-deleted.event';
-import { Product, ProductDocument } from '../../schemas/product.schema';
-import { DeleteProductCommand } from '../delete-product.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ProductDeletedEvent } from '@/catalog/events/product-deleted.event';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { DeleteProductCommand } from '@/catalog/commands/delete-product.command';
 
 // Hard delete — Order/Review both hold frozen name/price snapshots that
 // don't depend on the live Product existing (same reasoning

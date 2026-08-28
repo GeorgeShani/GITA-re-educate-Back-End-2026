@@ -5,8 +5,8 @@ import { JwtService } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import type { StringValue } from 'ms';
 
-import { CoreModule } from '../core/core.module';
-import { UsersModule } from '../users/users.module';
+import { CoreModule } from '@/core/core.module';
+import { UsersModule } from '@/users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { RegisterUserHandler } from './commands/handlers/register-user.handler';

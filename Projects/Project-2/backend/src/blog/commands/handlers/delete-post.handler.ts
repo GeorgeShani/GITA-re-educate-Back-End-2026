@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { PostDeletedEvent } from '../../events/post-deleted.event';
-import { Post, PostDocument } from '../../schemas/post.schema';
-import { DeletePostCommand } from '../delete-post.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { PostDeletedEvent } from '@/blog/events/post-deleted.event';
+import { Post, PostDocument } from '@/blog/schemas/post.schema';
+import { DeletePostCommand } from '@/blog/commands/delete-post.command';
 
 @CommandHandler(DeletePostCommand)
 export class DeletePostHandler

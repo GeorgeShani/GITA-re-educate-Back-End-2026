@@ -2,7 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
 
-import { QueueName } from '../queues/queue-names.enum';
+import { QueueName } from '@/core/queues/queue-names.enum';
 import { resolveQueuesForEvent } from './event-routing';
 import { OutboxEventDocument } from './outbox.schema';
 

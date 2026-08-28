@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { MediaDeletedEvent } from '../../events/media-deleted.event';
-import { Media, MediaDocument } from '../../schemas/media.schema';
-import { DeleteMediaCommand } from '../delete-media.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { MediaDeletedEvent } from '@/media/events/media-deleted.event';
+import { Media, MediaDocument } from '@/media/schemas/media.schema';
+import { DeleteMediaCommand } from '@/media/commands/delete-media.command';
 
 @CommandHandler(DeleteMediaCommand)
 export class DeleteMediaHandler

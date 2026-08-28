@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminShippingController } from './admin-shipping.controller';
 import { CreateShippingZoneHandler } from './commands/handlers/create-shipping-zone.handler';
 import { UpdateShippingZoneHandler } from './commands/handlers/update-shipping-zone.handler';

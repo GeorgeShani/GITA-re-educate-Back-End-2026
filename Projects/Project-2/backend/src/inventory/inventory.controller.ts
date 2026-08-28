@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
 import { CheckStockQueryDto } from './dto/check-stock-query.dto';
 import { CreateBackInStockRequestDto } from './dto/create-back-in-stock-request.dto';
 import { InventoryService } from './inventory.service';

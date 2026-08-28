@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 // The event name schema comment newsletter-subscriber.schema.ts
 // promised ("marketing.newsletter_subscribed... once that happens") —

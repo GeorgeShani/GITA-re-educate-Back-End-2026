@@ -1,4 +1,4 @@
-import { QueueName } from '../queues/queue-names.enum';
+import { QueueName } from '@/core/queues/queue-names.enum';
 
 export interface EventRoute {
   /** Exact event name ("media.uploaded") or a trailing-glob prefix ("order.*"). */

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model, Types } from 'mongoose';
 
-import { PaginatedResult } from '../catalog/products.service';
+import { PaginatedResult } from '@/catalog/products.service';
 import { SubmitCommentDto } from './dto/submit-comment.dto';
 import { FindPostsDto } from './dto/find-posts.dto';
 import { Comment, CommentDocument } from './schemas/comment.schema';

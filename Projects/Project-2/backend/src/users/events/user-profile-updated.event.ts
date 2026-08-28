@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class UserProfileUpdatedEvent extends DomainEvent {
   readonly eventName = 'user.profile_updated';

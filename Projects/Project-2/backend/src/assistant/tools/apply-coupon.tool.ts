@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { FunctionDeclaration } from '@google/genai';
 
-import { CartService } from '../../cart/cart.service';
+import { CartService } from '@/cart/cart.service';
 import {
   AssistantTool,
   AssistantToolContext,

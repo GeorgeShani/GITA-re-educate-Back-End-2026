@@ -2,11 +2,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UserProfileUpdatedEvent } from '../../events/user-profile-updated.event';
-import { User, UserDocument } from '../../schemas/user.schema';
-import { UpdateProfileCommand } from '../update-profile.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UserProfileUpdatedEvent } from '@/users/events/user-profile-updated.event';
+import { User, UserDocument } from '@/users/schemas/user.schema';
+import { UpdateProfileCommand } from '@/users/commands/update-profile.command';
 
 @CommandHandler(UpdateProfileCommand)
 export class UpdateProfileHandler

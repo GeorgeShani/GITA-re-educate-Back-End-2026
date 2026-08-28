@@ -4,8 +4,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { PaginatedResult } from '../catalog/products.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PaginatedResult } from '@/catalog/products.service';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 import { CreatePostCommand } from './commands/create-post.command';
 import { DeletePostCommand } from './commands/delete-post.command';
 import { UpdatePostCommand } from './commands/update-post.command';

@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { Product, ProductSchema } from '../catalog/schemas/product.schema';
-import { CoreModule } from '../core/core.module';
+import { Product, ProductSchema } from '@/catalog/schemas/product.schema';
+import { CoreModule } from '@/core/core.module';
 import { AddWishlistItemHandler } from './commands/handlers/add-wishlist-item.handler';
 import { RemoveWishlistItemHandler } from './commands/handlers/remove-wishlist-item.handler';
 import {

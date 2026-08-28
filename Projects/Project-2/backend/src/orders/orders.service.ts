@@ -2,9 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { PaginatedResult } from '../catalog/products.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { CartService } from '../cart/cart.service';
+import { PaginatedResult } from '@/catalog/products.service';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
+import { CartService } from '@/cart/cart.service';
 import { Order, OrderDocument } from './schemas/order.schema';
 
 export interface TrackingInfo {

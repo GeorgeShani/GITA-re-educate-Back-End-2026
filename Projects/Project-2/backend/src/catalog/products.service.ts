@@ -2,8 +2,8 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { QueryFilter, Model, SortOrder, Types } from 'mongoose';
 
-import { SEARCH_PROVIDER_TOKEN } from '../search/search-provider.interface';
-import type { SearchProvider } from '../search/search-provider.interface';
+import { SEARCH_PROVIDER_TOKEN } from '@/search/search-provider.interface';
+import type { SearchProvider } from '@/search/search-provider.interface';
 import { FindProductsDto } from './dto/find-products.dto';
 import { Product, ProductDocument } from './schemas/product.schema';
 

@@ -1,4 +1,4 @@
-import { UpdateProductDto } from '../dto/update-product.dto';
+import { UpdateProductDto } from '@/catalog/dto/update-product.dto';
 
 export class UpdateProductCommand {
   constructor(

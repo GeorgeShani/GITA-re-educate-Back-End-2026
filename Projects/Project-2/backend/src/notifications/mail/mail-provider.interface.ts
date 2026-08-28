@@ -1,4 +1,4 @@
-import type { EmailCategory } from '../schemas/email-message.schema';
+import type { EmailCategory } from '@/notifications/schemas/email-message.schema';
 
 export interface MailMessage {
   to: string;

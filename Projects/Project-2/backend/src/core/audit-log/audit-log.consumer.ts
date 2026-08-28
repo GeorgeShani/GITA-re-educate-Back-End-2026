@@ -5,9 +5,9 @@ import { Job } from 'bullmq';
 import { Model } from 'mongoose';
 import { ClsService } from 'nestjs-cls';
 
-import { QueueName } from '../queues/queue-names.enum';
-import { BaseConsumer } from '../queues/base.consumer';
-import { OutboxJobData } from '../outbox/outbox.publisher';
+import { QueueName } from '@/core/queues/queue-names.enum';
+import { BaseConsumer } from '@/core/queues/base.consumer';
+import { OutboxJobData } from '@/core/outbox/outbox.publisher';
 import { AuditLogEntry, AuditLogEntryDocument } from './audit-log-entry.schema';
 
 @Injectable()

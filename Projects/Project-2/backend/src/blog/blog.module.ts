@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminBlogController } from './admin-blog.controller';
 import { BlogController } from './blog.controller';
 import { ApproveCommentHandler } from './commands/handlers/approve-comment.handler';

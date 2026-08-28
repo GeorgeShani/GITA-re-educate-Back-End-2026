@@ -1,11 +1,11 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { ADMIN_ROLES } from '../common/constants/admin-roles.constant';
-import { Roles } from '../common/decorators/roles.decorator';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
+import { ADMIN_ROLES } from '@/common/constants/admin-roles.constant';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
 import { NewsletterService } from './newsletter.service';
 
 @ApiTags('admin-newsletter')

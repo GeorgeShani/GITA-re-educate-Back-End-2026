@@ -2,14 +2,14 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { ShippingZoneCreatedEvent } from '../../events/shipping-zone-created.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { ShippingZoneCreatedEvent } from '@/shipping/events/shipping-zone-created.event';
 import {
   ShippingZone,
   ShippingZoneDocument,
-} from '../../schemas/shipping-zone.schema';
-import { CreateShippingZoneCommand } from '../create-shipping-zone.command';
+} from '@/shipping/schemas/shipping-zone.schema';
+import { CreateShippingZoneCommand } from '@/shipping/commands/create-shipping-zone.command';
 
 @CommandHandler(CreateShippingZoneCommand)
 export class CreateShippingZoneHandler

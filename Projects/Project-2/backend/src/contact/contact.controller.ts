@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
 import { ContactService } from './contact.service';
 import { SubmitContactMessageDto } from './dto/submit-contact-message.dto';
 

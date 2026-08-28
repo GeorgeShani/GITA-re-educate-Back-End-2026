@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class ProductDeletedEvent extends DomainEvent {
   readonly eventName = 'product.deleted';

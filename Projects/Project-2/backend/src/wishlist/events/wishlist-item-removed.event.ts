@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class WishlistItemRemovedEvent extends DomainEvent {
   readonly eventName = 'wishlist.item_removed';

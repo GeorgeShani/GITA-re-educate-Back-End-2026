@@ -3,15 +3,15 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { PostCreatedEvent } from '../../events/post-created.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { PostCreatedEvent } from '@/blog/events/post-created.event';
 import {
   PostCategory,
   PostCategoryDocument,
-} from '../../schemas/post-category.schema';
-import { Post, PostDocument } from '../../schemas/post.schema';
-import { CreatePostCommand } from '../create-post.command';
+} from '@/blog/schemas/post-category.schema';
+import { Post, PostDocument } from '@/blog/schemas/post.schema';
+import { CreatePostCommand } from '@/blog/commands/create-post.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

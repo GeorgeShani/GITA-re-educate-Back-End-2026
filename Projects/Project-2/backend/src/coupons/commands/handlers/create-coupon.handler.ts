@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CouponCreatedEvent } from '../../events/coupon-created.event';
-import { Coupon, CouponDocument } from '../../schemas/coupon.schema';
-import { CreateCouponCommand } from '../create-coupon.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CouponCreatedEvent } from '@/coupons/events/coupon-created.event';
+import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
+import { CreateCouponCommand } from '@/coupons/commands/create-coupon.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

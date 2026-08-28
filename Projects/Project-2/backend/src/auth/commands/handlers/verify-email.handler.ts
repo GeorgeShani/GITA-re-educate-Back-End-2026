@@ -3,12 +3,12 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UsersService } from '../../../users/users.service';
-import { UserEmailVerifiedEvent } from '../../events/user-email-verified.event';
-import { hashToken } from '../../utils/token-hash.util';
-import { VerifyEmailCommand } from '../verify-email.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UsersService } from '@/users/users.service';
+import { UserEmailVerifiedEvent } from '@/auth/events/user-email-verified.event';
+import { hashToken } from '@/auth/utils/token-hash.util';
+import { VerifyEmailCommand } from '@/auth/commands/verify-email.command';
 
 @CommandHandler(VerifyEmailCommand)
 export class VerifyEmailHandler

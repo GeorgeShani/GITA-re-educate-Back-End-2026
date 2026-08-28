@@ -8,8 +8,8 @@ import { JwtService } from '@nestjs/jwt';
 import type {
   AuthenticatedUser,
   RequestWithUser,
-} from '../interfaces/request-with-user.interface';
-import { extractBearerToken } from '../utils/extract-bearer-token.util';
+} from '@/common/interfaces/request-with-user.interface';
+import { extractBearerToken } from '@/common/utils/extract-bearer-token.util';
 
 // Hand-rolled guard, ported from Homework 25/26 rather than passport-jwt
 // (SCOPE.md decision — fewer moving parts, code already understood).

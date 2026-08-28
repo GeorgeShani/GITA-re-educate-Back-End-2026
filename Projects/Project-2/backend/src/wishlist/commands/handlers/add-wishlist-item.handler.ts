@@ -3,18 +3,15 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import {
-  Product,
-  ProductDocument,
-} from '../../../catalog/schemas/product.schema';
-import { WishlistItemAddedEvent } from '../../events/wishlist-item-added.event';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Product, ProductDocument } from '@/catalog/schemas/product.schema';
+import { WishlistItemAddedEvent } from '@/wishlist/events/wishlist-item-added.event';
 import {
   WishlistItem,
   WishlistItemDocument,
-} from '../../schemas/wishlist-item.schema';
-import { AddWishlistItemCommand } from '../add-wishlist-item.command';
+} from '@/wishlist/schemas/wishlist-item.schema';
+import { AddWishlistItemCommand } from '@/wishlist/commands/add-wishlist-item.command';
 
 const MONGO_DUPLICATE_KEY_ERROR = 11000;
 

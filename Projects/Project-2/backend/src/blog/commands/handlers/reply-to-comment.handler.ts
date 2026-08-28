@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CommentRepliedEvent } from '../../events/comment-replied.event';
-import { Comment, CommentDocument } from '../../schemas/comment.schema';
-import { ReplyToCommentCommand } from '../reply-to-comment.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CommentRepliedEvent } from '@/blog/events/comment-replied.event';
+import { Comment, CommentDocument } from '@/blog/schemas/comment.schema';
+import { ReplyToCommentCommand } from '@/blog/commands/reply-to-comment.command';
 
 // A reply is a new Comment threaded under the original via parentId —
 // Comment has no separate adminReply field the way Review does, but it

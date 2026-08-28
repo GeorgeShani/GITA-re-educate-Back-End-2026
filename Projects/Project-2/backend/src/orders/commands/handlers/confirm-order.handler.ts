@@ -3,30 +3,30 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { ClientSession, Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { Coupon, CouponDocument } from '../../../coupons/schemas/coupon.schema';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
 import {
   CouponRedemption,
   CouponRedemptionDocument,
-} from '../../../coupons/schemas/coupon-redemption.schema';
+} from '@/coupons/schemas/coupon-redemption.schema';
 import {
   InventoryItem,
   InventoryItemDocument,
-} from '../../../inventory/schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   InventoryReservation,
   InventoryReservationDocument,
-} from '../../../inventory/schemas/inventory-reservation.schema';
+} from '@/inventory/schemas/inventory-reservation.schema';
 import {
   StockAdjustment,
   StockAdjustmentDocument,
-} from '../../../inventory/schemas/stock-adjustment.schema';
-import { OrderConfirmedEvent } from '../../events/order-confirmed.event';
-import { OrderPaidEvent } from '../../events/order-paid.event';
-import { Order, OrderDocument } from '../../schemas/order.schema';
-import { OrderStatus } from '../../enums/order-status.enum';
-import { ConfirmOrderCommand } from '../confirm-order.command';
+} from '@/inventory/schemas/stock-adjustment.schema';
+import { OrderConfirmedEvent } from '@/orders/events/order-confirmed.event';
+import { OrderPaidEvent } from '@/orders/events/order-paid.event';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { ConfirmOrderCommand } from '@/orders/commands/confirm-order.command';
 
 @CommandHandler(ConfirmOrderCommand)
 export class ConfirmOrderHandler

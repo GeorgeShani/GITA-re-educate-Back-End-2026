@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminGiftCardsController } from './admin-gift-cards.controller';
 import { AdjustGiftCardBalanceHandler } from './commands/handlers/adjust-gift-card-balance.handler';
 import { IssueGiftCardHandler } from './commands/handlers/issue-gift-card.handler';

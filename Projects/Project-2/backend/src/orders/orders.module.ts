@@ -3,27 +3,27 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CartModule } from '../cart/cart.module';
-import { CoreModule } from '../core/core.module';
-import { QueueName } from '../core/queues/queue-names.enum';
-import { Coupon, CouponSchema } from '../coupons/schemas/coupon.schema';
+import { CartModule } from '@/cart/cart.module';
+import { CoreModule } from '@/core/core.module';
+import { QueueName } from '@/core/queues/queue-names.enum';
+import { Coupon, CouponSchema } from '@/coupons/schemas/coupon.schema';
 import {
   CouponRedemption,
   CouponRedemptionSchema,
-} from '../coupons/schemas/coupon-redemption.schema';
+} from '@/coupons/schemas/coupon-redemption.schema';
 import {
   InventoryItem,
   InventoryItemSchema,
-} from '../inventory/schemas/inventory-item.schema';
+} from '@/inventory/schemas/inventory-item.schema';
 import {
   InventoryReservation,
   InventoryReservationSchema,
-} from '../inventory/schemas/inventory-reservation.schema';
+} from '@/inventory/schemas/inventory-reservation.schema';
 import {
   StockAdjustment,
   StockAdjustmentSchema,
-} from '../inventory/schemas/stock-adjustment.schema';
-import { MediaModule } from '../media/media.module';
+} from '@/inventory/schemas/stock-adjustment.schema';
+import { MediaModule } from '@/media/media.module';
 import { AdminOrdersController } from './admin-orders.controller';
 import { AdminOrdersService } from './admin-orders.service';
 import { CancelOrderHandler } from './commands/handlers/cancel-order.handler';

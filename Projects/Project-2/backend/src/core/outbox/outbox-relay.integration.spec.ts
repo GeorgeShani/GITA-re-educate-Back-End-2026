@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 import { MongoTestContext } from '../../../test/support/mongo-memory-server';
 import { getTestModel } from '../../../test/support/test-model';
-import { DomainEvent } from '../events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 import { OutboxRepository } from './outbox.repository';
 import {
   OutboxEvent,

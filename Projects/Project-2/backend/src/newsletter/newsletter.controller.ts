@@ -10,7 +10,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
 import { NewsletterLinkQueryDto } from './dto/newsletter-link-query.dto';
 import { SubscribeNewsletterDto } from './dto/subscribe-newsletter.dto';
 import { NewsletterService } from './newsletter.service';

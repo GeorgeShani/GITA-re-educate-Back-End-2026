@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Resend } from 'resend';
 
-import { QueueName } from '../core/queues/queue-names.enum';
+import { QueueName } from '@/core/queues/queue-names.enum';
 import {
   EmailMessage,
   EmailMessageSchema,

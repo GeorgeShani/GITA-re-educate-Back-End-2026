@@ -1,9 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
-import { Product } from '../../catalog/schemas/product.schema';
-import { User } from '../../users/schemas/user.schema';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
+import { Product } from '@/catalog/schemas/product.schema';
+import { User } from '@/users/schemas/user.schema';
 
 export type ReviewDocument = HydratedDocument<Review>;
 export type ReviewStatus = 'pending' | 'approved' | 'rejected';

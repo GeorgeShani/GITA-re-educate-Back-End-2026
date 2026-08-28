@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 
-import { AuditLogEntryDocument } from '../core/audit-log/audit-log-entry.schema';
-import { AuditLogService } from '../core/audit-log/audit-log.service';
+import { AuditLogEntryDocument } from '@/core/audit-log/audit-log-entry.schema';
+import { AuditLogService } from '@/core/audit-log/audit-log.service';
 import {
   InventoryItem,
   InventoryItemDocument,
-} from '../inventory/schemas/inventory-item.schema';
-import { OrderStatus } from '../orders/enums/order-status.enum';
-import { Order, OrderDocument } from '../orders/schemas/order.schema';
+} from '@/inventory/schemas/inventory-item.schema';
+import { OrderStatus } from '@/orders/enums/order-status.enum';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
 import { DashboardSummaryQueryDto } from './dto/dashboard-summary-query.dto';
 
 const DEFAULT_RANGE_DAYS = 30;

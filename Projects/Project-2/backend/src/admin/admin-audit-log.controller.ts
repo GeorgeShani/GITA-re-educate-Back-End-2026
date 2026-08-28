@@ -1,12 +1,12 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
-import { Roles } from '../common/decorators/roles.decorator';
-import { Role } from '../common/enums/role.enum';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { AuditLogService } from '../core/audit-log/audit-log.service';
-import { FindAuditLogDto } from '../core/audit-log/dto/find-audit-log.dto';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { Role } from '@/common/enums/role.enum';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { AuditLogService } from '@/core/audit-log/audit-log.service';
+import { FindAuditLogDto } from '@/core/audit-log/dto/find-audit-log.dto';
 
 // Broadest visibility of anything in the admin surface — every domain
 // event, unfiltered by area — so this stays admin-only, no delegation to

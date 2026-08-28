@@ -2,9 +2,9 @@ import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ClsService } from 'nestjs-cls';
 
-import { BaseConsumer } from '../core/queues/base.consumer';
-import { QueueName } from '../core/queues/queue-names.enum';
-import { OutboxJobData } from '../core/outbox/outbox.publisher';
+import { BaseConsumer } from '@/core/queues/base.consumer';
+import { QueueName } from '@/core/queues/queue-names.enum';
+import { OutboxJobData } from '@/core/outbox/outbox.publisher';
 import { EmailCategory } from './schemas/email-message.schema';
 import { NotificationsService } from './notifications.service';
 

@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class TaxRateUpdatedEvent extends DomainEvent {
   readonly eventName = 'tax_rate.updated';

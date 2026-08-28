@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
-import { Order, OrderSchema } from '../orders/schemas/order.schema';
+import { CoreModule } from '@/core/core.module';
+import { Order, OrderSchema } from '@/orders/schemas/order.schema';
 import { AdminReturnsController } from './admin-returns.controller';
 import { ApproveReturnHandler } from './commands/handlers/approve-return.handler';
 import { ReceiveReturnHandler } from './commands/handlers/receive-return.handler';

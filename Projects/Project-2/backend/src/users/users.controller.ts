@@ -15,12 +15,12 @@ import { CommandBus } from '@nestjs/cqrs';
 import { Throttle } from '@nestjs/throttler';
 import { ClsService } from 'nestjs-cls';
 
-import { AddressDto } from '../common/dto/address.dto';
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
-import { NotificationPreferencesService } from '../notifications/notification-preferences.service';
+import { AddressDto } from '@/common/dto/address.dto';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
+import { NotificationPreferencesService } from '@/notifications/notification-preferences.service';
 import { AccountExportService } from './account-export.service';
 import { DeleteAccountCommand } from './commands/delete-account.command';
 import { UpdateProfileCommand } from './commands/update-profile.command';

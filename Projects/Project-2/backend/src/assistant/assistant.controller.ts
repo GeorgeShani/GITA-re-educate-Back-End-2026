@@ -15,10 +15,10 @@ import type { Observable } from 'rxjs';
 import {
   ASSISTANT_THROTTLE,
   WRITE_THROTTLE,
-} from '../common/constants/throttle.constant';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+} from '@/common/constants/throttle.constant';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { AssistantService } from './assistant.service';
 import { ConfirmToolCallDto } from './dto/confirm-tool-call.dto';
 import { SendMessageDto } from './dto/send-message.dto';

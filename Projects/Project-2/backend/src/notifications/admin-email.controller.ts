@@ -13,12 +13,12 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 
-import { ADMIN_ROLES } from '../common/constants/admin-roles.constant';
-import { WRITE_THROTTLE } from '../common/constants/throttle.constant';
-import { Roles } from '../common/decorators/roles.decorator';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../common/guards/roles.guard';
-import { ParseObjectIdPipe } from '../common/pipes/parse-object-id.pipe';
+import { ADMIN_ROLES } from '@/common/constants/admin-roles.constant';
+import { WRITE_THROTTLE } from '@/common/constants/throttle.constant';
+import { Roles } from '@/common/decorators/roles.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
+import { RolesGuard } from '@/common/guards/roles.guard';
+import { ParseObjectIdPipe } from '@/common/pipes/parse-object-id.pipe';
 import { AddSuppressionDto } from './dto/add-suppression.dto';
 import { FindEmailMessagesAdminDto } from './dto/find-email-messages-admin.dto';
 import { NotificationsService } from './notifications.service';

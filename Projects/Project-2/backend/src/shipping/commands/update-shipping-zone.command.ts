@@ -1,4 +1,4 @@
-import { UpdateShippingZoneDto } from '../dto/update-shipping-zone.dto';
+import { UpdateShippingZoneDto } from '@/shipping/dto/update-shipping-zone.dto';
 
 export class UpdateShippingZoneCommand {
   constructor(

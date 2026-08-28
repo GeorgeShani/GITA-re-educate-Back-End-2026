@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { ChangeStream, ChangeStreamInsertDocument } from 'mongodb';
 import { ClientSession, Model } from 'mongoose';
 
-import { DomainEvent } from '../events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 import { OutboxEvent, OutboxEventDocument } from './outbox.schema';
 
 @Injectable()

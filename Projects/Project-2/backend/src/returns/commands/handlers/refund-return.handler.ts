@@ -3,15 +3,15 @@ import { CommandBus, CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { IssueRefundCommand } from '../../../payments/commands/issue-refund.command';
-import { RefundDocument } from '../../../payments/schemas/refund.schema';
-import { Order, OrderDocument } from '../../../orders/schemas/order.schema';
-import { ReturnRefundedEvent } from '../../events/return-refunded.event';
-import { ReturnStatus } from '../../enums/return-status.enum';
-import { Return, ReturnDocument } from '../../schemas/return.schema';
-import { RefundReturnCommand } from '../refund-return.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { IssueRefundCommand } from '@/payments/commands/issue-refund.command';
+import { RefundDocument } from '@/payments/schemas/refund.schema';
+import { Order, OrderDocument } from '@/orders/schemas/order.schema';
+import { ReturnRefundedEvent } from '@/returns/events/return-refunded.event';
+import { ReturnStatus } from '@/returns/enums/return-status.enum';
+import { Return, ReturnDocument } from '@/returns/schemas/return.schema';
+import { RefundReturnCommand } from '@/returns/commands/refund-return.command';
 
 // RECEIVED -> REFUNDED. Composes IssueRefundCommand (payments domain)
 // rather than duplicating its Stripe-call-then-Refund-write logic —

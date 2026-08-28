@@ -3,11 +3,11 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { CartItemRemovedEvent } from '../../events/cart-item-removed.event';
-import { Cart, CartDocument } from '../../schemas/cart.schema';
-import { RemoveCartItemCommand } from '../remove-cart-item.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { CartItemRemovedEvent } from '@/cart/events/cart-item-removed.event';
+import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
+import { RemoveCartItemCommand } from '@/cart/commands/remove-cart-item.command';
 
 @CommandHandler(RemoveCartItemCommand)
 export class RemoveCartItemHandler

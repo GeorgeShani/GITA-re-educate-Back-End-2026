@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { MongooseModule } from '@nestjs/mongoose';
 
-import { CoreModule } from '../core/core.module';
+import { CoreModule } from '@/core/core.module';
 import { AdminNewsletterController } from './admin-newsletter.controller';
 import { ConfirmNewsletterSubscriptionHandler } from './commands/handlers/confirm-newsletter-subscription.handler';
 import { NewsletterController } from './newsletter.controller';

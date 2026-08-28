@@ -3,13 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { UsersService } from '../../../users/users.service';
-import { UserDocument } from '../../../users/schemas/user.schema';
-import { UserRegisteredEvent } from '../../events/user-registered.event';
-import { generateRawToken, hashToken } from '../../utils/token-hash.util';
-import { RegisterUserCommand } from '../register-user.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { UsersService } from '@/users/users.service';
+import { UserDocument } from '@/users/schemas/user.schema';
+import { UserRegisteredEvent } from '@/auth/events/user-registered.event';
+import { generateRawToken, hashToken } from '@/auth/utils/token-hash.util';
+import { RegisterUserCommand } from '@/auth/commands/register-user.command';
 
 const VERIFICATION_TOKEN_TTL_HOURS = 24;
 

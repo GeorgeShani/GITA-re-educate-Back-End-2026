@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
-import { baseSchemaOptions } from '../../common/constants/mongoose-schema.options';
-import { Order } from '../../orders/schemas/order.schema';
-import { User } from '../../users/schemas/user.schema';
-import { ReturnStatus } from '../enums/return-status.enum';
+import { baseSchemaOptions } from '@/common/constants/mongoose-schema.options';
+import { Order } from '@/orders/schemas/order.schema';
+import { User } from '@/users/schemas/user.schema';
+import { ReturnStatus } from '@/returns/enums/return-status.enum';
 
 // Embedded — SCOPE.md A9: a return line item has no lifecycle apart
 // from its return request.

@@ -5,9 +5,9 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { Role } from '../enums/role.enum';
-import { ROLES_KEY } from '../decorators/roles.decorator';
-import type { RequestWithUser } from '../interfaces/request-with-user.interface';
+import type { Role } from '@/common/enums/role.enum';
+import { ROLES_KEY } from '@/common/decorators/roles.decorator';
+import type { RequestWithUser } from '@/common/interfaces/request-with-user.interface';
 
 // Must run after JwtAuthGuard (which populates request.user) — order
 // matters in @UseGuards(JwtAuthGuard, RolesGuard). A route with no

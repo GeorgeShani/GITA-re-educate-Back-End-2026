@@ -1,4 +1,4 @@
-import { UpdateCouponDto } from '../dto/update-coupon.dto';
+import { UpdateCouponDto } from '@/coupons/dto/update-coupon.dto';
 
 export class UpdateCouponCommand {
   constructor(

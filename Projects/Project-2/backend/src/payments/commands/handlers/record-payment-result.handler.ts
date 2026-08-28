@@ -2,13 +2,13 @@ import { CommandHandler, EventBus, ICommandHandler } from '@nestjs/cqrs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model } from 'mongoose';
 
-import { TransactionalCommandHandler } from '../../../core/bus/transactional-command.handler';
-import { OutboxRepository } from '../../../core/outbox/outbox.repository';
-import { PaymentFailedEvent } from '../../events/payment-failed.event';
-import { PaymentSucceededEvent } from '../../events/payment-succeeded.event';
-import { Payment, PaymentDocument } from '../../schemas/payment.schema';
-import { PaymentStatus } from '../../enums/payment-status.enum';
-import { RecordPaymentResultCommand } from '../record-payment-result.command';
+import { TransactionalCommandHandler } from '@/core/bus/transactional-command.handler';
+import { OutboxRepository } from '@/core/outbox/outbox.repository';
+import { PaymentFailedEvent } from '@/payments/events/payment-failed.event';
+import { PaymentSucceededEvent } from '@/payments/events/payment-succeeded.event';
+import { Payment, PaymentDocument } from '@/payments/schemas/payment.schema';
+import { PaymentStatus } from '@/payments/enums/payment-status.enum';
+import { RecordPaymentResultCommand } from '@/payments/commands/record-payment-result.command';
 
 @CommandHandler(RecordPaymentResultCommand)
 export class RecordPaymentResultHandler

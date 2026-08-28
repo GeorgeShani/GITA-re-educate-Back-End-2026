@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class PaymentSucceededEvent extends DomainEvent {
   readonly eventName = 'payment.succeeded';

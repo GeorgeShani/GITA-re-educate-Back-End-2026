@@ -5,15 +5,15 @@ import { MongooseModule } from '@nestjs/mongoose';
 import {
   RefreshToken,
   RefreshTokenSchema,
-} from '../auth/schemas/refresh-token.schema';
-import { CoreModule } from '../core/core.module';
-import { NotificationsModule } from '../notifications/notifications.module';
-import { Order, OrderSchema } from '../orders/schemas/order.schema';
-import { Review, ReviewSchema } from '../reviews/schemas/review.schema';
+} from '@/auth/schemas/refresh-token.schema';
+import { CoreModule } from '@/core/core.module';
+import { NotificationsModule } from '@/notifications/notifications.module';
+import { Order, OrderSchema } from '@/orders/schemas/order.schema';
+import { Review, ReviewSchema } from '@/reviews/schemas/review.schema';
 import {
   WishlistItem,
   WishlistItemSchema,
-} from '../wishlist/schemas/wishlist-item.schema';
+} from '@/wishlist/schemas/wishlist-item.schema';
 import { AccountExportService } from './account-export.service';
 import { AdminUsersController } from './admin-users.controller';
 import { DeleteAccountHandler } from './commands/handlers/delete-account.handler';

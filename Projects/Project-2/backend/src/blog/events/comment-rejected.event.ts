@@ -1,4 +1,4 @@
-import { DomainEvent } from '../../core/events/domain-event.base';
+import { DomainEvent } from '@/core/events/domain-event.base';
 
 export class CommentRejectedEvent extends DomainEvent {
   readonly eventName = 'comment.rejected';

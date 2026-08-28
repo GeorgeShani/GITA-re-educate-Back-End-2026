@@ -3,9 +3,9 @@ import { Processor } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ClsService } from 'nestjs-cls';
 
-import { BaseConsumer } from '../core/queues/base.consumer';
-import { QueueName } from '../core/queues/queue-names.enum';
-import { OutboxJobData } from '../core/outbox/outbox.publisher';
+import { BaseConsumer } from '@/core/queues/base.consumer';
+import { QueueName } from '@/core/queues/queue-names.enum';
+import { OutboxJobData } from '@/core/outbox/outbox.publisher';
 import { STORAGE_PROVIDER_TOKEN } from './providers/storage-provider.interface';
 import type { StorageProvider } from './providers/storage-provider.interface';
 
