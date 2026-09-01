@@ -38,6 +38,10 @@ export class AuthService {
     return this.buildAuthResponse(user.id, user.email);
   }
 
+  getCurrentUser(userId: string) {
+    return this.usersService.findOne(userId);
+  }
+
   private async buildAuthResponse(userId: string, email: string) {
     const accessToken = await this.jwtService.signAsync({
       sub: userId,
