@@ -2,10 +2,15 @@ import { HttpClient } from '@angular/common/http';
 import { InjectionToken, Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
-/** No backend exists yet — relative default so this resolves once one's deployed behind the same origin/a proxy, without every call site needing to know. */
+/**
+ * Relative on purpose. In dev, proxy.conf.json forwards /api to the API on
+ * :3000, which makes requests same-origin — that is what lets the browser
+ * carry the guest cart's signed httpOnly cookie, which a cross-origin
+ * request with sameSite=lax would silently drop.
+ */
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
   providedIn: 'root',
-  factory: () => '/api',
+  factory: () => '/api/v1',
 });
 
 type QueryParams = Record<string, string | number | boolean>;

@@ -1,69 +1,79 @@
-import { Service, afterNextRender, computed, effect, signal } from '@angular/core';
-import type { CartItem } from '@/app/core/models/cart.model';
+import { Service, computed, inject, signal } from '@angular/core';
+import { type Observable, tap } from 'rxjs';
 
-const STORAGE_KEY = 'cart';
+import type { CartSummaryDto } from '@/app/core/api/dto';
+import { ApiClient } from '@/app/core/services/api-client';
 
 /**
- * Plain signal store, not NgRx, per AGENTS.md. Persists to localStorage
- * using a read-after-render / guarded-write pattern: SSR can't know a
- * client's stored cart, so the initial read only happens client-side,
- * and every write is guarded so it's a no-op server-side.
+ * The cart, owned server-side.
+ *
+ * Every mutation returns the full CartSummary, so this service never derives
+ * cart state locally — it stores whatever the server last said. That matters
+ * because a guest cart lives behind a signed httpOnly cookie the client
+ * cannot read: the server, not this class, decides which cart a request
+ * belongs to.
+ *
+ * Note the summary carries a subtotal and nothing else. There is no
+ * discount, tax, shipping or total until GET /checkout/quote, so the cart UI
+ * must not imply one.
  */
 @Service()
 export class CartService {
-  private readonly _items = signal<CartItem[]>([]);
-  readonly items = this._items.asReadonly();
+  private readonly api = inject(ApiClient);
 
-  readonly itemCount = computed(() => this._items().reduce((sum, item) => sum + item.quantity, 0));
-  readonly subtotal = computed(() =>
-    this._items().reduce((sum, item) => sum + item.price * item.quantity, 0),
-  );
+  private readonly summary = signal<CartSummaryDto | null>(null);
 
-  constructor() {
-    afterNextRender(() => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-      try {
-        this._items.set(JSON.parse(stored));
-      } catch {
-        // Corrupt/stale stored value — ignore, start from an empty cart.
-      }
-    });
+  readonly cart = this.summary.asReadonly();
+  readonly items = computed(() => this.summary()?.items ?? []);
+  readonly itemCount = computed(() => this.summary()?.itemCount ?? 0);
+  readonly subtotalMinor = computed(() => this.summary()?.subtotalMinor ?? 0);
+  readonly couponCode = computed(() => this.summary()?.couponCode);
+  readonly isEmpty = computed(() => this.items().length === 0);
 
-    effect(() => {
-      const items = this._items();
-      if (typeof localStorage === 'undefined') return;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    });
+  load(): Observable<CartSummaryDto> {
+    return this.api.get<CartSummaryDto>('/cart').pipe(this.store());
   }
 
-  add(item: CartItem): void {
-    this._items.update((items) => {
-      const existing = items.find(
-        (i) => i.productId === item.productId && i.variantId === item.variantId,
-      );
-      if (!existing) return [...items, item];
-      return items.map((i) => (i === existing ? { ...i, quantity: i.quantity + item.quantity } : i));
-    });
+  addItem(productId: string, variantSku: string, quantity = 1): Observable<CartSummaryDto> {
+    return this.api
+      .post<CartSummaryDto>('/cart/items', { productId, variantSku, quantity })
+      .pipe(this.store());
   }
 
-  updateQuantity(productId: string, quantity: number, variantId?: string): void {
-    if (quantity <= 0) {
-      this.remove(productId, variantId);
-      return;
-    }
-    this._items.update((items) =>
-      items.map((i) => (i.productId === productId && i.variantId === variantId ? { ...i, quantity } : i)),
-    );
+  updateQuantity(itemId: string, quantity: number): Observable<CartSummaryDto> {
+    return this.api.patch<CartSummaryDto>(`/cart/items/${itemId}`, { quantity }).pipe(this.store());
   }
 
-  remove(productId: string, variantId?: string): void {
-    this._items.update((items) =>
-      items.filter((i) => !(i.productId === productId && i.variantId === variantId)),
-    );
+  removeItem(itemId: string): Observable<CartSummaryDto> {
+    return this.api.delete<CartSummaryDto>(`/cart/items/${itemId}`).pipe(this.store());
   }
 
-  clear(): void {
-    this._items.set([]);
+  applyCoupon(code: string): Observable<CartSummaryDto> {
+    return this.api.post<CartSummaryDto>('/cart/coupon', { code }).pipe(this.store());
+  }
+
+  removeCoupon(): Observable<CartSummaryDto> {
+    return this.api.delete<CartSummaryDto>('/cart/coupon').pipe(this.store());
+  }
+
+  /**
+   * Folds the guest cart into the user's own. Must be called immediately
+   * after login or register — the server clears the guest cookie as part of
+   * this, so it is the only moment the two carts can be reconciled.
+   */
+  mergeGuestCart(): Observable<CartSummaryDto> {
+    return this.api.post<CartSummaryDto>('/cart/merge', {}).pipe(this.store());
+  }
+
+  /**
+   * Replaces local state after an out-of-band change — the AI assistant
+   * writes to the same cart server-side, so an approved tool call needs this.
+   */
+  refresh(): Observable<CartSummaryDto> {
+    return this.load();
+  }
+
+  private store() {
+    return tap<CartSummaryDto>((summary) => this.summary.set(summary));
   }
 }
