@@ -1,9 +1,9 @@
-import { Component, TemplateRef, inject, signal, viewChild } from '@angular/core';
+import { Component, TemplateRef, computed, inject, signal, viewChild } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Dialog } from '@angular/cdk/dialog';
 import { map } from 'rxjs';
 
-import { ProductService } from '@/app/core/services/product.service';
+import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { WishlistService } from '@/app/core/services/wishlist.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
@@ -25,11 +25,7 @@ import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { PriceTag } from '@/app/shared/ui/price-tag';
-import {
-  ProductCard,
-  type ProductCardProduct,
-  toProductCardProduct,
-} from '@/app/shared/ui/product-card';
+import { ProductCard, type ProductCardProduct } from '@/app/shared/ui/product-card';
 import { QuantityStepper } from '@/app/shared/ui/quantity-stepper';
 import { RadioField } from '@/app/shared/ui/radio-field';
 import { RatingStars } from '@/app/shared/ui/rating-stars';
@@ -687,19 +683,19 @@ export class Styleguide {
     this.track()?.scrollTo(index);
   }
 
-  protected readonly productService = inject(ProductService);
+  private readonly catalog = inject(CatalogService);
   protected readonly wishlistService = inject(WishlistService);
 
-  protected readonly demoProducts = toSignal(
-    this.productService.list().pipe(map((products) => products.map(toProductCardProduct))),
-    { initialValue: [] },
+  // Real catalogue data — the fixtures are gone, so the styleguide now
+  // renders whatever the API actually returns.
+  private readonly products = this.catalog.productsResource(() => ({ take: 4 }));
+  protected readonly demoProducts = computed(() =>
+    (this.products.value()?.items ?? []).map(toCardProduct),
   );
 
   protected addToCart(product: ProductCardProduct): void {
-    // The cart is server-owned now: adding requires a real productId and
-    // variantSku, and these cards render MockProductService fixtures that
-    // have neither. So this demonstrates the card's quickAdd output and the
-    // toast, not a real write — the genuine cart flow lives on the cart page.
+    // Demonstrates the card's quickAdd output and the toast only. Adding for
+    // real needs a chosen variant SKU, which is a product-page concern.
     this.toastService.show(`${product.name} added to cart`, 'success');
   }
 }

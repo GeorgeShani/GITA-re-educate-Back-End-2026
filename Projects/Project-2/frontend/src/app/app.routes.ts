@@ -17,6 +17,11 @@ export const routes: Routes = [
     title: '3legant Golf — More than just a game',
   },
   {
+    path: 'shop',
+    loadComponent: () => import('@/app/features/shop/shop'),
+    title: 'Shop — 3legant Golf',
+  },
+  {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),
