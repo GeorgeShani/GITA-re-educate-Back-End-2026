@@ -1,28 +1,30 @@
-import { RenderMode, ServerRoute } from '@angular/ssr';
+import { RenderMode, type ServerRoute } from '@angular/ssr';
 
-// The '' Prerender entry was removed along with the home route (see the
-// reset-and-re-platform plan) — no real page renders there yet. What
-// matters is still the *default*: the scaffold's blanket `Prerender` on
-// '**' would bake every future route — including data-driven ones like
-// /product/:slug — into a static snapshot taken at build time. That's
-// actively wrong for this app, not just suboptimal, so the safe default
-// is Server.
-//
-// Each feature phase adds its own entry above the fallback once its real
-// path exists:
-//   - Static/content routes (home, blog, legal) -> RenderMode.Prerender
-//   - Data-driven routes (shop, product, search) -> RenderMode.Server (default, can omit)
-//   - Session-scoped routes (cart, checkout, account, admin) -> RenderMode.Client
-//
-// The /styleguide route (F0/F1, dev tool only) is the one path we can
-// commit to right now.
+/**
+ * Per-route render modes. The previous blanket `**` -> Server is wrong for a
+ * storefront: it gives up prerendering on the pages that most want it, and
+ * server-renders session-scoped pages whose output can never be shared.
+ *
+ *   Prerender — static or slow-changing content, no per-request state.
+ *   Server    — data-driven and SEO-critical, so it must be fresh per request.
+ *   Client    — session-scoped. There is nothing meaningful to render without
+ *               the user's token or cart cookie, so rendering it on the server
+ *               only produces a skeleton the client immediately replaces.
+ */
 export const serverRoutes: ServerRoute[] = [
-  {
-    path: 'styleguide',
-    renderMode: RenderMode.Client,
-  },
-  {
-    path: '**',
-    renderMode: RenderMode.Server,
-  },
+  // Server, not Prerender: home renders live featured products, so
+  // prerendering would bake the catalog in at build time and serve it stale
+  // until the next deploy.
+  { path: '', renderMode: RenderMode.Server },
+  { path: 'styleguide', renderMode: RenderMode.Client },
+
+  // Everything else — including the 404 — is server-rendered so crawlers get
+  // real markup rather than an empty shell.
+  { path: '**', renderMode: RenderMode.Server },
+
+  // NOTE: Angular SSR validates every entry here against the client routing
+  // config and fails the build on one that matches nothing. So the
+  // session-scoped Client entries (cart, checkout/**, account/**, admin/**)
+  // are added in the same slice that adds the route itself, not reserved
+  // ahead of time.
 ];

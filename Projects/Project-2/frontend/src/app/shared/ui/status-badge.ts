@@ -25,7 +25,10 @@ export type StatusBadgeVariant = 'sale' | 'new' | 'custom';
 
     :host.sale {
       background: var(--color-success);
-      color: var(--color-white);
+      // The design pairs white with this green, but that measures 2.09:1 —
+      // well under the AA floor AGENTS.md makes mandatory. Dark text on the
+      // same green keeps the badge recognisable at 8.64:1.
+      color: var(--color-neutral-07);
     }
 
     :host.new {

@@ -34,7 +34,7 @@ import { IconButton } from './icon-button';
             (transitionend)="toast.leaving && toastService.remove(toast.id)"
           >
             <span class="toast__text">{{ toast.text }}</span>
-            <icon-button icon="close" ariaLabel="Dismiss" (clicked)="toastService.dismiss(toast.id)" />
+            <icon-button icon="x" ariaLabel="Dismiss" (clicked)="toastService.dismiss(toast.id)" />
           </div>
         }
       </div>

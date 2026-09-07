@@ -1,19 +1,10 @@
 import { Component, input } from '@angular/core';
 
-export type IconName =
-  | 'star'
-  | 'chevron-down'
-  | 'chevron-right'
-  | 'close'
-  | 'menu'
-  | 'search'
-  | 'heart'
-  | 'cart'
-  | 'user'
-  | 'check'
-  | 'plus'
-  | 'minus'
-  | 'email';
+// Re-exported from the generated sprite rather than redeclared here: a
+// hand-maintained copy silently accepts names the sprite no longer has,
+// which renders an empty <use> with no error anywhere.
+export type { IconName } from '@/app/shared/ui/icon-sprite';
+import type { IconName } from '@/app/shared/ui/icon-sprite';
 
 /**
  * Renders one symbol from the sprite mounted at the app root (see

@@ -3,7 +3,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Dialog } from '@angular/cdk/dialog';
 import { map } from 'rxjs';
 
-import { CartService } from '@/app/core/services/cart.service';
 import { ProductService } from '@/app/core/services/product.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { WishlistService } from '@/app/core/services/wishlist.service';
@@ -17,7 +16,8 @@ import { CarouselTrack } from '@/app/shared/ui/carousel-track';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
 import { DrawerPanel } from '@/app/shared/ui/drawer-panel';
 import { IconButton } from '@/app/shared/ui/icon-button';
-import { IconGlyph, type IconName } from '@/app/shared/ui/icon-glyph';
+import { IconGlyph } from '@/app/shared/ui/icon-glyph';
+import { ICON_NAMES } from '@/app/shared/ui/icon-sprite';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { ModalDialog } from '@/app/shared/ui/modal-dialog';
 import { NavLink } from '@/app/shared/ui/nav-link';
@@ -25,7 +25,11 @@ import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { PriceTag } from '@/app/shared/ui/price-tag';
-import { ProductCard, type ProductCardProduct, toProductCardProduct } from '@/app/shared/ui/product-card';
+import {
+  ProductCard,
+  type ProductCardProduct,
+  toProductCardProduct,
+} from '@/app/shared/ui/product-card';
 import { QuantityStepper } from '@/app/shared/ui/quantity-stepper';
 import { RadioField } from '@/app/shared/ui/radio-field';
 import { RatingStars } from '@/app/shared/ui/rating-stars';
@@ -115,7 +119,11 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
           <rating-stars [value]="3.5" [count]="24" />
           <rating-stars [value]="5" />
           <rating-stars [value]="0" />
-          <rating-stars [interactive]="true" [value]="interactiveRating()" (valueChange)="interactiveRating.set($event)" />
+          <rating-stars
+            [interactive]="true"
+            [value]="interactiveRating()"
+            (valueChange)="interactiveRating.set($event)"
+          />
           <p class="demo-hint">Interactive value: {{ interactiveRating() }}</p>
         </div>
       </section>
@@ -138,7 +146,12 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
             [width]="200"
             [height]="200"
           />
-          <image-placeholder class="image-demo" alt="Empty placeholder, no image yet" [width]="200" [height]="200" />
+          <image-placeholder
+            class="image-demo"
+            alt="Empty placeholder, no image yet"
+            [width]="200"
+            [height]="200"
+          />
         </div>
       </section>
 
@@ -202,7 +215,11 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
 
       <section class="demo-section">
         <h2>Textarea Field</h2>
-        <textarea-field label="Order notes" placeholder="Anything we should know?" hint="Optional" />
+        <textarea-field
+          label="Order notes"
+          placeholder="Anything we should know?"
+          hint="Optional"
+        />
       </section>
 
       <section class="demo-section">
@@ -217,7 +234,7 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
           <div class="demo-row" role="radiogroup" aria-label="Shipping method">
             @for (option of shippingOptions; track option) {
               <radio-field
-                name="shipping"
+                name="truck"
                 [value]="option"
                 [label]="option"
                 [checked]="shipping() === option"
@@ -231,7 +248,12 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
       <section class="demo-section">
         <h2>Quantity Stepper</h2>
         <div class="demo-row">
-          <quantity-stepper [value]="quantity()" [min]="1" [max]="5" (valueChange)="quantity.set($event)" />
+          <quantity-stepper
+            [value]="quantity()"
+            [min]="1"
+            [max]="5"
+            (valueChange)="quantity.set($event)"
+          />
           <p class="demo-hint">Value: {{ quantity() }} (bounded 1–5)</p>
         </div>
       </section>
@@ -333,10 +355,18 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
         <h2>Toast Stack</h2>
         <p>Toasts render at the app root (top-right), not inline here.</p>
         <div class="demo-row">
-          <action-button variant="secondary" size="s" (click)="toastService.show('Added to cart', 'success')">
+          <action-button
+            variant="secondary"
+            size="s"
+            (click)="toastService.show('Added to cart', 'success')"
+          >
             Success toast
           </action-button>
-          <action-button variant="secondary" size="s" (click)="toastService.show('Something went wrong', 'error')">
+          <action-button
+            variant="secondary"
+            size="s"
+            (click)="toastService.show('Something went wrong', 'error')"
+          >
             Error toast
           </action-button>
           <action-button variant="secondary" size="s" (click)="toastService.show('Heads up')">
@@ -361,7 +391,11 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
 
       <section class="demo-section">
         <h2>Pagination Nav</h2>
-        <pagination-nav [page]="currentPage()" [total]="12" (pageChange)="currentPage.set($event)" />
+        <pagination-nav
+          [page]="currentPage()"
+          [total]="12"
+          (pageChange)="currentPage.set($event)"
+        />
       </section>
 
       <section class="demo-section">
@@ -383,8 +417,9 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
         <h2>Product Card</h2>
         <p>
           Backed by the real ProductService (MockProductService fixtures) and the real
-          WishlistService/CartService — the heart toggle and Quick Add here are genuine app
-          state, not local demo signals. Quick Add writes to the real CartService cart.
+          WishlistService — the heart toggle here is genuine app state, not a local demo signal.
+          Quick Add only fires its output and a toast: the cart is server-owned and these are
+          fixture products with no real variant SKU.
         </p>
         <div class="product-card-demo-grid">
           @for (product of demoProducts(); track product.slug) {
@@ -410,8 +445,7 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
       <section class="motion-demo">
         <h2>Motion — reveal directive</h2>
         <p>
-          Scroll down. The single box reveals on its own; the grid below staggers in tile by
-          tile.
+          Scroll down. The single box reveals on its own; the grid below staggers in tile by tile.
         </p>
 
         <div class="motion-demo__spacer" aria-hidden="true"></div>
@@ -592,19 +626,9 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
 })
 export class Styleguide {
   protected readonly revealDemoTiles = [1, 2, 3, 4, 5, 6];
-  protected readonly iconNames: IconName[] = [
-    'star',
-    'chevron-down',
-    'chevron-right',
-    'close',
-    'search',
-    'heart',
-    'cart',
-    'user',
-    'check',
-    'plus',
-    'minus',
-  ];
+  // The generated list, so the styleguide shows every icon actually in the
+  // sprite rather than a hand-kept subset that quietly falls behind.
+  protected readonly iconNames = ICON_NAMES;
   protected readonly interactiveRating = signal(0);
 
   protected readonly wishlisted = signal(false);
@@ -620,7 +644,8 @@ export class Styleguide {
   ];
 
   private readonly dialog = inject(Dialog);
-  private readonly demoDialogTemplate = viewChild.required<TemplateRef<unknown>>('demoDialogTemplate');
+  private readonly demoDialogTemplate =
+    viewChild.required<TemplateRef<unknown>>('demoDialogTemplate');
 
   protected readonly pdpTabs: TabItem[] = [
     { id: 'description', label: 'Description' },
@@ -664,7 +689,6 @@ export class Styleguide {
 
   protected readonly productService = inject(ProductService);
   protected readonly wishlistService = inject(WishlistService);
-  private readonly cartService = inject(CartService);
 
   protected readonly demoProducts = toSignal(
     this.productService.list().pipe(map((products) => products.map(toProductCardProduct))),
@@ -672,14 +696,10 @@ export class Styleguide {
   );
 
   protected addToCart(product: ProductCardProduct): void {
-    this.cartService.add({
-      productId: product.slug,
-      slug: product.slug,
-      name: product.name,
-      image: product.image,
-      price: product.price,
-      quantity: 1,
-    });
+    // The cart is server-owned now: adding requires a real productId and
+    // variantSku, and these cards render MockProductService fixtures that
+    // have neither. So this demonstrates the card's quickAdd output and the
+    // toast, not a real write — the genuine cart flow lives on the cart page.
     this.toastService.show(`${product.name} added to cart`, 'success');
   }
 }

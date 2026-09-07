@@ -42,10 +42,18 @@
 
   // Colour — semantic additions, NOT extracted from Figma. The template
   // has no red anywhere (the sale badge is green). Contrast against
-  // --color-neutral-01 is flagged unvalidated in SCOPE.md Open Items —
-  // check WCAG AA before this ships on real body text.
-  --color-error: #e5484d;
-  --color-warning: #f5a524;
+  // --color-neutral-01 was flagged unvalidated in SCOPE.md Open Items and
+  // has now been measured: #e5484d reached only 3.88:1 as text, so it was
+  // darkened to clear the 4.5:1 AA floor.
+  --color-error: #d04246; // 4.58:1 on neutral-01
+  --color-warning: #f5a524; // fill only — 2.02:1, never use as text
+
+  // Text-safe variants. The fills above (and --color-info/--color-success,
+  // which come from the design) stay as fills; these are for text on a light
+  // background, where AA needs 4.5:1 rather than the 3:1 a UI element needs.
+  --color-warning-text: #9f6b17; // 4.54:1
+  --color-info-text: #3170e5; // 4.55:1 (--color-info is 3.76:1 — correct for
+  // the focus ring, insufficient for body text)
 
   // Radii — A4, measured off real components
   --radius-sm: 4px;

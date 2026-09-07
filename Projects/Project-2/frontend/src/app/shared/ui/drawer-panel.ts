@@ -45,7 +45,7 @@ import { IconButton } from './icon-button';
         [cdkTrapFocusAutoCapture]="true"
       >
         <icon-button
-          icon="close"
+          icon="x"
           ariaLabel="Close"
           class="drawer-panel__close"
           (clicked)="requestClose()"
@@ -122,14 +122,18 @@ export class DrawerPanel {
     if (!this.overlayRef) {
       const positionStrategy = this.overlay.position().global().top('0');
       this.overlayRef = this.overlay.create({
-        positionStrategy: this.side() === 'left' ? positionStrategy.left('0') : positionStrategy.right('0'),
+        positionStrategy:
+          this.side() === 'left' ? positionStrategy.left('0') : positionStrategy.right('0'),
         hasBackdrop: true,
         backdropClass: 'cdk-overlay-dark-backdrop',
         panelClass: 'drawer-overlay-pane',
         scrollStrategy: this.overlay.scrollStrategies.block(),
         height: '100%',
       });
-      this.overlayRef.backdropClick().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.requestClose());
+      this.overlayRef
+        .backdropClick()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.requestClose());
       this.overlayRef
         .keydownEvents()
         .pipe(takeUntilDestroyed(this.destroyRef))

@@ -24,7 +24,7 @@ import { IconButton } from './icon-button';
         @if (title(); as t) {
           <h2 class="modal-dialog__title">{{ t }}</h2>
         }
-        <icon-button icon="close" ariaLabel="Close dialog" (clicked)="close()" />
+        <icon-button icon="x" ariaLabel="Close dialog" (clicked)="close()" />
       </header>
       <div class="modal-dialog__body">
         <ng-content />
