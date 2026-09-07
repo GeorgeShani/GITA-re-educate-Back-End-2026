@@ -2,7 +2,8 @@ import { Types } from 'mongoose';
 
 export interface ProductSearchQuery {
   text?: string;
-  categoryId?: Types.ObjectId;
+  /** Self + descendants: browsing a parent must match its subcategories. */
+  categoryIds?: Types.ObjectId[];
   minPriceMinor?: number;
   maxPriceMinor?: number;
   page: number;

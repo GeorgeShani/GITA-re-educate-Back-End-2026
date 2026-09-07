@@ -80,7 +80,9 @@ export class AtlasSearchProvider implements SearchProvider {
     // clauses, so only name/brand/description/tags need to be mapped in
     // the search index itself.
     const matchStage: Record<string, unknown> = { publishedAt: { $ne: null } };
-    if (query.categoryId) matchStage.categoryId = query.categoryId;
+    if (query.categoryIds?.length) {
+      matchStage.categoryId = { $in: query.categoryIds };
+    }
     if (
       query.minPriceMinor !== undefined ||
       query.maxPriceMinor !== undefined

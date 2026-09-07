@@ -4,6 +4,7 @@ import { QueryFilter, Model, SortOrder, Types } from 'mongoose';
 
 import { SEARCH_PROVIDER_TOKEN } from '@/search/search-provider.interface';
 import type { SearchProvider } from '@/search/search-provider.interface';
+import { CategoriesService } from './categories.service';
 import { FindProductsDto } from './dto/find-products.dto';
 import { Product, ProductDocument } from './schemas/product.schema';
 
@@ -37,6 +38,7 @@ export class ProductsService {
     private readonly productModel: Model<ProductDocument>,
     @Inject(SEARCH_PROVIDER_TOKEN)
     private readonly searchProvider: SearchProvider,
+    private readonly categoriesService: CategoriesService,
   ) {}
 
   async findAll(
@@ -44,11 +46,13 @@ export class ProductsService {
   ): Promise<PaginatedResult<ProductDocument>> {
     const { page = 1, take = 30 } = query;
 
+    const categoryIds = await this.resolveCategoryIds(query.category);
+
     if (query.q) {
-      return this.findViaSearch(query, page, take);
+      return this.findViaSearch(query, page, take, categoryIds);
     }
 
-    const filter = this.buildFilter(query);
+    const filter = this.buildFilter(query, categoryIds);
     const sort = this.buildSort(query.sort, query.order);
 
     const [items, total] = await Promise.all([
@@ -102,7 +106,10 @@ export class ProductsService {
 
   async getFacets(categoryId?: string): Promise<ProductFacets> {
     const match: QueryFilter<ProductDocument> = { publishedAt: { $ne: null } };
-    if (categoryId) match.categoryId = new Types.ObjectId(categoryId);
+    // Facets must span the same product set the list query returns, or the
+    // brand counts won't add up to what the shopper actually sees.
+    const categoryIds = await this.resolveCategoryIds(categoryId);
+    if (categoryIds?.length) match.categoryId = { $in: categoryIds };
 
     const [brandRows, priceRows] = await Promise.all([
       this.productModel.aggregate<{ _id: string | null; count: number }>([
@@ -136,12 +143,11 @@ export class ProductsService {
     query: FindProductsDto,
     page: number,
     take: number,
+    categoryIds?: Types.ObjectId[],
   ): Promise<PaginatedResult<ProductDocument>> {
     const result = await this.searchProvider.searchProducts({
       text: query.q,
-      categoryId: query.category
-        ? new Types.ObjectId(query.category)
-        : undefined,
+      categoryIds,
       minPriceMinor: query.minPrice,
       maxPriceMinor: query.maxPrice,
       page,
@@ -166,10 +172,25 @@ export class ProductsService {
     return { items, total: result.total, page, take };
   }
 
-  private buildFilter(query: FindProductsDto): QueryFilter<ProductDocument> {
+  /**
+   * Expands a category id to itself plus every descendant, so browsing a
+   * parent surfaces products filed under its children. Returns undefined
+   * when no category filter was requested.
+   */
+  private async resolveCategoryIds(
+    categoryId?: string,
+  ): Promise<Types.ObjectId[] | undefined> {
+    if (!categoryId) return undefined;
+    return this.categoriesService.findSelfAndDescendantIds(categoryId);
+  }
+
+  private buildFilter(
+    query: FindProductsDto,
+    categoryIds?: Types.ObjectId[],
+  ): QueryFilter<ProductDocument> {
     const filter: QueryFilter<ProductDocument> = { publishedAt: { $ne: null } };
 
-    if (query.category) filter.categoryId = new Types.ObjectId(query.category);
+    if (categoryIds?.length) filter.categoryId = { $in: categoryIds };
     if (query.brand) filter.brand = query.brand;
     if (query.isFeatured !== undefined) filter.isFeatured = query.isFeatured;
     if (query.minPrice !== undefined || query.maxPrice !== undefined) {
@@ -188,6 +209,11 @@ export class ProductsService {
   ): Record<string, SortOrder> {
     const field = sort ? SORT_FIELD_MAP[sort] : 'createdAt';
     const direction: SortOrder = order === 'asc' ? 1 : -1;
-    return { [field]: direction };
+    // _id breaks ties so the sort is a total order. Without it, documents
+    // sharing a sort value (bulk-seeded products share createdAt, and any
+    // two products can share a price) have no defined order between them,
+    // and skip/limit can then return the same document on two pages while
+    // omitting another entirely.
+    return { [field]: direction, _id: 1 };
   }
 }

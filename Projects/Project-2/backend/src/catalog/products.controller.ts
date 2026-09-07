@@ -33,24 +33,9 @@ export class ProductsController {
     summary:
       'List products — filterable, sortable, and (with ?q=) full-text searchable',
   })
-  async findAll(@Query() query: FindProductsDto) {
-    // Category filtering includes descendants — browsing "Apparel"
-    // should surface products filed under its subcategories too.
-    if (query.category) {
-      const descendantIds =
-        await this.categoriesService.findSelfAndDescendantIds(query.category);
-      if (descendantIds.length > 1) {
-        const results = await Promise.all(
-          descendantIds.map((id) =>
-            this.productsService.findAll({ ...query, category: id.toString() }),
-          ),
-        );
-        const items = results.flatMap((result) => result.items);
-        const total = results.reduce((sum, result) => sum + result.total, 0);
-        return { items, total, page: query.page ?? 1, take: query.take ?? 30 };
-      }
-    }
-
+  findAll(@Query() query: FindProductsDto) {
+    // Descendant expansion lives in the service — it has to happen inside
+    // the same query that paginates and sorts, or neither is correct.
     return this.productsService.findAll(query);
   }
 
