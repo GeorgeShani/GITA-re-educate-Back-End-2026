@@ -7,6 +7,13 @@ This document is the single source of truth for the project: the complete design
 
 **Design source:** 3legant template — Figma file `MyEANVJ5LM3xkiRHsv7yk4`, page `🪴 Templates` (node `3:674`). 23 screens in desktop + mobile pairs, 92 distinct component instances. All template copy, categories, and product attributes are replaced with golf equivalents.
 
+**Status — 2026-09-07.** The **backend is complete**: every phase below through
+Phase 9, plus the full Phase 6 admin API, is built, tested (8 suites / 76 tests)
+and pushed. The **frontend is not**. The design tokens and 31 UI primitives
+under `frontend/src/app/shared/ui/` survive and are correct, but the composed
+shell and every page still need building — see *Part C — Frontend rebuild
+(F0–F12)* at the end of the build plan.
+
 **Scope reality:** this is a large product being built solo. Phases 1–5 are the MVP — a store that can actually take money. Phases 6–7 are the admin and content surfaces. Phases 8–10 are the differentiators. Nothing here is optional to *plan*; the ordering is what protects the deadline.
 
 ---
@@ -19,9 +26,15 @@ This document is the single source of truth for the project: the complete design
 |---|---|---|---|
 | **Poppins** | 400, 500, 600 | All headings, plus a few captions | `@fontsource/poppins` — **static**, not `-variable` |
 | **Inter** | 400, 500, 600, 700 | Body, UI, buttons, captions, form controls | `@fontsource-variable/inter` |
-| ~~Space Grotesk~~ | 500 | Appears in exactly one unused token (`Button/XSmall`) | **Do not ship** |
+| **Space Grotesk** | 500 | Navigation-bar links only (the `Button/XSmall` token) | `@fontsource-variable/space-grotesk` |
 
 Self-host via npm packages, not Google Fonts `<link>` tags.
+
+> **Corrected 2026-09-07.** An earlier revision of this table called Space
+> Grotesk vestigial and said "do not ship". It is genuinely bound to the
+> nav-bar link style, is installed, and has a `nav-link` mixin in
+> `_typography.scss`. Use `nav-link` for navigation links and `button-xs` for
+> real `<button>` elements — they are the same metrics in different families.
 
 > ⚠️ **Poppins has no variable-font build.** `@fontsource-variable/poppins` does not exist on npm — Google's Poppins distribution ships static weights only. Install `@fontsource/poppins` and import the three weight files actually used (`400.css`, `500.css`, `600.css`); the family name in CSS is `'Poppins'`, with no "Variable" suffix. Inter *does* have a variable build — `@fontsource-variable/inter`, family name `'Inter Variable'` — so the two fonts are installed differently. Don't assume both follow the Project-1 pattern.
 >
@@ -138,7 +151,12 @@ Radius scale — measured off the real components:
 
 **Border widths:** `1px` (inputs, quantity stepper) · `1.5px` (checkbox/radio) · `2px` (dropdown). Default border colour `--color-neutral-04`, except text inputs which use `--color-border-input`.
 
-**Spacing** is a 4px base scale. Observed values: 4, 6, 8, 12, 14, 16, 24, 32, 40 → define `--space-1` (4px) through `--space-10` (40px).
+**Spacing** is a 4px base scale. The Figma's observed values are 4, 6, 8, 12,
+14, 16, 24, 32, 40, but the shipped ramp is uniform — `--space-1` (4px) through
+`--space-10` (40px) in even 4px steps. The two off-grid values (6px on the
+primary button's vertical padding, 14px on the badge) are kept as local one-off
+literals in those two components rather than polluting the scale with
+un-reusable steps.
 
 **Effects:**
 
@@ -147,7 +165,27 @@ Radius scale — measured off the real components:
 --shadow-depth-1: 0 8px 16px -8px rgba(15, 15, 15, 0.2); /* Figma: depth/1, #0F0F0F33 */
 ```
 
-**Layout:** mobile frames are **375px**, desktop **1440px**. **No tablet frame exists in the template** — `--breakpoint-tablet: 768px` is our own design tier.
+**Layout:** mobile frames are **375px**, desktop **1440px**. **No tablet frame
+exists in the template** — `--breakpoint-tablet: 768px` is our own design tier.
+Content is capped at `--container-max: 1120px`, with `--page-padding` stepping
+32px → 160px at the desktop breakpoint.
+
+**Z-index and motion** are ours, not extracted — the Figma has no notion of
+either, and no component in it has a hover, focus, or active state:
+
+```scss
+--z-dropdown: 1000;  --z-sticky: 1100;  --z-overlay: 1200;
+--z-drawer:   1300;  --z-modal:  1400;  --z-toast:   1500;
+
+--duration-fast: 150ms;  --duration-base: 250ms;  --duration-slow: 400ms;
+--ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+```
+
+> **Token consumption rule.** Components `@use 'styles/typography'` and
+> `@use 'styles/breakpoints'`, and read colours/spacing as `var(--…)`. A
+> component must **never** `@use 'styles/tokens'` — that duplicates the whole
+> `:root` block into its scoped CSS and blows the 4 kB per-component style
+> budget.
 
 ## A5. Component specs (measured)
 
@@ -650,6 +688,45 @@ Runbook covers: "an outbox row is stuck", "a consumer is failing", and "a custom
 Full mobile pass across all 23 screens using the mobile node IDs, AXE / WCAG-AA audit (mandated by `frontend/AGENTS.md`), `NgOptimizedImage` everywhere, SSR meta + JSON-LD product / breadcrumb / article schema, Core Web Vitals pass, and a **deliberate** raise of the `angular.json` 500 kB warn / 1 MB error budget — a design-heavy build will exceed it, and that should be a decision rather than a deploy-day surprise.
 
 **Deploy** per B3: MongoDB Atlas cluster, Railway for API + worker + Redis + SSR services, Cloudinary for media. GitHub Actions runs lint/test/build on PRs; schema changes ship as application code (Mongoose is schema-on-read), with `migrate-mongo` handling any data backfill on merge to `main`. Preview-environment-per-PR loses the Neon-branch-per-PR database isolation it would have had — see Open items for the accepted trade-off.
+
+---
+
+## Frontend rebuild (F0–F12)
+
+The phase list above describes the product feature-by-feature. This section
+records the *order the frontend actually gets built in*, which differs because
+it has to start from an app that currently renders a blank page at `/`.
+
+**Governing rule: Figma is a reference, not a specification.** Four rounds of
+pixel-matching the homepage failed to converge and were demolished (commit
+`8e444f6`). The replacement rule is to inherit the identity exactly — tokens,
+type scale, component shapes — and improvise layout, spacing rhythm, imagery
+and motion. Nothing is measured against a screenshot, nothing is exported from
+Figma, and nothing is resurrected from `wip/homepage-attempt`. Assets are
+fetched from the internet: **Lucide** (npm) for the ~30 line icons, **Pexels**
+for photography.
+
+| # | Phase | Depends on | Delivers |
+|---|---|---|---|
+| F0 | Prerequisites *(manual)* | — | Live backend, seeded catalog, admin account |
+| F1 | Real data layer | F0 | Typed DTOs, adapters, auth/cart/catalog services, dev proxy |
+| F2 | App shell | F1 | Icons, header, footer, nav, cart drawer, routing, SSR modes |
+| F3 | Home | F2 | The page `/` has never had |
+| F4 | Catalog + search | F2 | `/shop`, filters, facets, typeahead |
+| F5 | Product detail | F4 | `/product/:slug`, variants, reviews |
+| F6 | Auth | F1 | Sign in/up, verify, reset, guards, cart merge |
+| F7 | Cart + checkout | F5, F6 | Cart, Stripe Elements, order polling |
+| F8 | Account | F6 | Profile, orders, addresses, wishlist, returns |
+| F9 | Content | F2 | Blog, pages, contact, newsletter |
+| F10 | AI assistant | F6 | SSE chat panel, confirmation chips |
+| F11 | Admin panel | F6 | 19 admin areas on a shared table/form layer |
+| F12 | Polish | all | A11y, SEO, perf, mobile, budgets |
+
+Three API facts drive the F1 architecture and are easy to get wrong:
+refresh-token rotation has **reuse detection**, so refresh must be
+single-flight or concurrent 401s revoke the whole session; the guest cart is a
+signed httpOnly cookie, so the dev server must **proxy the API same-origin**;
+and assistant SSE is served over `POST`, so `EventSource` cannot be used.
 
 ---
 

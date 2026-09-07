@@ -28,15 +28,13 @@ JWT_REFRESH_SECRET/COOKIE_SECRET, per `src/config/env.validation.ts`).
 | `STRIPE_SECRET_KEY` | S9, only if `PAYMENT_PROVIDER=stripe` | Stripe Dashboard — [§4](#4-stripe-s9-checkout--payments) |
 | `STRIPE_WEBHOOK_SECRET` | S9, only if `PAYMENT_PROVIDER=stripe` | Stripe CLI (dev) / Dashboard (prod) — [§4](#4-stripe-s9-checkout--payments) |
 | `CLOUDINARY_CLOUD_NAME` / `_API_KEY` / `_API_SECRET` | S6 media, S7 seed images | Cloudinary Dashboard — [§5](#5-cloudinary-s6-media--s7-seed-images) |
-| `CLOUDINARY_UPLOAD_PRESET` | nothing right now | leave blank — [§5](#5-cloudinary-s6-media--s7-seed-images) |
-| `CLOUDINARY_WEBHOOK_SECRET` | nothing right now | leave blank — [§5](#5-cloudinary-s6-media--s7-seed-images) |
+| `CLOUDINARY_UPLOAD_PRESET` | optional upload limits | Cloudinary dashboard — [§5](#5-cloudinary-s6-media--s7-seed-images) |
 | `MAIL_PROVIDER=console` | nothing — this is the default | already set, skip §6 entirely |
 | `RESEND_API_KEY`, `MAIL_*` | only if you switch `MAIL_PROVIDER=resend` | Resend Dashboard — [§6](#6-resend-s4-email-optional) |
 | `PEXELS_API_KEY` | `npm run seed:catalog` only | Pexels — [§7](#7-pexels-seed-script-only) |
 | `GEMINI_API_KEY` | S12 AI shopping assistant | Google AI Studio — [§8](#8-gemini-s12--the-ai-shopping-assistant) |
 | `products_search` index | S7 catalog search/typeahead | **not an env var** — Atlas UI — [§9](#9-atlas-search-index-not-an-env-var) |
 | first admin account | Phase 6 `/admin/*` routes | **not an env var** — `npm run promote-admin` — [§10](#10-bootstrapping-the-first-admin-not-an-env-var) |
-| `MAIL_ADMIN_RECIPIENTS` | nothing right now | leave blank — [§6](#6-resend-s4-email-optional) |
 | `SENTRY_DSN` | S13 error tracking, optional | Sentry Dashboard — [§11](#11-sentry-and-bull-board-s13--operations) |
 | `BULL_BOARD_USERNAME` / `_PASSWORD` | S13 queue UI, optional | you invent them — [§11](#11-sentry-and-bull-board-s13--operations) |
 
@@ -121,7 +119,21 @@ real Stripe test-mode payments.
    CLOUDINARY_API_KEY=...
    CLOUDINARY_API_SECRET=...
    ```
-3. Leave `CLOUDINARY_UPLOAD_PRESET` and `CLOUDINARY_WEBHOOK_SECRET` blank. Neither is actually read anywhere in the current code — `CloudinaryStorageProvider.getUploadSignature` (`src/media/providers/cloudinary-storage.provider.ts`) signs only `{ timestamp, folder }`, no preset, and nothing subscribes to a Cloudinary-side webhook (asset registration happens via an explicit backend call after the browser's direct upload, not a webhook callback). Both are in the Joi schema as `optional()` for exactly this reason — they're there for if that changes, not because anything needs them today.
+3. `CLOUDINARY_UPLOAD_PRESET` is **optional but worth setting**. Left blank,
+   `getUploadSignature` signs only `{ timestamp, folder }` — which authorises
+   *any* file of any size into that folder until the signature ages out. Set it
+   and the preset name joins the signed parameter set, so Cloudinary enforces
+   the preset's rules server-side and the browser cannot opt out (changing the
+   value breaks the signature).
+
+   In the Cloudinary dashboard: **Settings → Upload → Upload presets → Add**,
+   set **Signing Mode: Signed**, then set `allowed_formats` (e.g. `jpg,png,webp`),
+   a `max_file_size`, and optionally moderation. Put the preset's name in
+   `CLOUDINARY_UPLOAD_PRESET`.
+
+   `CLOUDINARY_WEBHOOK_SECRET` no longer exists — nothing registered a
+   Cloudinary `notification_url`, so it was removed rather than left as
+   validated-but-unread config.
 
 ## 6. Resend (S4 email, optional)
 
@@ -154,11 +166,10 @@ up only when you want to see real emails land in an inbox.
    message's reply-to address (`src/notifications/mail/resend-mail.provider.ts:30`);
    left blank it is simply omitted. Worth setting when `MAIL_FROM` is a
    no-reply address but you still want customer replies to reach a real inbox.
-8. `MAIL_ADMIN_RECIPIENTS` — **leave blank. Nothing reads it.** It is declared
-   in the Joi schema (`src/config/env.validation.ts:57`) and listed in
-   `.env.example`, but no code path resolves it, so the "Ops-category mail" its
-   comment describes is not actually wired to this variable. Same situation as
-   the two Cloudinary placeholders in §5: present for shape, not for use.
+8. `MAIL_ADMIN_RECIPIENTS` no longer exists. There is no contact-form or
+   ops notification path yet — no domain event, no queue route, and no
+   template — so the variable was removed rather than kept as config for an
+   unbuilt feature. It comes back when Phase 7 builds the notification.
 
 ## 7. Pexels (seed script only)
 

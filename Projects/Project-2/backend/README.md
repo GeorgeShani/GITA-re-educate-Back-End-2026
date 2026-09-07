@@ -1,102 +1,189 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 3legant Golf — API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Event-driven e-commerce backend for a golf storefront. NestJS 11, MongoDB
+Atlas, BullMQ, Stripe, Cloudinary, and a Gemini-powered shopping assistant.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+The product spec lives one level up in [`../SCOPE.md`](../SCOPE.md) and is the
+source of truth for design tokens, domain model, and build phases. This file
+covers running and working on the API itself.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Architecture in one paragraph
 
-## Project setup
+Every state change goes through a command handler that writes the entity **and**
+an outbox row inside a single MongoDB transaction. A change-stream relay picks
+up unpublished outbox rows, claims each one with `findOneAndUpdate` so
+concurrent relays cannot double-publish, and dispatches to BullMQ. Consumers
+are idempotent on `event._id`. A single correlation id spans HTTP request →
+command → domain event → queue job → email → audit-log entry, so any user
+action can be traced end to end. Nothing is ever published to a queue from
+inside a transaction.
 
-```bash
-$ npm install
+```
+HTTP → CommandBus → handler ─┬─ entity write   ┐
+                             └─ outbox write   ┘ one transaction
+                                    ↓
+                        change-stream relay (claims row)
+                                    ↓
+                          BullMQ → consumers → email / audit / media / invoice
 ```
 
-Then copy `.env.example` to `.env` and fill it in — see
-[`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md) for exactly where
-every value comes from.
+**Scaling:** `ROLE` selects what a process runs. `worker` owns everything that
+happens on its own schedule — the outbox relay, all four BullMQ consumers, the
+every-minute stale-order sweep, and the hourly sitemap rebuild. `api` runs none
+of them and skips Swagger. `all` (the default) does both, which is right for
+local dev and a single instance.
 
-## Compile and run the project
+It matters the moment you run more than one process: two relays race for the
+same outbox rows, and two sweeps dispatch the same CancelOrderCommand for the
+same batch every minute. `GET /health` reports the role so you can confirm what
+a deployed instance is actually doing.
 
-```bash
-# development
-$ npm run start
+**Layout:** `src/core/` holds the event backbone (outbox, relay, buses, queues,
+audit log). Every other top-level folder is a domain module that owns its
+schemas, DTOs, commands, handlers, and controllers. Admin controllers are
+co-located with the resource they manage (`catalog/admin-products.controller.ts`),
+not gathered into one admin module — only genuinely cross-cutting admin surfaces
+(dashboard, audit log) live in `src/admin/`.
 
-# watch mode
-$ npm run start:dev
+---
 
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
-
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
-```
-
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Quick start
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
+cp .env.example .env
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Fill in `.env` — [`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md)
+walks through every single value, where to click to get it, and which ones you
+can safely leave blank. The short version: MongoDB Atlas and Redis are
+required, three secrets you generate yourself are required, and everything else
+has a working offline default (`PAYMENT_PROVIDER=mock`, `MAIL_PROVIDER=console`).
 
-## Resources
+**Atlas must be a replica set.** The M0 free tier is one. Transactions and
+change streams both require it, so a standalone `mongod` will not work.
 
-Check out a few resources that may come in handy when working with NestJS:
+```bash
+npm run start:dev
+```
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Then seed a catalog and grant yourself admin:
 
-## Support
+```bash
+npm run seed:catalog      # ~80 golf products (needs PEXELS_API_KEY + Cloudinary)
+npm run seed:commerce     # coupons, shipping zones, tax rates
+npm run promote-admin -- you@example.com   # after registering normally
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+`promote-admin` exists because no HTTP route can ever mint the first admin —
+registration always assigns `[customer]`.
 
-## Stay in touch
+- API: `http://localhost:3000/api/v1`
+- Swagger: `http://localhost:3000/api`
+- Health: `http://localhost:3000/health`
+- Queues: `http://localhost:3000/admin/queues` (only if Bull Board creds are set)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## Scripts
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+| Command | What it does |
+|---|---|
+| `npm run start:dev` | Watch-mode dev server |
+| `npm run build` | Compile to `dist/` |
+| `npm run start:prod` | `node dist/main` |
+| `npm test` | Full test suite |
+| `npm run lint` | ESLint with `--fix` |
+| `npm run seed:catalog` | Products, categories, inventory, images |
+| `npm run seed:commerce` | Coupons, shipping zones, tax rates |
+| `npm run promote-admin -- <email>` | Grant the admin role |
+| `npm run mail:preview` | Render every email template to `dist/mail-out/` |
+
+---
+
+## Things that will bite you
+
+Collected because each one has already cost someone an afternoon.
+
+**Money is integer minor units everywhere.** `basePriceMinor: 4499` is $44.99.
+Never floats, never `Decimal128`. Format at the presentation edge only.
+
+**`forbidNonWhitelisted: true`.** Sending a property that isn't on the DTO is a
+`400`, not a silent strip. Client payloads must match DTOs exactly.
+
+**Refresh tokens rotate with reuse detection.** Presenting an
+already-rotated token revokes *every* active session for that user. A client
+firing two concurrent refreshes with the same token will log itself out
+everywhere — refresh must be single-flight. See
+[`src/auth/auth.integration.spec.ts`](./src/auth/auth.integration.spec.ts) for
+the exact blast radius.
+
+**Guest carts ride a signed httpOnly cookie (`gct`, `sameSite: lax`).** Not a
+header. Clients must send credentials, and a cross-origin browser will silently
+drop it — front ends should proxy the API same-origin in dev.
+
+**`CartSummary` returns `subtotalMinor` only.** No discount, tax, shipping, or
+total. Applying a coupon just echoes the code back; the monetary effect
+materialises at `GET /checkout/quote` and on the placed order.
+
+**Assistant SSE runs over `POST`.** `@Sse()` sits on `@Post()` handlers, so the
+browser `EventSource` API cannot be used (GET-only, no `Authorization` header).
+Clients need `fetch` + `ReadableStream` + an SSE parser.
+
+**Order status is webhook-driven.** `place-order` returns before payment
+settles; `placed → paid → confirmed` happens out of band. Clients poll
+`GET /orders/:id`. In dev with `PAYMENT_PROVIDER=mock`, drive the saga with
+`POST /payments/mock/:id/succeed`.
+
+**`WRITE_THROTTLE` is 5 requests/minute** on most mutations, including cart
+quantity changes. Debounce accordingly.
+
+**Never write `type: Types.ObjectId` in a `@Prop()`.** It is the BSON *value*
+class, not a SchemaType. `@nestjs/mongoose` silently collapses the field to
+`Mixed`, which stores fine but does zero query casting — so a query filtering by
+the string form of an id matches nothing. Use
+`Schema.Types.ObjectId` (imported as `MongooseSchema`). This was real, shipped,
+and undetected for ten slices because `tsc` cannot catch it.
+
+---
+
+## Testing
+
+```bash
+npm test
+```
+
+Integration tests run against a real single-node replica set via
+`mongodb-memory-server` (`test/support/mongo-memory-server.ts`) — transactions
+and change streams need one, and the ObjectId bug above proves that only a real
+query catches a whole class of schema defect.
+
+Current coverage is deliberately concentrated on the highest-risk mechanics
+rather than spread thin: the outbox relay's claim/resume behaviour, the order
+state machine and its compensation path, cart and coupon rules, email
+idempotency and the dev-send gate, RBAC on every admin controller, per-user
+assistant scoping, auth token rotation with reuse detection, category-descendant
+filtering with its pagination and sort ordering, and the api/worker role gate.
+
+Broad controller and admin-CRUD coverage is **not** there yet — see Known gaps.
+
+---
+
+## Known gaps
+
+Recorded so they read as decisions rather than surprises.
+
+- **Saved payment methods aren't wired into checkout.** `PlaceOrderDto` has no
+  `paymentMethodId`, so the saved-card list is management-only — every checkout
+  collects card details fresh. Finishing it means threading a payment method
+  through `PlaceOrderCommand` into the PaymentIntent.
+- **Upload limits need one dashboard step.** `CLOUDINARY_UPLOAD_PRESET` is now
+  signed into the upload params when set, so Cloudinary can enforce
+  `allowed_formats` / `max_file_size` / moderation server-side — but the preset
+  itself has to be created in the Cloudinary dashboard. Left unset, uploads are
+  authorised by folder alone.
+- **Test coverage is concentrated, not broad.** The highest-risk mechanics are
+  covered (see Testing); most controllers and all 19 admin CRUD surfaces are
+  not. That is a deliberate ordering, not an oversight, but it is real.
