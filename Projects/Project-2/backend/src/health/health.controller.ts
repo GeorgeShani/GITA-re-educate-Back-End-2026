@@ -6,6 +6,7 @@ import {
   MongooseHealthIndicator,
 } from '@nestjs/terminus';
 
+import { getProcessRole } from '@/common/utils/process-role.util';
 import { RedisHealthIndicator } from './redis.health';
 
 // Excluded from the /api/v1 prefix in main.ts — health checks are
@@ -27,6 +28,13 @@ export class HealthController {
     return this.health.check([
       () => this.mongoose.pingCheck('mongodb'),
       () => this.redis.pingCheck('redis'),
+      // Not a dependency check — it reports which half of the system this
+      // process is running, so a deployment can be confirmed as api/worker
+      // without shelling in.
+      () =>
+        Promise.resolve({
+          role: { status: 'up' as const, role: getProcessRole() },
+        }),
     ]);
   }
 }

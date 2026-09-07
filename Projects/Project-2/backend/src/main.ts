@@ -1,6 +1,6 @@
 import './instrument';
 
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
+import { getProcessRole } from '@/common/utils/process-role.util';
 import { setupBullBoard } from './bull-board.setup';
 
 async function bootstrap() {
@@ -62,10 +63,17 @@ async function bootstrap() {
     .setVersion('0.0.1')
     .addBearerAuth()
     .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api', app, document);
+  // A worker exposes no public API worth documenting; it still listens so
+  // the platform's health check has something to hit.
+  if (getProcessRole() !== 'worker') {
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('api', app, document);
+  }
 
   await app.listen(configService.get<number>('PORT', 3000));
+  // Which half this process is running is the first thing you want to know
+  // when a queue is not draining or a job ran twice.
+  new Logger('Bootstrap').log(`Process role: ${getProcessRole()}`);
 }
 
 void bootstrap();

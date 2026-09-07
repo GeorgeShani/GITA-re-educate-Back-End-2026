@@ -28,6 +28,7 @@ import { AdminEmailController } from './admin-email.controller';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { NotificationPreferencesService } from './notification-preferences.service';
+import { runsWorkers } from '@/common/utils/process-role.util';
 import { NotificationsConsumer } from './notifications.consumer';
 import { TemplateRendererService } from './template-renderer.service';
 
@@ -51,7 +52,7 @@ import { TemplateRendererService } from './template-renderer.service';
   providers: [
     NotificationsService,
     NotificationPreferencesService,
-    NotificationsConsumer,
+    ...(runsWorkers() ? [NotificationsConsumer] : []),
     TemplateRendererService,
     {
       // Only constructed when MAIL_PROVIDER=resend, so a dev/test boot

@@ -30,6 +30,7 @@ import { CancelOrderHandler } from './commands/handlers/cancel-order.handler';
 import { ConfirmOrderHandler } from './commands/handlers/confirm-order.handler';
 import { MarkOrderDeliveredHandler } from './commands/handlers/mark-order-delivered.handler';
 import { ShipOrderHandler } from './commands/handlers/ship-order.handler';
+import { runsWorkers } from '@/common/utils/process-role.util';
 import { InvoiceConsumer } from './invoice.consumer';
 import { InvoicePdfService } from './invoice-pdf.service';
 import { OrdersController } from './orders.controller';
@@ -67,8 +68,12 @@ const COMMAND_HANDLERS = [
     OrdersService,
     AdminOrdersService,
     InvoicePdfService,
-    InvoiceConsumer,
-    StaleOrderSweepService,
+    ...(runsWorkers() ? [InvoiceConsumer] : []),
+    // Every-minute sweep that cancels timed-out orders. On an api process
+    // this would race every other instance for the same batch, dispatching
+    // the same CancelOrderCommand N times (idempotent, but N transactions
+    // and N sets of error logs for the losers).
+    ...(runsWorkers() ? [StaleOrderSweepService] : []),
     ...COMMAND_HANDLERS,
   ],
 })

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
+import { runsWorkers } from '@/common/utils/process-role.util';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { Model } from 'mongoose';
 
@@ -30,8 +31,12 @@ export class SitemapService {
     private readonly configService: ConfigService,
   ) {}
 
+  // Guarded inside the method rather than at provider level: the
+  // controller injects this service to serve /sitemap.xml, so an api
+  // process still needs it — it just must not regenerate on a timer.
   @Cron(CronExpression.EVERY_HOUR)
   async regenerate(): Promise<void> {
+    if (!runsWorkers()) return;
     this.cachedXml = await this.buildSitemap();
     this.logger.log('Regenerated sitemap.xml');
   }

@@ -6,6 +6,7 @@ import {
   AuditLogEntry,
   AuditLogEntrySchema,
 } from './audit-log/audit-log-entry.schema';
+import { runsWorkers } from '@/common/utils/process-role.util';
 import { AuditLogConsumer } from './audit-log/audit-log.consumer';
 import { AuditLogService } from './audit-log/audit-log.service';
 import { OutboxEvent, OutboxEventSchema } from './outbox/outbox.schema';
@@ -48,8 +49,9 @@ import { QueueName } from './queues/queue-names.enum';
     OutboxRepository,
     StreamCheckpointRepository,
     OutboxPublisher,
-    OutboxRelayService,
-    AuditLogConsumer,
+    // Worker-only: two relays would race for the same outbox rows, and
+    // two consumers would process every event twice.
+    ...(runsWorkers() ? [OutboxRelayService, AuditLogConsumer] : []),
     AuditLogService,
   ],
   // AuditLogService (Phase 6's admin activity feed/audit-log viewer) is

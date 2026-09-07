@@ -9,6 +9,7 @@ import { AdminMediaController } from './admin-media.controller';
 import { DeleteMediaHandler } from './commands/handlers/delete-media.handler';
 import { RegisterMediaHandler } from './commands/handlers/register-media.handler';
 import { MediaController } from './media.controller';
+import { runsWorkers } from '@/common/utils/process-role.util';
 import { MediaConsumer } from './media.consumer';
 import { MediaService } from './media.service';
 import { CloudinaryStorageProvider } from './providers/cloudinary-storage.provider';
@@ -27,7 +28,7 @@ const COMMAND_HANDLERS = [RegisterMediaHandler, DeleteMediaHandler];
   controllers: [MediaController, AdminMediaController],
   providers: [
     MediaService,
-    MediaConsumer,
+    ...(runsWorkers() ? [MediaConsumer] : []),
     ...COMMAND_HANDLERS,
     CloudinaryStorageProvider,
     { provide: STORAGE_PROVIDER_TOKEN, useExisting: CloudinaryStorageProvider },
