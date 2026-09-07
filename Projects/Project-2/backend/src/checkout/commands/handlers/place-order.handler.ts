@@ -9,6 +9,7 @@ import { TransactionalCommandHandler } from '@/core/bus/transactional-command.ha
 import { OutboxRepository } from '@/core/outbox/outbox.repository';
 import { Cart, CartDocument } from '@/cart/schemas/cart.schema';
 import { CartPricingService } from '@/cart/cart-pricing.service';
+import { applyCouponToTotals } from '@/coupons/coupon-pricing.util';
 import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
 import {
   CouponRedemption,
@@ -105,7 +106,7 @@ export class PlaceOrderHandler
       await this.assertCouponWithinLimits(coupon, command.userId);
     }
 
-    const { discountMinor, shippingMinor } = this.applyCoupon(
+    const { discountMinor, shippingMinor } = applyCouponToTotals(
       coupon,
       subtotalMinor,
       shippingQuote,
@@ -217,32 +218,6 @@ export class PlaceOrderHandler
         { session },
       );
     }
-  }
-
-  private applyCoupon(
-    coupon: CouponDocument | null,
-    subtotalMinor: number,
-    shippingMinor: number,
-  ): { discountMinor: number; shippingMinor: number } {
-    if (!coupon) {
-      return { discountMinor: 0, shippingMinor };
-    }
-
-    if (coupon.type === 'percentage') {
-      return {
-        discountMinor: Math.round((subtotalMinor * coupon.value) / 100),
-        shippingMinor,
-      };
-    }
-    if (coupon.type === 'fixed') {
-      return {
-        discountMinor: Math.min(coupon.value, subtotalMinor),
-        shippingMinor,
-      };
-    }
-    // free_shipping — zeroes the shipping charge directly rather than
-    // discounting the subtotal, so Order.discountMinor stays 0 for these.
-    return { discountMinor: 0, shippingMinor: 0 };
   }
 
   private async assertCouponWithinLimits(

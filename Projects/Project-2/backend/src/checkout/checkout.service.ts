@@ -12,14 +12,25 @@ import { ShippingQuote, ShippingService } from '@/shipping/shipping.service';
 import { TaxService } from '@/tax/tax.service';
 import { OrderDocument } from '@/orders/schemas/order.schema';
 import { PlaceOrderCommand } from './commands/place-order.command';
+import { applyCouponToTotals } from '@/coupons/coupon-pricing.util';
+import { Coupon, CouponDocument } from '@/coupons/schemas/coupon.schema';
 import { CheckoutQuoteDto } from './dto/checkout-quote.dto';
 import { PlaceOrderDto } from './dto/place-order.dto';
+
+/** A shipping option priced through to a final payable total. */
+export interface ShippingQuoteWithTotal extends ShippingQuote {
+  /** This option's charge after a free_shipping coupon (else = priceMinor). */
+  effectivePriceMinor: number;
+  /** subtotal - discount + effectivePrice + tax. What the card is charged. */
+  totalMinor: number;
+}
 
 export interface CheckoutQuote {
   items: CartLineItem[];
   subtotalMinor: number;
+  discountMinor: number;
   taxMinor: number;
-  shippingOptions: ShippingQuote[];
+  shippingOptions: ShippingQuoteWithTotal[];
   couponCode?: string;
 }
 
@@ -32,6 +43,8 @@ export interface PlaceOrderResult {
 export class CheckoutService {
   constructor(
     @InjectModel(Cart.name) private readonly cartModel: Model<CartDocument>,
+    @InjectModel(Coupon.name)
+    private readonly couponModel: Model<CouponDocument>,
     private readonly cartPricingService: CartPricingService,
     private readonly shippingService: ShippingService,
     private readonly taxService: TaxService,
@@ -60,18 +73,52 @@ export class CheckoutService {
       0,
     );
 
-    const [shippingOptions, taxMinor] = await Promise.all([
+    // The coupon is loaded the same way PlaceOrderHandler loads it, so the
+    // quote and the eventual charge start from the same document.
+    const [rawShippingOptions, coupon] = await Promise.all([
       this.shippingService.getQuotes(
         dto.countryCode,
         weightGrams,
         subtotalMinor,
       ),
-      this.taxService.calculateTax(subtotalMinor, dto.countryCode, dto.region),
+      cart.couponCode
+        ? this.couponModel.findOne({ code: cart.couponCode, isActive: true })
+        : Promise.resolve(null),
     ]);
+
+    // Discount is independent of which shipping option is chosen, so it can
+    // be resolved once; tax is then charged on the discounted subtotal,
+    // matching PlaceOrderHandler exactly.
+    const { discountMinor } = applyCouponToTotals(coupon, subtotalMinor, 0);
+    const taxMinor = await this.taxService.calculateTax(
+      subtotalMinor - discountMinor,
+      dto.countryCode,
+      dto.region,
+    );
+
+    const shippingOptions: ShippingQuoteWithTotal[] = rawShippingOptions.map(
+      (option) => {
+        const effect = applyCouponToTotals(
+          coupon,
+          subtotalMinor,
+          option.priceMinor,
+        );
+        return {
+          ...option,
+          effectivePriceMinor: effect.shippingMinor,
+          totalMinor:
+            subtotalMinor -
+            effect.discountMinor +
+            effect.shippingMinor +
+            taxMinor,
+        };
+      },
+    );
 
     return {
       items,
       subtotalMinor,
+      discountMinor,
       taxMinor,
       shippingOptions,
       couponCode: cart.couponCode,
