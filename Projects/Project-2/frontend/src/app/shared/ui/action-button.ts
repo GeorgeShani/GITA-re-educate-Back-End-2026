@@ -1,7 +1,8 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-export type ActionButtonVariant = 'primary' | 'secondary' | 'ghost' | 'link';
+export type ActionButtonVariant = 'primary' | 'secondary' | 'ghost' | 'link' | 'accent';
 export type ActionButtonSize = 'm' | 's' | 'xs';
 
 /**
@@ -21,11 +22,25 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
  */
 @Component({
   selector: 'action-button',
-  imports: [RouterLink],
+  imports: [RouterLink, NgTemplateOutlet],
   host: {
     '[class.full-width]': 'fullWidth()',
   },
   template: `
+    <!--
+      One <ng-content>, rendered through a template outlet in each branch.
+      Projected content is MOVED into its slot, not copied, so repeating
+      <ng-content> once per @if branch leaves every branch but one with an
+      empty element — which is exactly how this shipped: as a link, the
+      button rendered with no label at all.
+    -->
+    <ng-template #body>
+      @if (loading()) {
+        <span class="spinner" aria-hidden="true"></span>
+      }
+      <ng-content />
+    </ng-template>
+
     @if (routerLink(); as link) {
       <a
         class="btn"
@@ -34,10 +49,7 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
         [attr.aria-disabled]="disabled() ? 'true' : null"
         [attr.tabindex]="disabled() ? -1 : null"
       >
-        @if (loading()) {
-          <span class="spinner" aria-hidden="true"></span>
-        }
-        <ng-content />
+        <ng-container [ngTemplateOutlet]="body" />
       </a>
     } @else if (href(); as url) {
       <a
@@ -47,10 +59,7 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
         [attr.aria-disabled]="disabled() ? 'true' : null"
         [attr.tabindex]="disabled() ? -1 : null"
       >
-        @if (loading()) {
-          <span class="spinner" aria-hidden="true"></span>
-        }
-        <ng-content />
+        <ng-container [ngTemplateOutlet]="body" />
       </a>
     } @else {
       <button
@@ -60,10 +69,7 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
         [disabled]="disabled() || loading()"
         [attr.aria-busy]="loading() ? 'true' : null"
       >
-        @if (loading()) {
-          <span class="spinner" aria-hidden="true"></span>
-        }
-        <ng-content />
+        <ng-container [ngTemplateOutlet]="body" />
       </button>
     }
   `,
@@ -142,6 +148,17 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
       padding-inline: 0;
       height: auto;
       text-decoration: underline;
+    }
+
+    // Green-on-dark: the sale banner, newsletter, and notification bar CTAs
+    // all sit on a dark surface where the primary (black) variant would
+    // disappear. --color-success is already the system's one accent hue.
+    .variant-accent {
+      background: var(--color-success);
+      color: var(--color-neutral-07);
+    }
+    .variant-accent:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--color-success) 85%, black);
     }
 
     .spinner {

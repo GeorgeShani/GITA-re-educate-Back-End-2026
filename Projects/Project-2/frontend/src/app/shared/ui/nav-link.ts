@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 
@@ -10,8 +11,17 @@ import { IconGlyph } from './icon-glyph';
  */
 @Component({
   selector: 'nav-link',
-  imports: [RouterLink, RouterLinkActive, IconGlyph],
+  imports: [RouterLink, RouterLinkActive, IconGlyph, NgTemplateOutlet],
   template: `
+    <!-- Single projection slot — see action-button for why duplicating
+         <ng-content> across branches silently drops the label. -->
+    <ng-template #body>
+      <ng-content />
+      @if (chevron()) {
+        <icon-glyph name="chevron-down" [size]="16" />
+      }
+    </ng-template>
+
     @if (link(); as l) {
       <a
         class="nav-link"
@@ -19,17 +29,11 @@ import { IconGlyph } from './icon-glyph';
         routerLinkActive="is-active"
         [routerLinkActiveOptions]="{ exact: exact() }"
       >
-        <ng-content />
-        @if (chevron()) {
-          <icon-glyph name="chevron-down" [size]="16" />
-        }
+        <ng-container [ngTemplateOutlet]="body" />
       </a>
     } @else {
       <a class="nav-link" [href]="href()">
-        <ng-content />
-        @if (chevron()) {
-          <icon-glyph name="chevron-down" [size]="16" />
-        }
+        <ng-container [ngTemplateOutlet]="body" />
       </a>
     }
   `,

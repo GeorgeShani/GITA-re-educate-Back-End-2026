@@ -76,6 +76,45 @@ a {
   outline-offset: 2px;
 }
 
+// Surfaces the browser draws for us. Left at their defaults they belong to
+// no design system and quietly mark a page as assembled rather than built.
+::selection {
+  background: var(--color-success);
+  color: var(--color-neutral-07);
+}
+
+// Firefox honours these; Chromium falls back to ::-webkit-scrollbar below.
+* {
+  scrollbar-color: var(--color-neutral-04) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-full);
+  background: var(--color-neutral-04);
+  background-clip: content-box;
+
+  &:hover {
+    background: var(--color-neutral-05);
+    background-clip: content-box;
+  }
+}
+
+// Prices and quantities line up column-to-column instead of jittering.
+[data-numeric] {
+  font-variant-numeric: tabular-nums;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
