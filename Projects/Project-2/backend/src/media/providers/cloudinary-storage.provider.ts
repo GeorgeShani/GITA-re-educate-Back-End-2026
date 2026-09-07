@@ -53,17 +53,29 @@ export class CloudinaryStorageProvider
     const apiSecret = this.configService.getOrThrow<string>(
       'CLOUDINARY_API_SECRET',
     );
-    const signature = cloudinary.utils.api_sign_request(
-      { timestamp, folder: params.folder },
-      apiSecret,
-    );
+
+    // A bare {timestamp, folder} signature authorises ANY file into that
+    // folder for the signature's lifetime — no format or size limit. Naming
+    // an upload preset in the signed set lets Cloudinary enforce
+    // allowed_formats / max_file_size / moderation server-side without the
+    // browser being able to opt out, since changing the value breaks the
+    // signature. Optional: unset, this behaves exactly as before.
+    const uploadPreset =
+      this.configService.get<string>('CLOUDINARY_UPLOAD_PRESET') || undefined;
+
+    const signedParams: Record<string, string | number> = {
+      timestamp,
+      folder: params.folder,
+      ...(uploadPreset && { upload_preset: uploadPreset }),
+    };
 
     return {
-      signature,
+      signature: cloudinary.utils.api_sign_request(signedParams, apiSecret),
       timestamp,
       apiKey: this.configService.getOrThrow<string>('CLOUDINARY_API_KEY'),
       cloudName: this.configService.getOrThrow<string>('CLOUDINARY_CLOUD_NAME'),
       folder: params.folder,
+      uploadPreset,
     };
   }
 

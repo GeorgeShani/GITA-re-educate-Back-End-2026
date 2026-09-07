@@ -8,6 +8,12 @@ export interface UploadSignatureResult {
   apiKey: string;
   cloudName: string;
   folder: string;
+  /**
+   * Present only when CLOUDINARY_UPLOAD_PRESET is configured. The browser
+   * must forward it verbatim with the upload — it is part of the signed
+   * parameter set, so omitting or altering it invalidates the signature.
+   */
+  uploadPreset?: string;
 }
 
 export interface UploadedAssetMetadata {

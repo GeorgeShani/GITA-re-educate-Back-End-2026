@@ -42,7 +42,6 @@ export const envValidationSchema = Joi.object({
   CLOUDINARY_API_KEY: optionalString(),
   CLOUDINARY_API_SECRET: optionalString(),
   CLOUDINARY_UPLOAD_PRESET: optionalString(),
-  CLOUDINARY_WEBHOOK_SECRET: optionalString(),
 
   MAIL_PROVIDER: Joi.string()
     .valid('console', 'resend', 'noop')
@@ -54,7 +53,6 @@ export const envValidationSchema = Joi.object({
   MAIL_WEBHOOK_SECRET: optionalString(),
   MAIL_DEV_REDIRECT: optionalString(),
   MAIL_DEV_ALLOWLIST: optionalString(),
-  MAIL_ADMIN_RECIPIENTS: optionalString(),
 
   GEMINI_API_KEY: optionalString(),
   GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
