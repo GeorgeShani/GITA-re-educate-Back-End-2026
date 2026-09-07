@@ -36,6 +36,9 @@ JWT_REFRESH_SECRET/COOKIE_SECRET, per `src/config/env.validation.ts`).
 | `GEMINI_API_KEY` | S12 AI shopping assistant | Google AI Studio — [§8](#8-gemini-s12--the-ai-shopping-assistant) |
 | `products_search` index | S7 catalog search/typeahead | **not an env var** — Atlas UI — [§9](#9-atlas-search-index-not-an-env-var) |
 | first admin account | Phase 6 `/admin/*` routes | **not an env var** — `npm run promote-admin` — [§10](#10-bootstrapping-the-first-admin-not-an-env-var) |
+| `MAIL_ADMIN_RECIPIENTS` | nothing right now | leave blank — [§6](#6-resend-s4-email-optional) |
+| `SENTRY_DSN` | S13 error tracking, optional | Sentry Dashboard — [§11](#11-sentry-and-bull-board-s13--operations) |
+| `BULL_BOARD_USERNAME` / `_PASSWORD` | S13 queue UI, optional | you invent them — [§11](#11-sentry-and-bull-board-s13--operations) |
 
 ## 1. MongoDB Atlas (required)
 
@@ -147,6 +150,15 @@ up only when you want to see real emails land in an inbox.
    unless the address is in `MAIL_DEV_ALLOWLIST` (comma-separated) — this is
    the dev-safety gate the S4 plan called out as a hard requirement, so
    seeded/test accounts can never accidentally mail a real stranger.
+7. `MAIL_REPLY_TO` — optional. When set, every Resend send carries it as the
+   message's reply-to address (`src/notifications/mail/resend-mail.provider.ts:30`);
+   left blank it is simply omitted. Worth setting when `MAIL_FROM` is a
+   no-reply address but you still want customer replies to reach a real inbox.
+8. `MAIL_ADMIN_RECIPIENTS` — **leave blank. Nothing reads it.** It is declared
+   in the Joi schema (`src/config/env.validation.ts:57`) and listed in
+   `.env.example`, but no code path resolves it, so the "Ops-category mail" its
+   comment describes is not actually wired to this variable. Same situation as
+   the two Cloudinary placeholders in §5: present for shape, not for use.
 
 ## 7. Pexels (seed script only)
 
@@ -220,6 +232,63 @@ Defaults to `Role.ADMIN`; pass a second argument (`manager` | `support` |
 `src/common/constants/admin-roles.constant.ts` for what each one can reach.
 Once you have one admin, `PATCH /admin/users/:id/roles` handles promoting
 everyone else.
+
+## 11. Sentry and Bull Board (S13 — operations)
+
+Both are optional, and both **fail closed**: leave the variables unset and the
+feature never activates at all, rather than half-starting or throwing.
+
+### Sentry — `SENTRY_DSN`
+
+1. Sign up at [sentry.io](https://sentry.io/signup/). The free tier (5k errors
+   / month) is more than enough here.
+2. **Create Project** → platform **Node.js** → **NestJS**.
+3. The DSN is shown once on the setup screen. Afterwards find it under
+   **Settings → Projects → `<project>` → Client Keys (DSN)**.
+4. ```
+   SENTRY_DSN=https://<publicKey>@o<orgId>.ingest.<region>.sentry.io/<projectId>
+   ```
+5. Two things about how this one is wired that differ from every other var in
+   this guide:
+   - It is read from `process.env` **directly**, not through `ConfigService`
+     (`src/instrument.ts`). That file is `main.ts`'s very first import, so it
+     runs before `ConfigModule` has loaded anything — Sentry has to patch
+     modules before they are first required. `instrument.ts` therefore calls
+     `process.loadEnvFile('.env')` itself. A DSN in `.env` works; a DSN
+     injected only into Nest's config would not.
+   - `tracesSampleRate` is `1.0` outside production and `0.2` in production,
+     so performance-trace volume stays cheap once this actually deploys.
+6. Unset means `Sentry.init()` is never called, and the
+   `@SentryExceptionCaptured()` decorator on the global exception filter
+   degrades to a no-op. Nothing else in the app changes.
+7. Verify: start the API with the DSN set and trigger any unhandled 500. The
+   issue should surface in the Sentry dashboard within a few seconds.
+
+### Bull Board — `BULL_BOARD_USERNAME` / `BULL_BOARD_PASSWORD`
+
+Nothing to sign up for. Bull Board is a self-hosted queue UI bundled into the
+app; these are credentials you invent.
+
+1. Generate a password:
+   ```bash
+   node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
+   ```
+2. ```
+   BULL_BOARD_USERNAME=admin
+   BULL_BOARD_PASSWORD=<generated>
+   ```
+3. **Both must be set.** If either is missing, `setupBullBoard()` returns early
+   and the route is never mounted (`src/bull-board.setup.ts:46-50`) — a
+   deliberate choice, so a forgotten password can never leave an unprotected
+   queue console exposed. Credentials are compared with `timingSafeEqual`.
+4. Browse to **`http://localhost:3000/admin/queues`** and enter them. Note this
+   path is *not* under `/api/v1` — it is one of the four paths excluded from
+   the global prefix in `main.ts`.
+5. It monitors the `audit-log`, `notifications`, `media` and `invoices` queues.
+   Its per-job **Retry** button is what covers DLQ replay: failed jobs are kept
+   for 7 days by the outbox publisher's `removeOnFail: { age: ... }` policy
+   (`src/core/outbox/outbox.publisher.ts:71`), so there is no separate
+   dead-letter mechanism to configure.
 
 ## Verifying it all works
 
