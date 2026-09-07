@@ -1,7 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // Inside outDir so nest-cli's deleteOutDir clears it. Left at the project
+    // root it survives a dist/ wipe and can convince tsc the build is already
+    // up to date, emitting nothing at all.
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
   },
   "exclude": ["node_modules", "test", "dist", "scripts", "**/*spec.ts"]
 }
