@@ -71,7 +71,15 @@ export function toProductCardProduct(product: Product): ProductCardProduct {
  */
 @Component({
   selector: 'product-card',
-  imports: [RouterLink, ImagePlaceholder, StatusBadge, RatingStars, PriceTag, ActionButton, IconButton],
+  imports: [
+    RouterLink,
+    ImagePlaceholder,
+    StatusBadge,
+    RatingStars,
+    PriceTag,
+    ActionButton,
+    IconButton,
+  ],
   template: `
     <article class="product-card">
       <a class="product-card__media" [routerLink]="['/product', product().slug]">

@@ -253,7 +253,12 @@ export class SelectField {
 
   protected onTriggerKeydown(event: KeyboardEvent): void {
     if (!this.isOpen()) {
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      if (
+        event.key === 'ArrowDown' ||
+        event.key === 'ArrowUp' ||
+        event.key === 'Enter' ||
+        event.key === ' '
+      ) {
         event.preventDefault();
         this.openPanel();
       }

@@ -49,7 +49,5 @@ export class CarouselDots {
   readonly active = input(0);
   readonly activeChange = output<number>();
 
-  protected readonly dotIndexes = computed(() =>
-    Array.from({ length: this.count() }, (_, i) => i),
-  );
+  protected readonly dotIndexes = computed(() => Array.from({ length: this.count() }, (_, i) => i));
 }

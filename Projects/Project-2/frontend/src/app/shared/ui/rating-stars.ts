@@ -29,22 +29,12 @@ import { IconGlyph } from './icon-glyph';
             (click)="select(i)"
           >
             <icon-glyph name="star" [size]="16" class="star-empty" />
-            <icon-glyph
-              name="star"
-              [size]="16"
-              class="star-fill"
-              [style.clip-path]="fillClip(i)"
-            />
+            <icon-glyph name="star" [size]="16" class="star-fill" [style.clip-path]="fillClip(i)" />
           </button>
         } @else {
           <span class="star-slot">
             <icon-glyph name="star" [size]="16" class="star-empty" />
-            <icon-glyph
-              name="star"
-              [size]="16"
-              class="star-fill"
-              [style.clip-path]="fillClip(i)"
-            />
+            <icon-glyph name="star" [size]="16" class="star-fill" [style.clip-path]="fillClip(i)" />
           </span>
         }
       }
@@ -101,9 +91,7 @@ export class RatingStars {
   readonly ariaLabel = input<string>();
   readonly valueChange = output<number>();
 
-  protected readonly starIndexes = computed(() =>
-    Array.from({ length: this.max() }, (_, i) => i),
-  );
+  protected readonly starIndexes = computed(() => Array.from({ length: this.max() }, (_, i) => i));
 
   protected fillClip(i: number): string {
     const fill = Math.min(Math.max(this.value() - i, 0), 1);

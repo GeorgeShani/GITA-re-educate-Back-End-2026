@@ -28,6 +28,8 @@ export class RecentlyViewedService {
   }
 
   record(slug: string): void {
-    this._slugs.update((current) => [slug, ...current.filter((s) => s !== slug)].slice(0, MAX_ITEMS));
+    this._slugs.update((current) =>
+      [slug, ...current.filter((s) => s !== slug)].slice(0, MAX_ITEMS),
+    );
   }
 }

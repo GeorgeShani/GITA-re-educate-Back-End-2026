@@ -18,7 +18,13 @@ import { Component, input } from '@angular/core';
   template: `
     <ng-content select="[blurhash]" />
     @if (src(); as source) {
-      <img [ngSrc]="source" [alt]="alt()" [width]="width()" [height]="height()" [priority]="priority()" />
+      <img
+        [ngSrc]="source"
+        [alt]="alt()"
+        [width]="width()"
+        [height]="height()"
+        [priority]="priority()"
+      />
     }
   `,
   styles: `

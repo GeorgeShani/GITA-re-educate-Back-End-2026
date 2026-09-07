@@ -25,10 +25,7 @@ export class ToastService {
 
   show(text: string, variant: ToastVariant = 'info', duration = 4000): void {
     const id = this.nextId++;
-    this._toasts.update((list) => [
-      ...list,
-      { id, text, variant, entering: true, leaving: false },
-    ]);
+    this._toasts.update((list) => [...list, { id, text, variant, entering: true, leaving: false }]);
     void this.liveAnnouncer.announce(text, variant === 'error' ? 'assertive' : 'polite');
 
     if (typeof window === 'undefined') return;

@@ -102,8 +102,24 @@ export class TooltipHint {
       .flexibleConnectedTo(this.elementRef)
       .withPositions(
         this.tooltipPosition() === 'top'
-          ? [{ originX: 'center', originY: 'top', overlayX: 'center', overlayY: 'bottom', offsetY: -8 }]
-          : [{ originX: 'center', originY: 'bottom', overlayX: 'center', overlayY: 'top', offsetY: 8 }],
+          ? [
+              {
+                originX: 'center',
+                originY: 'top',
+                overlayX: 'center',
+                overlayY: 'bottom',
+                offsetY: -8,
+              },
+            ]
+          : [
+              {
+                originX: 'center',
+                originY: 'bottom',
+                overlayX: 'center',
+                overlayY: 'top',
+                offsetY: 8,
+              },
+            ],
       );
 
     this.overlayRef ??= this.overlay.create({
