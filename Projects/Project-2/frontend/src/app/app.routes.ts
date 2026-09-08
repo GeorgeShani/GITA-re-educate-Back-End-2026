@@ -243,6 +243,48 @@ export const routes: Routes = [
         loadComponent: () => import('@/app/features/admin/admin-tax'),
         title: 'Tax rates — Admin',
       },
+      {
+        path: 'blog',
+        canActivate: [roleGuard(ADMIN_ROLES.content)],
+        loadComponent: () => import('@/app/features/admin/admin-blog'),
+        title: 'Blog — Admin',
+      },
+      {
+        path: 'pages',
+        canActivate: [roleGuard(ADMIN_ROLES.content)],
+        loadComponent: () => import('@/app/features/admin/admin-pages'),
+        title: 'Pages — Admin',
+      },
+      {
+        path: 'contact',
+        canActivate: [roleGuard(ADMIN_ROLES.content)],
+        loadComponent: () => import('@/app/features/admin/admin-contact'),
+        title: 'Contact inbox — Admin',
+      },
+      {
+        path: 'newsletter',
+        canActivate: [roleGuard(ADMIN_ROLES.content)],
+        loadComponent: () => import('@/app/features/admin/admin-newsletter'),
+        title: 'Newsletter — Admin',
+      },
+      {
+        path: 'emails',
+        canActivate: [roleGuard(ADMIN_ROLES.content)],
+        loadComponent: () => import('@/app/features/admin/admin-email'),
+        title: 'Email log — Admin',
+      },
+      {
+        path: 'users',
+        canActivate: [roleGuard(ADMIN_ROLES.people)],
+        loadComponent: () => import('@/app/features/admin/admin-users'),
+        title: 'Users & roles — Admin',
+      },
+      {
+        path: 'audit-log',
+        canActivate: [roleGuard(['admin'])],
+        loadComponent: () => import('@/app/features/admin/admin-audit-log'),
+        title: 'Audit log — Admin',
+      },
     ],
   },
   {
