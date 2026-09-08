@@ -59,6 +59,7 @@ export class UsersController {
         dto.lastName,
         dto.phone,
         this.correlationId(),
+        dto.avatarUrl,
       ),
     );
     return this.usersService.findById(userId);

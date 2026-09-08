@@ -5,5 +5,6 @@ export class UpdateProfileCommand {
     readonly lastName: string | undefined,
     readonly phone: string | undefined,
     readonly correlationId: string,
+    readonly avatarUrl: string | undefined = undefined,
   ) {}
 }

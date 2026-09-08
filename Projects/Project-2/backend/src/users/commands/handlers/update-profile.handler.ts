@@ -23,11 +23,13 @@ export class UpdateProfileHandler
 
   async execute(command: UpdateProfileCommand): Promise<UserDocument | null> {
     return this.withTransaction(async (session) => {
-      const update: Partial<Pick<User, 'firstName' | 'lastName' | 'phone'>> =
-        {};
+      const update: Partial<
+        Pick<User, 'firstName' | 'lastName' | 'phone' | 'avatarUrl'>
+      > = {};
       if (command.firstName !== undefined) update.firstName = command.firstName;
       if (command.lastName !== undefined) update.lastName = command.lastName;
       if (command.phone !== undefined) update.phone = command.phone;
+      if (command.avatarUrl !== undefined) update.avatarUrl = command.avatarUrl;
 
       const user = await this.userModel
         .findByIdAndUpdate(command.userId, update, {
