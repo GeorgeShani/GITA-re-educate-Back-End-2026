@@ -98,6 +98,45 @@ describe('NotificationsService (integration)', () => {
       expect(rows[0].status).toBe('sent');
     });
 
+    it('actually retries a previously-failed attempt for the same dedupeKey, rather than treating it as a duplicate', async () => {
+      const service = buildService({ MAIL_DEV_ALLOWLIST: 'user@example.com' });
+      const params = {
+        ...BASE_PARAMS,
+        to: 'user@example.com',
+        dedupeKey: 'verify-email:agg-retry:evt-1',
+      };
+
+      // Simulates a first attempt that reached the provider and failed
+      // (e.g. a rate limit, or the Resend sandbox 403 this regression is
+      // named after) — the unique-indexed row create() writes before the
+      // provider call is the only trace of it.
+      await emailMessageModel.create({
+        template: params.template,
+        to: params.to,
+        subject: params.subject,
+        category: params.category,
+        payload: params.variables,
+        dedupeKey: params.dedupeKey,
+        status: 'failed',
+        error: 'simulated provider failure',
+      });
+
+      // This stands in for BullMQ retrying the same job — send() called
+      // again with the identical dedupeKey. Before this fix, the unique
+      // index violation on create() was treated as "already handled" for
+      // ANY prior status, so this returned false without ever calling
+      // the provider — `attempts: 5` on the BullMQ job never actually
+      // resulted in a second delivery attempt.
+      const retried = await service.send(params);
+
+      expect(retried).toBe(true);
+      const rows = await emailMessageModel.find({
+        dedupeKey: params.dedupeKey,
+      });
+      expect(rows).toHaveLength(1); // reused the row, didn't duplicate it
+      expect(rows[0].status).toBe('sent');
+    });
+
     it('treats a different dedupeKey as a genuinely new send even to the same address', async () => {
       const service = buildService({ MAIL_DEV_ALLOWLIST: 'user@example.com' });
 

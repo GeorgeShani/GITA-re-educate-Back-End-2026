@@ -10,6 +10,7 @@ import {
   EmailCategory,
   EmailMessage,
   EmailMessageDocument,
+  EmailStatus,
 } from './schemas/email-message.schema';
 import {
   EmailSuppression,
@@ -85,13 +86,46 @@ export class NotificationsService {
         status: 'queued',
       });
     } catch (error) {
-      if (this.isDuplicateKeyError(error)) {
+      if (!this.isDuplicateKeyError(error)) throw error;
+
+      // The unique index on dedupeKey caught a prior row for this exact
+      // event — but "prior row exists" isn't the same as "already sent".
+      // BullMQ retries a failed job by calling send() again with the same
+      // dedupeKey, which used to land here and get treated as a duplicate
+      // regardless of whether the first attempt actually succeeded. That
+      // silently discarded every retry: attempt 1 fails (provider error),
+      // BullMQ schedules attempt 2, attempt 2's create() duplicate-key-errors
+      // on attempt 1's own row and returns false before ever calling the
+      // provider again. `attempts: 5` was configured but never actually
+      // firing past the first real failure.
+      const existing = await this.emailMessageModel
+        .findOne({ dedupeKey: params.dedupeKey })
+        .exec();
+      if (!existing) throw error; // race we can't explain — don't swallow it
+
+      // 'sent'/'delivered' mean the provider already has it — including
+      // 'delivered' since that only ever arrives via a provider webhook,
+      // strictly after 'sent'. 'bounced'/'complained' are also terminal
+      // (also webhook-driven) and retrying either would just repeat a
+      // send the provider or recipient already rejected. Only 'queued'
+      // (crashed before finishing) and 'failed' are worth retrying.
+      const terminalStatuses: EmailStatus[] = [
+        'sent',
+        'delivered',
+        'bounced',
+        'complained',
+      ];
+      if (terminalStatuses.includes(existing.status)) {
         this.logger.log(
-          `Duplicate send suppressed for dedupeKey ${params.dedupeKey}`,
+          `Duplicate send suppressed for dedupeKey ${params.dedupeKey} (status: ${existing.status})`,
         );
         return false;
       }
-      throw error;
+
+      // status is 'queued' or 'failed' — a genuine retry, not a duplicate.
+      // Reuse the existing row (dedupeKey is unique, so a second insert
+      // isn't an option) and actually attempt delivery again below.
+      emailMessage = existing;
     }
 
     try {
