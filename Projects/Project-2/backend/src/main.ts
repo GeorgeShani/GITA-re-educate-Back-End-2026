@@ -70,7 +70,7 @@ async function bootstrap() {
     SwaggerModule.setup('api', app, document);
   }
 
-  await app.listen(configService.get<number>('PORT', 3000));
+  await app.listen(configService.get<number>('PORT', 4000));
   // Which half this process is running is the first thing you want to know
   // when a queue is not draining or a job ran twice.
   new Logger('Bootstrap').log(`Process role: ${getProcessRole()}`);
