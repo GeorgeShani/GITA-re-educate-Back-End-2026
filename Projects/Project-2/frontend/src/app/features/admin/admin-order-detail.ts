@@ -41,7 +41,7 @@ function statusColor(status: OrderStatus): string {
     <a routerLink="/admin/orders" class="back">← Back to orders</a>
 
     @if (order(); as o) {
-      <page-toolbar [title]="'Order #' + o.orderNumber">
+      <page-toolbar [title]="'Order #' + o.orderNumber" [subtitle]="'Placed ' + (o.createdAt | date: 'medium')">
         <a [href]="'/api/v1/admin/orders/' + o.id + '/packing-slip'" (click)="downloadPackingSlip($event, o.id)">
           Packing slip (PDF)
         </a>

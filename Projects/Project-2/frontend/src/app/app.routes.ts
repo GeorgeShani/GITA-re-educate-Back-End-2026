@@ -219,6 +219,30 @@ export const routes: Routes = [
         loadComponent: () => import('@/app/features/admin/admin-reviews'),
         title: 'Reviews — Admin',
       },
+      {
+        path: 'coupons',
+        canActivate: [roleGuard(ADMIN_ROLES.money)],
+        loadComponent: () => import('@/app/features/admin/admin-coupons'),
+        title: 'Coupons — Admin',
+      },
+      {
+        path: 'gift-cards',
+        canActivate: [roleGuard(ADMIN_ROLES.money)],
+        loadComponent: () => import('@/app/features/admin/admin-gift-cards'),
+        title: 'Gift cards — Admin',
+      },
+      {
+        path: 'shipping',
+        canActivate: [roleGuard(ADMIN_ROLES.money)],
+        loadComponent: () => import('@/app/features/admin/admin-shipping'),
+        title: 'Shipping zones — Admin',
+      },
+      {
+        path: 'tax',
+        canActivate: [roleGuard(ADMIN_ROLES.money)],
+        loadComponent: () => import('@/app/features/admin/admin-tax'),
+        title: 'Tax rates — Admin',
+      },
     ],
   },
   {
