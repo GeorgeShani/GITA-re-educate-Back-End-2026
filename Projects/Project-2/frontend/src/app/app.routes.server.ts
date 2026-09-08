@@ -18,6 +18,16 @@ export const serverRoutes: ServerRoute[] = [
   { path: '', renderMode: RenderMode.Server },
   { path: 'styleguide', renderMode: RenderMode.Client },
 
+  // Auth: no SEO value, and a form holding a password has no business
+  // being rendered on the server. Entries are added one at a time as each
+  // route lands below — Angular SSR fails the build on a server-route
+  // entry that matches nothing in the client routing config.
+  { path: 'sign-in', renderMode: RenderMode.Client },
+  { path: 'sign-up', renderMode: RenderMode.Client },
+  { path: 'forgot-password', renderMode: RenderMode.Client },
+  { path: 'reset-password', renderMode: RenderMode.Client },
+  { path: 'verify-email', renderMode: RenderMode.Client },
+
   // Everything else — including the 404 — is server-rendered so crawlers get
   // real markup rather than an empty shell.
   { path: '**', renderMode: RenderMode.Server },

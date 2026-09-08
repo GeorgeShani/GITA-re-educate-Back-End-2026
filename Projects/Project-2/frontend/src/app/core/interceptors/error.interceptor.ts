@@ -18,21 +18,28 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse && error.status !== 401) {
-        toastService.show(messageFor(error), 'error');
+        toastService.show(messageFor(error, req.url), 'error');
       }
       return throwError(() => error);
     }),
   );
 };
 
-function messageFor(error: HttpErrorResponse): string {
+function messageFor(error: HttpErrorResponse, url: string): string {
   if (error.status === 0) {
     return 'Network error — check your connection.';
   }
 
-  // Most mutations are throttled at 5/minute, which is easy to hit by
-  // nudging a quantity stepper. Saying so beats a generic failure.
   if (error.status === 429) {
+    // AUTH_THROTTLE is 5 per 15 minutes, far tighter than WRITE_THROTTLE's
+    // 5/minute — "give it a moment" undersells a 15-minute window, and on
+    // a login form specifically a bare 429 reads exactly like a wrong
+    // password if it isn't named as a rate limit.
+    if (url.includes('/auth/')) {
+      return 'Too many attempts — please wait about 15 minutes and try again.';
+    }
+    // Most other mutations are throttled at 5/minute, which is easy to hit
+    // by nudging a quantity stepper. Saying so beats a generic failure.
     return 'You are doing that a bit too quickly — give it a moment.';
   }
 

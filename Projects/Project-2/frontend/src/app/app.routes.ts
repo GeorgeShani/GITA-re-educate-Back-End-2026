@@ -27,6 +27,31 @@ export const routes: Routes = [
     title: 'Product — 3legant Golf',
   },
   {
+    path: 'sign-in',
+    loadComponent: () => import('@/app/features/auth/sign-in'),
+    title: 'Sign in — 3legant Golf',
+  },
+  {
+    path: 'sign-up',
+    loadComponent: () => import('@/app/features/auth/sign-up'),
+    title: 'Create an account — 3legant Golf',
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('@/app/features/auth/forgot-password'),
+    title: 'Forgot password — 3legant Golf',
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('@/app/features/auth/reset-password'),
+    title: 'Reset password — 3legant Golf',
+  },
+  {
+    path: 'verify-email',
+    loadComponent: () => import('@/app/features/auth/verify-email'),
+    title: 'Verify email — 3legant Golf',
+  },
+  {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),
