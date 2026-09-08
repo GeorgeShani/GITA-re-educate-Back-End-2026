@@ -1,40 +1,45 @@
-import { Service, afterNextRender, effect, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
+import { type Observable, tap } from 'rxjs';
 
-const STORAGE_KEY = 'wishlist';
+import type { WishlistEntryDto } from '@/app/core/api/dto';
+import { ApiClient } from '@/app/core/services/api-client';
 
+/**
+ * Owned server-side, same pattern as CartService — the wishlist is
+ * per-account (GET /wishlist requires auth), not a guest-accessible
+ * concept, so there's no local/guest state to merge on login the way
+ * the cart has.
+ */
 @Service()
 export class WishlistService {
-  private readonly _slugs = signal<ReadonlySet<string>>(new Set());
-  readonly slugs = this._slugs.asReadonly();
+  private readonly api = inject(ApiClient);
 
-  constructor() {
-    afterNextRender(() => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-      try {
-        this._slugs.set(new Set(JSON.parse(stored) as string[]));
-      } catch {
-        // Corrupt/stale stored value — ignore, start from an empty wishlist.
-      }
-    });
+  private readonly entries = signal<WishlistEntryDto[] | null>(null);
 
-    effect(() => {
-      const slugs = this._slugs();
-      if (typeof localStorage === 'undefined') return;
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([...slugs]));
-    });
+  readonly items = computed(() => this.entries() ?? []);
+  readonly productIds = computed(() => new Set(this.items().map((e) => e.productId)));
+
+  load(): Observable<WishlistEntryDto[]> {
+    return this.api.get<WishlistEntryDto[]>('/wishlist').pipe(this.store());
   }
 
-  has(slug: string): boolean {
-    return this._slugs().has(slug);
+  has(productId: string): boolean {
+    return this.productIds().has(productId);
   }
 
-  toggle(slug: string): void {
-    this._slugs.update((current) => {
-      const next = new Set(current);
-      if (next.has(slug)) next.delete(slug);
-      else next.add(slug);
-      return next;
-    });
+  add(productId: string): Observable<WishlistEntryDto[]> {
+    return this.api.post<WishlistEntryDto[]>(`/wishlist/${productId}`, {}).pipe(this.store());
+  }
+
+  remove(productId: string): Observable<WishlistEntryDto[]> {
+    return this.api.delete<WishlistEntryDto[]>(`/wishlist/${productId}`).pipe(this.store());
+  }
+
+  toggle(productId: string): Observable<WishlistEntryDto[]> {
+    return this.has(productId) ? this.remove(productId) : this.add(productId);
+  }
+
+  private store() {
+    return tap<WishlistEntryDto[]>((entries) => this.entries.set(entries));
   }
 }

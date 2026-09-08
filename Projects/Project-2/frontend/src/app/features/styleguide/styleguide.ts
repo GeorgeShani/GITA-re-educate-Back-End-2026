@@ -5,7 +5,6 @@ import { map } from 'rxjs';
 
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
 import { ToastService } from '@/app/core/services/toast.service';
-import { WishlistService } from '@/app/core/services/wishlist.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { AccordionGroup } from '@/app/shared/ui/accordion-group';
 import { AccordionPanel } from '@/app/shared/ui/accordion-panel';
@@ -412,17 +411,19 @@ import { TooltipHint } from '@/app/shared/ui/tooltip-hint';
       <section class="demo-section">
         <h2>Product Card</h2>
         <p>
-          Backed by the real ProductService (MockProductService fixtures) and the real
-          WishlistService — the heart toggle here is genuine app state, not a local demo signal.
-          Quick Add only fires its output and a toast: the cart is server-owned and these are
-          fixture products with no real variant SKU.
+          Backed by real catalog data (CatalogService). The heart toggle here is a local demo
+          signal, not the real WishlistService — that one is account-scoped (GET /wishlist
+          requires auth) and keyed by product id, which ProductCardProduct doesn't carry, only
+          slug; see /account/wishlist for the genuine, backend-backed wishlist. Quick Add only
+          fires its output and a toast: the cart is server-owned and these are fixture products
+          with no real variant SKU.
         </p>
         <div class="product-card-demo-grid">
           @for (product of demoProducts(); track product.slug) {
             <product-card
               [product]="product"
-              [wishlisted]="wishlistService.has(product.slug)"
-              (wishlistToggled)="wishlistService.toggle(product.slug)"
+              [wishlisted]="demoWishlisted().has(product.slug)"
+              (wishlistToggled)="toggleDemoWishlist(product.slug)"
               (quickAdd)="addToCart(product)"
             />
           }
@@ -628,6 +629,7 @@ export class Styleguide {
   protected readonly interactiveRating = signal(0);
 
   protected readonly wishlisted = signal(false);
+  protected readonly demoWishlisted = signal<ReadonlySet<string>>(new Set());
   protected readonly subscribed = signal(false);
   protected readonly shipping = signal('Standard');
   protected readonly shippingOptions = ['Standard', 'Express', 'Overnight'];
@@ -684,7 +686,6 @@ export class Styleguide {
   }
 
   private readonly catalog = inject(CatalogService);
-  protected readonly wishlistService = inject(WishlistService);
 
   // Real catalogue data — the fixtures are gone, so the styleguide now
   // renders whatever the API actually returns.
@@ -692,6 +693,15 @@ export class Styleguide {
   protected readonly demoProducts = computed(() =>
     (this.products.value()?.items ?? []).map(toCardProduct),
   );
+
+  protected toggleDemoWishlist(slug: string): void {
+    this.demoWishlisted.update((current) => {
+      const next = new Set(current);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  }
 
   protected addToCart(product: ProductCardProduct): void {
     // Demonstrates the card's quickAdd output and the toast only. Adding for

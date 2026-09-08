@@ -75,6 +75,59 @@ export const routes: Routes = [
     title: 'Track your order — 3legant Golf',
   },
   {
+    path: 'account',
+    canActivate: [authGuard],
+    loadComponent: () => import('@/app/features/account/account-shell'),
+    children: [
+      { path: '', redirectTo: 'profile', pathMatch: 'full' },
+      {
+        path: 'profile',
+        loadComponent: () => import('@/app/features/account/account-profile'),
+        title: 'Profile — 3legant Golf',
+      },
+      {
+        path: 'addresses',
+        loadComponent: () => import('@/app/features/account/account-addresses'),
+        title: 'Addresses — 3legant Golf',
+      },
+      {
+        path: 'orders',
+        loadComponent: () => import('@/app/features/account/account-orders'),
+        title: 'Orders — 3legant Golf',
+      },
+      {
+        path: 'orders/:id',
+        loadComponent: () => import('@/app/features/account/account-order-detail'),
+        title: 'Order — 3legant Golf',
+      },
+      {
+        path: 'wishlist',
+        loadComponent: () => import('@/app/features/account/account-wishlist'),
+        title: 'Wishlist — 3legant Golf',
+      },
+      {
+        path: 'returns',
+        loadComponent: () => import('@/app/features/account/account-returns'),
+        title: 'Returns — 3legant Golf',
+      },
+      {
+        path: 'returns/new',
+        loadComponent: () => import('@/app/features/account/account-return-new'),
+        title: 'Request a return — 3legant Golf',
+      },
+      {
+        path: 'payment-methods',
+        loadComponent: () => import('@/app/features/account/account-payment-methods'),
+        title: 'Payment methods — 3legant Golf',
+      },
+      {
+        path: 'settings',
+        loadComponent: () => import('@/app/features/account/account-settings'),
+        title: 'Settings — 3legant Golf',
+      },
+    ],
+  },
+  {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),

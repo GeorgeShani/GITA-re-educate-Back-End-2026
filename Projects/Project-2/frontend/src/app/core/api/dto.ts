@@ -287,9 +287,15 @@ export type OrderStatus =
  * A frozen line snapshot taken at checkout — no `variantAttributes` (unlike
  * CartLineDto), because Order.items never references the live product, only
  * what was true the moment the order was placed.
+ *
+ * `_id`, not `id`: OrderItem is an embedded subdocument
+ * (order.schema.ts's `@Schema({ _id: true })`) that does NOT use
+ * baseSchemaOptions, so the "every entity serialises id, never _id"
+ * convention at the top of this file does not extend to it — confirmed
+ * against a real response, not assumed.
  */
 export interface OrderItemDto {
-  id: string;
+  _id: string;
   productId: string;
   variantSku: string;
   nameSnapshot: string;
@@ -335,4 +341,143 @@ export interface TrackingInfoDto {
   city: string;
   countryCode: string;
   placedAt: string;
+}
+
+// ---------------------------------------------------------------- account
+
+export interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  /** A Cloudinary secure_url from POST /media (ownerContext: avatar). */
+  avatarUrl?: string;
+}
+
+/**
+ * GET /users/me/export — GDPR right to access. Each section is whatever
+ * that collection's own toJSON() produces server-side; there's no fixed
+ * shape worth typing beyond that; the UI's only job is to offer this as
+ * a downloadable file, not to render it field by field.
+ */
+export interface AccountExportDto {
+  exportedAt: string;
+  profile: Record<string, unknown>;
+  orders: Record<string, unknown>[];
+  reviews: Record<string, unknown>[];
+  wishlist: Record<string, unknown>[];
+}
+
+/** Mirrors backend/src/notifications/schemas/email-message.schema.ts's EmailCategory. */
+export type EmailCategory = 'transactional' | 'security' | 'ops' | 'marketing' | 'opt-in';
+
+/**
+ * GET /users/me/notification-preferences. transactional/security/ops are
+ * never opt-out-able server-side — optedInCategories always carries them
+ * regardless of what the UI shows, only 'marketing'/'opt-in' ever move.
+ */
+export interface NotificationPreferenceDto {
+  id: string;
+  userId: string;
+  optedInCategories: EmailCategory[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --------------------------------------------------------------- wishlist
+
+export interface WishlistProductSummary {
+  name: string;
+  slug: string;
+  brand?: string;
+  basePriceMinor: number;
+  compareAtPriceMinor?: number;
+  image?: { url: string; alt: string };
+}
+
+export interface WishlistEntryDto {
+  productId: string;
+  addedAt: string;
+  /** null when the product was deleted/unpublished out from under the wishlist entry. */
+  product: WishlistProductSummary | null;
+}
+
+// ---------------------------------------------------------------- returns
+
+/** Mirrors backend/src/returns/enums/return-status.enum.ts. */
+export type ReturnStatus = 'requested' | 'approved' | 'rejected' | 'received' | 'refunded';
+
+export interface ReturnItemDto {
+  id: string;
+  orderItemId: string;
+  quantity: number;
+  reason: string;
+}
+
+export interface ReturnDto {
+  id: string;
+  orderId: string;
+  userId: string;
+  items: ReturnItemDto[];
+  status: ReturnStatus;
+  adminNote?: string;
+  refundId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RequestReturnItemInput {
+  /** The order line's own id (OrderItemDto._id). */
+  orderItemId: string;
+  quantity: number;
+  reason: string;
+}
+
+export interface RequestReturnRequest {
+  orderId: string;
+  items: RequestReturnItemInput[];
+}
+
+// --------------------------------------------------------- payment methods
+
+export interface SavedPaymentMethodDto {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+}
+
+export interface SetupIntentResultDto {
+  clientSecret: string;
+}
+
+// -------------------------------------------------------------------- media
+
+/**
+ * GET /media/upload-signature. Handed to Cloudinary's unsigned browser
+ * upload endpoint verbatim — the client never sees or needs an API
+ * secret, only this short-lived signed payload.
+ */
+export interface UploadSignatureDto {
+  signature: string;
+  timestamp: number;
+  apiKey: string;
+  cloudName: string;
+  folder: string;
+  uploadPreset?: string;
+}
+
+export interface MediaDto {
+  id: string;
+  publicId: string;
+  url: string;
+  width: number;
+  height: number;
+  format: string;
+  bytes: number;
+  resourceType: string;
+  ownerContext?: string;
+  uploadedByUserId?: string;
+  createdAt: string;
+  updatedAt: string;
 }

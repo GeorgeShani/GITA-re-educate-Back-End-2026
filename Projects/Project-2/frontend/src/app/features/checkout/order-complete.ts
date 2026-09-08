@@ -67,7 +67,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 
           <div class="layout" reveal>
             <ul class="items" role="list">
-              @for (item of o.items; track item.id) {
+              @for (item of o.items; track item._id) {
                 <li class="item">
                   <image-placeholder [src]="item.imageUrlSnapshot" [alt]="item.nameSnapshot" [width]="64" [height]="64" />
                   <div class="item-body">
