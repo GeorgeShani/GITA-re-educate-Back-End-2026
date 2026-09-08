@@ -195,6 +195,30 @@ export const routes: Routes = [
         loadComponent: () => import('@/app/features/admin/admin-media'),
         title: 'Media library — Admin',
       },
+      {
+        path: 'orders',
+        canActivate: [roleGuard(ADMIN_ROLES.commerce)],
+        loadComponent: () => import('@/app/features/admin/admin-orders'),
+        title: 'Orders — Admin',
+      },
+      {
+        path: 'orders/:id',
+        canActivate: [roleGuard(ADMIN_ROLES.commerce)],
+        loadComponent: () => import('@/app/features/admin/admin-order-detail'),
+        title: 'Order — Admin',
+      },
+      {
+        path: 'returns',
+        canActivate: [roleGuard(ADMIN_ROLES.commerce)],
+        loadComponent: () => import('@/app/features/admin/admin-returns'),
+        title: 'Returns — Admin',
+      },
+      {
+        path: 'reviews',
+        canActivate: [roleGuard(ADMIN_ROLES.commerce)],
+        loadComponent: () => import('@/app/features/admin/admin-reviews'),
+        title: 'Reviews — Admin',
+      },
     ],
   },
   {
