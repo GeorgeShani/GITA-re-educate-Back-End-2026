@@ -125,6 +125,14 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
             error instanceof Error ? error.message : error
           }`,
         );
+        // Without this, claim()'s optimistic publishedAt write stands —
+        // the row looks published, the startup sweep's `publishedAt: null`
+        // filter never sees it again, and the event is silently lost
+        // rather than retried. This only recovers it on the *next*
+        // startup sweep, not continuously while the process stays up —
+        // there's no scheduled re-sweep yet. Good enough to stop losing
+        // events outright; a periodic retry sweep is a real follow-up.
+        await this.outboxRepository.release(id);
       }
     });
   }

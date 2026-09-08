@@ -132,6 +132,40 @@ describe('Outbox relay resume + concurrent-claim safety (integration)', () => {
     ).toHaveLength(0);
   });
 
+  it('makes a claimed row retryable again via release()', async () => {
+    const session = await mongoose.startSession();
+    await session.withTransaction(async () => {
+      await outboxRepository.write(
+        new TestEvent(new mongoose.Types.ObjectId().toString(), 'corr-release'),
+        session,
+      );
+    });
+    await session.endSession();
+
+    const cutoffInFuture = new Date(Date.now() + 60_000);
+    const [row] =
+      await outboxRepository.findUnpublishedOlderThan(cutoffInFuture);
+    const eventId = row._id.toString();
+
+    await outboxRepository.claim(eventId);
+    // claim() sets publishedAt optimistically — a publish that then
+    // throws (e.g. the queue rejecting the job) must not leave the row
+    // looking successfully published, or the event is lost for good.
+    expect(
+      await outboxRepository.findUnpublishedOlderThan(cutoffInFuture),
+    ).toHaveLength(0);
+
+    await outboxRepository.release(eventId);
+
+    // release() must fully undo the claim — a fresh relay instance's
+    // sweep (or the original one, on its next pass) needs to see this
+    // row as unpublished again, and needs to be able to claim it again.
+    expect(
+      await outboxRepository.findUnpublishedOlderThan(cutoffInFuture),
+    ).toHaveLength(1);
+    expect(await outboxRepository.claim(eventId)).not.toBeNull();
+  });
+
   it('persists and reloads a resume token across a simulated relay restart', async () => {
     const token = { _data: 'fake-resume-token-bytes' };
     await checkpointRepository.saveResumeToken(OUTBOX_STREAM_NAME, token);

@@ -64,7 +64,17 @@ export class OutboxPublisher {
           // Unique per queue+event so a duplicate publish attempt (e.g.
           // a change-stream notification replayed after a crash, before
           // this row's claim was durable) can't double-enqueue.
-          jobId: `${queueName}:${eventId}`,
+          //
+          // `.` not `:` — BullMQ rejects a custom jobId containing `:`
+          // unless splitting on it yields exactly 3 parts (a legacy
+          // repeatable-job compatibility check, job.js's own TODO says
+          // it'll tighten to a blanket ban later). queueName:eventId is
+          // 2 parts, so every publish was failing with "Custom Id cannot
+          // contain :" — this was silently breaking every event publish
+          // (audit log, notification emails, ...) since this code was
+          // written; nothing parses job.id back apart, so any delimiter
+          // BullMQ won't choke on works.
+          jobId: `${queueName}.${eventId}`,
           attempts: 5,
           backoff: { type: 'exponential', delay: 2000 },
           removeOnComplete: { age: 60 * 60 * 24 }, // 24h, then evict

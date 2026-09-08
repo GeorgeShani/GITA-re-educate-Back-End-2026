@@ -52,6 +52,26 @@ export class OutboxRepository {
   }
 
   /**
+   * Reverts a claim when the publish attempt itself throws — `claim()`
+   * sets `publishedAt` optimistically, before the queue.add() calls it
+   * guards actually succeed, so without this a failed publish looks
+   * identical to a successful one: `findUnpublishedOlderThan`'s sweep and
+   * the live change stream (insert-only) both stop seeing the row, and
+   * the event is gone for good with nothing but the error log to show
+   * for it. Only resets `publishedAt` if this claim is still the most
+   * recent one (`$set` from a matching `_id` — a second claim can't have
+   * happened between this claim and its failure, since publish is
+   * awaited synchronously in the same call), so a retry from a fresh
+   * relay instance can't be undone by a stale unclaim.
+   */
+  async release(id: string): Promise<void> {
+    await this.outboxModel.updateOne(
+      { _id: id },
+      { $set: { publishedAt: null } },
+    );
+  }
+
+  /**
    * The startup sweep's query — unpublished rows older than `cutoff`.
    * Covers the rare case where a resume token itself was lost, so a row
    * written while the relay was down never gets picked up by the change
