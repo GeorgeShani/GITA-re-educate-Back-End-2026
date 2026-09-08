@@ -36,6 +36,8 @@ interface StoredToolCall {
   id?: string;
   name?: string;
   args?: Record<string, unknown>;
+  /** See runTurn()'s comment on Part.thoughtSignature — must round-trip through storage so a later confirm/rehydrate turn can echo it back too. */
+  thoughtSignature?: string;
 }
 
 interface StoredToolResult {
@@ -198,32 +200,81 @@ export class AssistantService {
       return;
     }
 
-    const stream = await this.client.models.generateContentStream({
-      model: this.model,
-      contents,
-      config: {
-        systemInstruction: ASSISTANT_SYSTEM_INSTRUCTION,
-        tools: [
-          {
-            functionDeclarations: [...this.toolByName.values()].map(
-              (tool) => tool.declaration,
-            ),
-          },
-        ],
-        thinkingConfig: { thinkingBudget: -1 }, // AUTOMATIC
-      },
-    });
-
     let text = '';
-    const callsById = new Map<string, FunctionCall>();
-    for await (const chunk of stream) {
-      if (chunk.text) {
-        text += chunk.text;
-        yield { type: 'text', delta: chunk.text };
+    const callsById = new Map<
+      string,
+      FunctionCall & { thoughtSignature?: string }
+    >();
+    try {
+      const stream = await this.client.models.generateContentStream({
+        model: this.model,
+        contents,
+        config: {
+          systemInstruction: ASSISTANT_SYSTEM_INSTRUCTION,
+          tools: [
+            {
+              functionDeclarations: [...this.toolByName.values()].map(
+                (tool) => tool.declaration,
+              ),
+            },
+          ],
+          thinkingConfig: { thinkingBudget: -1 }, // AUTOMATIC
+        },
+      });
+
+      for await (const chunk of stream) {
+        if (chunk.text) {
+          text += chunk.text;
+          yield { type: 'text', delta: chunk.text };
+        }
+        // Not chunk.functionCalls: that convenience getter returns bare
+        // FunctionCall objects and drops thoughtSignature, which lives as a
+        // SIBLING field on the same Part (verified against the installed
+        // @google/genai .d.ts — Part.thoughtSignature, not
+        // FunctionCall.thoughtSignature). Gemini 2.5's thinking mode requires
+        // that signature echoed back verbatim on the next turn's functionCall
+        // Part or the API 400s with "Function call is missing a
+        // thought_signature" — confirmed live against the real API, not
+        // assumed from docs (one ai.google.dev page fabricated an unrelated
+        // "Interactions API" shape for this exact topic).
+        const parts = chunk.candidates?.[0]?.content?.parts ?? [];
+        for (const part of parts) {
+          if (!part.functionCall) continue;
+          const call = part.functionCall;
+          callsById.set(call.id ?? call.name ?? Math.random().toString(), {
+            ...call,
+            thoughtSignature: part.thoughtSignature,
+          });
+        }
       }
-      for (const call of chunk.functionCalls ?? []) {
-        callsById.set(call.id ?? call.name ?? Math.random().toString(), call);
+    } catch (error) {
+      // Without this, an error thrown mid-stream (confirmed live: a
+      // transient Gemini 503 "model is currently experiencing high
+      // demand") propagates out of the async generator to
+      // toSseObservable's subscriber.error(), and Nest's own @Sse()
+      // machinery then writes ITS OWN "event: error" frame whose `data`
+      // is the error's raw, non-JSON toString() (e.g. "got status:
+      // UNAVAILABLE. {...}") — a second, incompatible shape the client
+      // would otherwise have to parse alongside the normal
+      // AssistantSseEvent JSON. Catching here keeps every frame this
+      // service ever sends on the one documented shape. Whatever text
+      // had already streamed is kept, not discarded — the user did see
+      // it, so the transcript should still show it on reload.
+      if (text) {
+        await this.chatMessageModel.create({
+          sessionId: session._id,
+          role: 'assistant',
+          content: text,
+        });
       }
+      yield {
+        type: 'error',
+        message:
+          error instanceof Error
+            ? extractGeminiErrorMessage(error.message)
+            : 'The assistant hit an unexpected error.',
+      };
+      return;
     }
 
     const calls = [...callsById.values()];
@@ -248,6 +299,7 @@ export class AssistantService {
         id: call.id,
         name: call.name,
         args: call.args,
+        thoughtSignature: call.thoughtSignature,
       })),
       pendingConfirmation: mutatingCalls.length > 0,
     });
@@ -280,7 +332,10 @@ export class AssistantService {
       toolResults: results,
     });
 
-    const modelParts: Part[] = calls.map((call) => ({ functionCall: call }));
+    const modelParts: Part[] = calls.map((call) => ({
+      functionCall: { id: call.id, name: call.name, args: call.args },
+      thoughtSignature: call.thoughtSignature,
+    }));
     const responseParts: Part[] = results.map((result) => ({
       functionResponse: {
         id: result.id,
@@ -346,7 +401,12 @@ export class AssistantService {
         const parts: Part[] = [];
         if (message.content) parts.push({ text: message.content });
         for (const call of (message.toolCalls ?? []) as StoredToolCall[]) {
-          parts.push({ functionCall: call });
+          // thoughtSignature is a sibling of functionCall on the Part, not
+          // a property of the call itself — see runTurn()'s comment.
+          parts.push({
+            functionCall: { id: call.id, name: call.name, args: call.args },
+            thoughtSignature: call.thoughtSignature,
+          });
         }
         if (parts.length > 0) contents.push({ role: 'model', parts });
       } else {
@@ -386,4 +446,31 @@ export class AssistantService {
   private correlationId(): string {
     return this.cls.get<string>('correlationId');
   }
+}
+
+/**
+ * The @google/genai client's own thrown Error.message is, confirmed live,
+ * a JSON string wrapping ANOTHER JSON string under `.error.message` (the
+ * underlying transport error re-stringified at each layer it passed
+ * through) — e.g. `{"error":{"message":"{\"error\":{\"message\":\"This
+ * model is currently experiencing high demand...\",...}}",...}}`. Unwraps
+ * up to a few layers to reach the actual human sentence rather than
+ * showing that raw nesting to the end user; falls back to the original
+ * string the moment a layer isn't parseable JSON (a real client-side
+ * error's message, e.g. a network failure, never looks like this at all).
+ */
+function extractGeminiErrorMessage(raw: string): string {
+  let current: string = raw;
+  for (let i = 0; i < 4; i++) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(current);
+    } catch {
+      return current;
+    }
+    const message = (parsed as { error?: { message?: unknown } } | null)?.error?.message;
+    if (typeof message !== 'string') return current;
+    current = message;
+  }
+  return current;
 }
