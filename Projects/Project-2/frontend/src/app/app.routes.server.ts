@@ -22,6 +22,7 @@ export const serverRoutes: ServerRoute[] = [
   // being rendered on the server. Entries are added one at a time as each
   // route lands below — Angular SSR fails the build on a server-route
   // entry that matches nothing in the client routing config.
+  { path: 'cart', renderMode: RenderMode.Client },
   { path: 'sign-in', renderMode: RenderMode.Client },
   { path: 'sign-up', renderMode: RenderMode.Client },
   { path: 'forgot-password', renderMode: RenderMode.Client },

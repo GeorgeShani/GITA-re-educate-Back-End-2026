@@ -14,7 +14,7 @@ import { serverRoutes } from './app.routes.server';
  * API_ORIGIN is read from the environment so a deployed SSR service can
  * point at the internal API address rather than the public one.
  */
-const apiOrigin = process.env['API_ORIGIN'] ?? 'http://localhost:3000';
+const apiOrigin = process.env['API_ORIGIN'] ?? 'http://localhost:4000';
 
 const serverConfig: ApplicationConfig = {
   providers: [

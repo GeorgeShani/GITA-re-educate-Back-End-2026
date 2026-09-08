@@ -52,6 +52,11 @@ export const routes: Routes = [
     title: 'Verify email — 3legant Golf',
   },
   {
+    path: 'cart',
+    loadComponent: () => import('@/app/features/cart/cart'),
+    title: 'Your Cart — 3legant Golf',
+  },
+  {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),
