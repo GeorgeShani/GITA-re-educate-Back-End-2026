@@ -468,7 +468,8 @@ function extractGeminiErrorMessage(raw: string): string {
     } catch {
       return current;
     }
-    const message = (parsed as { error?: { message?: unknown } } | null)?.error?.message;
+    const message = (parsed as { error?: { message?: unknown } } | null)?.error
+      ?.message;
     if (typeof message !== 'string') return current;
     current = message;
   }
