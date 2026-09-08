@@ -570,3 +570,50 @@ export interface NewsletterSubscriberDto {
   confirmedAt: string | null;
   unsubscribedAt: string | null;
 }
+
+// ---------------------------------------------------------------- assistant (F10)
+
+export interface ChatSessionDto {
+  id: string;
+  userId: string;
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ChatMessageRole = 'user' | 'assistant' | 'tool';
+
+export interface StoredToolCallDto {
+  id?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+}
+
+export interface StoredToolResultDto {
+  id?: string;
+  name?: string;
+  response?: unknown;
+}
+
+export interface ChatMessageDto {
+  id: string;
+  sessionId: string;
+  role: ChatMessageRole;
+  content?: string;
+  toolCalls?: StoredToolCallDto[];
+  toolResults?: StoredToolResultDto[];
+  pendingConfirmation: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** One SSE frame from POST /assistant/sessions/:id/messages(/confirm) — mirrors backend/src/assistant/assistant-sse-event.ts exactly. */
+export type AssistantSseEvent =
+  | { type: 'text'; delta: string }
+  | {
+      type: 'confirmation_required';
+      messageId: string;
+      toolCalls: { name: string; args: Record<string, unknown> }[];
+    }
+  | { type: 'done' }
+  | { type: 'error'; message: string };

@@ -2,6 +2,7 @@ import { Component, afterNextRender, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
 import { CartService } from '@/app/core/services/cart.service';
+import { AssistantPanel } from '@/app/features/assistant/assistant-panel';
 import { NotificationBar } from '@/app/shared/layout/notification-bar';
 import { SiteFooter } from '@/app/shared/layout/site-footer';
 import { SiteHeader } from '@/app/shared/layout/site-header';
@@ -19,6 +20,7 @@ import { ToastStack } from '@/app/shared/ui/toast-stack';
     NotificationBar,
     SiteHeader,
     SiteFooter,
+    AssistantPanel,
   ],
   template: `
     <icon-sprite />
@@ -30,6 +32,7 @@ import { ToastStack } from '@/app/shared/ui/toast-stack';
       <router-outlet />
     </main>
     <site-footer />
+    <assistant-panel />
   `,
   styles: `
     :host {

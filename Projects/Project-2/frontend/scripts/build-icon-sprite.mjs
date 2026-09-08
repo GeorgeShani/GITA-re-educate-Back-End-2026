@@ -58,6 +58,7 @@ const LUCIDE = [
   'upload',
   'sliders-horizontal',
   'store',
+  'sparkles',
 ];
 
 /** Simple Icons exports, keyed by the name the sprite should expose. */

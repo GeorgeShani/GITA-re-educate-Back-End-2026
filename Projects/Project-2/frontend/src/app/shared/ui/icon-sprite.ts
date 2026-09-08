@@ -34,6 +34,7 @@ export type IconName =
   | 'upload'
   | 'sliders-horizontal'
   | 'store'
+  | 'sparkles'
   | 'instagram'
   | 'facebook'
   | 'youtube'
@@ -75,6 +76,7 @@ export const ICON_NAMES: readonly IconName[] = [
   'upload',
   'sliders-horizontal',
   'store',
+  'sparkles',
   'instagram',
   'facebook',
   'youtube',
@@ -490,6 +492,22 @@ export const ICON_NAMES: readonly IconName[] = [
             d="M17.774 10.31a1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.451 0 1.12 1.12 0 0 0-1.548 0 2.5 2.5 0 0 1-3.452 0 1.12 1.12 0 0 0-1.549 0 2.5 2.5 0 0 1-3.77-3.248l2.889-4.184A2 2 0 0 1 7 2h10a2 2 0 0 1 1.653.873l2.895 4.192a2.5 2.5 0 0 1-3.774 3.244"
           />
           <path d="M4 10.95V19a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8.05" />
+        </symbol>
+        <symbol
+          id="sparkles"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"
+          />
+          <path d="M20 2v4" />
+          <path d="M22 4h-4" />
+          <circle cx="4" cy="20" r="2" />
         </symbol>
         <symbol id="instagram" viewBox="0 0 24 24" fill="currentColor">
           <path
