@@ -67,7 +67,10 @@ interface StubFunctionCall {
 // thoughtSignature; see runTurn()'s own comment on why). Building
 // `candidates` here from a plain `functionCalls` shorthand keeps call
 // sites terse while still exercising the real path.
-function toStubChunk(chunk: { text?: string; functionCalls?: StubFunctionCall[] }) {
+function toStubChunk(chunk: {
+  text?: string;
+  functionCalls?: StubFunctionCall[];
+}) {
   return {
     text: chunk.text,
     candidates: chunk.functionCalls
@@ -306,7 +309,12 @@ describe('AssistantService (integration)', () => {
         [
           {
             functionCalls: [
-              { id: 'call-1', name: 'context_probe', args: {}, thoughtSignature: 'sig-read-only' },
+              {
+                id: 'call-1',
+                name: 'context_probe',
+                args: {},
+                thoughtSignature: 'sig-read-only',
+              },
             ],
           },
         ],
@@ -321,10 +329,15 @@ describe('AssistantService (integration)', () => {
       expect(recordedContents).toHaveLength(2);
       const secondTurnContents = recordedContents[1] as {
         role: string;
-        parts: { functionCall?: { name?: string }; thoughtSignature?: string }[];
+        parts: {
+          functionCall?: { name?: string };
+          thoughtSignature?: string;
+        }[];
       }[];
       const modelTurn = secondTurnContents.find((c) => c.role === 'model');
-      const functionCallPart = modelTurn?.parts.find((p) => p.functionCall?.name === 'context_probe');
+      const functionCallPart = modelTurn?.parts.find(
+        (p) => p.functionCall?.name === 'context_probe',
+      );
       expect(functionCallPart?.thoughtSignature).toBe('sig-read-only');
     });
 
@@ -344,7 +357,12 @@ describe('AssistantService (integration)', () => {
         [
           {
             functionCalls: [
-              { id: 'call-1', name: 'mutating_probe', args: {}, thoughtSignature: 'sig-mutating' },
+              {
+                id: 'call-1',
+                name: 'mutating_probe',
+                args: {},
+                thoughtSignature: 'sig-mutating',
+              },
             ],
           },
         ],
@@ -354,14 +372,21 @@ describe('AssistantService (integration)', () => {
       const userId = new mongoose.Types.ObjectId().toString();
       const session = await service.createSession(userId);
 
-      const events = await drain(service.sendMessage(session.id, userId, 'do the mutating thing'));
-      const confirmationEvent = events.find((e) => e.type === 'confirmation_required') as
-        | { type: 'confirmation_required'; messageId: string }
-        | undefined;
+      const events = await drain(
+        service.sendMessage(session.id, userId, 'do the mutating thing'),
+      );
+      const confirmationEvent = events.find(
+        (e) => e.type === 'confirmation_required',
+      ) as { type: 'confirmation_required'; messageId: string } | undefined;
       expect(confirmationEvent).toBeDefined();
 
       await drain(
-        service.confirmToolCall(session.id, confirmationEvent!.messageId, userId, true),
+        service.confirmToolCall(
+          session.id,
+          confirmationEvent!.messageId,
+          userId,
+          true,
+        ),
       );
 
       // This second generateContentStream call is the one confirmToolCall
@@ -370,10 +395,15 @@ describe('AssistantService (integration)', () => {
       expect(recordedContents).toHaveLength(2);
       const rehydratedContents = recordedContents[1] as {
         role: string;
-        parts: { functionCall?: { name?: string }; thoughtSignature?: string }[];
+        parts: {
+          functionCall?: { name?: string };
+          thoughtSignature?: string;
+        }[];
       }[];
       const modelTurn = rehydratedContents.find((c) => c.role === 'model');
-      const functionCallPart = modelTurn?.parts.find((p) => p.functionCall?.name === 'mutating_probe');
+      const functionCallPart = modelTurn?.parts.find(
+        (p) => p.functionCall?.name === 'mutating_probe',
+      );
       expect(functionCallPart?.thoughtSignature).toBe('sig-mutating');
     });
   });
