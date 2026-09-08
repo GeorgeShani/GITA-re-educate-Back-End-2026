@@ -8,7 +8,6 @@ import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { IconButton } from '@/app/shared/ui/icon-button';
-import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
@@ -30,7 +29,6 @@ const QUANTITY_DEBOUNCE_MS = 500;
     RevealDirective,
     ActionButton,
     IconButton,
-    IconGlyph,
     ImagePlaceholder,
     PageContainer,
     PageSection,

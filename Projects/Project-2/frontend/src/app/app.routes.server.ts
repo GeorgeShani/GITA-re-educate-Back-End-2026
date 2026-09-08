@@ -23,6 +23,8 @@ export const serverRoutes: ServerRoute[] = [
   // route lands below — Angular SSR fails the build on a server-route
   // entry that matches nothing in the client routing config.
   { path: 'cart', renderMode: RenderMode.Client },
+  { path: 'checkout', renderMode: RenderMode.Client },
+  { path: 'checkout/complete/:orderId', renderMode: RenderMode.Client },
   { path: 'sign-in', renderMode: RenderMode.Client },
   { path: 'sign-up', renderMode: RenderMode.Client },
   { path: 'forgot-password', renderMode: RenderMode.Client },

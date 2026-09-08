@@ -4,7 +4,7 @@ import type { Observable } from 'rxjs';
 
 /**
  * Relative on purpose. In dev, proxy.conf.json forwards /api to the API on
- * :3000, which makes requests same-origin — that is what lets the browser
+ * :4000, which makes requests same-origin — that is what lets the browser
  * carry the guest cart's signed httpOnly cookie, which a cross-origin
  * request with sameSite=lax would silently drop.
  */

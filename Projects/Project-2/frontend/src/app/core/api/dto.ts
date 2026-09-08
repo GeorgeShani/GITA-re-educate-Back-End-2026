@@ -213,3 +213,126 @@ export interface AccessTokenClaims {
   exp: number;
   iat: number;
 }
+
+// --------------------------------------------------------------- checkout
+
+/**
+ * What a new/typed-in address looks like on the wire — the same shape as
+ * `AddressDto` minus `id`, since an id only exists once it's been saved to
+ * a user's address book. Mirrors backend/src/common/dto/address.dto.ts.
+ */
+export interface AddressInput {
+  fullName: string;
+  company?: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  region?: string;
+  postalCode: string;
+  countryCode: string;
+  phone?: string;
+  isDefault?: boolean;
+}
+
+export interface ShippingOptionDto {
+  method: string;
+  priceMinor: number;
+  estimatedDaysMin?: number;
+  estimatedDaysMax?: number;
+  /** priceMinor after a free_shipping coupon, if any (else = priceMinor). */
+  effectivePriceMinor: number;
+  /** subtotal - discount + effectivePrice + tax for choosing this option. */
+  totalMinor: number;
+}
+
+/**
+ * GET /checkout/quote. An estimate, not authoritative — the real charge is
+ * whatever the resulting Order says. Notably: tax here is already computed
+ * on the post-discount subtotal (checkout.service.ts's getQuote), matching
+ * place-order exactly, so shippingOptions[].totalMinor is the true payable
+ * total for that option.
+ */
+export interface CheckoutQuoteDto {
+  items: CartLineDto[];
+  subtotalMinor: number;
+  discountMinor: number;
+  taxMinor: number;
+  shippingOptions: ShippingOptionDto[];
+  couponCode?: string;
+}
+
+export interface PlaceOrderRequest {
+  shippingAddress: AddressInput;
+  billingAddress: AddressInput;
+  /** One of the `method` values from a CheckoutQuoteDto.shippingOptions entry. */
+  shippingMethod: string;
+  customerNote?: string;
+}
+
+// ----------------------------------------------------------------- orders
+
+/** Mirrors backend/src/orders/enums/order-status.enum.ts. */
+export type OrderStatus =
+  | 'placed'
+  | 'paid'
+  | 'payment_failed'
+  | 'confirmed'
+  | 'fulfilled'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'refunded';
+
+/**
+ * A frozen line snapshot taken at checkout — no `variantAttributes` (unlike
+ * CartLineDto), because Order.items never references the live product, only
+ * what was true the moment the order was placed.
+ */
+export interface OrderItemDto {
+  id: string;
+  productId: string;
+  variantSku: string;
+  nameSnapshot: string;
+  imageUrlSnapshot?: string;
+  unitPriceMinor: number;
+  quantity: number;
+  lineTotalMinor: number;
+}
+
+export interface OrderDto {
+  id: string;
+  orderNumber: string;
+  userId: string;
+  items: OrderItemDto[];
+  shippingAddress: AddressInput;
+  billingAddress: AddressInput;
+  subtotalMinor: number;
+  discountMinor: number;
+  shippingMinor: number;
+  taxMinor: number;
+  totalMinor: number;
+  currency: string;
+  couponCode?: string;
+  status: OrderStatus;
+  paymentId?: string;
+  cancelledReason?: string;
+  customerNote?: string;
+  invoiceUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlaceOrderResultDto {
+  order: OrderDto;
+  /** The PaymentIntent's client secret — hand this straight to stripe.elements(). */
+  clientSecret: string;
+}
+
+/** GET /orders/track. Deliberately minimal — a public, unauthenticated lookup. */
+export interface TrackingInfoDto {
+  orderNumber: string;
+  status: OrderStatus;
+  city: string;
+  countryCode: string;
+  placedAt: string;
+}

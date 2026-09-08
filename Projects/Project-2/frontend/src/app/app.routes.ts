@@ -1,5 +1,6 @@
 import type { Routes } from '@angular/router';
 
+import { authGuard } from '@/app/core/guards/auth.guard';
 import { devOnlyGuard } from '@/app/core/guards/dev-only.guard';
 
 /**
@@ -55,6 +56,23 @@ export const routes: Routes = [
     path: 'cart',
     loadComponent: () => import('@/app/features/cart/cart'),
     title: 'Your Cart — 3legant Golf',
+  },
+  {
+    path: 'checkout',
+    canActivate: [authGuard],
+    loadComponent: () => import('@/app/features/checkout/checkout'),
+    title: 'Checkout — 3legant Golf',
+  },
+  {
+    path: 'checkout/complete/:orderId',
+    canActivate: [authGuard],
+    loadComponent: () => import('@/app/features/checkout/order-complete'),
+    title: 'Order placed — 3legant Golf',
+  },
+  {
+    path: 'track',
+    loadComponent: () => import('@/app/features/track/track'),
+    title: 'Track your order — 3legant Golf',
   },
   {
     path: 'styleguide',
