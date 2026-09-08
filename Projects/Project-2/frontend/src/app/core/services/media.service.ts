@@ -26,28 +26,29 @@ export class MediaService {
   /** Signs, uploads to Cloudinary, and registers the asset — the full round trip in one call. */
   upload(file: File, ownerContext: OwnerContext): Observable<MediaDto> {
     return this.getUploadSignature(ownerContext).pipe(
-      switchMap((signed) => from(this.uploadToCloudinary(file, signed))),
+      switchMap((signed) => from(uploadToCloudinary(file, signed))),
       switchMap((publicId) => this.api.post<MediaDto>('/media', { publicId, ownerContext })),
     );
   }
+}
 
-  private async uploadToCloudinary(file: File, signed: UploadSignatureDto): Promise<string> {
-    const form = new FormData();
-    form.append('file', file);
-    form.append('api_key', signed.apiKey);
-    form.append('timestamp', String(signed.timestamp));
-    form.append('signature', signed.signature);
-    form.append('folder', signed.folder);
-    if (signed.uploadPreset) form.append('upload_preset', signed.uploadPreset);
+/** Shared with admin-media.service.ts's product-image upload — the Cloudinary POST itself is identical regardless of ownerContext. */
+export async function uploadToCloudinary(file: File, signed: UploadSignatureDto): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('api_key', signed.apiKey);
+  form.append('timestamp', String(signed.timestamp));
+  form.append('signature', signed.signature);
+  form.append('folder', signed.folder);
+  if (signed.uploadPreset) form.append('upload_preset', signed.uploadPreset);
 
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`,
-      { method: 'POST', body: form },
-    );
-    if (!response.ok) {
-      throw new Error(`Cloudinary upload failed (${response.status})`);
-    }
-    const result = (await response.json()) as { public_id: string };
-    return result.public_id;
+  const response = await fetch(`https://api.cloudinary.com/v1_1/${signed.cloudName}/image/upload`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) {
+    throw new Error(`Cloudinary upload failed (${response.status})`);
   }
+  const result = (await response.json()) as { public_id: string };
+  return result.public_id;
 }

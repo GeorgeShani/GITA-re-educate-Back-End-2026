@@ -2,6 +2,8 @@ import type { Routes } from '@angular/router';
 
 import { authGuard } from '@/app/core/guards/auth.guard';
 import { devOnlyGuard } from '@/app/core/guards/dev-only.guard';
+import { roleGuard } from '@/app/core/guards/role.guard';
+import { ADMIN_ROLES, ANY_STAFF_ROLE } from '@/app/core/constants/admin-roles';
 
 /**
  * Every feature is lazy — AGENTS.md requires it, and it is what keeps the
@@ -156,6 +158,44 @@ export const routes: Routes = [
     path: 'newsletter/unsubscribe',
     loadComponent: () => import('@/app/features/newsletter/newsletter-unsubscribe'),
     title: 'Unsubscribe — 3legant Golf',
+  },
+  {
+    path: 'admin',
+    canActivate: [roleGuard(ANY_STAFF_ROLE)],
+    loadComponent: () => import('@/app/features/admin/admin-shell'),
+    children: [
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      {
+        path: 'dashboard',
+        canActivate: [roleGuard(['admin'])],
+        loadComponent: () => import('@/app/features/admin/admin-dashboard'),
+        title: 'Dashboard — Admin',
+      },
+      {
+        path: 'categories',
+        canActivate: [roleGuard(ADMIN_ROLES.catalog)],
+        loadComponent: () => import('@/app/features/admin/admin-categories'),
+        title: 'Categories — Admin',
+      },
+      {
+        path: 'products',
+        canActivate: [roleGuard(ADMIN_ROLES.catalog)],
+        loadComponent: () => import('@/app/features/admin/admin-products'),
+        title: 'Products — Admin',
+      },
+      {
+        path: 'inventory',
+        canActivate: [roleGuard(ADMIN_ROLES.catalog)],
+        loadComponent: () => import('@/app/features/admin/admin-inventory'),
+        title: 'Inventory — Admin',
+      },
+      {
+        path: 'media',
+        canActivate: [roleGuard(ADMIN_ROLES.catalog)],
+        loadComponent: () => import('@/app/features/admin/admin-media'),
+        title: 'Media library — Admin',
+      },
+    ],
   },
   {
     path: 'styleguide',

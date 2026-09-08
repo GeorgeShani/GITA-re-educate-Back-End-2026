@@ -26,6 +26,7 @@ export const serverRoutes: ServerRoute[] = [
   { path: 'checkout', renderMode: RenderMode.Client },
   { path: 'checkout/complete/:orderId', renderMode: RenderMode.Client },
   { path: 'account/**', renderMode: RenderMode.Client },
+  { path: 'admin/**', renderMode: RenderMode.Client },
   { path: 'sign-in', renderMode: RenderMode.Client },
   { path: 'sign-up', renderMode: RenderMode.Client },
   { path: 'forgot-password', renderMode: RenderMode.Client },

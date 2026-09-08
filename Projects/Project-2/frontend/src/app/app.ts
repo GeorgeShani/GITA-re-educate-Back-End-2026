@@ -1,5 +1,7 @@
 import { Component, afterNextRender, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 
 import { CartService } from '@/app/core/services/cart.service';
 import { AssistantPanel } from '@/app/features/assistant/assistant-panel';
@@ -25,14 +27,18 @@ import { ToastStack } from '@/app/shared/ui/toast-stack';
   template: `
     <icon-sprite />
     <toast-stack />
-    <skip-link />
-    <notification-bar />
-    <site-header />
+    @if (!isAdminRoute()) {
+      <skip-link />
+      <notification-bar />
+      <site-header />
+    }
     <main id="main-content">
       <router-outlet />
     </main>
-    <site-footer />
-    <assistant-panel />
+    @if (!isAdminRoute()) {
+      <site-footer />
+      <assistant-panel />
+    }
   `,
   styles: `
     :host {
@@ -48,6 +54,22 @@ import { ToastStack } from '@/app/shared/ui/toast-stack';
 })
 export class App {
   private readonly cart = inject(CartService);
+  private readonly router = inject(Router);
+
+  // The admin console is a separate surface from the storefront (staff
+  // only, its own shell/nav in admin-shell.ts) — the customer-facing
+  // header/footer/notification-bar/assistant FAB have no business
+  // showing on top of it. Derived from Router events rather than a
+  // routeConfig flag since this needs to react to in-app navigation
+  // between the two surfaces, not just the initial load.
+  protected readonly isAdminRoute = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects.startsWith('/admin')),
+      startWith(this.router.url.startsWith('/admin')),
+    ),
+    { initialValue: this.router.url.startsWith('/admin') },
+  );
 
   constructor() {
     // Browser-only: the guest cart is identified by a cookie the server sets,

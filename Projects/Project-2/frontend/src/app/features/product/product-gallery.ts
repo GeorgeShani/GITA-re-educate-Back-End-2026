@@ -34,7 +34,7 @@ import { IconButton } from '@/app/shared/ui/icon-button';
     </div>
     @if (images().length > 1) {
       <ul class="thumbs" role="list">
-        @for (image of images(); track image.id; let i = $index) {
+        @for (image of images(); track image._id; let i = $index) {
           <li>
             <button
               type="button"

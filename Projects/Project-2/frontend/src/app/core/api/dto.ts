@@ -34,8 +34,19 @@ export interface ApiErrorBody {
 
 // ---------------------------------------------------------------- catalog
 
+/**
+ * `_id`, not `id`: ProductImage is an embedded subdocument
+ * (product.schema.ts's `@Schema({ _id: true })`) that does NOT use
+ * baseSchemaOptions, so the "every entity serialises id, never _id"
+ * convention at the top of this file doesn't extend to it — same
+ * exception as OrderItemDto, confirmed against a real response, not
+ * assumed. Was wrongly typed `id` here since F4/F5; harmless in
+ * practice (product-gallery.ts's @for never re-renders this array), but
+ * a real @for tracking-contract violation fixed while touching this
+ * exact bug class for the admin product editor.
+ */
 export interface ProductImageDto {
-  id: string;
+  _id: string;
   publicId: string;
   url: string;
   width: number;
@@ -44,8 +55,9 @@ export interface ProductImageDto {
   position: number;
 }
 
+/** `_id`, not `id` — same ProductVariant exception as ProductImageDto above. */
 export interface ProductVariantDto {
-  id: string;
+  _id: string;
   sku: string;
   attributes: Record<string, string>;
   priceMinor?: number;
@@ -406,8 +418,9 @@ export interface WishlistEntryDto {
 /** Mirrors backend/src/returns/enums/return-status.enum.ts. */
 export type ReturnStatus = 'requested' | 'approved' | 'rejected' | 'received' | 'refunded';
 
+/** `_id`, not `id` — ReturnItem is `@Schema({ _id: true })` without baseSchemaOptions, same exception as OrderItemDto/ProductImageDto. Was unused anywhere that would have surfaced the mistake until now. */
 export interface ReturnItemDto {
-  id: string;
+  _id: string;
   orderItemId: string;
   quantity: number;
   reason: string;
@@ -617,3 +630,397 @@ export type AssistantSseEvent =
     }
   | { type: 'done' }
   | { type: 'error'; message: string };
+
+// ---------------------------------------------------------------- admin (F11)
+
+export interface AuditLogEntryDto {
+  id: string;
+  eventId: string;
+  eventName: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: Record<string, unknown>;
+  occurredAt: string;
+  correlationId: string;
+  createdAt: string;
+}
+
+export interface AuditLogQuery {
+  eventName?: string;
+  aggregateType?: string;
+  aggregateId?: string;
+  correlationId?: string;
+  page?: number;
+  take?: number;
+}
+
+/** No product name/slug — InventoryItem.productId is never populated server-side; admin pages resolve it via AdminProductLookupService. */
+export interface AdminInventoryItemDto {
+  id: string;
+  productId: string;
+  variantSku: string;
+  quantityOnHand: number;
+  quantityReserved: number;
+  lowStockThreshold: number;
+  backorderAllowed: boolean;
+}
+
+export interface AdjustStockRequest {
+  delta: number;
+  reasonCode: string;
+  note?: string;
+}
+
+export interface DashboardSummaryDto {
+  from: string;
+  to: string;
+  revenueMinor: number;
+  orderCount: number;
+  averageOrderValueMinor: number;
+  lowStock: AdminInventoryItemDto[];
+  recentActivity: AuditLogEntryDto[];
+}
+
+// -- products --
+
+export interface AdminProductQuery {
+  category?: string;
+  brand?: string;
+  isPublished?: boolean;
+  page?: number;
+  take?: number;
+}
+
+export interface ProductImageInput {
+  publicId: string;
+  url: string;
+  width: number;
+  height: number;
+  alt: string;
+  position: number;
+}
+
+export interface ProductVariantInput {
+  sku: string;
+  attributes: Record<string, string>;
+  priceMinor?: number;
+  compareAtPriceMinor?: number;
+  barcode?: string;
+  weightGrams?: number;
+  isActive: boolean;
+}
+
+export interface UpsertProductRequest {
+  name: string;
+  slug: string;
+  brand?: string;
+  description: string;
+  tags?: string[];
+  categoryId: string;
+  basePriceMinor: number;
+  compareAtPriceMinor?: number;
+  images?: ProductImageInput[];
+  variants?: ProductVariantInput[];
+  careInstructions?: string;
+  specSheetUrl?: string;
+  isFeatured?: boolean;
+  publish?: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoOgImageUrl?: string;
+}
+
+// -- categories (flat, not paginated — admin-categories.service.ts returns a plain array) --
+
+export interface AdminCategoryDto {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  parentId: string | null;
+  path: string;
+  position: number;
+  imageUrl?: string;
+  isActive: boolean;
+}
+
+export interface UpsertCategoryRequest {
+  name: string;
+  slug: string;
+  description?: string;
+  parentId?: string | null;
+  position?: number;
+  imageUrl?: string;
+  isActive?: boolean;
+}
+
+// -- orders (admin) --
+
+export interface AdminOrderQuery {
+  status?: OrderStatus;
+  page?: number;
+  take?: number;
+}
+
+export interface ShipOrderRequest {
+  carrier?: string;
+  trackingNumber?: string;
+  trackingUrl?: string;
+}
+
+export interface IssueRefundRequest {
+  amountMinor?: number;
+  reason?: string;
+}
+
+// -- returns (admin) --
+
+export interface AdminReturnQuery {
+  status?: ReturnStatus;
+  page?: number;
+  take?: number;
+}
+
+// -- reviews (admin) --
+
+export type ReviewStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AdminReviewDto {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  title?: string;
+  body: string;
+  isVerifiedPurchase: boolean;
+  photoPublicIds: string[];
+  status: ReviewStatus;
+  adminReply?: string;
+  createdAt: string;
+}
+
+export interface AdminReviewQuery {
+  status?: ReviewStatus;
+  productId?: string;
+  page?: number;
+  take?: number;
+}
+
+// -- coupons --
+
+export type CouponType = 'percentage' | 'fixed' | 'free_shipping';
+
+export interface CouponDto {
+  id: string;
+  code: string;
+  type: CouponType;
+  value: number;
+  minSpendMinor: number;
+  productIds: string[];
+  categoryIds: string[];
+  perUserLimit?: number;
+  globalLimit?: number;
+  allowStacking: boolean;
+  startsAt: string;
+  endsAt?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface UpsertCouponRequest {
+  code: string;
+  type: CouponType;
+  value: number;
+  minSpendMinor?: number;
+  productIds?: string[];
+  categoryIds?: string[];
+  perUserLimit?: number;
+  globalLimit?: number;
+  allowStacking?: boolean;
+  startsAt: string;
+  endsAt?: string;
+  isActive?: boolean;
+}
+
+// -- gift cards --
+
+export interface GiftCardDto {
+  id: string;
+  code: string;
+  initialBalanceMinor: number;
+  balanceMinor: number;
+  currency: string;
+  issuedToUserId?: string;
+  expiresAt?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface IssueGiftCardRequest {
+  balanceMinor: number;
+  issuedToUserId?: string;
+  expiresAt?: string;
+}
+
+export interface UpdateGiftCardRequest {
+  expiresAt?: string;
+  isActive?: boolean;
+}
+
+// -- shipping zones (plain array, not paginated) --
+
+/** `_id`, not `id` — ShippingRate is `@Schema({ _id: true })` without baseSchemaOptions, same exception as OrderItemDto. */
+export interface ShippingRateDto {
+  _id: string;
+  method: string;
+  priceMinor: number;
+  minWeightGrams?: number;
+  maxWeightGrams?: number;
+  freeAboveSubtotalMinor?: number;
+  estimatedDaysMin?: number;
+  estimatedDaysMax?: number;
+}
+
+export interface AdminShippingZoneDto {
+  id: string;
+  name: string;
+  countryCodes: string[];
+  rates: ShippingRateDto[];
+  isActive: boolean;
+}
+
+export interface ShippingRateInput {
+  method: string;
+  priceMinor: number;
+  minWeightGrams?: number;
+  maxWeightGrams?: number;
+  freeAboveSubtotalMinor?: number;
+  estimatedDaysMin?: number;
+  estimatedDaysMax?: number;
+}
+
+export interface UpsertShippingZoneRequest {
+  name: string;
+  countryCodes: string[];
+  rates?: ShippingRateInput[];
+  isActive?: boolean;
+}
+
+// -- tax rates (plain array, not paginated) --
+
+export interface TaxRateDto {
+  id: string;
+  countryCode: string;
+  region?: string;
+  rateBasisPoints: number;
+  isActive: boolean;
+}
+
+export interface UpsertTaxRateRequest {
+  countryCode: string;
+  region?: string;
+  rateBasisPoints: number;
+  isActive?: boolean;
+}
+
+// -- blog admin (PostDto/CommentDto/PostCategoryDto/TagDto from F9 are reused as-is — same schema, admin endpoints just add draft/pending visibility) --
+
+export interface AdminPostQuery {
+  page?: number;
+  take?: number;
+}
+
+export interface UpsertPostRequest {
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body: string;
+  coverImageUrl?: string;
+  categoryId?: string;
+  tagIds?: string[];
+  /** ISO 8601 to (re)publish/schedule, null to revert to draft, omit to leave untouched (update only). */
+  publishedAt?: string | null;
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
+export interface UpsertPostCategoryRequest {
+  name: string;
+  slug: string;
+}
+
+export interface UpsertTagRequest {
+  name: string;
+}
+
+export interface AdminCommentQuery {
+  status?: CommentStatus;
+  postId?: string;
+  page?: number;
+  take?: number;
+}
+
+// -- contact inbox --
+
+export interface AdminContactMessageDto {
+  id: string;
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface AdminContactQuery {
+  isRead?: boolean;
+  page?: number;
+  take?: number;
+}
+
+// -- newsletter admin (NewsletterSubscriberDto from F9 reused as-is) --
+
+export interface AdminNewsletterQuery {
+  page?: number;
+  take?: number;
+}
+
+// -- email log --
+
+export type EmailStatus = 'queued' | 'sent' | 'delivered' | 'bounced' | 'complained' | 'failed';
+
+export interface EmailMessageDto {
+  id: string;
+  template: string;
+  to: string;
+  subject: string;
+  category: EmailCategory;
+  status: EmailStatus;
+  providerMessageId?: string;
+  error?: string;
+  createdAt: string;
+}
+
+export interface AdminEmailQuery {
+  status?: EmailStatus;
+  category?: EmailCategory;
+  to?: string;
+  page?: number;
+  take?: number;
+}
+
+// -- users & roles --
+
+export interface AdminUserQuery {
+  email?: string;
+  page?: number;
+  take?: number;
+}
+
+export interface UpdateUserRolesRequest {
+  roles: RoleDto[];
+}
+
+export interface SetUserBannedRequest {
+  banned: boolean;
+}
