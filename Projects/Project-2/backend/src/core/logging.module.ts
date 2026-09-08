@@ -16,6 +16,17 @@ import { ClsService } from 'nestjs-cls';
       imports: [ConfigModule],
       inject: [ConfigService, ClsService],
       useFactory: (configService: ConfigService, cls: ClsService) => ({
+        // nestjs-pino's own configure() defaults `forRoutes` to the
+        // hardcoded, pre-Express-5 [{ path: '*', method: ALL }] (see its
+        // LoggerModule.js — not version-aware the way ClsModule's own
+        // middleware mount point is). path-to-regexp (Express >=5) rejects
+        // a bare `*`, so every boot logged two "Unsupported route path"
+        // warnings — one per pino-http internal middleware, both sharing
+        // this same default. '/' is exactly what ClsModule's own
+        // Express-5 branch uses for "every route" (middleware.utils.js's
+        // MOUNT_POINT_EXPRESS_5), so this isn't a narrower match — it's
+        // the modern equivalent of what '*' meant under Express 4.
+        forRoutes: ['/'],
         pinoHttp: {
           level:
             configService.get<string>('NODE_ENV') === 'production'

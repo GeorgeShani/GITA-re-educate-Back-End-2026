@@ -26,7 +26,16 @@ async function bootstrap() {
   // carrying one correlationId) is delivered by LoggingModule's
   // pino-http auto-logging of HTTP requests, not by Nest's own
   // "ModuleXYZ initialized" bootstrap chatter — see core/logging.module.ts.
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  // 'debug'/'verbose' off: the framework's own bootstrap chatter is
+  // already treated as noise per the comment above (structured,
+  // correlationId-tagged logging comes from pino-http, not this logger).
+  // ClsModule specifically logs its middleware-mount decision at 'debug'
+  // on every boot — silencing the level is the fix, not chasing a
+  // per-module toggle.
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,
+    logger: ['log', 'error', 'warn'],
+  });
 
   const configService = app.get(ConfigService);
 
