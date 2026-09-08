@@ -16,5 +16,5 @@ import mongoose from 'mongoose';
 // MongoTestContext opens.
 export function getTestModel<TDoc>(name: string, schema: Schema): Model<TDoc> {
   const existing = mongoose.models[name];
-  return (existing ?? mongoose.model(name, schema)) as unknown as Model<TDoc>;
+  return existing ?? mongoose.model(name, schema);
 }
