@@ -114,6 +114,27 @@ export interface StockDto {
   lowStock: boolean;
 }
 
+// ------------------------------------------------------------------ reviews
+
+/**
+ * `userId` is a bare id, never populated with a name/avatar server-side
+ * (see backend/src/reviews/schemas/review.schema.ts) — the reviews list UI
+ * must not invent an author name from this alone. `isVerifiedPurchase` is
+ * the one piece of author context the API actually gives us.
+ */
+export interface ReviewDto {
+  id: string;
+  productId: string;
+  userId: string;
+  rating: number;
+  title?: string;
+  body: string;
+  isVerifiedPurchase: boolean;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ------------------------------------------------------------------- cart
 
 export interface CartLineDto {

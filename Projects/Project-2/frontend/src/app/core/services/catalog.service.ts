@@ -80,6 +80,18 @@ export class CatalogService {
       variantSku,
     });
   }
+
+  /**
+   * Reactive counterpart to `stock()` — refetches whenever the selected
+   * variant changes, which is what the PDP's "in stock" line needs (stock
+   * is per-SKU, not per-product).
+   */
+  stockResource(query: () => { productId: string; variantSku: string } | undefined) {
+    return httpResource<StockDto>(() => {
+      const value = query();
+      return value ? { url: `${this.baseUrl}/inventory/stock`, params: value } : undefined;
+    });
+  }
 }
 
 /**
