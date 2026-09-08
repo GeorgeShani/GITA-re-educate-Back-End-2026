@@ -1,59 +1,185 @@
-# 3legant
+# 3legant Golf — Storefront
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.0.9.
+Angular 22 (SSR) storefront, account, blog, AI shopping assistant, and staff
+admin panel for a golf e-commerce platform. Built against a real live backend
+throughout, never mock fixtures.
 
-## Development server
+The product spec lives one level up in [`../SCOPE.md`](../SCOPE.md) and is the
+source of truth for design tokens, domain model, and build phases — see its
+*Frontend rebuild (F0–F12)* section for the phase-by-phase plan this app was
+built to. This file covers running and working on the frontend itself.
 
-To start a local development server, run:
+---
 
-```bash
-ng serve
+## Status
+
+F0 (real data layer) through F11 (admin panel, 19 areas) are done and pushed.
+**F12 (a Figma-driven visual/animation polish pass) has not started** — it
+needs a fuller plan from the project owner first; do not begin it
+unprompted. Everything described below is real, running code, not a plan.
+
+---
+
+## Architecture in one paragraph
+
+One Angular app, three chrome states. The storefront (`site-header` /
+`site-footer` / `notification-bar` / the assistant FAB) renders on every route
+except `/admin/**`, where `app.ts` hides it in favor of `admin-shell.ts`'s own
+sidebar — derived reactively from `router.events`, not a route-data flag, so
+it can't drift out of sync with `app.routes.ts`. Every route is lazy
+(`loadComponent`), and `app.routes.server.ts` picks a render mode per route:
+`Prerender` for static content, `Server` for anything SEO-critical that
+changes server-side, `Client` for anything session-scoped (cart, account,
+checkout, the whole `/admin/**` subtree) where there's nothing meaningful to
+render without the user's token. The dev server proxies `/api` to the backend
+same-origin (`proxy.conf.json`, auto-wired via `angular.json`'s `serve`
+target) — this isn't optional: the guest cart rides a signed `httpOnly`
+cookie, and a cross-origin request silently drops it.
+
+```
+Browser ── ng serve (4200) ──/api proxy──> NestJS API (4000)
+                │
+                ├─ storefront chrome (all routes except /admin/**)
+                ├─ admin-shell (role-gated, /admin/**, own sidebar)
+                └─ assistant-panel (FAB, global chrome, SSE over POST)
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+**Layout:** `src/app/core/` holds API clients, DTOs, guards, and every
+service. `src/app/shared/ui/` is the design-system primitive layer (buttons,
+fields, cards, dialogs, tables) — every feature composes these, nothing
+duplicates them. `src/app/features/` is one folder per route area; `admin/`
+alone has 19 CRUD surfaces built on a small shared layer
+(`features/admin/ui/`: page-toolbar, data-table, drawer-form, filter-bar,
+empty-state, admin-confirm) rather than one bespoke layout per area.
 
-## Code scaffolding
+---
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Quick start
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+The backend must be running first — see
+[`../backend/README.md`](../backend/README.md). This app talks to it through
+the dev proxy, never directly.
 
 ```bash
-ng build
+npm install
+npm start
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+`npm start` is `ng serve` with the `/api` proxy already wired
+(`proxy.conf.json` → `http://localhost:4000`). There is no frontend `.env` —
+Angular has none; the one value this app needs (Stripe's *publishable* key,
+safe to ship in a client bundle by design) already lives in
+`src/environments/environment.ts`. See
+[`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md) if that ever needs
+changing.
 
-## Running unit tests
+- App: `http://localhost:4200`
+- Admin panel: `http://localhost:4200/admin` (needs a staff role — see the
+  backend README's `promote-admin` script; the nav filters itself to what
+  the signed-in role can actually reach)
+- Style guide: `http://localhost:4200/styleguide` (dev-only, gated by
+  `devOnlyGuard`)
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+---
 
-```bash
-ng test
-```
+## Scripts
 
-## Running end-to-end tests
+| Command | What it does |
+|---|---|
+| `npm start` | `ng serve` with the API proxy wired |
+| `npm run build` | Production build to `dist/3legant/` |
+| `npm run watch` | Dev-configuration build in watch mode, no server |
+| `npm test` | Unit tests via Vitest (`ng test`) |
+| `npm run serve:ssr:3legant` | Run the built SSR server (`node dist/3legant/server/server.mjs`) |
+| `npm run icons` | Regenerate `shared/ui/icon-sprite.ts` from Lucide — **never hand-edit that file**, it has a do-not-edit-by-hand header |
 
-For end-to-end (e2e) testing, run:
+---
 
-```bash
-ng e2e
-```
+## Things that will bite you
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+Collected because each one has already cost a debugging session.
 
-## Additional Resources
+**The dev proxy target is hardcoded to port 4000, not 3000.** The backend's
+own `.env.example` briefly drifted to `PORT=3000` after a mid-project port
+change and broke this silently on a fresh clone — SSR's `apiOrigin` fallback
+in `app.config.server.ts` and `proxy.conf.json`'s `target` both assume 4000.
+If the backend is listening somewhere else, both need updating together, not
+just one.
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+**Editing `proxy.conf.json` while `ng serve` is already running does
+nothing.** The dev-server proxy config loads once at server startup and does
+not hot-reload — restart the server after changing it.
+
+**`withViewTransitions()` (app-wide routing) can abort specific
+post-mutation navigations** — seen after a successful Stripe payment and
+after a reorder — leaving the router silently stuck on the old URL with no
+error. Both known spots use the same fallback:
+`router.navigateByUrl(...).then(succeeded => { if (!succeeded) window.location.href = ... })`.
+Apply the same pattern if a third one turns up rather than debugging view
+transitions directly.
+
+**An embedded Mongoose subdocument may serialize `_id`, not the app's usual
+`id`** — depends on whether *that specific* subdocument's own schema uses
+`baseSchemaOptions`, independent of its parent document. Confirmed on order
+items, product images, product variants, and return items so far (all typed
+`_id: string` in `core/api/dto.ts` for exactly this reason). Before typing a
+DTO for any new embedded subdocument, curl a real API response rather than
+assuming the top-level "everything is `id`" convention extends inward.
+
+**Angular's build does not flag an unused pipe import** the way it does an
+unused component/directive (which is a real `NG8113` error). A clean
+`ng build` is not proof every pipe in a component's `imports` array is
+actually used in its template — check by grepping for the pipe's usage
+syntax (`| money`, `| date`), not the class name (which trivially appears
+in the `import` statement and the `imports` array regardless).
+
+**Signal Forms (`@angular/forms/signals`) are only used in `features/auth/`**
+so far. Everywhere else — including every admin form — plain signals +
+`(valueChange)` on the `TextField`/`SelectField`/etc. primitives do the job,
+because those primitives use `input()`/`output()`, not the `model()` a
+Signal Forms `[formField]` binding needs. Don't assume Signal Forms is the
+house style project-wide; check what the nearest sibling component actually
+does.
+
+**Apply the `reveal` directive** (`shared/directives/reveal.directive.ts`)
+to every visible section on a new storefront page, except the header and
+footer. This is a standing convention, not a suggestion — it existed unused
+in the codebase for a long stretch before this rule was set. It does **not**
+apply to `/admin/**` — that's a staff-only internal surface with its own,
+simpler chrome.
+
+**The AI assistant is a floating action button, not a header icon** —
+`assistant-panel.ts` renders its own `position: fixed` FAB bottom-right,
+mounted globally in `app.ts` (hidden on `/admin/**` along with the rest of
+storefront chrome). Its SSE calls go over `POST` through a hand-rolled
+`fetch` + `ReadableStream` parser (`core/api/sse-client.ts`) — the browser
+`EventSource` API is GET-only and can't carry the `Authorization` header
+this endpoint needs.
+
+---
+
+## Known gaps
+
+Recorded so they read as decisions rather than surprises.
+
+- **F12 (Figma-driven visual/animation polish pass) has not started.** F0–F11
+  built and verified real functionality against the live backend; visual
+  fidelity to the Figma reference and animation were deliberately deferred
+  to a dedicated final pass rather than iterated per-page. Needs the project
+  owner's own plan before starting — see the top of this file.
+- **Saved payment methods aren't wired into checkout.** The backend's
+  `PlaceOrderDto` has no `paymentMethodId` yet (see the backend README's
+  Known gaps), so `account-payment-methods` is management-only — every
+  checkout still collects fresh card details.
+- **Product-card "add to wishlist" only exists inside `/account/wishlist`.**
+  Adding directly from `/shop` or product-detail isn't built — the shared
+  `ProductCardProduct` shape has no product id field yet to hang the action
+  off.
+- **A pre-existing `NG0203` console warning fires on a cold direct-URL load
+  of almost any route** (reproduced on plain `/shop`, untouched code) — page
+  content still renders correctly through it, the error is silently
+  swallowed somewhere in the render path. Not yet root-caused; worth a
+  dedicated investigation session.
+- **No end-to-end test suite.** Unit tests run via Vitest; there is
+  currently no Playwright/Cypress equivalent to the backend's integration
+  suite. `ng e2e` has no framework configured.

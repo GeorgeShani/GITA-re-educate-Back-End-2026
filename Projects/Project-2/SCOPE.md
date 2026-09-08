@@ -7,12 +7,17 @@ This document is the single source of truth for the project: the complete design
 
 **Design source:** 3legant template — Figma file `MyEANVJ5LM3xkiRHsv7yk4`, page `🪴 Templates` (node `3:674`). 23 screens in desktop + mobile pairs, 92 distinct component instances. All template copy, categories, and product attributes are replaced with golf equivalents.
 
-**Status — 2026-09-07.** The **backend is complete**: every phase below through
-Phase 9, plus the full Phase 6 admin API, is built, tested (8 suites / 76 tests)
-and pushed. The **frontend is not**. The design tokens and 31 UI primitives
-under `frontend/src/app/shared/ui/` survive and are correct, but the composed
-shell and every page still need building — see *Part C — Frontend rebuild
-(F0–F12)* at the end of the build plan.
+**Status — 2026-09-09.** The **backend is complete**: every phase below through
+Phase 9, plus the full Phase 6 admin API, is built, tested, and pushed. The
+**frontend is functionally complete through F11**: real data layer, app
+shell, home, catalog, product detail, auth, cart + checkout (real Stripe
+test-mode charges), account, blog/content, the AI shopping assistant, and the
+full 19-area admin panel are all built and verified against this live API —
+see *Part C — Frontend rebuild (F0–F12)* at the end of the build plan for the
+phase-by-phase detail. **F12 (a Figma-driven visual/animation polish pass
+across the whole storefront) has not started** — it was deliberately deferred
+to a dedicated final pass rather than iterated per-page, and needs a fuller
+plan from the project owner before it begins.
 
 **Scope reality:** this is a large product being built solo. Phases 1–5 are the MVP — a store that can actually take money. Phases 6–7 are the admin and content surfaces. Phases 8–10 are the differentiators. Nothing here is optional to *plan*; the ordering is what protects the deadline.
 
@@ -635,6 +640,19 @@ Sign In / Sign Up modals (`172:12346`, `171:11483`) — prefer **Signal Forms** 
 
 No Figma reference — design on the Part A tokens. Routes under `/admin`, guarded by `RolesGuard`.
 
+**F11 (frontend, 2026-09-09) built all 19 rows below against the real admin
+API**, with a few deliberate simplifications rather than the full ambition of
+each row: Products has full CRUD + variant/image editing but no CSV
+import/export or bulk actions; Categories is a flat, indented list with a
+parent-reselect rather than drag-reorder; Users & roles has list + single-role
+edit + ban/unban but no per-customer lifetime-value or notes view; there is no
+separate **Settings** area (store info/currency/sender identity/feature
+flags) — nothing in the backend API backs one yet, so it was never a frontend
+gap to begin with. Everything else — Dashboard, Inventory, Orders, Returns,
+Discounts (as Coupons + Gift cards), Shipping & tax, Reviews, Content (as
+Blog + Pages), Media, Inbox (as Contact + Newsletter), Email, Audit log —
+matches this table as written.
+
 | Area | Contents |
 |---|---|
 | Dashboard | Revenue / orders / AOV / conversion tiles, sales chart, top products, low-stock list, live activity feed **read straight from the audit log** |
@@ -664,6 +682,8 @@ Blog list + post + category + tag + author (`52:4112`, `54:5208`), comments with
 **Backend `assistant/`** — add `@google/genai` (the current unified Google SDK; the older `@google/generative-ai` is deprecated, don't reach for it). Model **`gemini-2.5-pro`**, or `gemini-2.5-flash` if cost matters more than reasoning depth, with `thinkingConfig: { thinkingBudget: ... }` in place of adaptive-thinking effort levels.
 
 > ⚠️ Verify the `@google/genai` SDK surface against current Google documentation at implementation time rather than trusting the specifics below — this API has moved quickly and these details are the most likely thing here to be stale. The **`source-driven-development`** skill exists for exactly this.
+>
+> ✅ Done, and the caution above paid off: `ai.google.dev`'s own docs fabricated an unrelated API shape for tool-call thought signatures — see the resolved Gemini SDK surface row in Open items.
 
 - **The agent loop is ours to write.** Gemini `functionDeclarations` replace Anthropic's `betaTool` + raw JSON Schema — the eight tools below are otherwise unchanged. But Gemini has no equivalent to the Claude SDK's `client.beta.messages.toolRunner` and its per-turn approval-gating hooks, which is what the cart-mutation confirmation flow leaned on. That approval gate becomes explicit application code in our own loop: intercept any mutating tool call before execution, return a "pending confirmation" result instead of running it, and only dispatch the command once the user approves. This is the single largest behavioural change in the swap.
 - Stream to the browser over **SSE** (`@Sse()` in Nest); Gemini's `generateContentStream` maps onto that the same way Anthropic's streaming did — unchanged at the transport layer.
@@ -673,7 +693,7 @@ Blog list + post + category + tag + author (`52:4112`, `54:5208`), comments with
 - System prompt carries the golf vocabulary, the live category/attribute taxonomy, and a scope-discipline instruction. Cache it with Gemini context caching (`caches.create()`, an explicit TTL, subject to a minimum-token threshold) rather than Anthropic's `cache_control: ephemeral` — different enough that "keep the tool list deterministically ordered so the prefix stays stable" needs re-verifying against how Gemini's cache actually keys, not assumed to carry over unchanged.
 - Persist turns to `ChatSession` / `ChatMessage` so the panel survives a reload.
 
-**Frontend `features/assistant/`** — navbar launcher, slide-over panel, streamed markdown, inline product cards rendered from `search_products` results linking to the PDP, confirmation chips for cart actions.
+**Frontend `features/assistant/`** — streamed markdown, inline product cards rendered from `search_products` results linking to the PDP, confirmation chips for cart actions. **As built, the launcher is a bottom-right floating action button, not a navbar icon** — a mid-build call favoring the Intercom/Drift/Zendesk convention (reads as "chat with us" rather than competing with search/account/cart in the header) over this section's original "navbar launcher, slide-over panel" phrasing.
 
 ## Phase 9 — Observability & operations
 
@@ -706,21 +726,31 @@ Figma, and nothing is resurrected from `wip/homepage-attempt`. Assets are
 fetched from the internet: **Lucide** (npm) for the ~30 line icons, **Pexels**
 for photography.
 
-| # | Phase | Depends on | Delivers |
-|---|---|---|---|
-| F0 | Prerequisites *(manual)* | — | Live backend, seeded catalog, admin account |
-| F1 | Real data layer | F0 | Typed DTOs, adapters, auth/cart/catalog services, dev proxy |
-| F2 | App shell | F1 | Icons, header, footer, nav, cart drawer, routing, SSR modes |
-| F3 | Home | F2 | The page `/` has never had |
-| F4 | Catalog + search | F2 | `/shop`, filters, facets, typeahead |
-| F5 | Product detail | F4 | `/product/:slug`, variants, reviews |
-| F6 | Auth | F1 | Sign in/up, verify, reset, guards, cart merge |
-| F7 | Cart + checkout | F5, F6 | Cart, Stripe Elements, order polling |
-| F8 | Account | F6 | Profile, orders, addresses, wishlist, returns |
-| F9 | Content | F2 | Blog, pages, contact, newsletter |
-| F10 | AI assistant | F6 | SSE chat panel, confirmation chips |
-| F11 | Admin panel | F6 | 19 admin areas on a shared table/form layer |
-| F12 | Polish | all | A11y, SEO, perf, mobile, budgets |
+| # | Phase | Depends on | Delivers | Status |
+|---|---|---|---|---|
+| F0 | Prerequisites *(manual)* | — | Live backend, seeded catalog, admin account | ✅ Done |
+| F1 | Real data layer | F0 | Typed DTOs, adapters, auth/cart/catalog services, dev proxy | ✅ Done |
+| F2 | App shell | F1 | Icons, header, footer, nav, cart drawer, routing, SSR modes | ✅ Done |
+| F3 | Home | F2 | The page `/` has never had | ✅ Done |
+| F4 | Catalog + search | F2 | `/shop`, filters, facets, typeahead | ✅ Done |
+| F5 | Product detail | F4 | `/product/:slug`, variants, reviews | ✅ Done |
+| F6 | Auth | F1 | Sign in/up, verify, reset, guards, cart merge | ✅ Done |
+| F7 | Cart + checkout | F5, F6 | Cart, Stripe Elements, order polling | ✅ Done |
+| F8 | Account | F6 | Profile, orders, addresses, wishlist, returns | ✅ Done |
+| F9 | Content | F2 | Blog, pages, contact, newsletter | ✅ Done |
+| F10 | AI assistant | F6 | SSE chat panel, confirmation chips | ✅ Done |
+| F11 | Admin panel | F6 | 19 admin areas on a shared table/form layer | ✅ Done |
+| F12 | Polish | all | A11y, SEO, perf, mobile, budgets | ⏸ Not started — awaiting a fuller plan before it begins |
+
+F0–F11 were each built and verified against the real live backend (real
+seeded data, real Stripe test-mode charges, real Cloudinary uploads, real
+Gemini tool calls) as they landed, not deferred to a final integration pass.
+F12 is the one remaining phase: a dedicated visual/animation polish pass
+across every page built so far, using the four Figma frames already on file
+(node-id `3-674`, `116-6824`, `176-13558`, `0-1`) as reference, not
+pixel-matched — see the *Governing rule* above. Deliberately not started
+alongside F0–F11 so it can be scoped and sequenced as its own piece of work
+once there's a clearer plan for it, rather than picked up ad hoc per page.
 
 Three API facts drive the F1 architecture and are easy to get wrong:
 refresh-token rotation has **reuse detection**, so refresh must be
@@ -773,13 +803,13 @@ Priority coverage, in order:
 |---|---|
 | **Semantic colours** | The template has no red at all (sale badges are green). `--color-error` / `--color-warning` in A3 are our additions — validate against WCAG AA before locking |
 | **Tablet tier** | No 768px frame exists in the template; that breakpoint's design is ours to make |
-| **Homepage variant** | Plan assumes Homepage 03. 01 / 02 / 04 remain documented alternates |
-| **Admin design language** | Reuse the Poppins/Inter pairing, or drop to Inter-only for data density? |
+| **Homepage variant** | ✅ Resolved — built against Homepage 03 (node `116:6824`) in F3. 01 / 02 / 04 remain documented alternates, unused |
+| **Admin design language** | ✅ Resolved by default — F11 reuses the storefront's own Poppins/Inter type mixins (`styles/_typography.scss`) throughout rather than a separate Inter-only data-density system. Revisit in F12 if the admin panel's density ever feels wrong at scale |
 | **Sending domain** | B4 assumes `mail.<domain>`. Pick the domain and publish SPF/DKIM/DMARC early — DNS propagation and Resend verification are the kind of thing that blocks a launch day |
 | **Product Card hover state** | Not in the Figma file — no hover/focus/active states exist there for any component. Implemented as image zoom (`scale(1.05)`) + a Quick Add button revealing over the image bottom edge. A deliberate addition, not extracted from a frame — revisit if a real hover spec ever surfaces |
 | **Product Card price row gap** | A5 says the price row has "12px gap" but also says the content block's internal gap is 4px uniformly — ambiguous which one wins for the price row specifically. Shipped using price-tag's existing 8px default; unresolved |
 | **Atlas M0 ceiling** | 512MB storage / 500 connections — define the upgrade trigger before it's hit |
 | **Cloudinary free tier** | 25 monthly credits — define the upgrade trigger |
-| **Gemini SDK surface** | `@google/genai` is moving fast — verify against live docs before Phase 8 lands, don't trust Phase 8's specifics here as final |
+| **Gemini SDK surface** | ✅ Verified via `source-driven-development` before/during F10 — and the caution above was justified: `ai.google.dev`'s own thought-signatures page fabricated an unrelated "Interactions API" shape, and the real `@google/genai` `.d.ts` disagreed with it (`thoughtSignature` lives as a sibling of `functionCall` on the response `Part`, not a property of `FunctionCall`). Fixed in `backend/src/assistant/assistant.service.ts`; two regression tests added |
 | **Atlas Search index provisioning** | UI, API, or IaC (Terraform/Atlas CLI)? Not yet decided |
 | **Preview-environment-per-PR** | Materially worse without Neon's branch-per-PR database isolation — accept the loss, or find an Atlas-native equivalent |

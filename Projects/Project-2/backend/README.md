@@ -7,6 +7,13 @@ The product spec lives one level up in [`../SCOPE.md`](../SCOPE.md) and is the
 source of truth for design tokens, domain model, and build phases. This file
 covers running and working on the API itself.
 
+**Status:** this API is complete and stable — every phase through Phase 9,
+including the full Phase 6 admin surface, is built, tested, and pushed. The
+frontend (`../frontend/`) now consumes essentially all of it: F0 through F11
+(real data layer through the 19-area admin panel) are done against this live
+API, not mock fixtures. See [`../frontend/README.md`](../frontend/README.md)
+for that side.
+
 ---
 
 ## Architecture in one paragraph
@@ -80,10 +87,15 @@ npm run promote-admin -- you@example.com   # after registering normally
 `promote-admin` exists because no HTTP route can ever mint the first admin —
 registration always assigns `[customer]`.
 
-- API: `http://localhost:3000/api/v1`
-- Swagger: `http://localhost:3000/api`
-- Health: `http://localhost:3000/health`
-- Queues: `http://localhost:3000/admin/queues` (only if Bull Board creds are set)
+- API: `http://localhost:4000/api/v1`
+- Swagger: `http://localhost:4000/api`
+- Health: `http://localhost:4000/health`
+- Queues: `http://localhost:4000/admin/queues` (only if Bull Board creds are set)
+
+The frontend (`../frontend/`) proxies `/api` to this port in dev — see
+[`../frontend/README.md`](../frontend/README.md). If `PORT` is ever changed
+here, `frontend/proxy.conf.json` and `frontend/src/app/app.config.server.ts`'s
+SSR `apiOrigin` fallback both need updating too; they don't read this `.env`.
 
 ---
 
