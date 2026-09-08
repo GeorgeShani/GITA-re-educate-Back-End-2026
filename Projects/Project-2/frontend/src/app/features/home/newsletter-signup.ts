@@ -1,13 +1,9 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 
+import { NewsletterService } from '@/app/core/services/newsletter.service';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 
-/**
- * No newsletter endpoint exists on the backend yet (Phase F9 — content).
- * The form validates and shows a confirmation state locally; wiring the
- * real POST is a follow-up once that route lands, not a silent no-op.
- */
 @Component({
   selector: 'newsletter-signup',
   imports: [NgOptimizedImage, IconGlyph],
@@ -142,12 +138,28 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
   `,
 })
 export class NewsletterSignup {
+  private readonly newsletter = inject(NewsletterService);
+
   protected readonly email = signal('');
   protected readonly submitted = signal(false);
+  protected readonly submitting = signal(false);
 
+  // subscribe() is deliberately silent on "already subscribed"
+  // (newsletter.service.ts) — so the confirmation shows the same way
+  // whether this is a new address or a repeat signup, matching the
+  // backend's own "never confirm or deny to an unauthenticated caller".
   protected submit(event: SubmitEvent): void {
     event.preventDefault();
-    if (!this.email().trim()) return;
-    this.submitted.set(true);
+    const value = this.email().trim();
+    if (!value || this.submitting()) return;
+
+    this.submitting.set(true);
+    this.newsletter.subscribe(value).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.submitted.set(true);
+      },
+      error: () => this.submitting.set(false),
+    });
   }
 }

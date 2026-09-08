@@ -128,6 +128,36 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'blog',
+    loadComponent: () => import('@/app/features/blog/blog-list'),
+    title: 'Journal — 3legant Golf',
+  },
+  {
+    path: 'blog/:slug',
+    loadComponent: () => import('@/app/features/blog/blog-post'),
+    title: 'Journal — 3legant Golf',
+  },
+  {
+    path: 'pages/:slug',
+    loadComponent: () => import('@/app/features/pages/content-page'),
+    title: '3legant Golf',
+  },
+  {
+    path: 'contact',
+    loadComponent: () => import('@/app/features/contact/contact'),
+    title: 'Contact us — 3legant Golf',
+  },
+  {
+    path: 'newsletter/confirm',
+    loadComponent: () => import('@/app/features/newsletter/newsletter-confirm'),
+    title: 'Confirm subscription — 3legant Golf',
+  },
+  {
+    path: 'newsletter/unsubscribe',
+    loadComponent: () => import('@/app/features/newsletter/newsletter-unsubscribe'),
+    title: 'Unsubscribe — 3legant Golf',
+  },
+  {
     path: 'styleguide',
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),

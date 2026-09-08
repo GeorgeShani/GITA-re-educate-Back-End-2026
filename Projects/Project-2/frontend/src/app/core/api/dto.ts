@@ -481,3 +481,92 @@ export interface MediaDto {
   createdAt: string;
   updatedAt: string;
 }
+
+// ---------------------------------------------------------------- content (F9)
+
+export interface PostCategoryDto {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+/** No `slug` — Tag's own schema never added one, so tag archives filter by id. */
+export interface TagDto {
+  id: string;
+  name: string;
+}
+
+/**
+ * `authorId` is a raw ObjectId string — PublicBlogService never populates
+ * it, so there's no public author name/avatar to show, same "attribute by
+ * what's actually available, not an invented name" call as ReviewDto in F5.
+ */
+export interface PostDto {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt?: string;
+  body: string;
+  coverImageUrl?: string;
+  authorId: string;
+  categoryId?: string;
+  tagIds: string[];
+  publishedAt: string | null;
+  seoTitle?: string;
+  seoDescription?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CommentStatus = 'pending' | 'approved' | 'rejected';
+
+export interface CommentDto {
+  id: string;
+  postId: string;
+  userId?: string;
+  authorName: string;
+  authorEmail: string;
+  body: string;
+  parentId?: string;
+  status: CommentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubmitCommentRequest {
+  authorName: string;
+  authorEmail: string;
+  body: string;
+  parentId?: string;
+}
+
+/** Query for GET /blog/posts. Sent as-is, so it must match FindPostsDto — category/tag are ids, not slugs (PostCategory has a slug, Tag never does). */
+export interface PostQuery {
+  category?: string;
+  tag?: string;
+  page?: number;
+  take?: number;
+}
+
+export interface PageDto {
+  id: string;
+  title: string;
+  slug: string;
+  body: string;
+  seoTitle?: string;
+  seoDescription?: string;
+}
+
+export interface SubmitContactMessageRequest {
+  name: string;
+  email: string;
+  subject?: string;
+  message: string;
+}
+
+export interface NewsletterSubscriberDto {
+  id: string;
+  email: string;
+  confirmedAt: string | null;
+  unsubscribedAt: string | null;
+}

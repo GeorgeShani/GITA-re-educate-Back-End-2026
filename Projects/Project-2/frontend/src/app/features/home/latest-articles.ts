@@ -1,48 +1,41 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
+import { BlogService } from '@/app/core/services/blog.service';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 import { PageContainer } from '@/app/shared/ui/page-container';
 
-interface Article {
-  readonly title: string;
-  readonly image: string;
-}
+const TAKE = 3;
 
-/**
- * Static placeholder content — the blog module is Phase F9, not built yet.
- * No routerLink to /blog/:slug until that route (and real post data) exists;
- * these render as non-interactive previews rather than links to a 404.
- */
-const ARTICLES: readonly Article[] = [
-  { title: 'Reading Greens Like a Pro', image: '/images/products/article-putting.jpg' },
-  { title: 'The Timeless Classics on the Green', image: '/images/products/article-classics.jpg' },
-  { title: 'Inside the Ryder Cup Gallery', image: '/images/products/article-tournament.jpg' },
-];
-
+/** Real latest posts, replacing the F9-pending static placeholder that used to live here. */
 @Component({
   selector: 'latest-articles',
-  imports: [NgOptimizedImage, IconGlyph, PageContainer],
+  imports: [RouterLink, NgOptimizedImage, IconGlyph, PageContainer],
   template: `
-    <page-container>
-      <header class="section-head">
-        <h2>Latest Articles</h2>
-      </header>
-      <div class="grid">
-        @for (article of articles; track article.title) {
-          <article class="card">
-            <div class="card-image">
-              <img [ngSrc]="article.image" alt="" fill />
-            </div>
-            <h3>{{ article.title }}</h3>
-            <span class="read-more">
-              Read more
-              <icon-glyph name="arrow-right" [size]="18" />
-            </span>
-          </article>
-        }
-      </div>
-    </page-container>
+    @if (articles().length > 0) {
+      <page-container>
+        <header class="section-head">
+          <h2>Latest Articles</h2>
+        </header>
+        <div class="grid">
+          @for (article of articles(); track article.slug) {
+            <a class="card" [routerLink]="['/blog', article.slug]">
+              <div class="card-image">
+                @if (article.coverImageUrl) {
+                  <img [ngSrc]="article.coverImageUrl" alt="" fill />
+                }
+              </div>
+              <h3>{{ article.title }}</h3>
+              <span class="read-more">
+                Read more
+                <icon-glyph name="arrow-right" [size]="18" />
+              </span>
+            </a>
+          }
+        </div>
+      </page-container>
+    }
   `,
   styles: `
     @use 'styles/typography' as type;
@@ -76,6 +69,11 @@ const ARTICLES: readonly Article[] = [
       }
     }
 
+    .card {
+      display: block;
+      color: inherit;
+    }
+
     .card-image {
       position: relative;
       aspect-ratio: 357 / 325;
@@ -104,5 +102,15 @@ const ARTICLES: readonly Article[] = [
   `,
 })
 export class LatestArticles {
-  protected readonly articles = ARTICLES;
+  private readonly blog = inject(BlogService);
+
+  private readonly posts = this.blog.postsResource(() => ({ take: TAKE }));
+
+  protected readonly articles = computed(() =>
+    (this.posts.value()?.items ?? []).map((post) => ({
+      slug: post.slug,
+      title: post.title,
+      coverImageUrl: post.coverImageUrl,
+    })),
+  );
 }

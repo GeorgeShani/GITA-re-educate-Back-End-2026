@@ -23,6 +23,7 @@
     "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts",
     "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts",
     "seed:commerce": "ts-node -r tsconfig-paths/register scripts/seed-commerce.ts",
+    "seed:content": "ts-node -r tsconfig-paths/register scripts/seed-content.ts",
     "promote-admin": "ts-node -r tsconfig-paths/register scripts/promote-admin.ts"
   },
   "dependencies": {
