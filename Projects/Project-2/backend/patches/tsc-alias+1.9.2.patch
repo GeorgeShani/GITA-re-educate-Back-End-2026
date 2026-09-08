@@ -1,0 +1,31 @@
+diff --git a/node_modules/tsc-alias/dist/index.js b/node_modules/tsc-alias/dist/index.js
+index 121966c..3636d23 100644
+--- a/node_modules/tsc-alias/dist/index.js
++++ b/node_modules/tsc-alias/dist/index.js
+@@ -44,9 +44,24 @@ function replaceTscAliasPaths(options = Object.assign({}, defaultConfig)) {
+         if (options.watch) {
+             output.verbose = true;
+             output.info('[Watching for file changes...]');
+-            const filesWatcher = (0, chokidar_1.watch)(globPattern);
++            // PATCHED (patches/tsc-alias+1.9.2.patch): chokidar's default
++            // ignoreInitial:false fires an 'add' for every file already
++            // matching globPattern the instant the watcher attaches -- on a
++            // real project this is thousands of files that were JUST
++            // processed by the unconditional pass above (lines 36-43), so
++            // ignoreInitial:true skips a pointless full re-scan.
++            const filesWatcher = (0, chokidar_1.watch)(globPattern, { ignoreInitial: true });
+             const tsconfigWatcher = (0, chokidar_1.watch)(config.configFile);
+-            const onFileChange = (file) => __awaiter(this, void 0, void 0, function* () { return yield (0, helpers_1.replaceAlias)(config, file, options === null || options === void 0 ? void 0 : options.resolveFullPaths); });
++            // PATCHED: the one-shot pass above throttles concurrent file I/O
++            // to 500 via OpenFilesLimit; this ongoing watch handler had no
++            // throttling at all. A burst of fs events (e.g. every file nest's
++            // watch compiler rewrites on one incremental recompile) used to
++            // fire that many concurrent, unthrottled fs.readFile/writeFile
++            // calls with nothing capping them -- confirmed via instrumented
++            // reproduction that in-flight promises climb into the thousands
++            // and the process OOMs (heap growing to ~4GB) within ~95s.
++            // Routing through the same limiter used above fixes it.
++            const onFileChange = (file) => OpenFilesLimit(() => __awaiter(this, void 0, void 0, function* () { return yield (0, helpers_1.replaceAlias)(config, file, options === null || options === void 0 ? void 0 : options.resolveFullPaths); }));
+             filesWatcher.on('add', onFileChange);
+             filesWatcher.on('change', onFileChange);
+             tsconfigWatcher.on('change', () => {
