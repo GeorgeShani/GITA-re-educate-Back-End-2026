@@ -12,6 +12,8 @@ import { ActionButton } from '@/app/shared/ui/action-button';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
+import { TextField } from '@/app/shared/ui/text-field';
+import { TextareaField } from '@/app/shared/ui/textarea-field';
 
 interface CommentFormModel {
   authorName: string;
@@ -28,7 +30,19 @@ interface CommentFormModel {
  */
 @Component({
   selector: 'blog-post-page',
-  imports: [RouterLink, DatePipe, NgOptimizedImage, RevealDirective, ActionButton, FormField, PageContainer, PageSection, SkeletonBlock],
+  imports: [
+    RouterLink,
+    DatePipe,
+    NgOptimizedImage,
+    RevealDirective,
+    ActionButton,
+    FormField,
+    PageContainer,
+    PageSection,
+    SkeletonBlock,
+    TextField,
+    TextareaField,
+  ],
   template: `
     <page-section spacing="md">
       <page-container>
@@ -94,28 +108,16 @@ interface CommentFormModel {
             <form class="comment-form" (submit)="onSubmitComment($event)" novalidate>
               <h3>Leave a comment</h3>
               <div class="row">
-                <div class="field">
-                  <label for="authorName">Name</label>
-                  <input id="authorName" type="text" [formField]="commentForm.authorName" />
-                  @if (commentForm.authorName().touched() && commentForm.authorName().errors()[0]; as err) {
-                    <p class="error">{{ err.message }}</p>
-                  }
-                </div>
-                <div class="field">
-                  <label for="authorEmail">Email</label>
-                  <input id="authorEmail" type="email" [formField]="commentForm.authorEmail" />
-                  @if (commentForm.authorEmail().touched() && commentForm.authorEmail().errors()[0]; as err) {
-                    <p class="error">{{ err.message }}</p>
-                  }
-                </div>
+                <text-field label="Name" [height]="48" autocomplete="name" [formField]="commentForm.authorName" />
+                <text-field
+                  label="Email"
+                  type="email"
+                  [height]="48"
+                  autocomplete="email"
+                  [formField]="commentForm.authorEmail"
+                />
               </div>
-              <div class="field">
-                <label for="commentBody">Comment</label>
-                <textarea id="commentBody" rows="4" [formField]="commentForm.body"></textarea>
-                @if (commentForm.body().touched() && commentForm.body().errors()[0]; as err) {
-                  <p class="error">{{ err.message }}</p>
-                }
-              </div>
+              <textarea-field label="Comment" [formField]="commentForm.body" />
               <p class="hint">Comments are held for moderation before they appear publicly.</p>
               <action-button type="submit" size="m" [loading]="submitting()">Post comment</action-button>
             </form>
@@ -126,6 +128,7 @@ interface CommentFormModel {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .loading {
       display: flex;
@@ -290,40 +293,13 @@ interface CommentFormModel {
 
     .row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: var(--space-4);
-    }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input,
-    textarea {
-      @include type.body-2;
-      padding: var(--space-3) var(--space-4);
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-      resize: vertical;
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
+      // Was an unconditional 1fr 1fr.
+      @include bp.tablet-up {
+        grid-template-columns: 1fr 1fr;
       }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .hint {

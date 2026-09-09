@@ -5,6 +5,7 @@ import { FormField, form, minLength, required } from '@angular/forms/signals';
 import { AuthService } from '@/app/core/services/auth.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { TextField } from '@/app/shared/ui/text-field';
 
 /**
  * Reached from the reset-password email link (`?token=...`), never
@@ -18,7 +19,7 @@ import { ActionButton } from '@/app/shared/ui/action-button';
  */
 @Component({
   selector: 'reset-password-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField],
+  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -37,31 +38,31 @@ import { ActionButton } from '@/app/shared/ui/action-button';
           <p class="subhead">Choose a new password for your account.</p>
 
           <form (submit)="onSubmit($event)" novalidate>
-            <div class="field">
-              <label for="newPassword">New password</label>
-              <input
-                id="newPassword"
-                type="password"
-                autocomplete="new-password"
-                [formField]="resetForm.newPassword"
-              />
-              @if (resetForm.newPassword().touched() && resetForm.newPassword().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              } @else {
-                <p class="hint">At least 8 characters.</p>
-              }
-            </div>
+            <text-field
+              label="New password"
+              type="password"
+              [height]="48"
+              autocomplete="new-password"
+              hint="At least 8 characters."
+              [formField]="resetForm.newPassword"
+            />
 
             <div class="field">
-              <label for="confirmPassword">Confirm password</label>
-              <input
-                id="confirmPassword"
+              <text-field
+                label="Confirm password"
                 type="password"
+                [height]="48"
                 autocomplete="new-password"
                 [formField]="resetForm.confirmPassword"
               />
+              <!-- Deliberately outside Signal Forms' errors() — see class
+                   comment: a plain computed() cross-field check, not a
+                   validate()/validateTree() rule, so it lives as its own
+                   message rather than through text-field's built-in slot
+                   (which only ever shows resetForm's own per-field errors,
+                   e.g. "Please confirm your password" when empty). -->
               @if (resetForm.confirmPassword().touched() && !passwordsMatch()) {
-                <p class="error">Passwords don't match</p>
+                <p class="mismatch">Passwords don't match</p>
               }
             </div>
 
@@ -118,35 +119,10 @@ import { ActionButton } from '@/app/shared/ui/action-button';
       gap: var(--space-2);
     }
 
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
-      }
-    }
-
-    .error {
+    .mismatch {
       @include type.caption-2;
       margin: 0;
       color: var(--color-error);
-    }
-
-    .hint {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-neutral-04);
     }
 
     .back {

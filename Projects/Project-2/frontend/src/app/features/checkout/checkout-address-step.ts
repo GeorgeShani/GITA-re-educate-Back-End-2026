@@ -3,21 +3,12 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { FormField, form, required } from '@angular/forms/signals';
 
 import type { AddressDto, AddressInput } from '@/app/core/api/dto';
+import { COUNTRY_OPTIONS } from '@/app/core/constants/countries';
 import { ToastService } from '@/app/core/services/toast.service';
-import { inputValue } from '@/app/core/util/dom-event';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
 import { RadioField } from '@/app/shared/ui/radio-field';
-
-/** Matches the countries backend/scripts/seed-commerce.ts actually seeds shipping zones for. */
-const COUNTRY_OPTIONS = [
-  { value: 'US', label: 'United States' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'JP', label: 'Japan' },
-];
+import { SelectField } from '@/app/shared/ui/select-field';
+import { TextField } from '@/app/shared/ui/text-field';
 
 function blankAddress(): AddressInput {
   return {
@@ -39,7 +30,7 @@ function blankAddress(): AddressInput {
  */
 @Component({
   selector: 'checkout-address-step',
-  imports: [NgTemplateOutlet, FormField, RadioField, CheckboxField],
+  imports: [NgTemplateOutlet, FormField, RadioField, CheckboxField, TextField, SelectField],
   template: `
     <section class="step">
       <h2>Shipping address</h2>
@@ -105,62 +96,48 @@ function blankAddress(): AddressInput {
       }
 
       <ng-template #addressFields let-f="f" let-m="m">
-        <div class="field">
-          <label>Full name</label>
-          <input type="text" autocomplete="name" [formField]="f.fullName" />
-          @if (f.fullName().touched() && f.fullName().errors()[0]; as err) {
-            <p class="error">{{ err.message }}</p>
-          }
-        </div>
-        <div class="field">
-          <label>Address line 1</label>
-          <input type="text" autocomplete="address-line1" [formField]="f.line1" />
-          @if (f.line1().touched() && f.line1().errors()[0]; as err) {
-            <p class="error">{{ err.message }}</p>
-          }
-        </div>
-        <div class="field">
-          <label>Address line 2 (optional)</label>
-          <input type="text" autocomplete="address-line2" [formField]="f.line2" />
+        <text-field label="Full name" [height]="48" autocomplete="name" [formField]="f.fullName" />
+        <text-field
+          label="Address line 1"
+          [height]="48"
+          autocomplete="address-line1"
+          [formField]="f.line1"
+        />
+        <text-field
+          label="Address line 2 (optional)"
+          [height]="48"
+          autocomplete="address-line2"
+          [formField]="f.line2"
+        />
+        <div class="field-row">
+          <text-field
+            label="City"
+            [height]="48"
+            autocomplete="address-level2"
+            [formField]="f.city"
+          />
+          <text-field
+            label="Postal code"
+            [height]="48"
+            autocomplete="postal-code"
+            [formField]="f.postalCode"
+          />
         </div>
         <div class="field-row">
-          <div class="field">
-            <label>City</label>
-            <input type="text" autocomplete="address-level2" [formField]="f.city" />
-            @if (f.city().touched() && f.city().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
-          <div class="field">
-            <label>Postal code</label>
-            <input type="text" autocomplete="postal-code" [formField]="f.postalCode" />
-            @if (f.postalCode().touched() && f.postalCode().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
+          <text-field
+            label="Region / state (optional)"
+            [height]="48"
+            autocomplete="address-level1"
+            [formField]="f.region"
+          />
+          <select-field
+            label="Country"
+            [options]="countryOptions"
+            [value]="m().countryCode"
+            (valueChange)="setCountry(m, $event)"
+          />
         </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Region / state (optional)</label>
-            <input type="text" autocomplete="address-level1" [formField]="f.region" />
-          </div>
-          <div class="field">
-            <label for="country-{{ m === shippingModel ? 'shipping' : 'billing' }}">Country</label>
-            <select
-              id="country-{{ m === shippingModel ? 'shipping' : 'billing' }}"
-              [value]="m().countryCode"
-              (change)="setCountry(m, $event)"
-            >
-              @for (option of countryOptions; track option.value) {
-                <option [value]="option.value">{{ option.label }}</option>
-              }
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label>Phone (optional)</label>
-          <input type="tel" autocomplete="tel" [formField]="f.phone" />
-        </div>
+        <text-field label="Phone (optional)" [height]="48" type="tel" autocomplete="tel" [formField]="f.phone" />
       </ng-template>
 
       <button type="button" class="continue" (click)="onContinue()">Continue to shipping</button>
@@ -168,6 +145,7 @@ function blankAddress(): AddressInput {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     h2 {
       @include type.body-1-semi;
@@ -217,41 +195,16 @@ function blankAddress(): AddressInput {
 
     .field-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: var(--space-4);
-    }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input,
-    select {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-      background: var(--color-white);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
+      // Was an unconditional 1fr 1fr — this step is the highest-stakes
+      // form in the app and the most likely to be filled out on a phone;
+      // two address fields squeezed side by side broke down well before
+      // mobile width.
+      @include bp.tablet-up {
+        grid-template-columns: 1fr 1fr;
       }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .same-as-shipping {
@@ -312,8 +265,7 @@ export class CheckoutAddressStep {
     if (defaultId) this.selectedShippingId.set(defaultId);
   }
 
-  protected setCountry(model: typeof this.shippingModel, event: Event): void {
-    const countryCode = inputValue(event);
+  protected setCountry(model: typeof this.shippingModel, countryCode: string): void {
     model.update((m) => ({ ...m, countryCode }));
   }
 

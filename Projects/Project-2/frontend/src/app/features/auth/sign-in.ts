@@ -6,6 +6,7 @@ import { AuthService } from '@/app/core/services/auth.service';
 import { CartService } from '@/app/core/services/cart.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { TextField } from '@/app/shared/ui/text-field';
 
 /**
  * `redirectTo` arrives from `authGuard`'s query param when someone is
@@ -14,7 +15,7 @@ import { ActionButton } from '@/app/shared/ui/action-button';
  */
 @Component({
   selector: 'sign-in-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField],
+  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -22,26 +23,20 @@ import { ActionButton } from '@/app/shared/ui/action-button';
         <p class="subhead">Welcome back to 3legant Golf.</p>
 
         <form (submit)="onSubmit($event)" novalidate>
-          <div class="field">
-            <label for="email">Email</label>
-            <input id="email" type="email" autocomplete="email" [formField]="signInForm.email" />
-            @if (signInForm.email().touched() && signInForm.email().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autocomplete="current-password"
-              [formField]="signInForm.password"
-            />
-            @if (signInForm.password().touched() && signInForm.password().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
+          <text-field
+            label="Email"
+            type="email"
+            [height]="48"
+            autocomplete="email"
+            [formField]="signInForm.email"
+          />
+          <text-field
+            label="Password"
+            type="password"
+            [height]="48"
+            autocomplete="current-password"
+            [formField]="signInForm.password"
+          />
 
           <a class="forgot" routerLink="/forgot-password">Forgot password?</a>
 
@@ -88,37 +83,6 @@ import { ActionButton } from '@/app/shared/ui/action-button';
       display: flex;
       flex-direction: column;
       gap: var(--space-5);
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
-      }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .forgot {

@@ -2,10 +2,13 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormField, form, required } from '@angular/forms/signals';
 
 import type { AddressDto, AddressInput } from '@/app/core/api/dto';
+import { COUNTRY_OPTIONS } from '@/app/core/constants/countries';
 import { AccountService } from '@/app/core/services/account.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
+import { SelectField } from '@/app/shared/ui/select-field';
+import { TextField } from '@/app/shared/ui/text-field';
 
 /**
  * Signal Forms' [formField] binds to a plain-text <input> only where the
@@ -72,7 +75,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 /** Address book CRUD — GET/POST/PATCH/DELETE /users/me/addresses. */
 @Component({
   selector: 'account-addresses-page',
-  imports: [FormField, RevealDirective, ActionButton, CheckboxField],
+  imports: [FormField, RevealDirective, ActionButton, CheckboxField, TextField, SelectField],
   template: `
     <section reveal>
       <div class="head">
@@ -84,54 +87,54 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 
       @if (showForm()) {
         <form class="address-form" (submit)="onSubmit($event)" novalidate>
-          <div class="field">
-            <label>Full name</label>
-            <input type="text" [formField]="addressForm.fullName" />
-            @if (addressForm.fullName().touched() && addressForm.fullName().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
-          <div class="field">
-            <label>Address line 1</label>
-            <input type="text" [formField]="addressForm.line1" />
-            @if (addressForm.line1().touched() && addressForm.line1().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
-          <div class="field">
-            <label>Address line 2 (optional)</label>
-            <input type="text" [formField]="addressForm.line2" />
+          <text-field label="Full name" [height]="48" autocomplete="name" [formField]="addressForm.fullName" />
+          <text-field
+            label="Address line 1"
+            [height]="48"
+            autocomplete="address-line1"
+            [formField]="addressForm.line1"
+          />
+          <text-field
+            label="Address line 2 (optional)"
+            [height]="48"
+            autocomplete="address-line2"
+            [formField]="addressForm.line2"
+          />
+          <div class="field-row">
+            <text-field
+              label="City"
+              [height]="48"
+              autocomplete="address-level2"
+              [formField]="addressForm.city"
+            />
+            <text-field
+              label="Postal code"
+              [height]="48"
+              autocomplete="postal-code"
+              [formField]="addressForm.postalCode"
+            />
           </div>
           <div class="field-row">
-            <div class="field">
-              <label>City</label>
-              <input type="text" [formField]="addressForm.city" />
-              @if (addressForm.city().touched() && addressForm.city().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
-            <div class="field">
-              <label>Postal code</label>
-              <input type="text" [formField]="addressForm.postalCode" />
-              @if (addressForm.postalCode().touched() && addressForm.postalCode().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
+            <text-field
+              label="Region / state (optional)"
+              [height]="48"
+              autocomplete="address-level1"
+              [formField]="addressForm.region"
+            />
+            <select-field
+              label="Country"
+              [options]="countryOptions"
+              [value]="model().countryCode"
+              (valueChange)="model.update((m) => ({ ...m, countryCode: $event }))"
+            />
           </div>
-          <div class="field-row">
-            <div class="field">
-              <label>Region / state (optional)</label>
-              <input type="text" [formField]="addressForm.region" />
-            </div>
-            <div class="field">
-              <label>Country code</label>
-              <input type="text" [formField]="addressForm.countryCode" />
-            </div>
-          </div>
-          <div class="field">
-            <label>Phone (optional)</label>
-            <input type="tel" [formField]="addressForm.phone" />
-          </div>
+          <text-field
+            label="Phone (optional)"
+            type="tel"
+            [height]="48"
+            autocomplete="tel"
+            [formField]="addressForm.phone"
+          />
           <label class="default-check">
             <checkbox-field
               [checked]="model().isDefault"
@@ -180,6 +183,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .head {
       display: flex;
@@ -207,40 +211,13 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 
     .field-row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: var(--space-4);
-    }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 44px;
-      padding: 0 14px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-      background: var(--color-white);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
+      // Was an unconditional 1fr 1fr.
+      @include bp.tablet-up {
+        grid-template-columns: 1fr 1fr;
       }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .default-check {
@@ -338,6 +315,7 @@ export default class AccountAddresses implements OnInit {
   protected readonly saving = signal(false);
 
   protected readonly model = signal<AddressFormModel>(blankAddress());
+  protected readonly countryOptions = COUNTRY_OPTIONS;
 
   protected readonly addressForm = form(this.model, (f) => {
     required(f.fullName, { message: 'Full name is required' });

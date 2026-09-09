@@ -9,6 +9,7 @@ import { ActionButton } from '@/app/shared/ui/action-button';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
+import { TextField } from '@/app/shared/ui/text-field';
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
   placed: 'Order placed',
@@ -30,7 +31,16 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
  */
 @Component({
   selector: 'track-page',
-  imports: [RevealDirective, FormField, DatePipe, ActionButton, PageContainer, PageSection, StatusBadge],
+  imports: [
+    RevealDirective,
+    FormField,
+    DatePipe,
+    ActionButton,
+    PageContainer,
+    PageSection,
+    StatusBadge,
+    TextField,
+  ],
   template: `
     <page-section spacing="md">
       <page-container>
@@ -39,20 +49,14 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
           <p class="subhead" reveal>Enter your order number and the email you used to place it.</p>
 
           <form class="lookup" (submit)="onSubmit($event)" novalidate reveal>
-            <div class="field">
-              <label for="order-number">Order number</label>
-              <input id="order-number" type="text" [formField]="lookupForm.orderNumber" />
-              @if (lookupForm.orderNumber().touched() && lookupForm.orderNumber().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
-            <div class="field">
-              <label for="email">Email</label>
-              <input id="email" type="email" autocomplete="email" [formField]="lookupForm.email" />
-              @if (lookupForm.email().touched() && lookupForm.email().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
+            <text-field label="Order number" [height]="48" [formField]="lookupForm.orderNumber" />
+            <text-field
+              label="Email"
+              type="email"
+              [height]="48"
+              autocomplete="email"
+              [formField]="lookupForm.email"
+            />
             <action-button type="submit" size="m" [fullWidth]="true" [loading]="loading()">
               Track order
             </action-button>
@@ -105,37 +109,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
       display: flex;
       flex-direction: column;
       gap: var(--space-5);
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
-      }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .not-found {

@@ -1,4 +1,5 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, model, output } from '@angular/core';
+import type { ValidationError } from '@angular/forms/signals';
 
 import { checkedValue } from '@/app/core/util/dom-event';
 import { IconGlyph } from './icon-glyph';
@@ -7,6 +8,11 @@ import { IconGlyph } from './icon-glyph';
  * #fcfcfd is a measured one-off (distinct from --color-neutral-01's
  * #fefefe) — kept as a literal rather than promoted to a token, same
  * treatment _tokens.scss already gives other single-use measurements.
+ *
+ * Implements Signal Forms' FormCheckboxControl contract (`checked` as a
+ * model()) — see text-field.ts's class comment for the full rationale.
+ * `<checkbox-field [formField]="form.agreeToTerms" label="..." />` wires
+ * touched/errors/disabled automatically instead of a manual check.
  */
 @Component({
   selector: 'checkbox-field',
@@ -18,7 +24,10 @@ import { IconGlyph } from './icon-glyph';
           type="checkbox"
           [checked]="checked()"
           [disabled]="disabled()"
+          [attr.aria-invalid]="displayError() ? 'true' : null"
+          [attr.aria-describedby]="displayError() ? errorId : null"
           (change)="onChange($event)"
+          (blur)="touch.emit()"
         />
         @if (checked()) {
           <icon-glyph name="check" [size]="16" class="check-icon" />
@@ -28,6 +37,9 @@ import { IconGlyph } from './icon-glyph';
         <span class="label-text">{{ l }}</span>
       }
     </label>
+    @if (displayError(); as e) {
+      <p class="message error" [id]="errorId">{{ e }}</p>
+    }
   `,
   styles: `
     @use 'styles/typography' as type;
@@ -93,15 +105,33 @@ import { IconGlyph } from './icon-glyph';
     .label-text {
       @include type.body-2;
     }
+
+    .message.error {
+      @include type.caption-2;
+      margin: var(--space-2) 0 0;
+      color: var(--color-error);
+    }
   `,
 })
 export class CheckboxField {
-  readonly checked = input(false);
+  private static nextId = 0;
+  protected readonly errorId = `checkbox-field-${CheckboxField.nextId++}-error`;
+
   readonly disabled = input(false);
   readonly label = input<string>();
-  readonly checkedChange = output<boolean>();
+
+  readonly touched = input(false);
+  readonly errors = input<readonly ValidationError.WithOptionalFieldTree[]>([]);
+  readonly touch = output<void>();
+
+  readonly checked = model(false);
+
+  protected readonly displayError = computed(() => {
+    if (!this.touched()) return undefined;
+    return this.errors()[0]?.message;
+  });
 
   protected onChange(event: Event): void {
-    this.checkedChange.emit(checkedValue(event));
+    this.checked.set(checkedValue(event));
   }
 }

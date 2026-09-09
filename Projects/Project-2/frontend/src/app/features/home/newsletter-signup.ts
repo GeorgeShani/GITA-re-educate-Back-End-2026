@@ -33,9 +33,12 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
               required
               placeholder="Email address"
               [value]="email()"
+              [disabled]="submitting()"
               (input)="email.set(inputValue($event))"
             />
-            <button type="submit">Signup</button>
+            <button type="submit" [disabled]="submitting()">
+              {{ submitting() ? 'Signing up...' : 'Signup' }}
+            </button>
           </form>
         }
       </div>
@@ -125,6 +128,10 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
         &:focus-visible {
           outline: none;
         }
+
+        &:disabled {
+          opacity: 0.6;
+        }
       }
 
       button {
@@ -134,6 +141,11 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
         padding: 0;
         color: var(--color-neutral-01);
         @include type.button-s;
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
       }
     }
   `,

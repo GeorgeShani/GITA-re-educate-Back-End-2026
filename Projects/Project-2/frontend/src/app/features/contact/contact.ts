@@ -6,6 +6,8 @@ import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
+import { TextField } from '@/app/shared/ui/text-field';
+import { TextareaField } from '@/app/shared/ui/textarea-field';
 
 interface ContactFormModel {
   name: string;
@@ -16,7 +18,7 @@ interface ContactFormModel {
 
 @Component({
   selector: 'contact-page',
-  imports: [RevealDirective, ActionButton, FormField, PageContainer, PageSection],
+  imports: [RevealDirective, ActionButton, FormField, PageContainer, PageSection, TextField, TextareaField],
   template: `
     <page-section spacing="md">
       <page-container>
@@ -37,34 +39,24 @@ interface ContactFormModel {
             } @else {
               <form (submit)="onSubmit($event)" novalidate>
                 <div class="row">
-                  <div class="field">
-                    <label for="name">Name</label>
-                    <input id="name" type="text" autocomplete="name" [formField]="contactForm.name" />
-                    @if (contactForm.name().touched() && contactForm.name().errors()[0]; as err) {
-                      <p class="error">{{ err.message }}</p>
-                    }
-                  </div>
-                  <div class="field">
-                    <label for="email">Email</label>
-                    <input id="email" type="email" autocomplete="email" [formField]="contactForm.email" />
-                    @if (contactForm.email().touched() && contactForm.email().errors()[0]; as err) {
-                      <p class="error">{{ err.message }}</p>
-                    }
-                  </div>
+                  <text-field
+                    label="Name"
+                    [height]="48"
+                    autocomplete="name"
+                    [formField]="contactForm.name"
+                  />
+                  <text-field
+                    label="Email"
+                    type="email"
+                    [height]="48"
+                    autocomplete="email"
+                    [formField]="contactForm.email"
+                  />
                 </div>
 
-                <div class="field">
-                  <label for="subject">Subject (optional)</label>
-                  <input id="subject" type="text" [formField]="contactForm.subject" />
-                </div>
+                <text-field label="Subject (optional)" [height]="48" [formField]="contactForm.subject" />
 
-                <div class="field">
-                  <label for="message">Message</label>
-                  <textarea id="message" rows="6" [formField]="contactForm.message"></textarea>
-                  @if (contactForm.message().touched() && contactForm.message().errors()[0]; as err) {
-                    <p class="error">{{ err.message }}</p>
-                  }
-                </div>
+                <textarea-field label="Message" [formField]="contactForm.message" />
 
                 <action-button type="submit" size="m" [loading]="submitting()">Send message</action-button>
               </form>
@@ -111,38 +103,6 @@ interface ContactFormModel {
       @include bp.tablet-up {
         grid-template-columns: 1fr 1fr;
       }
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input,
-    textarea {
-      @include type.body-2;
-      padding: var(--space-3) var(--space-4);
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-      resize: vertical;
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
-      }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
 
     .confirmation {

@@ -9,12 +9,13 @@ import { firstSelectedFile, resetFileInput } from '@/app/core/util/dom-event';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
+import { TextField } from '@/app/shared/ui/text-field';
 
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 @Component({
   selector: 'account-profile-page',
-  imports: [FormField, RevealDirective, ActionButton, ImagePlaceholder],
+  imports: [FormField, RevealDirective, ActionButton, ImagePlaceholder, TextField],
   template: `
     <section reveal>
       <h1>Profile</h1>
@@ -29,43 +30,41 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
         />
         <div class="avatar-actions">
           <button type="button" class="upload-link" (click)="fileInputRef().nativeElement.click()">
-            {{ uploading() ? 'Uploading…' : 'Change photo' }}
+            {{ uploading() ? 'Uploading...' : 'Change photo' }}
           </button>
-          <input
-            #fileInput
-            type="file"
-            accept="image/*"
-            hidden
-            (change)="onFileSelected($event)"
-          />
+          <input #fileInput type="file" accept="image/*" hidden (change)="onFileSelected($event)" />
           <p class="hint">JPG or PNG, up to 5 MB.</p>
         </div>
       </div>
 
       <form (submit)="onSubmit($event)" novalidate>
-        <div class="field">
-          <label>First name</label>
-          <input type="text" autocomplete="given-name" [formField]="profileForm.firstName" />
-          @if (profileForm.firstName().touched() && profileForm.firstName().errors()[0]; as err) {
-            <p class="error">{{ err.message }}</p>
-          }
-        </div>
-        <div class="field">
-          <label>Last name</label>
-          <input type="text" autocomplete="family-name" [formField]="profileForm.lastName" />
-          @if (profileForm.lastName().touched() && profileForm.lastName().errors()[0]; as err) {
-            <p class="error">{{ err.message }}</p>
-          }
-        </div>
-        <div class="field">
-          <label>Phone (optional)</label>
-          <input type="tel" autocomplete="tel" [formField]="profileForm.phone" />
-        </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" [value]="auth.currentUser()?.email" disabled />
-          <p class="hint">Email can't be changed here.</p>
-        </div>
+        <text-field
+          label="First name"
+          [height]="48"
+          autocomplete="given-name"
+          [formField]="profileForm.firstName"
+        />
+        <text-field
+          label="Last name"
+          [height]="48"
+          autocomplete="family-name"
+          [formField]="profileForm.lastName"
+        />
+        <text-field
+          label="Phone (optional)"
+          type="tel"
+          [height]="48"
+          autocomplete="tel"
+          [formField]="profileForm.phone"
+        />
+        <text-field
+          label="Email"
+          type="email"
+          [height]="48"
+          [value]="auth.currentUser()?.email ?? ''"
+          [disabled]="true"
+          hint="Email can't be changed here."
+        />
 
         <action-button type="submit" size="m" [loading]="saving()">Save changes</action-button>
       </form>
@@ -118,42 +117,6 @@ const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
       flex-direction: column;
       gap: var(--space-5);
       max-width: 26rem;
-    }
-
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-
-      &:disabled {
-        color: var(--color-neutral-04);
-        background: var(--color-neutral-02);
-      }
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
-      }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
     }
   `,
 })

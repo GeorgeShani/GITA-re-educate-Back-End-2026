@@ -6,6 +6,7 @@ import { AuthService } from '@/app/core/services/auth.service';
 import { CartService } from '@/app/core/services/cart.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { TextField } from '@/app/shared/ui/text-field';
 
 interface SignUpModel {
   firstName: string;
@@ -16,7 +17,7 @@ interface SignUpModel {
 
 @Component({
   selector: 'sign-up-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField],
+  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -25,44 +26,36 @@ interface SignUpModel {
 
         <form (submit)="onSubmit($event)" novalidate>
           <div class="row">
-            <div class="field">
-              <label for="firstName">First name</label>
-              <input id="firstName" type="text" autocomplete="given-name" [formField]="signUpForm.firstName" />
-              @if (signUpForm.firstName().touched() && signUpForm.firstName().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
-            <div class="field">
-              <label for="lastName">Last name</label>
-              <input id="lastName" type="text" autocomplete="family-name" [formField]="signUpForm.lastName" />
-              @if (signUpForm.lastName().touched() && signUpForm.lastName().errors()[0]; as err) {
-                <p class="error">{{ err.message }}</p>
-              }
-            </div>
-          </div>
-
-          <div class="field">
-            <label for="email">Email</label>
-            <input id="email" type="email" autocomplete="email" [formField]="signUpForm.email" />
-            @if (signUpForm.email().touched() && signUpForm.email().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            }
-          </div>
-
-          <div class="field">
-            <label for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              autocomplete="new-password"
-              [formField]="signUpForm.password"
+            <text-field
+              label="First name"
+              [height]="48"
+              autocomplete="given-name"
+              [formField]="signUpForm.firstName"
             />
-            @if (signUpForm.password().touched() && signUpForm.password().errors()[0]; as err) {
-              <p class="error">{{ err.message }}</p>
-            } @else {
-              <p class="hint">At least 8 characters.</p>
-            }
+            <text-field
+              label="Last name"
+              [height]="48"
+              autocomplete="family-name"
+              [formField]="signUpForm.lastName"
+            />
           </div>
+
+          <text-field
+            label="Email"
+            type="email"
+            [height]="48"
+            autocomplete="email"
+            [formField]="signUpForm.email"
+          />
+
+          <text-field
+            label="Password"
+            type="password"
+            [height]="48"
+            autocomplete="new-password"
+            hint="At least 8 characters."
+            [formField]="signUpForm.password"
+          />
 
           <action-button type="submit" size="m" [fullWidth]="true" [loading]="submitting()">
             Create account
@@ -78,6 +71,7 @@ interface SignUpModel {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .shell {
       display: flex;
@@ -111,45 +105,14 @@ interface SignUpModel {
 
     .row {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: var(--space-4);
-    }
 
-    .field {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-2);
-    }
-
-    label {
-      @include type.caption-1-semi;
-      color: var(--color-neutral-07);
-    }
-
-    input {
-      @include type.body-2;
-      height: 48px;
-      padding: 0 16px;
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
-      color: var(--color-neutral-07);
-
-      &:focus-visible {
-        outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
+      // Was an unconditional 1fr 1fr — broke below ~360px, two name
+      // fields squeezed to unreadable width on the smallest phones.
+      @include bp.tablet-up {
+        grid-template-columns: 1fr 1fr;
       }
-    }
-
-    .error {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-error);
-    }
-
-    .hint {
-      @include type.caption-2;
-      margin: 0;
-      color: var(--color-neutral-04);
     }
 
     .switch {
