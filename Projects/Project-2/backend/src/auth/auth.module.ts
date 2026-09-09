@@ -53,6 +53,8 @@ const COMMAND_HANDLERS = [
         new JwtService({
           secret: configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
           signOptions: {
+            // Same genuinely-irreducible StringValue cast as app.module.ts's
+            // access-token JwtModule — see its comment.
             expiresIn: configService.get<string>(
               'JWT_REFRESH_EXPIRES_IN',
               '30d',

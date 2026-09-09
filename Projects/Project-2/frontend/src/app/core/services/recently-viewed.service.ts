@@ -14,7 +14,8 @@ export class RecentlyViewedService {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return;
       try {
-        this._slugs.set(JSON.parse(stored) as string[]);
+        const parsed: unknown = JSON.parse(stored);
+        if (isStringArray(parsed)) this._slugs.set(parsed);
       } catch {
         // Corrupt/stale stored value — ignore, start from an empty list.
       }
@@ -32,4 +33,8 @@ export class RecentlyViewedService {
       [slug, ...current.filter((s) => s !== slug)].slice(0, MAX_ITEMS),
     );
   }
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }

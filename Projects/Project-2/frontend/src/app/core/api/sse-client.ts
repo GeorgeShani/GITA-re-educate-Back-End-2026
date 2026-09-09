@@ -31,6 +31,10 @@ export interface SseRequestOptions {
   signal?: AbortSignal;
 }
 
+function hasMessage(value: unknown): value is { message: unknown } {
+  return typeof value === 'object' && value !== null && 'message' in value;
+}
+
 export async function* streamSse<T>(options: SseRequestOptions): AsyncGenerator<T> {
   const response = await fetch(options.url, {
     method: 'POST',
@@ -48,7 +52,7 @@ export async function* streamSse<T>(options: SseRequestOptions): AsyncGenerator<
     let message = `Request failed (${response.status})`;
     try {
       const body: unknown = await response.json();
-      const candidate = (body as { message?: unknown } | null)?.message;
+      const candidate = hasMessage(body) ? body.message : undefined;
       if (typeof candidate === 'string') message = candidate;
     } catch {
       // Body wasn't JSON — keep the generic message above.
@@ -84,6 +88,11 @@ export async function* streamSse<T>(options: SseRequestOptions): AsyncGenerator<
           .map((line) => line.slice(5).replace(/^ /, ''));
         if (dataLines.length === 0) continue;
 
+        // Genuinely unavoidable: T is a caller-supplied type parameter with
+        // no runtime representation, and JSON.parse's return type is `any`
+        // regardless — there's nothing to narrow against without a runtime
+        // schema validator, which this trusted first-party backend stream
+        // (assistant.service.ts's own AssistantSseEvent) doesn't warrant.
         yield JSON.parse(dataLines.join('\n')) as T;
       }
     }

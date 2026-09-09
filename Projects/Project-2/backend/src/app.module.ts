@@ -99,6 +99,10 @@ import { AssistantModule } from './assistant/assistant.module';
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>('JWT_SECRET'),
         signOptions: {
+          // ms's StringValue is a template-literal type (`${number}${Unit}`
+          // across many case variants) — genuinely not narrowable from an
+          // arbitrary runtime string without re-deriving the same union by
+          // hand, which would just be a disguised assertion of its own.
           expiresIn: configService.get<string>(
             'JWT_EXPIRES_IN',
             '15m',

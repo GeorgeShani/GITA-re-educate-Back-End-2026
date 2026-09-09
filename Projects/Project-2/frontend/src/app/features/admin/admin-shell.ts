@@ -1,10 +1,13 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 import type { RoleDto } from '@/app/core/api/dto';
 import { ADMIN_ROLES } from '@/app/core/constants/admin-roles';
 import { AuthService } from '@/app/core/services/auth.service';
 import { TokenStore } from '@/app/core/services/token-store';
+import { DrawerPanel } from '@/app/shared/ui/drawer-panel';
+import { IconButton } from '@/app/shared/ui/icon-button';
 
 interface AdminNavItem {
   path: string;
@@ -42,21 +45,42 @@ const NAV_ITEMS: AdminNavItem[] = [
  */
 @Component({
   selector: 'admin-shell',
-  imports: [RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet, NgTemplateOutlet, DrawerPanel, IconButton],
   template: `
     <div class="layout">
+      <header class="mobile-bar">
+        <icon-button icon="menu" ariaLabel="Open admin menu" (clicked)="mobileNavOpen.set(true)" />
+        <a routerLink="/" class="wordmark">3legant<span>.</span> Admin</a>
+      </header>
+
       <nav class="sidebar" aria-label="Admin">
+        <ng-container [ngTemplateOutlet]="navContent" />
+      </nav>
+
+      <drawer-panel side="left" [open]="mobileNavOpen()" (openChange)="mobileNavOpen.set($event)">
+        <nav class="drawer-nav" aria-label="Admin">
+          <ng-container [ngTemplateOutlet]="navContent" />
+        </nav>
+      </drawer-panel>
+
+      <ng-template #navContent>
         <a routerLink="/" class="wordmark">3legant<span>.</span> Admin</a>
         <p class="role">Signed in as {{ auth.currentUser()?.firstName }} · {{ role() }}</p>
         <ul role="list">
           @for (item of visibleNavItems(); track item.path) {
             <li>
-              <a [routerLink]="item.path" routerLinkActive="active">{{ item.label }}</a>
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="active"
+                (click)="mobileNavOpen.set(false)"
+              >
+                {{ item.label }}
+              </a>
             </li>
           }
         </ul>
         <a href="/admin/queues" target="_blank" rel="noopener" class="queues-link">Job queues (Bull Board) ↗</a>
-      </nav>
+      </ng-template>
 
       <div class="content">
         <router-outlet />
@@ -83,8 +107,23 @@ const NAV_ITEMS: AdminNavItem[] = [
       }
     }
 
-    .sidebar {
+    // Hamburger + wordmark bar — the sidebar's own trigger for opening
+    // the drawer below wide-up, where the sticky sidebar itself is
+    // hidden (19 links is too much to put ahead of the actual page).
+    .mobile-bar {
       display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-4) var(--page-padding);
+      border-bottom: 1px solid var(--color-neutral-03);
+
+      @include bp.wide-up {
+        display: none;
+      }
+    }
+
+    .sidebar {
+      display: none;
       flex-direction: column;
       gap: var(--space-2);
       padding: var(--space-6) var(--space-4);
@@ -92,6 +131,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       color: var(--color-neutral-01);
 
       @include bp.wide-up {
+        display: flex;
         position: sticky;
         top: 0;
         height: 100dvh;
@@ -99,14 +139,68 @@ const NAV_ITEMS: AdminNavItem[] = [
       }
     }
 
-    .wordmark {
-      @include type.body-1-semi;
-      margin-bottom: var(--space-1);
+    .sidebar .wordmark {
       color: var(--color-white);
 
       span {
         color: var(--color-neutral-04);
       }
+    }
+
+    .sidebar a {
+      color: var(--color-neutral-03);
+
+      &.active {
+        background: var(--color-white);
+        color: var(--color-neutral-07);
+      }
+    }
+
+    // Guarded so a touch tap doesn't leave the link stuck in its hover
+    // overlay with no mouseleave to clear it — same treatment as
+    // shared/ui's interactive primitives. Excluded on .active: the solid
+    // white active fill already reads as selected, a hover overlay on
+    // top of it would just look like a glitch.
+    @media (hover: hover) and (pointer: fine) {
+      .sidebar a:hover:not(.active) {
+        background: color-mix(in srgb, var(--color-white) 8%, transparent);
+        color: var(--color-white);
+      }
+    }
+
+    // The mobile drawer reuses the exact same nav markup (#navContent,
+    // projected via ngTemplateOutlet) but drawer-panel's own shell is a
+    // fixed white surface with no exposed way to recolor it from outside
+    // — rather than fight that with ::ng-deep, this context just gets its
+    // own light-surface palette instead of the sidebar's dark one.
+    .mobile-bar .wordmark,
+    .drawer-nav .wordmark {
+      color: var(--color-neutral-07);
+
+      span {
+        color: var(--color-neutral-04);
+      }
+    }
+
+    .drawer-nav {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      padding-top: var(--space-2);
+    }
+
+    .drawer-nav a {
+      color: var(--color-neutral-06);
+
+      &.active {
+        background: var(--color-neutral-02);
+        color: var(--color-neutral-07);
+      }
+    }
+
+    .wordmark {
+      @include type.body-1-semi;
+      margin-bottom: var(--space-1);
     }
 
     .role {
@@ -129,24 +223,6 @@ const NAV_ITEMS: AdminNavItem[] = [
       display: block;
       padding: var(--space-2) var(--space-3);
       border-radius: var(--radius-md);
-      color: var(--color-neutral-03);
-
-      &.active {
-        background: var(--color-white);
-        color: var(--color-neutral-07);
-      }
-    }
-
-    // Guarded so a touch tap doesn't leave the link stuck in its hover
-    // overlay with no mouseleave to clear it — same treatment as
-    // shared/ui's interactive primitives. Excluded on .active: the solid
-    // white active fill already reads as selected, a hover overlay on
-    // top of it would just look like a glitch.
-    @media (hover: hover) and (pointer: fine) {
-      a:hover:not(.active) {
-        background: color-mix(in srgb, var(--color-white) 8%, transparent);
-        color: var(--color-white);
-      }
     }
 
     .queues-link {
@@ -172,6 +248,7 @@ export default class AdminShell implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly role = computed(() => this.tokens.role() ?? '');
+  protected readonly mobileNavOpen = signal(false);
 
   protected readonly visibleNavItems = computed(() => {
     const role = this.tokens.role();

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 
 import type { ProductQuery } from '@/app/core/api/dto';
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
+import { toUnionValue } from '@/app/core/util/string-union';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
@@ -19,6 +20,12 @@ const SORT_OPTIONS: SelectOption[] = [
   { value: 'rating:desc', label: 'Top rated' },
   { value: 'popularity:desc', label: 'Most reviewed' },
 ];
+
+// Mirrors ProductQuery['sort']/['order'] (core/api/dto.ts) — a query param
+// is a raw string a URL can put anything in, unlike the sort dropdown
+// itself, which only ever emits one of these.
+const SORT_VALUES: NonNullable<ProductQuery['sort']>[] = ['price', 'newest', 'rating', 'popularity'];
+const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
 
 /**
  * Product listing.
@@ -276,8 +283,11 @@ export default class Shop {
       q: this.q(),
       category: this.category(),
       brand: this.brand(),
-      sort: sort as ProductQuery['sort'],
-      order: order as ProductQuery['order'],
+      // A hand-edited ?sort= in the URL can carry anything — fall back to
+      // the same default the dropdown itself defaults to rather than
+      // silently sending the backend a value it never actually offered.
+      sort: toUnionValue(sort ?? '', SORT_VALUES) ?? 'newest',
+      order: toUnionValue(order ?? '', ORDER_VALUES) ?? 'desc',
       page: this.page(),
       take: TAKE,
     };

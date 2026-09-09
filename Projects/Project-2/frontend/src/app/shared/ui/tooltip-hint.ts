@@ -168,7 +168,11 @@ export class TooltipHint {
     const panelRef = this.panelRef;
     panelRef?.instance.entered.set(false);
 
-    const element = panelRef?.location.nativeElement as HTMLElement | undefined;
+    // ComponentRef.location.nativeElement is `any` by Angular's own types
+    // (ElementRef<T> defaults T to any) — narrow it for real rather than
+    // asserting past what's actually known.
+    const nativeElement: unknown = panelRef?.location.nativeElement;
+    const element = nativeElement instanceof HTMLElement ? nativeElement : undefined;
     const finish = () => this.overlayRef?.detach();
 
     if (element) {

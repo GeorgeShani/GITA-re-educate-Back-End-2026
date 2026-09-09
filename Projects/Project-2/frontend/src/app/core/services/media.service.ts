@@ -49,6 +49,18 @@ export async function uploadToCloudinary(file: File, signed: UploadSignatureDto)
   if (!response.ok) {
     throw new Error(`Cloudinary upload failed (${response.status})`);
   }
-  const result = (await response.json()) as { public_id: string };
+  const result: unknown = await response.json();
+  if (!hasPublicId(result)) {
+    throw new Error('Cloudinary upload response had no public_id.');
+  }
   return result.public_id;
+}
+
+function hasPublicId(value: unknown): value is { public_id: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'public_id' in value &&
+    typeof value.public_id === 'string'
+  );
 }

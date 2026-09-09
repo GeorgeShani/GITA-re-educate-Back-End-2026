@@ -41,11 +41,12 @@ export abstract class TransactionalCommandHandler<
   ): Promise<T> {
     const session = await this.connection.startSession();
     try {
-      let result: T | undefined;
-      await session.withTransaction(async () => {
-        result = await work(session);
-      });
-      return result as T;
+      // ClientSession.withTransaction<T>() itself resolves to the
+      // callback's own resolved value (mongodb.d.ts: `Promise<T>`, not
+      // `Promise<void>`) — passing `work` straight through means TS
+      // infers the real return type here with no cast needed, and no
+      // outer mutable variable to bridge the callback back out.
+      return await session.withTransaction(work);
     } finally {
       await session.endSession();
     }

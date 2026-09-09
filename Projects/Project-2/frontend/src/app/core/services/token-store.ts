@@ -77,8 +77,26 @@ function decodeJwt(token: string | null): AccessTokenClaims | null {
   if (!payload) return null;
   try {
     const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-    return JSON.parse(json) as AccessTokenClaims;
+    const parsed: unknown = JSON.parse(json);
+    return isAccessTokenClaims(parsed) ? parsed : null;
   } catch {
     return null;
   }
+}
+
+function isAccessTokenClaims(value: unknown): value is AccessTokenClaims {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'sub' in value &&
+    typeof value.sub === 'string' &&
+    'email' in value &&
+    typeof value.email === 'string' &&
+    'role' in value &&
+    typeof value.role === 'string' &&
+    'exp' in value &&
+    typeof value.exp === 'number' &&
+    'iat' in value &&
+    typeof value.iat === 'number'
+  );
 }

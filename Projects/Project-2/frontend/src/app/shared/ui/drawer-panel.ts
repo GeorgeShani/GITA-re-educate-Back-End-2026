@@ -143,7 +143,8 @@ export class DrawerPanel {
     }
 
     if (this.overlayRef.hasAttached()) return;
-    this.lastFocusedElement = document.activeElement as HTMLElement | null;
+    const { activeElement } = document;
+    this.lastFocusedElement = activeElement instanceof HTMLElement ? activeElement : null;
     this.overlayRef.attach(new TemplatePortal(this.panelTemplate(), this.viewContainerRef));
     afterNextRender(() => this.entered.set(true), { injector: this.injector });
   }

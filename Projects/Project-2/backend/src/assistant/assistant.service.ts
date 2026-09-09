@@ -29,17 +29,19 @@ import type { AssistantTool, AssistantToolContext } from './tools';
 const TITLE_MAX_LENGTH = 60;
 const MAX_TOOL_LOOP_DEPTH = 5;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 /**
  * Narrows a tool result's `response` (typed `unknown` — see
  * StoredToolResult's own comment) to the object shape Gemini's
- * `functionResponse.response` requires. A real runtime check, not a
- * cast: a tool that ever returned a primitive would previously have been
- * asserted straight through as if it were an object.
+ * `functionResponse.response` requires. A real type-predicate check, not
+ * a cast: a tool that ever returned a primitive would previously have
+ * been asserted straight through as if it were an object.
  */
 function asResponseObject(value: unknown): Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-    ? (value as Record<string, unknown>)
-    : {};
+  return isRecord(value) ? value : {};
 }
 
 // Source for every @google/genai call shape below:

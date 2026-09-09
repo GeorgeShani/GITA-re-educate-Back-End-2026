@@ -1,5 +1,13 @@
 import { DatePipe } from '@angular/common';
-import { Component, DestroyRef, ElementRef, effect, inject, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  ElementRef,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { parse } from 'marked';
 
@@ -48,7 +56,12 @@ interface ProductChip {
   imports: [RouterLink, DatePipe, MoneyPipe, ActionButton, DrawerPanel, IconGlyph, SkeletonBlock],
   template: `
     @if (auth.isAuthenticated() && !panelState.open()) {
-      <button type="button" class="fab" aria-label="Open shopping assistant" (click)="panelState.toggle()">
+      <button
+        type="button"
+        class="fab"
+        aria-label="Open shopping assistant"
+        (click)="panelState.toggle()"
+      >
         <icon-glyph name="sparkles" [size]="24" />
       </button>
     }
@@ -79,7 +92,11 @@ interface ProductChip {
               <ul role="list">
                 @for (s of sessions(); track s.id) {
                   <li>
-                    <button type="button" [class.active]="s.id === activeSessionId()" (click)="selectSession(s.id)">
+                    <button
+                      type="button"
+                      [class.active]="s.id === activeSessionId()"
+                      (click)="selectSession(s.id)"
+                    >
                       <span class="session-title">{{ s.title || 'New conversation' }}</span>
                       <span class="session-date">{{ s.updatedAt | date: 'mediumDate' }}</span>
                     </button>
@@ -122,7 +139,11 @@ interface ProductChip {
                         >
                           Decline
                         </button>
-                        <action-button size="s" [loading]="sending()" (click)="respondConfirmation(m.id, true)">
+                        <action-button
+                          size="s"
+                          [loading]="sending()"
+                          (click)="respondConfirmation(m.id, true)"
+                        >
                           Approve
                         </action-button>
                       </div>
@@ -134,12 +155,18 @@ interface ProductChip {
                     @if (chips.length > 0) {
                       <div class="chips">
                         @for (chip of chips; track chip.slug) {
-                          <a class="chip" [routerLink]="['/product', chip.slug]" (click)="panelState.close()">
+                          <a
+                            class="chip"
+                            [routerLink]="['/product', chip.slug]"
+                            (click)="panelState.close()"
+                          >
                             @if (chip.brand) {
                               <span class="chip-brand">{{ chip.brand }}</span>
                             }
                             <span class="chip-name">{{ chip.name }}</span>
-                            <span class="chip-price" data-numeric>{{ chip.priceMinor | money }}</span>
+                            <span class="chip-price" data-numeric>{{
+                              chip.priceMinor | money
+                            }}</span>
                           </a>
                         }
                       </div>
@@ -165,7 +192,7 @@ interface ProductChip {
           <form class="composer" (submit)="onSend($event)">
             <textarea
               rows="1"
-              placeholder="Ask about golf gear…"
+              placeholder="Ask about golf gear..."
               [value]="draft()"
               [disabled]="sending()"
               (input)="draft.set(inputValue($event))"
@@ -174,7 +201,9 @@ interface ProductChip {
             @if (sending()) {
               <button type="button" class="stop" (click)="stopStreaming()">Stop</button>
             } @else {
-              <action-button type="submit" size="s" [disabled]="!draft().trim()">Send</action-button>
+              <action-button type="submit" size="s" [disabled]="!draft().trim()"
+                >Send</action-button
+              >
             }
           </form>
         }
@@ -729,17 +758,18 @@ export class AssistantPanel {
   protected productChipsFor(message: ChatMessageDto): ProductChip[] {
     const chips: ProductChip[] = [];
     for (const result of message.toolResults ?? []) {
-      const response = result.response as Record<string, unknown> | undefined | null;
-      if (!response || typeof response !== 'object') continue;
+      const response = result.response;
+      if (!isRecord(response)) continue;
 
       const candidates: Record<string, unknown>[] = Array.isArray(response['products'])
-        ? (response['products'] as Record<string, unknown>[])
+        ? response['products'].filter(isRecord)
         : typeof response['slug'] === 'string'
           ? [response]
           : [];
 
       for (const candidate of candidates) {
-        if (typeof candidate['slug'] !== 'string' || typeof candidate['name'] !== 'string') continue;
+        if (typeof candidate['slug'] !== 'string' || typeof candidate['name'] !== 'string')
+          continue;
         const priceMinor =
           typeof candidate['basePriceMinor'] === 'number'
             ? candidate['basePriceMinor']
@@ -754,12 +784,18 @@ export class AssistantPanel {
           brand: typeof candidate['brand'] === 'string' ? candidate['brand'] : undefined,
           priceMinor,
           compareAtPriceMinor:
-            typeof candidate['compareAtPriceMinor'] === 'number' ? candidate['compareAtPriceMinor'] : undefined,
+            typeof candidate['compareAtPriceMinor'] === 'number'
+              ? candidate['compareAtPriceMinor']
+              : undefined,
         });
       }
     }
     return chips;
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 function readStoredSessionId(): string | null {
