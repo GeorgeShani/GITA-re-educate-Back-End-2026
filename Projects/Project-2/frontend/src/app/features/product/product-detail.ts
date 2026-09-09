@@ -1,7 +1,8 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 
 import { NewsletterSignup } from '@/app/features/home/newsletter-signup';
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
+import { SeoService } from '@/app/core/services/seo.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { BreadcrumbTrail, type BreadcrumbItem } from '@/app/shared/ui/breadcrumb-trail';
 import { PageContainer } from '@/app/shared/ui/page-container';
@@ -182,6 +183,7 @@ const TABS: TabItem[] = [
 })
 export default class ProductDetail {
   private readonly catalog = inject(CatalogService);
+  private readonly seo = inject(SeoService);
 
   readonly slug = input<string>();
 
@@ -202,7 +204,54 @@ export default class ProductDetail {
     return [
       { label: 'Home', link: '/' },
       { label: 'Shop', link: '/shop' },
-      { label: name ?? '…' },
+      { label: name ?? '...' },
     ];
   });
+
+  constructor() {
+    // ProductDto already carries seoTitle/seoDescription/seoOgImageUrl
+    // (backend/src/catalog/schemas/product.schema.ts) — nothing on the
+    // frontend ever read them before this; every product page rendered
+    // with the same static <title>3legant</title> from index.html and no
+    // description or Open Graph tags at all.
+    effect(() => {
+      const p = this.product.value();
+      if (!p) return;
+
+      const image = p.images[0];
+      this.seo.set({
+        title: p.seoTitle ?? p.name,
+        description: p.seoDescription ?? p.description,
+        image: p.seoOgImageUrl ?? (image ? this.seo.absoluteUrl(image.url) : undefined),
+        type: 'website',
+      });
+
+      this.seo.setJsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: p.name,
+        description: p.description,
+        image: p.images.map((img) => this.seo.absoluteUrl(img.url)),
+        sku: p.variants[0]?.sku,
+        brand: p.brand ? { '@type': 'Brand', name: p.brand } : undefined,
+        aggregateRating:
+          p.ratingCount > 0
+            ? {
+                '@type': 'AggregateRating',
+                ratingValue: p.ratingAverage,
+                reviewCount: p.ratingCount,
+              }
+            : undefined,
+        offers: {
+          '@type': 'Offer',
+          url: this.seo.absoluteUrl(`/product/${p.slug}`),
+          priceCurrency: 'USD',
+          price: (p.basePriceMinor / 100).toFixed(2),
+          availability: p.variants.some((v) => v.isActive)
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+        },
+      });
+    });
+  }
 }

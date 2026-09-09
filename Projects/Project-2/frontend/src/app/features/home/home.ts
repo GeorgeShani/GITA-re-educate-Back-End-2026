@@ -3,6 +3,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
+import { SeoService } from '@/app/core/services/seo.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
@@ -409,6 +410,15 @@ const ASSURANCES = [
 })
 export default class Home {
   private readonly catalog = inject(CatalogService);
+  private readonly seo = inject(SeoService);
+
+  constructor() {
+    this.seo.set({
+      title: 'More than just a game',
+      description:
+        "Whether you're just starting out or you're a tour pro, your swing is like a fingerprint — golf clubs, apparel, and accessories for every level of player.",
+    });
+  }
 
   protected readonly skeletons = [0, 1, 2, 3];
   protected readonly assurances = ASSURANCES;

@@ -1,8 +1,9 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 
 import type { ProductQuery } from '@/app/core/api/dto';
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
+import { SeoService } from '@/app/core/services/seo.service';
 import { toUnionValue } from '@/app/core/util/string-union';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
@@ -275,6 +276,7 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
 export default class Shop {
   private readonly catalog = inject(CatalogService);
   private readonly router = inject(Router);
+  private readonly seo = inject(SeoService);
 
   // Bound from the URL by withComponentInputBinding().
   readonly q = input<string>();
@@ -327,6 +329,16 @@ export default class Shop {
     const name = (this.categories.value() ?? []).find((c) => c.id === this.category())?.name;
     return name ?? 'All products';
   });
+
+  constructor() {
+    effect(() => {
+      this.seo.set({
+        title: this.heading(),
+        description:
+          'Shop golf clubs, apparel, and accessories — filter by category and brand to find your next piece of kit.',
+      });
+    });
+  }
 
   protected readonly hasActiveFilters = computed(
     () => !!(this.q() || this.category() || this.brand()),

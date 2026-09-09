@@ -1,11 +1,12 @@
 import { DatePipe, NgOptimizedImage } from '@angular/common';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormField, email, form, required } from '@angular/forms/signals';
 
 import type { CommentDto } from '@/app/core/api/dto';
 import { AuthService } from '@/app/core/services/auth.service';
 import { BlogService } from '@/app/core/services/blog.service';
+import { SeoService } from '@/app/core/services/seo.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
@@ -313,11 +314,39 @@ export default class BlogPost {
   private readonly blog = inject(BlogService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly seo = inject(SeoService);
 
   readonly slug = input.required<string>();
 
   protected readonly post = this.blog.postResource(() => this.slug());
   protected readonly comments = this.blog.commentsResource(() => this.post.value()?.id);
+
+  constructor() {
+    // Same PostDto.seoTitle/seoDescription story as product-detail.ts —
+    // modeled on the backend, never read on the frontend before this.
+    effect(() => {
+      const p = this.post.value();
+      if (!p) return;
+
+      this.seo.set({
+        title: p.seoTitle ?? p.title,
+        description: p.seoDescription ?? p.excerpt,
+        image: p.coverImageUrl ? this.seo.absoluteUrl(p.coverImageUrl) : undefined,
+        type: 'article',
+      });
+
+      this.seo.setJsonLd({
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: p.title,
+        description: p.excerpt,
+        image: p.coverImageUrl ? [this.seo.absoluteUrl(p.coverImageUrl)] : undefined,
+        datePublished: p.publishedAt ?? undefined,
+        dateModified: p.updatedAt,
+        mainEntityOfPage: this.seo.absoluteUrl(`/blog/${p.slug}`),
+      });
+    });
+  }
 
   protected readonly pendingComments = signal<CommentDto[]>([]);
   protected readonly submitting = signal(false);
