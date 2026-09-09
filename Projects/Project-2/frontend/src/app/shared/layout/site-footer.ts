@@ -33,7 +33,9 @@ const SOCIAL = [
     <page-container>
       <div class="top">
         <div class="brand">
-          <p class="wordmark"><icon-glyph name="golf-mark" [size]="22" />3legant<span>.</span></p>
+          <p class="wordmark">
+            <icon-glyph name="golf-mark" [size]="22" class="icon" />3legant<span>.</span>
+          </p>
           <p class="tagline">More than just a game. It&rsquo;s a lifestyle.</p>
           <ul class="social" role="list">
             @for (item of social; track item.icon) {
@@ -113,7 +115,6 @@ const SOCIAL = [
       @include type.headline-7;
       display: flex;
       align-items: center;
-      gap: var(--space-2);
       margin: 0;
       color: var(--color-neutral-07);
 
@@ -121,6 +122,10 @@ const SOCIAL = [
       // fixed brand colours (see build-icon-sprite.mjs's LOGO comment), so
       // it renders identically wherever it's placed instead of adapting to
       // currentColor like every other icon in the sprite.
+
+      .icon {
+        margin-right: var(--space-2);
+      }
 
       span {
         color: var(--color-success);
