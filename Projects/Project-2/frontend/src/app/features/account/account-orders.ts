@@ -6,6 +6,7 @@ import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { OrdersService } from '@/app/core/services/orders.service';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
 
@@ -23,14 +24,14 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
 
 @Component({
   selector: 'account-orders-page',
-  imports: [RouterLink, DatePipe, MoneyPipe, RevealDirective, SkeletonBlock, StatusBadge],
+  imports: [RouterLink, DatePipe, MoneyPipe, RevealDirective, SkeletonBlock, StatusBadge, EmptyState],
   template: `
     <section reveal>
       <h1>Orders</h1>
 
       @if (orders(); as list) {
         @if (list.length === 0) {
-          <p class="empty">You haven't placed any orders yet.</p>
+          <empty-state message="You haven't placed any orders yet." icon="banknote" />
         } @else {
           <ul class="list" role="list">
             @for (order of list; track order.id) {
@@ -64,11 +65,6 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
       @include type.headline-6;
       margin: 0 0 var(--space-6);
       color: var(--color-neutral-07);
-    }
-
-    .empty {
-      @include type.body-2;
-      color: var(--color-neutral-04);
     }
 
     .list {

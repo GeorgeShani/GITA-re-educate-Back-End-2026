@@ -4,18 +4,19 @@ import { RouterLink } from '@angular/router';
 import { WishlistService } from '@/app/core/services/wishlist.service';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { IconButton } from '@/app/shared/ui/icon-button';
 
 @Component({
   selector: 'account-wishlist-page',
-  imports: [RouterLink, MoneyPipe, RevealDirective, ImagePlaceholder, IconButton],
+  imports: [RouterLink, MoneyPipe, RevealDirective, ImagePlaceholder, IconButton, EmptyState],
   template: `
     <section reveal>
       <h1>Wishlist</h1>
 
       @if (wishlist.items().length === 0) {
-        <p class="empty">Nothing saved yet — tap the heart on a product to add it here.</p>
+        <empty-state message="Nothing saved yet — tap the heart on a product to add it here." icon="heart" />
       } @else {
         <ul class="grid" role="list">
           @for (entry of wishlist.items(); track entry.productId) {
@@ -51,11 +52,6 @@ import { IconButton } from '@/app/shared/ui/icon-button';
       @include type.headline-6;
       margin: 0 0 var(--space-6);
       color: var(--color-neutral-07);
-    }
-
-    .empty {
-      @include type.body-2;
-      color: var(--color-neutral-04);
     }
 
     .grid {

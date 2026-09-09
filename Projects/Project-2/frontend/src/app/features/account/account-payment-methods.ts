@@ -8,6 +8,7 @@ import { PaymentMethodsService } from '@/app/core/services/payment-methods.servi
 import { ToastService } from '@/app/core/services/toast.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 
 /**
  * Saved cards via a Stripe SetupIntent — same classic Elements flow as
@@ -18,7 +19,7 @@ import { ActionButton } from '@/app/shared/ui/action-button';
  */
 @Component({
   selector: 'account-payment-methods-page',
-  imports: [RevealDirective, ActionButton],
+  imports: [RevealDirective, ActionButton, EmptyState],
   template: `
     <section reveal>
       <h1>Payment methods</h1>
@@ -35,7 +36,7 @@ import { ActionButton } from '@/app/shared/ui/action-button';
             }
           </ul>
         } @else {
-          <p class="empty">No saved cards yet.</p>
+          <empty-state message="No saved cards yet." icon="banknote" />
         }
       }
 
@@ -68,12 +69,6 @@ import { ActionButton } from '@/app/shared/ui/action-button';
       @include type.headline-6;
       margin: 0 0 var(--space-6);
       color: var(--color-neutral-07);
-    }
-
-    .empty {
-      @include type.body-2;
-      margin: 0 0 var(--space-4);
-      color: var(--color-neutral-04);
     }
 
     .list {

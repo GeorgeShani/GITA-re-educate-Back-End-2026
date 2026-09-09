@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import type { ReturnDto, ReturnStatus } from '@/app/core/api/dto';
 import { ReturnsService } from '@/app/core/services/returns.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
 
 const STATUS_LABEL: Record<ReturnStatus, string> = {
@@ -17,7 +18,7 @@ const STATUS_LABEL: Record<ReturnStatus, string> = {
 
 @Component({
   selector: 'account-returns-page',
-  imports: [RouterLink, DatePipe, RevealDirective, StatusBadge],
+  imports: [RouterLink, DatePipe, RevealDirective, StatusBadge, EmptyState],
   template: `
     <section reveal>
       <div class="head">
@@ -27,7 +28,7 @@ const STATUS_LABEL: Record<ReturnStatus, string> = {
 
       @if (returns(); as list) {
         @if (list.length === 0) {
-          <p class="empty">You have no return requests.</p>
+          <empty-state message="You have no return requests." icon="truck" />
         } @else {
           <ul class="list" role="list">
             @for (ret of list; track ret.id) {
@@ -67,11 +68,6 @@ const STATUS_LABEL: Record<ReturnStatus, string> = {
       @include type.caption-1-semi;
       color: var(--color-neutral-07);
       text-decoration: underline;
-    }
-
-    .empty {
-      @include type.body-2;
-      color: var(--color-neutral-04);
     }
 
     .list {

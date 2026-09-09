@@ -7,6 +7,7 @@ import { AccountService } from '@/app/core/services/account.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { SelectField } from '@/app/shared/ui/select-field';
 import { TextField } from '@/app/shared/ui/text-field';
 
@@ -75,7 +76,15 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 /** Address book CRUD — GET/POST/PATCH/DELETE /users/me/addresses. */
 @Component({
   selector: 'account-addresses-page',
-  imports: [FormField, RevealDirective, ActionButton, CheckboxField, TextField, SelectField],
+  imports: [
+    FormField,
+    RevealDirective,
+    ActionButton,
+    CheckboxField,
+    TextField,
+    SelectField,
+    EmptyState,
+  ],
   template: `
     <section reveal>
       <div class="head">
@@ -154,7 +163,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 
       @if (addresses(); as list) {
         @if (list.length === 0 && !showForm()) {
-          <p class="empty">You have no saved addresses yet.</p>
+          <empty-state message="You have no saved addresses yet." icon="map-pin" />
         } @else {
           <ul class="list" role="list">
             @for (address of list; track address.id) {
@@ -238,11 +247,6 @@ function toAddressInput(model: AddressFormModel): AddressInput {
       @include type.caption-1-semi;
       color: var(--color-neutral-04);
       text-decoration: underline;
-    }
-
-    .empty {
-      @include type.body-2;
-      color: var(--color-neutral-04);
     }
 
     .list {
