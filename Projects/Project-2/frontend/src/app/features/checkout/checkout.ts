@@ -62,6 +62,7 @@ const STEP_ORDER: Step[] = ['address', 'shipping', 'payment'];
               @case ('address') {
                 <checkout-address-step
                   [savedAddresses]="auth.currentUser()?.addresses ?? []"
+                  [submitting]="submitting()"
                   (continue)="onAddressContinue($event)"
                 />
               }
@@ -69,6 +70,7 @@ const STEP_ORDER: Step[] = ['address', 'shipping', 'payment'];
                 @if (quote(); as q) {
                   <checkout-shipping-step
                     [quote]="q"
+                    [submitting]="submitting()"
                     (continue)="onShippingContinue($event)"
                     (back)="step.set('address')"
                   />
@@ -91,7 +93,12 @@ const STEP_ORDER: Step[] = ['address', 'shipping', 'payment'];
             <ul class="items" role="list">
               @for (item of cart.items(); track item.itemId) {
                 <li class="item">
-                  <image-placeholder [src]="item.imageUrl" [alt]="item.productName" [width]="56" [height]="56" />
+                  <image-placeholder
+                    [src]="item.imageUrl"
+                    [alt]="item.productName"
+                    [width]="56"
+                    [height]="56"
+                  />
                   <div class="item-body">
                     <span class="item-name">{{ item.productName }}</span>
                     <span class="item-qty">Qty {{ item.quantity }}</span>
@@ -231,6 +238,11 @@ export default class Checkout implements OnInit {
   protected readonly quote = signal<CheckoutQuoteDto | null>(null);
   protected readonly order = signal<OrderDto | null>(null);
   protected readonly clientSecret = signal<string | null>(null);
+  // getQuote()/placeOrder() both run here, not in the step that triggers
+  // them (the step only knows the slice of state it collected, per this
+  // class's own doc comment) — the step's Continue button reflects this
+  // straight back down as its own [loading].
+  protected readonly submitting = signal(false);
 
   private shippingAddress: AddressInput | null = null;
   private billingAddress: AddressInput | null = null;
@@ -255,7 +267,7 @@ export default class Checkout implements OnInit {
     // navigateByUrl('/cart') against onPaid()'s navigateByUrl('/checkout/
     // complete/...') — confirmed live: the two navigations aborted each
     // other's router view-transition and left the page stuck on
-    // "Processing…" forever.
+    // "Processing..." forever.
     effect(() => {
       const summary = this.cart.cart();
       if (summary !== null && summary.items.length === 0 && this.order() === null) {
@@ -275,20 +287,27 @@ export default class Checkout implements OnInit {
   }
 
   protected onAddressContinue(addresses: { shipping: AddressInput; billing: AddressInput }): void {
+    if (this.submitting()) return;
     this.shippingAddress = addresses.shipping;
     this.billingAddress = addresses.billing;
 
-    this.checkoutService.getQuote(addresses.shipping.countryCode, addresses.shipping.region).subscribe({
-      next: (quote) => {
-        this.quote.set(quote);
-        this.step.set('shipping');
-      },
-    });
+    this.submitting.set(true);
+    this.checkoutService
+      .getQuote(addresses.shipping.countryCode, addresses.shipping.region)
+      .subscribe({
+        next: (quote) => {
+          this.submitting.set(false);
+          this.quote.set(quote);
+          this.step.set('shipping');
+        },
+        error: () => this.submitting.set(false),
+      });
   }
 
   protected onShippingContinue(method: string): void {
-    if (!this.shippingAddress || !this.billingAddress) return;
+    if (!this.shippingAddress || !this.billingAddress || this.submitting()) return;
 
+    this.submitting.set(true);
     this.checkoutService
       .placeOrder({
         shippingAddress: this.shippingAddress,
@@ -297,10 +316,12 @@ export default class Checkout implements OnInit {
       })
       .subscribe({
         next: ({ order, clientSecret }) => {
+          this.submitting.set(false);
           this.order.set(order);
           this.clientSecret.set(clientSecret);
           this.step.set('payment');
         },
+        error: () => this.submitting.set(false),
       });
   }
 

@@ -12,6 +12,7 @@ import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { QuantityStepper } from '@/app/shared/ui/quantity-stepper';
+import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { TextField } from '@/app/shared/ui/text-field';
 
 const QUANTITY_DEBOUNCE_MS = 500;
@@ -33,6 +34,7 @@ const QUANTITY_DEBOUNCE_MS = 500;
     PageContainer,
     PageSection,
     QuantityStepper,
+    SkeletonBlock,
     TextField,
   ],
   template: `
@@ -40,7 +42,22 @@ const QUANTITY_DEBOUNCE_MS = 500;
       <page-container>
         <h1 reveal>Your Cart</h1>
 
-        @if (cart.isEmpty()) {
+        @if (cart.loading()) {
+          <div class="layout">
+            <ul class="items" role="list">
+              @for (n of skeletonRows; track n) {
+                <li class="item">
+                  <skeleton-block width="96px" height="96px" radius="var(--radius-md)" />
+                  <div class="item-body">
+                    <skeleton-block height="20px" width="70%" radius="var(--radius-sm)" />
+                    <skeleton-block height="16px" width="40%" radius="var(--radius-sm)" />
+                  </div>
+                </li>
+              }
+            </ul>
+            <skeleton-block height="280px" radius="var(--radius-lg)" />
+          </div>
+        } @else if (cart.isEmpty()) {
           <div class="empty" reveal>
             <p>Your cart is empty.</p>
             <action-button routerLink="/shop">Continue shopping</action-button>
@@ -289,6 +306,7 @@ export default class Cart {
   protected readonly couponInput = signal('');
   protected readonly applyingCoupon = signal(false);
   protected readonly removing = signal<Set<string>>(new Set());
+  protected readonly skeletonRows = [0, 1, 2];
 
   /**
    * Overlays the real cart with in-flight quantity edits. Cleared for an

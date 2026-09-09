@@ -140,7 +140,9 @@ function blankAddress(): AddressInput {
         <text-field label="Phone (optional)" [height]="48" type="tel" autocomplete="tel" [formField]="f.phone" />
       </ng-template>
 
-      <button type="button" class="continue" (click)="onContinue()">Continue to shipping</button>
+      <button type="button" class="continue" [disabled]="submitting()" (click)="onContinue()">
+        {{ submitting() ? 'Loading shipping options…' : 'Continue to shipping' }}
+      </button>
     </section>
   `,
   styles: `
@@ -223,6 +225,10 @@ function blankAddress(): AddressInput {
       border-radius: var(--radius-full);
       background: var(--color-neutral-07);
       color: var(--color-white);
+
+      &:disabled {
+        opacity: 0.5;
+      }
     }
   `,
 })
@@ -230,6 +236,7 @@ export class CheckoutAddressStep {
   private readonly toast = inject(ToastService);
 
   readonly savedAddresses = input<AddressDto[]>([]);
+  readonly submitting = input(false);
   readonly continue = output<{ shipping: AddressInput; billing: AddressInput }>();
 
   protected readonly countryOptions = COUNTRY_OPTIONS;

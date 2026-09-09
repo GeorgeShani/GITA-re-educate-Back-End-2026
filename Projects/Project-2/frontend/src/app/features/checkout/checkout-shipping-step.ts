@@ -69,9 +69,16 @@ import { RadioField } from '@/app/shared/ui/radio-field';
       </div>
 
       <div class="actions">
-        <button type="button" class="back" (click)="back.emit()">Back</button>
-        <button type="button" class="continue" [disabled]="!selected()" (click)="onContinue()">
-          Continue to payment
+        <button type="button" class="back" [disabled]="submitting()" (click)="back.emit()">
+          Back
+        </button>
+        <button
+          type="button"
+          class="continue"
+          [disabled]="!selected() || submitting()"
+          (click)="onContinue()"
+        >
+          {{ submitting() ? 'Placing order…' : 'Continue to payment' }}
         </button>
       </div>
     </section>
@@ -181,6 +188,7 @@ import { RadioField } from '@/app/shared/ui/radio-field';
 })
 export class CheckoutShippingStep implements OnInit {
   readonly quote = input.required<CheckoutQuoteDto>();
+  readonly submitting = input(false);
   readonly continue = output<string>();
   readonly back = output<void>();
 
