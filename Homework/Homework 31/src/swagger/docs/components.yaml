@@ -1,0 +1,576 @@
+components:
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      description: Numeric auto-increment id
+      schema:
+        type: integer
+        example: 1
+
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 10
+
+  schemas:
+    HttpError:
+      type: object
+      properties:
+        message:
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+        error:
+          type: string
+        statusCode:
+          type: integer
+      example:
+        message: Bad Request
+        error: Bad Request
+        statusCode: 400
+
+    PaginationMeta:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 42
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 5
+
+    Gender:
+      type: string
+      enum: [male, female]
+
+    ProductCategory:
+      type: string
+      enum:
+        [
+          electronics,
+          clothing,
+          food,
+          books,
+          toys,
+          furniture,
+          beauty,
+          sports,
+          other,
+        ]
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+      example:
+        accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRhLmxvdmVsYWNlQGV4YW1wbGUuY29tIn0.abc123
+
+    # ---------------------------------------------------------------------
+    # Auth
+    # ---------------------------------------------------------------------
+    LoginDto:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: ada.lovelace@example.com
+        password:
+          type: string
+          example: Password123!
+
+    RegisterDto:
+      allOf:
+        - $ref: '#/components/schemas/CreateUserDto'
+        - type: object
+          required: [password]
+          properties:
+            password:
+              type: string
+              minLength: 6
+              example: Password123!
+
+    # ---------------------------------------------------------------------
+    # Users
+    # ---------------------------------------------------------------------
+    CreateUserDto:
+      type: object
+      required: [firstName, lastName, email, phoneNumber, gender, age]
+      properties:
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: string
+          example: Lovelace
+        email:
+          type: string
+          format: email
+          example: ada.lovelace@example.com
+        phoneNumber:
+          type: string
+          example: +1-555-0101
+        gender:
+          $ref: '#/components/schemas/Gender'
+        age:
+          type: integer
+          minimum: 0
+          maximum: 120
+          example: 28
+        isActive:
+          type: boolean
+          default: true
+
+    UpdateUserDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        phoneNumber:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        age:
+          type: integer
+          minimum: 0
+          maximum: 120
+        isActive:
+          type: boolean
+
+    User:
+      type: object
+      description: Never includes `password` — the column is excluded by default at the DB layer.
+      properties:
+        id:
+          type: integer
+          example: 1
+        firstName:
+          type: string
+          example: Ada
+        lastName:
+          type: string
+          example: Lovelace
+        email:
+          type: string
+          format: email
+          example: ada.lovelace@example.com
+        phoneNumber:
+          type: string
+          example: +1-555-0101
+        gender:
+          $ref: '#/components/schemas/Gender'
+        age:
+          type: integer
+          example: 28
+        isActive:
+          type: boolean
+          example: true
+        subscriptionStartDate:
+          type: string
+          format: date-time
+        subscriptionEndDate:
+          type: string
+          format: date-time
+        profilePhotoKey:
+          type: string
+          nullable: true
+          example: homework-31/users/1/6b254ed7-12c8-43da-9486-d4c5c424ce7c.png
+        profilePhotoUrl:
+          type: string
+          nullable: true
+          example: https://d3a0qndyg4qk0o.cloudfront.net/homework-31/users/1/6b254ed7-12c8-43da-9486-d4c5c424ce7c.png
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PaginatedUsers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    GenderStatistic:
+      type: object
+      properties:
+        gender:
+          $ref: '#/components/schemas/Gender'
+        count:
+          type: integer
+          example: 12
+        averageAge:
+          type: number
+          description: Rounded to one decimal place
+          example: 34.5
+
+    # ---------------------------------------------------------------------
+    # Products
+    # ---------------------------------------------------------------------
+    CreateProductDto:
+      type: object
+      required: [name, description, category, price, quantity]
+      properties:
+        name:
+          type: string
+          example: Wireless Noise-Cancelling Headphones
+        description:
+          type: string
+          example: Over-ear Bluetooth headphones with active noise cancellation.
+        category:
+          $ref: '#/components/schemas/ProductCategory'
+        price:
+          type: number
+          format: float
+          example: 199.99
+        quantity:
+          type: integer
+          minimum: 0
+          example: 50
+
+    UpdateProductDto:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        category:
+          $ref: '#/components/schemas/ProductCategory'
+        price:
+          type: number
+          format: float
+        quantity:
+          type: integer
+          minimum: 0
+
+    ProductPhoto:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        key:
+          type: string
+          description: S3 object key
+          example: homework-31/products/1/c2c9a924-762e-4e40-a441-26e54c7185aa.png
+        url:
+          type: string
+          description: Public CloudFront URL
+          example: https://d3a0qndyg4qk0o.cloudfront.net/homework-31/products/1/c2c9a924-762e-4e40-a441-26e54c7185aa.png
+        createdAt:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Wireless Noise-Cancelling Headphones
+        description:
+          type: string
+        category:
+          $ref: '#/components/schemas/ProductCategory'
+        price:
+          type: number
+          format: float
+          example: 199.99
+        quantity:
+          type: integer
+          example: 50
+        photos:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductPhoto'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProductWithPricing:
+      description: What GET /products returns — a Product plus the subscriber-discount fields.
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            discountPercentage:
+              type: integer
+              description: 20 if the caller has an active subscription, 0 otherwise
+              example: 0
+            finalPrice:
+              type: number
+              format: float
+              description: price after discountPercentage is applied
+              example: 199.99
+
+    PaginatedProductsWithPricing:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductWithPricing'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    # ---------------------------------------------------------------------
+    # Movies / Directors
+    # ---------------------------------------------------------------------
+    CreateMovieDto:
+      type: object
+      required: [name, genre, year]
+      properties:
+        name:
+          type: string
+          example: Interstellar
+        genre:
+          type: string
+          example: Sci-Fi
+        year:
+          type: integer
+          minimum: 1888
+          example: 2014
+        description:
+          type: string
+        directorId:
+          type: integer
+          description: Must reference an existing director if provided
+          example: 5
+
+    UpdateMovieDto:
+      type: object
+      properties:
+        name:
+          type: string
+        genre:
+          type: string
+        year:
+          type: integer
+          minimum: 1888
+        description:
+          type: string
+        directorId:
+          type: integer
+          description: Pass 0 to clear the movie's director
+
+    DirectorSummary:
+      description: The director nested inside a Movie — no `films` to avoid an infinite Movie<->Director loop.
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+          example: 5
+        firstName:
+          type: string
+          example: Christopher
+        lastName:
+          type: string
+          example: Nolan
+        birthYear:
+          type: integer
+          nullable: true
+          example: 1970
+        nationality:
+          type: string
+          nullable: true
+          example: British-American
+
+    Movie:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Interstellar
+        genre:
+          type: string
+          example: Sci-Fi
+        year:
+          type: integer
+          example: 2014
+        description:
+          type: string
+          nullable: true
+        director:
+          $ref: '#/components/schemas/DirectorSummary'
+
+    PaginatedMovies:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movie'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    CreateDirectorDto:
+      type: object
+      required: [firstName, lastName]
+      properties:
+        firstName:
+          type: string
+          example: Christopher
+        lastName:
+          type: string
+          example: Nolan
+        birthYear:
+          type: integer
+          example: 1970
+        nationality:
+          type: string
+          example: British-American
+
+    UpdateDirectorDto:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        birthYear:
+          type: integer
+        nationality:
+          type: string
+
+    MovieSummary:
+      description: A movie nested inside a Director's `films` — no `director` to avoid an infinite loop.
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Interstellar
+        genre:
+          type: string
+          example: Sci-Fi
+        year:
+          type: integer
+          example: 2014
+        description:
+          type: string
+          nullable: true
+
+    Director:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        firstName:
+          type: string
+          example: Christopher
+        lastName:
+          type: string
+          example: Nolan
+        birthYear:
+          type: integer
+          nullable: true
+          example: 1970
+        nationality:
+          type: string
+          nullable: true
+          example: British-American
+        films:
+          type: array
+          items:
+            $ref: '#/components/schemas/MovieSummary'
+
+    PaginatedDirectors:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Director'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+  responses:
+    BadRequest:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+          example:
+            message: Missing authentication token
+            error: Unauthorized
+            statusCode: 401
+    Forbidden:
+      description: The resource does not belong to the caller
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+          example:
+            message: You can only manage your own account
+            error: Forbidden
+            statusCode: 403
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+    TooManyRequests:
+      description: Throttler limit exceeded (5 write requests per minute)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/HttpError'
+          example:
+            message: 'ThrottlerException: Too Many Requests'
+            statusCode: 429

@@ -1,0 +1,40 @@
+openapi: 3.0.3
+
+info:
+  title: Homework 31 API
+  description: |
+    REST API for Homework 31 — Users, Products, Auth, Movies, and Directors
+    over MySQL/TypeORM, with S3 + CloudFront photo uploads.
+
+    This spec is hand-written YAML under `src/swagger/docs/*.yaml`, one file
+    per resource, merged together at bootstrap — so the controllers stay
+    free of `@Api*` decorators.
+  version: '1.0'
+
+servers:
+  - url: http://localhost:3000
+    description: Local
+
+tags:
+  - name: App
+    description: Health / description endpoint
+  - name: Auth
+    description: Register, log in, and fetch the current user
+  - name: Users
+    description: User CRUD, subscriptions, gender stats, and profile photo
+  - name: Products
+    description: Product CRUD, filtering, and an S3-backed photo gallery
+  - name: Movies
+    description: Movie CRUD with pagination and filters
+  - name: Directors
+    description: Director CRUD with pagination and filters
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >-
+        Obtain a token from POST /auth/register or POST /auth/login and send
+        it as `Authorization: Bearer <token>`.

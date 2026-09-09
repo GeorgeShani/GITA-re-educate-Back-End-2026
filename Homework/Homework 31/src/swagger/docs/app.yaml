@@ -1,0 +1,16 @@
+paths:
+  /:
+    get:
+      tags: [App]
+      summary: API description
+      description: Returns a one-line string describing this API. Useful as an unauthenticated liveness check.
+      responses:
+        '200':
+          description: Description text
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: >-
+                  Homework 31 API - Users, Products, Auth & S3/CloudFront
+                  Photo Uploads (MySQL, TypeORM)

@@ -1,0 +1,107 @@
+paths:
+  /directors:
+    post:
+      tags: [Directors]
+      summary: Create a director
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDirectorDto'
+      responses:
+        '201':
+          description: Created director
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Director'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    get:
+      tags: [Directors]
+      summary: List directors with pagination and filters
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: name
+          in: query
+          required: false
+          description: Case-insensitive match against first or last name
+          schema:
+            type: string
+            example: nolan
+        - name: nationality
+          in: query
+          required: false
+          schema:
+            type: string
+            example: British
+        - name: birthYearFrom
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1950
+        - name: birthYearTo
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1980
+      responses:
+        '200':
+          description: Paginated list of directors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDirectors'
+
+  /directors/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      tags: [Directors]
+      summary: Get a director by id, with their filmography
+      responses:
+        '200':
+          description: Director document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Director'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Directors]
+      summary: Update a director
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDirectorDto'
+      responses:
+        '200':
+          description: Updated director
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Director'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Directors]
+      summary: Delete a director
+      description: Movies previously directed by them have their directorId set to null, they are not deleted.
+      responses:
+        '200':
+          description: Deleted director
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Director'
+        '404':
+          $ref: '#/components/responses/NotFound'

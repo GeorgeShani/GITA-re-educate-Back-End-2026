@@ -1,0 +1,226 @@
+paths:
+  /users/upgrade-subscription:
+    post:
+      tags: [Users]
+      summary: Extend the current user's subscription by one month
+      security:
+        - bearer: []
+      responses:
+        '201':
+          description: Updated user with the new subscription end date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users with pagination and filters
+      description: >-
+        Every filter provided is OR'd together (matches firstName OR
+        lastName OR email OR ...), not AND'd — passing several narrows less
+        than you might expect.
+      security:
+        - bearer: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: firstName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: lastName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: phoneNumber
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: gender
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [male, female]
+      responses:
+        '200':
+          description: Paginated list of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsers'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/gender-stats:
+    get:
+      tags: [Users]
+      summary: Head count and average age grouped by gender
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: One entry per gender present in the table
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GenderStatistic'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      tags: [Users]
+      summary: Get a user by id
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: User document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Users]
+      summary: Update a user
+      description: Only the token owner may update their own account.
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserDto'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Another user already has this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+    delete:
+      tags: [Users]
+      summary: Delete a user
+      description: >-
+        Only the token owner may delete their own account. Also deletes
+        their profile photo from S3 first, so the account doesn't leave an
+        orphaned file behind.
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: Deleted user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /users/{id}/photo:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      tags: [Users]
+      summary: Upload or replace the user's profile photo
+      description: >-
+        Only the token owner may set their own photo. Replacing an existing
+        photo uploads the new one first, then best-effort deletes the old
+        S3 object — a cleanup failure there won't fail the request.
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo:
+                  type: string
+                  format: binary
+                  description: JPEG, PNG, WebP, or GIF, up to 5 MB
+      responses:
+        '201':
+          description: User with the new profilePhotoUrl
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: No file provided, or an unsupported file type/size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    delete:
+      tags: [Users]
+      summary: Remove the user's profile photo
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: User with profilePhotoKey/profilePhotoUrl cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: User has no profile photo to remove
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
