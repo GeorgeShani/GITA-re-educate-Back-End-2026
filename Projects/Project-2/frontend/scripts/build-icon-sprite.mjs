@@ -64,6 +64,7 @@ const LUCIDE = [
   'sliders-horizontal',
   'store',
   'sparkles',
+  'triangle-alert',
 ];
 
 /** Simple Icons exports, keyed by the name the sprite should expose. */

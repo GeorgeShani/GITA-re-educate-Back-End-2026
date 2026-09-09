@@ -6,7 +6,7 @@ import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminOrdersService } from '@/app/core/services/admin-orders.service';
 import { toFilterValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';

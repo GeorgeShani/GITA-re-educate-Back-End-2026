@@ -5,7 +5,7 @@ import type { DashboardSummaryDto } from '@/app/core/api/dto';
 import { AdminDashboardService } from '@/app/core/services/admin-dashboard.service';
 import { AdminProductLookupService } from '@/app/core/services/admin-product-lookup.service';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { StatTile } from '@/app/features/admin/ui/stat-tile';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';

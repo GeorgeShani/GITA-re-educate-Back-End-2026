@@ -5,7 +5,7 @@ import type { AdminContactMessageDto } from '@/app/core/api/dto';
 import { AdminContactService } from '@/app/core/services/admin-contact.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';

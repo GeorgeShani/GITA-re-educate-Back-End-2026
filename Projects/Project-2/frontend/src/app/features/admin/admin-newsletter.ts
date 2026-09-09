@@ -4,7 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { NewsletterSubscriberDto } from '@/app/core/api/dto';
 import { AdminNewsletterService } from '@/app/core/services/admin-newsletter.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';

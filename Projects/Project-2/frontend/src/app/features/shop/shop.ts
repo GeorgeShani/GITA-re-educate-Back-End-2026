@@ -4,6 +4,9 @@ import { Router } from '@angular/router';
 import type { ProductQuery } from '@/app/core/api/dto';
 import { CatalogService, toCardProduct } from '@/app/core/services/catalog.service';
 import { toUnionValue } from '@/app/core/util/string-union';
+import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { ActionButton } from '@/app/shared/ui/action-button';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
@@ -38,11 +41,21 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
  */
 @Component({
   selector: 'shop-page',
-  imports: [PageContainer, PageSection, ProductCard, PaginationNav, SelectField, SkeletonBlock],
+  imports: [
+    PageContainer,
+    PageSection,
+    ProductCard,
+    PaginationNav,
+    SelectField,
+    SkeletonBlock,
+    RevealDirective,
+    EmptyState,
+    ActionButton,
+  ],
   template: `
     <page-section spacing="md">
       <page-container>
-        <header class="head">
+        <header class="head" reveal>
           <div>
             <h1>{{ heading() }}</h1>
             @if (!products.isLoading()) {
@@ -59,7 +72,7 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
           />
         </header>
 
-        <div class="layout">
+        <div class="layout" reveal>
           <aside class="filters" aria-label="Filters">
             <section>
               <h2>Category</h2>
@@ -124,9 +137,19 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
                 }
               </div>
             } @else if (products.error()) {
-              <p class="message">Could not load products right now.</p>
+              <empty-state message="Could not load products right now." icon="triangle-alert">
+                <action-button action variant="secondary" size="s" (click)="products.reload()">
+                  Try again
+                </action-button>
+              </empty-state>
             } @else if (cards().length === 0) {
-              <p class="message">No products match those filters.</p>
+              <empty-state message="No products match those filters." icon="search">
+                @if (hasActiveFilters()) {
+                  <action-button action variant="secondary" size="s" (click)="clearFilters()">
+                    Clear filters
+                  </action-button>
+                }
+              </empty-state>
             } @else {
               <div class="grid">
                 @for (product of cards(); track product.slug) {
@@ -247,11 +270,6 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
       display: block;
       margin-top: var(--space-10);
     }
-
-    .message {
-      @include type.body-2;
-      color: var(--color-neutral-04);
-    }
   `,
 })
 export default class Shop {
@@ -309,6 +327,14 @@ export default class Shop {
     const name = (this.categories.value() ?? []).find((c) => c.id === this.category())?.name;
     return name ?? 'All products';
   });
+
+  protected readonly hasActiveFilters = computed(
+    () => !!(this.q() || this.category() || this.brand()),
+  );
+
+  protected clearFilters(): void {
+    void this.router.navigate([], { queryParams: {} });
+  }
 
   protected onSortChange(value: string): void {
     this.setParam('sort', value === 'newest:desc' ? null : value);

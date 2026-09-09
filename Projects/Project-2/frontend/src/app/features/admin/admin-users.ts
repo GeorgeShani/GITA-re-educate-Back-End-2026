@@ -7,7 +7,7 @@ import { toUnionValue } from '@/app/core/util/string-union';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';

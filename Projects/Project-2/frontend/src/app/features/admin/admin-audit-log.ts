@@ -4,7 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { AuditLogEntryDto, AuditLogQuery } from '@/app/core/api/dto';
 import { AdminAuditLogService } from '@/app/core/services/admin-audit-log.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { DrawerPanel } from '@/app/shared/ui/drawer-panel';

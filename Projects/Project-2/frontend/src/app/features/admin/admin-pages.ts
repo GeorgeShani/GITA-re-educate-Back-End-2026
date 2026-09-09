@@ -6,7 +6,7 @@ import { ToastService } from '@/app/core/services/toast.service';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';

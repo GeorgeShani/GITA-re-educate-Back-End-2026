@@ -5,7 +5,7 @@ import { AdminTaxService } from '@/app/core/services/admin-tax.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
