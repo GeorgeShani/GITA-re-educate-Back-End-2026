@@ -5,6 +5,7 @@ import type { OrderDto } from '@/app/core/api/dto';
 import { OrdersService } from '@/app/core/services/orders.service';
 import { ReturnsService } from '@/app/core/services/returns.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { inputValue } from '@/app/core/util/dom-event';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
@@ -52,7 +53,7 @@ interface ReturnLineState {
                       class="reason"
                       placeholder="Why are you returning this?"
                       [value]="line.reason"
-                      (input)="setReason(item._id, $any($event.target).value)"
+                      (input)="setReason(item._id, inputValue($event))"
                     ></textarea>
                   }
                 </div>
@@ -143,6 +144,7 @@ export default class AccountReturnNew implements OnInit {
 
   readonly orderId = input.required<string>();
 
+  protected readonly inputValue = inputValue;
   protected readonly order = signal<OrderDto | null>(null);
   protected readonly submitting = signal(false);
   private readonly lines = signal<Record<string, ReturnLineState>>({});

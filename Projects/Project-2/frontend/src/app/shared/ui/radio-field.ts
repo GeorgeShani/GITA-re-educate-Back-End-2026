@@ -61,6 +61,11 @@ import { Component, input, output } from '@angular/core';
       opacity: 0.5;
     }
 
+    .circle input:active:not(:disabled) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
     .label-text {
       @include type.body-2;
     }

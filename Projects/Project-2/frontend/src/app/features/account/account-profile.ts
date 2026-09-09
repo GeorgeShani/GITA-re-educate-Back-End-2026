@@ -5,6 +5,7 @@ import { AccountService } from '@/app/core/services/account.service';
 import { AuthService } from '@/app/core/services/auth.service';
 import { MediaService } from '@/app/core/services/media.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { firstSelectedFile, resetFileInput } from '@/app/core/util/dom-event';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
@@ -187,8 +188,8 @@ export default class AccountProfile implements OnInit {
   }
 
   protected onFileSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
-    (event.target as HTMLInputElement).value = '';
+    const file = firstSelectedFile(event);
+    resetFileInput(event);
     if (!file) return;
 
     if (file.size > MAX_AVATAR_BYTES) {

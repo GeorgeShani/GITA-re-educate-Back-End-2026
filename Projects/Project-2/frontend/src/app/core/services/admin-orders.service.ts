@@ -9,6 +9,7 @@ import type {
   Paginated,
   ShipOrderRequest,
 } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { API_BASE_URL, ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -18,7 +19,7 @@ export class AdminOrdersService {
   private readonly baseUrl = inject(API_BASE_URL);
 
   list(query: AdminOrderQuery): Observable<Paginated<OrderDto>> {
-    return this.api.get<Paginated<OrderDto>>('/admin/orders', toParams({ ...query }));
+    return this.api.get<Paginated<OrderDto>>('/admin/orders', toHttpParams({ ...query }));
   }
 
   getOne(id: string): Observable<OrderDto> {
@@ -47,13 +48,4 @@ export class AdminOrdersService {
   getPackingSlipBlob(id: string): Observable<Blob> {
     return this.http.get(`${this.baseUrl}/admin/orders/${id}/packing-slip`, { responseType: 'blob' });
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

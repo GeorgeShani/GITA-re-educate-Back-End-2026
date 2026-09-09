@@ -13,6 +13,7 @@ import type {
   UpsertPostRequest,
   UpsertTagRequest,
 } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -20,7 +21,7 @@ export class AdminBlogService {
   private readonly api = inject(ApiClient);
 
   listPosts(query: AdminPostQuery): Observable<Paginated<PostDto>> {
-    return this.api.get<Paginated<PostDto>>('/admin/blog/posts', toParams({ ...query }));
+    return this.api.get<Paginated<PostDto>>('/admin/blog/posts', toHttpParams({ ...query }));
   }
 
   getPost(id: string): Observable<PostDto> {
@@ -68,7 +69,7 @@ export class AdminBlogService {
   }
 
   listComments(query: AdminCommentQuery): Observable<Paginated<CommentDto>> {
-    return this.api.get<Paginated<CommentDto>>('/admin/blog/comments', toParams({ ...query }));
+    return this.api.get<Paginated<CommentDto>>('/admin/blog/comments', toHttpParams({ ...query }));
   }
 
   approveComment(id: string): Observable<CommentDto> {
@@ -82,13 +83,4 @@ export class AdminBlogService {
   replyToComment(id: string, body: string): Observable<CommentDto> {
     return this.api.post<CommentDto>(`/admin/blog/comments/${id}/reply`, { body });
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

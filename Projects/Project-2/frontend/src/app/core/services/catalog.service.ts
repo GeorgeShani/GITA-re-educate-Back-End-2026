@@ -10,6 +10,7 @@ import type {
   ProductQuery,
   StockDto,
 } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { API_BASE_URL, ApiClient } from '@/app/core/services/api-client';
 import type { ProductCardBadge, ProductCardProduct } from '@/app/shared/ui/product-card';
 
@@ -39,7 +40,7 @@ export class CatalogService {
   productsResource(query: () => ProductQuery) {
     return httpResource<Paginated<ProductDto>>(() => ({
       url: `${this.baseUrl}/products`,
-      params: toParams({ sort: 'newest', order: 'desc', ...query() }),
+      params: toHttpParams({ sort: 'newest', order: 'desc', ...query() }),
     }));
   }
 
@@ -60,7 +61,7 @@ export class CatalogService {
   facetsResource(categoryId: () => string | undefined) {
     return httpResource<ProductFacetsDto>(() => ({
       url: `${this.baseUrl}/products/facets`,
-      params: toParams({ category: categoryId() }),
+      params: toHttpParams({ category: categoryId() }),
     }));
   }
 
@@ -118,13 +119,4 @@ export function toCardProduct(product: ProductDto): ProductCardProduct {
     reviewCount: product.ratingCount || undefined,
     badges: badges.length ? badges : undefined,
   };
-}
-
-/** Drops undefined keys — the API rejects unknown/empty params outright. */
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(
-    Object.entries(query).filter(([, value]) => value !== undefined),
-  ) as Record<string, string | number | boolean>;
 }

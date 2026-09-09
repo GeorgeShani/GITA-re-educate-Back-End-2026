@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminOrdersService } from '@/app/core/services/admin-orders.service';
+import { toFilterValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { EmptyState } from '@/app/features/admin/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
@@ -15,6 +16,18 @@ import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
 
 const TAKE = 20;
+
+const ORDER_STATUSES = [
+  'placed',
+  'paid',
+  'payment_failed',
+  'confirmed',
+  'fulfilled',
+  'shipped',
+  'delivered',
+  'cancelled',
+  'refunded',
+] as const satisfies readonly OrderStatus[];
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: '', label: 'All statuses' },
@@ -117,7 +130,7 @@ export default class AdminOrders implements OnInit {
   protected readonly total = signal(0);
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
-  protected readonly statusFilter = signal('');
+  protected readonly statusFilter = signal<OrderStatus | ''>('');
 
   protected readonly pageCount = computed(() => Math.ceil(this.total() / TAKE));
 
@@ -126,7 +139,7 @@ export default class AdminOrders implements OnInit {
   }
 
   protected onStatusChange(value: string): void {
-    this.statusFilter.set(value);
+    this.statusFilter.set(toFilterValue(value, ORDER_STATUSES));
     this.page.set(1);
     this.load();
   }
@@ -135,7 +148,7 @@ export default class AdminOrders implements OnInit {
     this.loading.set(true);
     this.ordersService
       .list({
-        status: (this.statusFilter() || undefined) as OrderStatus | undefined,
+        status: this.statusFilter() || undefined,
         page: this.page(),
         take: TAKE,
       })

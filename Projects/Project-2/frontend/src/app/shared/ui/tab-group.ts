@@ -75,6 +75,17 @@ export interface TabItem {
       color: var(--color-neutral-07);
       border-bottom-color: var(--color-neutral-07);
     }
+
+    @media (hover: hover) and (pointer: fine) {
+      .tab:hover:not([aria-selected='true']) {
+        color: var(--color-neutral-06);
+      }
+    }
+
+    .tab:active {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
   `,
 })
 export class TabGroup {

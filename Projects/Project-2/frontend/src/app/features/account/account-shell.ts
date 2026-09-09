@@ -56,13 +56,14 @@ const NAV_ITEMS: AccountNavItem[] = [
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .layout {
       display: grid;
       grid-template-columns: 1fr;
       gap: var(--space-8);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 240px 1fr;
         align-items: start;
       }

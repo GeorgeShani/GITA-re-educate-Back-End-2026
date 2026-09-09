@@ -7,6 +7,7 @@ import type {
   Paginated,
   UpdateGiftCardRequest,
 } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -16,7 +17,7 @@ export class AdminGiftCardsService {
   list(isActive?: boolean, page = 1, take = 30): Observable<Paginated<GiftCardDto>> {
     return this.api.get<Paginated<GiftCardDto>>(
       '/admin/gift-cards',
-      toParams({ isActive, page, take }),
+      toHttpParams({ isActive, page, take }),
     );
   }
 
@@ -35,13 +36,4 @@ export class AdminGiftCardsService {
   adjustBalance(id: string, delta: number): Observable<GiftCardDto> {
     return this.api.post<GiftCardDto>(`/admin/gift-cards/${id}/adjust-balance`, { delta });
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

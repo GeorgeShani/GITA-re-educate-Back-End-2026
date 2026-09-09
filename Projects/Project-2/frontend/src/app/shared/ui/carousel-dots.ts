@@ -42,6 +42,10 @@ import { Component, computed, input, output } from '@angular/core';
       background: var(--color-neutral-07);
       transform: scale(1.25);
     }
+
+    .carousel-dots__dot:active {
+      transform: scale(0.97);
+    }
   `,
 })
 export class CarouselDots {

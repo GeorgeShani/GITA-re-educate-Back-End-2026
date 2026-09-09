@@ -2,6 +2,7 @@ import { Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
 import type { AdminProductQuery, Paginated, ProductDto, UpsertProductRequest } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -9,7 +10,7 @@ export class AdminProductsService {
   private readonly api = inject(ApiClient);
 
   list(query: AdminProductQuery): Observable<Paginated<ProductDto>> {
-    return this.api.get<Paginated<ProductDto>>('/admin/products', toParams({ ...query }));
+    return this.api.get<Paginated<ProductDto>>('/admin/products', toHttpParams({ ...query }));
   }
 
   getOne(id: string): Observable<ProductDto> {
@@ -27,13 +28,4 @@ export class AdminProductsService {
   delete(id: string): Observable<void> {
     return this.api.delete<void>(`/admin/products/${id}`);
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

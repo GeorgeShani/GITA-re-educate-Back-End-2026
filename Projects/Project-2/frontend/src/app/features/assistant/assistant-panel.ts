@@ -13,6 +13,7 @@ import { AssistantPanelState } from '@/app/core/services/assistant-panel-state.s
 import { AssistantService } from '@/app/core/services/assistant.service';
 import { AuthService } from '@/app/core/services/auth.service';
 import { CartService } from '@/app/core/services/cart.service';
+import { closestForm, inputValue } from '@/app/core/util/dom-event';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { DrawerPanel } from '@/app/shared/ui/drawer-panel';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
@@ -167,7 +168,7 @@ interface ProductChip {
               placeholder="Ask about golf gear…"
               [value]="draft()"
               [disabled]="sending()"
-              (input)="draft.set($any($event.target).value)"
+              (input)="draft.set(inputValue($event))"
               (keydown.enter)="onEnterKey($event)"
             ></textarea>
             @if (sending()) {
@@ -505,6 +506,7 @@ export class AssistantPanel {
   protected readonly messages = signal<ChatMessageDto[]>([]);
   protected readonly messagesLoading = signal(false);
 
+  protected readonly inputValue = inputValue;
   protected readonly draft = signal('');
   protected readonly sending = signal(false);
   protected readonly streamingText = signal<string | null>(null);
@@ -582,10 +584,12 @@ export class AssistantPanel {
   }
 
   protected onEnterKey(event: Event): void {
-    const keyboardEvent = event as KeyboardEvent;
-    if (keyboardEvent.shiftKey) return;
-    keyboardEvent.preventDefault();
-    (event.target as HTMLElement).closest('form')?.requestSubmit();
+    // Angular types a filtered binding like `(keydown.enter)`'s $event as
+    // plain Event, not KeyboardEvent (confirmed against the compiler, not
+    // assumed) — narrow with a real check instead of casting.
+    if (!(event instanceof KeyboardEvent) || event.shiftKey) return;
+    event.preventDefault();
+    closestForm(event)?.requestSubmit();
   }
 
   protected onSend(event: SubmitEvent): void {

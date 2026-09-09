@@ -111,6 +111,7 @@ const STEP_ORDER: Step[] = ['address', 'shipping', 'payment'];
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     h1 {
       @include type.headline-5;
@@ -141,7 +142,7 @@ const STEP_ORDER: Step[] = ['address', 'shipping', 'payment'];
       grid-template-columns: 1fr;
       gap: var(--space-8);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 2fr 1fr;
         align-items: start;
       }

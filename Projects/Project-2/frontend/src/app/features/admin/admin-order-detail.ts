@@ -131,6 +131,7 @@ function statusColor(status: OrderStatus): string {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .back {
       @include type.caption-1-semi;
@@ -154,7 +155,7 @@ function statusColor(status: OrderStatus): string {
       display: grid;
       gap: var(--space-6);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 1fr 1fr;
       }
     }

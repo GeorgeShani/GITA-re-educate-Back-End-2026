@@ -4,6 +4,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import type { CouponDto, CouponType, UpsertCouponRequest } from '@/app/core/api/dto';
 import { AdminCouponsService } from '@/app/core/services/admin-coupons.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toUnionValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
 import { EmptyState } from '@/app/features/admin/ui/empty-state';
@@ -14,6 +15,8 @@ import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
 import { TextField } from '@/app/shared/ui/text-field';
+
+const COUPON_TYPES = ['percentage', 'fixed', 'free_shipping'] as const satisfies readonly CouponType[];
 
 const TYPE_OPTIONS: SelectOption[] = [
   { value: 'percentage', label: 'Percentage off' },
@@ -99,7 +102,7 @@ const EMPTY_FORM: CouponFormModel = {
       (save)="save()"
     >
       <text-field label="Code" [value]="form().code" (valueChange)="patch({ code: $event })" [disabled]="!!editingId()" />
-      <select-field label="Type" [options]="typeOptions" [value]="form().type" (valueChange)="patch({ type: $any($event) })" />
+      <select-field label="Type" [options]="typeOptions" [value]="form().type" (valueChange)="onTypeChange($event)" />
       <text-field
         [label]="form().type === 'percentage' ? 'Value (0-100)' : form().type === 'fixed' ? 'Value (USD)' : 'Value (ignored)'"
         type="number"
@@ -155,6 +158,11 @@ export default class AdminCoupons implements OnInit {
 
   protected patch(partial: Partial<CouponFormModel>): void {
     this.form.update((current) => ({ ...current, ...partial }));
+  }
+
+  /** `select-field` emits a bare `string`; narrowed against the same values `typeOptions` actually offers. */
+  protected onTypeChange(value: string): void {
+    this.patch({ type: toUnionValue(value, COUPON_TYPES) ?? this.form().type });
   }
 
   protected startCreate(): void {

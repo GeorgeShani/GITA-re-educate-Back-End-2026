@@ -100,8 +100,26 @@
   // Motion — CSS-first animation system (reveal directive, route
   // transitions). Respect prefers-reduced-motion in styles/_reset.scss
   // before assuming any of these actually apply.
+  --duration-instant: 100ms; // :active press feedback — near-instant, per animate.md
   --duration-fast: 150ms;
   --duration-base: 250ms;
   --duration-slow: 400ms;
+  --duration-slower: 600ms; // single authored hero moment only (home.ts) — do not reach for this elsewhere
+
+  // The one curve the system already leans on for entrances/settling motion.
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  // Accelerating curve for exits (elements leaving the screen).
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  // Symmetric curve for state changes that aren't entering or leaving (e.g. collapse/expand).
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  // Confident, slightly-overshooting decelerate — reserved for the single
+  // authored hero entrance (home.ts). Not for routine UI.
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+
+  // Stagger defaults for NEW [reveal] call sites that want a sensible
+  // default without picking an arbitrary number. Existing call sites mostly
+  // pass their own ms value via [revealStagger] and don't need to switch.
+  --stagger-1: 40ms;
+  --stagger-2: 60ms;
+  --stagger-3: 90ms;
 }

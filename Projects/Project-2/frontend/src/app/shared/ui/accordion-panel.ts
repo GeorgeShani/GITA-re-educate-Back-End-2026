@@ -67,6 +67,11 @@ import { IconGlyph } from './icon-glyph';
       cursor: not-allowed;
     }
 
+    .accordion-panel__trigger:active:not(:disabled) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
     .accordion-panel__chevron {
       flex-shrink: 0;
       transition: transform var(--duration-fast) var(--ease-out);

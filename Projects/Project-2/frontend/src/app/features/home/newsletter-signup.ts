@@ -2,6 +2,7 @@ import { NgOptimizedImage } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 
 import { NewsletterService } from '@/app/core/services/newsletter.service';
+import { inputValue } from '@/app/core/util/dom-event';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 
 @Component({
@@ -32,7 +33,7 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
               required
               placeholder="Email address"
               [value]="email()"
-              (input)="email.set($any($event.target).value)"
+              (input)="email.set(inputValue($event))"
             />
             <button type="submit">Signup</button>
           </form>
@@ -140,6 +141,7 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 export class NewsletterSignup {
   private readonly newsletter = inject(NewsletterService);
 
+  protected readonly inputValue = inputValue;
   protected readonly email = signal('');
   protected readonly submitted = signal(false);
   protected readonly submitting = signal(false);

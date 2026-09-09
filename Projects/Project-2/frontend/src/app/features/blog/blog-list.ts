@@ -196,7 +196,7 @@ const TAKE = 9;
 
       button {
         width: auto;
-        border-radius: var(--radius-pill, 999px);
+        border-radius: var(--radius-full);
         box-shadow: inset 0 0 0 1px var(--color-neutral-03);
       }
     }

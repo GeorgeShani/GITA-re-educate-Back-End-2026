@@ -50,8 +50,15 @@ export interface BreadcrumbItem {
       color: var(--color-neutral-04);
     }
 
-    .breadcrumb-trail a:hover {
+    @media (hover: hover) and (pointer: fine) {
+      .breadcrumb-trail a:hover {
+        color: var(--color-neutral-07);
+      }
+    }
+
+    .breadcrumb-trail a:active {
       color: var(--color-neutral-07);
+      opacity: 0.7;
     }
 
     .breadcrumb-trail [aria-current='page'] {

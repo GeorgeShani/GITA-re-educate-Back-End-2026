@@ -1,0 +1,26 @@
+// Native View Transitions — wired on in app.config.ts's
+// withViewTransitions({ onViewTransitionCreated }), which already skips
+// same-path/query-only navigations (the shop.ts filter/sort/page bug).
+// What's left here only ever fires on a real route change.
+//
+// Root cross-fade: the browser's own default is a simple opacity
+// cross-fade at ~UA-default timing — this just tunes it to the app's own
+// duration/easing instead of leaving that to chance.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-base);
+  animation-timing-function: var(--ease-out);
+}
+
+// Chrome that should hold visually still across a route change rather than
+// cross-fade along with the rest of the page. Each of these three declares
+// its own unique `view-transition-name` (site-header.ts, site-footer.ts,
+// notification-bar.ts) so the browser gives it its own snapshot group,
+// separate from ::view-transition-*(root) — turning off that group's own
+// animation is what makes it hold still instead of fading with the page
+// underneath it.
+::view-transition-group(site-header),
+::view-transition-group(site-footer),
+::view-transition-group(notification-bar) {
+  animation: none;
+}

@@ -65,6 +65,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     :host {
       display: block;
@@ -77,7 +78,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       grid-template-columns: 1fr;
       min-height: 100dvh;
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 240px 1fr;
       }
     }
@@ -90,7 +91,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       background: var(--color-neutral-07);
       color: var(--color-neutral-01);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         position: sticky;
         top: 0;
         height: 100dvh;
@@ -130,14 +131,21 @@ const NAV_ITEMS: AdminNavItem[] = [
       border-radius: var(--radius-md);
       color: var(--color-neutral-03);
 
-      &:hover {
-        background: color-mix(in srgb, var(--color-white) 8%, transparent);
-        color: var(--color-white);
-      }
-
       &.active {
         background: var(--color-white);
         color: var(--color-neutral-07);
+      }
+    }
+
+    // Guarded so a touch tap doesn't leave the link stuck in its hover
+    // overlay with no mouseleave to clear it — same treatment as
+    // shared/ui's interactive primitives. Excluded on .active: the solid
+    // white active fill already reads as selected, a hover overlay on
+    // top of it would just look like a glitch.
+    @media (hover: hover) and (pointer: fine) {
+      a:hover:not(.active) {
+        background: color-mix(in srgb, var(--color-white) 8%, transparent);
+        color: var(--color-white);
       }
     }
 
@@ -152,7 +160,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       min-width: 0;
       padding: var(--space-6) var(--page-padding);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         padding: var(--space-8);
       }
     }

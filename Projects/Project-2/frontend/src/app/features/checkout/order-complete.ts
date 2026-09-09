@@ -131,6 +131,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .head {
       display: flex;
@@ -164,7 +165,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
       gap: var(--space-8);
       margin-bottom: var(--space-8);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 2fr 1fr;
         align-items: start;
       }

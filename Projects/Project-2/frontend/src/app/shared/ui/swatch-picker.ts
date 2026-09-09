@@ -63,6 +63,22 @@ export interface SwatchOption {
     .swatch[aria-checked='true'] {
       outline-color: var(--color-neutral-07);
     }
+
+    // The unconditional "outline: 2px solid transparent" above is what
+    // makes the checked ring animate in via outline-color rather than a
+    // hard cut — but it also silently swallows the global :focus-visible
+    // ring on an *unchecked* swatch (this rule and the global one have
+    // equal specificity, and this component's styles win the tie by
+    // source order), leaving keyboard focus invisible there. Restore it
+    // explicitly, at higher specificity than the rule above.
+    .swatch:focus-visible {
+      outline-color: var(--color-info);
+    }
+
+    .swatch:active {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
   `,
 })
 export class SwatchPicker {

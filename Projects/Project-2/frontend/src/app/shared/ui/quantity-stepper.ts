@@ -56,6 +56,11 @@ import { IconGlyph } from './icon-glyph';
       cursor: not-allowed;
     }
 
+    .step:active:not(:disabled) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
     .value {
       @include type.caption-1-semi;
       min-width: 1.5em;

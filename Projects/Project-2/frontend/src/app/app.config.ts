@@ -4,6 +4,7 @@ import {
   withComponentInputBinding,
   withInMemoryScrolling,
   withViewTransitions,
+  type ActivatedRouteSnapshot,
 } from '@angular/router';
 import {
   provideClientHydration,
@@ -25,6 +26,24 @@ import { errorInterceptor } from '@/app/core/interceptors/error.interceptor';
  * decision). Anything not on res.cloudinary.com (the local site images
  * under /images, or a URL missing mid-build) passes through untouched.
  */
+/**
+ * The path a route snapshot resolves to, ignoring query params and
+ * fragment — walks the primary-outlet chain from the root, concatenating
+ * each node's own URL segments. Query params live outside `.url` entirely
+ * (they're on `.queryParams`, shared by the whole tree), so this
+ * comparison naturally ignores them.
+ */
+function routePath(snapshot: ActivatedRouteSnapshot): string {
+  let path = '';
+  let node: ActivatedRouteSnapshot | null = snapshot;
+  while (node) {
+    const segment = node.url.map((s) => s.path).join('/');
+    if (segment) path += `/${segment}`;
+    node = node.firstChild;
+  }
+  return path;
+}
+
 function cloudinaryImageLoader(config: ImageLoaderConfig): string {
   const marker = '/image/upload/';
   const splitAt = config.src.indexOf(marker);
@@ -43,7 +62,23 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(
       routes,
-      withViewTransitions(),
+      withViewTransitions({
+        // Disables the transition on the very first navigation (app
+        // bootstrap) — nothing to cross-fade from yet.
+        skipInitialTransition: true,
+        // shop.ts's filter/sort/page controls (and anything else that
+        // calls router.navigate([], { queryParams })) re-resolve the SAME
+        // route with a different query string. Without this check that
+        // already cross-fades the whole document on every filter click
+        // today — confirmed live — because withViewTransitions() has no
+        // way to know "same page, new filter" from "new page" on its own.
+        // Real route changes (different path) still get the transition.
+        onViewTransitionCreated: ({ transition, from, to }) => {
+          if (routePath(from) === routePath(to)) {
+            transition.skipTransition();
+          }
+        },
+      }),
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled', anchorScrolling: 'enabled' }),
       withComponentInputBinding(),
     ),

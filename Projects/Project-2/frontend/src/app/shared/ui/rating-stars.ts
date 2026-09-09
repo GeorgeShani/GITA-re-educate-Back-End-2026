@@ -66,6 +66,11 @@ import { IconGlyph } from './icon-glyph';
       margin: 0;
     }
 
+    button.star-slot:active {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
     .star-empty {
       color: var(--color-neutral-03);
     }

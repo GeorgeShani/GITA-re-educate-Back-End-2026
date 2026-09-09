@@ -1,0 +1,5 @@
+<!-- Golf ball-on-tee, adapted from "golf-ball-2" on SVG Repo (svgrepo.com): geometry theirs, recolored to the brand's ink and its one accent green (design tokens color-neutral-07 and color-success). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <circle cx="12" cy="9" r="6" fill="#FEFEFE" stroke="#141718" stroke-width="1.5" />
+  <path d="M16 15H8L8.34 15.5A10 10 0 0 1 10 21H14A10 10 0 0 1 15.66 15.5Z" fill="#38CB89" />
+</svg>

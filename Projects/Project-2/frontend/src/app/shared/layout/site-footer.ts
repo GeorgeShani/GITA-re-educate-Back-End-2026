@@ -33,7 +33,7 @@ const SOCIAL = [
     <page-container>
       <div class="top">
         <div class="brand">
-          <p class="wordmark">3legant<span>.</span></p>
+          <p class="wordmark"><icon-glyph name="golf-mark" [size]="22" />3legant<span>.</span></p>
           <p class="tagline">More than just a game. It&rsquo;s a lifestyle.</p>
           <ul class="social" role="list">
             @for (item of social; track item.icon) {
@@ -94,6 +94,10 @@ const SOCIAL = [
       padding-block: var(--space-10);
       background: var(--color-neutral-02);
       color: var(--color-neutral-05);
+      // Own snapshot group for the route cross-fade (styles/_view-transitions.scss)
+      // so the footer holds still across a real route change instead of
+      // fading with the rest of the page.
+      view-transition-name: site-footer;
     }
 
     .top {
@@ -107,8 +111,16 @@ const SOCIAL = [
 
     .wordmark {
       @include type.headline-7;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
       margin: 0;
       color: var(--color-neutral-07);
+
+      // No colour rule for icon-glyph here — "golf-mark" carries its own
+      // fixed brand colours (see build-icon-sprite.mjs's LOGO comment), so
+      // it renders identically wherever it's placed instead of adapting to
+      // currentColor like every other icon in the sprite.
 
       span {
         color: var(--color-success);
@@ -147,8 +159,13 @@ const SOCIAL = [
 
     .column a {
       @include type.caption-1;
+    }
 
-      &:hover {
+    // Guarded so a touch tap doesn't leave the link stuck darkened with
+    // no mouseleave to un-hover it — same treatment as shared/ui's
+    // interactive primitives (e.g. nav-link.ts).
+    @media (hover: hover) and (pointer: fine) {
+      .column a:hover {
         color: var(--color-neutral-07);
       }
     }

@@ -15,12 +15,58 @@
     transform var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms);
 }
 
-[reveal].reveal-pending {
+// 'rise' — the original, default motion. Unchanged values: every one of the
+// 106 existing [reveal] call sites (no [revealVariant] passed) gets exactly
+// this, same as before the variant system existed.
+[reveal].reveal-rise.reveal-pending {
   opacity: 0;
   transform: translateY(16px);
 }
 
-[reveal].is-revealed {
+[reveal].reveal-rise.is-revealed {
   opacity: 1;
   transform: none;
+}
+
+// 'fade' — opacity only, no motion. For elements where a translate would
+// fight their own layout (e.g. already-positioned overlays, wide banners).
+[reveal].reveal-fade.reveal-pending {
+  opacity: 0;
+}
+
+[reveal].reveal-fade.is-revealed {
+  opacity: 1;
+}
+
+// 'scale' — for card-like elements; settles in rather than rising.
+[reveal].reveal-scale.reveal-pending {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+[reveal].reveal-scale.is-revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+// Home hero entrance — the one authored, non-generic moment in the app
+// (features/home/home.ts). This is a plain, self-playing CSS animation
+// rather than the [reveal] directive because it targets the hero's
+// priority/LCP photograph: opacity stays at 1 for the entire animation
+// (only `scale` moves), so unlike a reveal-style fade it can never hide
+// content from a no-JS visitor and never delays the LCP paint timestamp.
+// prefers-reduced-motion is handled for free by the blanket
+// animation-duration override in _reset.scss.
+@keyframes hero-image-settle {
+  from {
+    transform: scale(1.04);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+.hero-image-settle {
+  animation: hero-image-settle var(--duration-slower) var(--ease-emphasized) both;
 }

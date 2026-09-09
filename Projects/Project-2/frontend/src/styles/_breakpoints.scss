@@ -1,12 +1,23 @@
 // Breakpoints — SCOPE.md A4.
 // Mobile frames in Figma are 375px, desktop 1440px. No tablet frame exists
-// in the source design; 768px is our own tier.
+// in the source design; 768px is our own tier. 900px is a fifth tier that
+// showed up organically (admin shell/dashboard/order-detail, checkout,
+// order-complete, account-shell all needed a step between tablet and
+// desktop for two-column layouts) — formalised here instead of staying a
+// raw, un-mixin'd `@media (min-width: 900px)` copy-pasted six times.
 $breakpoint-mobile: 375px;
 $breakpoint-tablet: 768px;
+$breakpoint-wide: 900px;
 $breakpoint-desktop: 1440px;
 
 @mixin tablet-up {
   @media (min-width: $breakpoint-tablet) {
+    @content;
+  }
+}
+
+@mixin wide-up {
+  @media (min-width: $breakpoint-wide) {
     @content;
   }
 }

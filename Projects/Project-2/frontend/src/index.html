@@ -5,7 +5,19 @@
     <title>3legant</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!--
+      SVG favicon first — every evergreen browser prefers it over the .ico
+      when both are present. The .ico stays as the fallback for the
+      handful of browsers/contexts (older Safari, some RSS/bookmark UIs)
+      that only look for `rel="icon"` without an SVG-aware picker; it's a
+      real multi-resolution (16/32/48px) build of the mark in favicon.svg,
+      rasterized to PNG on a &lt;canvas&gt; and packed into the ICO
+      container by hand (no rasterization tooling — sharp, ImageMagick —
+      was available in this environment), not the generic Angular CLI
+      default.
+    -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="alternate icon" href="favicon.ico" />
   </head>
   <body>
     <store-root></store-root>

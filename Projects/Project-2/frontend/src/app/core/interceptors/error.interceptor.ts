@@ -2,7 +2,6 @@ import { HttpErrorResponse, type HttpInterceptorFn } from '@angular/common/http'
 import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 
-import type { ApiErrorBody } from '@/app/core/api/dto';
 import { ToastService } from '@/app/core/services/toast.service';
 
 /**
@@ -43,14 +42,38 @@ function messageFor(error: HttpErrorResponse, url: string): string {
     return 'You are doing that a bit too quickly — give it a moment.';
   }
 
-  const body = error.error as ApiErrorBody | null;
-  const message = body?.message;
+  const body: unknown = error.error;
+
+  // A backend running NestJS's ValidationPipe/HttpExceptionFilter always
+  // sends `{ message, statusCode, ... }` JSON (ApiErrorBody, from
+  // core/api/dto.ts) — but that filter never gets a chance to run when
+  // the backend process itself is unreachable. In dev, the CLI's own
+  // proxy (proxy.conf.json → http-proxy-middleware) answers ECONNREFUSED
+  // with an empty text/plain 500 of its own, carrying no `.message` at
+  // all — so reading past this point would just be guessing. Show
+  // exactly what the HTTP layer actually reported instead of a made-up
+  // phrase, so a dead backend is instantly recognisable in the toast.
+  if (typeof body === 'string' && body.trim().length > 0) {
+    return body;
+  }
+
+  const message = hasMessage(body) ? body.message : undefined;
 
   // ValidationPipe returns an array of messages; show the first rather than
   // a stringified array.
   if (Array.isArray(message)) {
-    return message[0] ?? 'Please check the form and try again.';
+    return typeof message[0] === 'string'
+      ? message[0]
+      : 'Please check the form and try again.';
   }
 
-  return message ?? 'Something went wrong. Please try again.';
+  if (typeof message === 'string' && message.length > 0) {
+    return message;
+  }
+
+  return `${error.status} ${error.statusText || 'Error'} on ${url}`;
+}
+
+function hasMessage(value: unknown): value is { message: unknown } {
+  return typeof value === 'object' && value !== null && 'message' in value;
 }

@@ -59,18 +59,29 @@ const ASSURANCES = [
         alt=""
         fill
         priority
-        class="hero-image"
+        class="hero-image hero-image-settle"
       />
       <div class="hero-scrim"></div>
       <page-container>
         <div class="hero-content">
-          <h1>More than<br />just a game.<br />It&rsquo;s a lifestyle.</h1>
-          <p>
+          <h1 reveal [revealIndex]="0" [revealDelay]="100" [revealStagger]="130">
+            More than<br />just a game.<br />It&rsquo;s a lifestyle.
+          </h1>
+          <p reveal [revealIndex]="1" [revealDelay]="100" [revealStagger]="130">
             Whether you&rsquo;re just starting out, have played your whole
             life, or you&rsquo;re a tour pro — your swing is like a
             fingerprint.
           </p>
-          <action-button routerLink="/shop" size="m">Shop the range</action-button>
+          <action-button
+            reveal
+            [revealIndex]="2"
+            [revealDelay]="100"
+            [revealStagger]="130"
+            routerLink="/shop"
+            size="m"
+          >
+            Shop the range
+          </action-button>
         </div>
       </page-container>
     </section>
@@ -220,6 +231,14 @@ const ASSURANCES = [
       align-items: start;
       gap: var(--space-7);
       max-width: 32rem;
+
+      // Locally shadow the tokens [reveal]'s global transition reads
+      // (styles/_motion.scss) so this one authored moment settles on the
+      // slower, emphasized "unhurried arc" curve instead of the routine
+      // 400ms/ease-out every other [reveal] in the app uses — without
+      // touching those tokens, or the directive, for anyone else.
+      --duration-slow: var(--duration-slower);
+      --ease-out: var(--ease-emphasized);
 
       h1 {
         @include type.headline-4;

@@ -1,5 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
+import { inputValue } from '@/app/core/util/dom-event';
+
 /** Same chrome as text-field, fixed at the measured h140. */
 @Component({
   selector: 'textarea-field',
@@ -94,6 +96,6 @@ export class TextareaField {
   }
 
   protected onInput(event: Event): void {
-    this.valueChange.emit((event.target as HTMLTextAreaElement).value);
+    this.valueChange.emit(inputValue(event));
   }
 }

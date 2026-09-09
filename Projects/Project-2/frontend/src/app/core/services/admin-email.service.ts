@@ -2,6 +2,7 @@ import { Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
 import type { AdminEmailQuery, EmailMessageDto, Paginated } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -9,7 +10,7 @@ export class AdminEmailService {
   private readonly api = inject(ApiClient);
 
   listMessages(query: AdminEmailQuery): Observable<Paginated<EmailMessageDto>> {
-    return this.api.get<Paginated<EmailMessageDto>>('/admin/email/messages', toParams({ ...query }));
+    return this.api.get<Paginated<EmailMessageDto>>('/admin/email/messages', toHttpParams({ ...query }));
   }
 
   resend(id: string): Observable<EmailMessageDto> {
@@ -24,13 +25,4 @@ export class AdminEmailService {
   removeSuppression(email: string): Observable<void> {
     return this.api.delete<void>(`/admin/email/suppressions/${encodeURIComponent(email)}`);
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

@@ -19,6 +19,11 @@ import { Component, input } from '@angular/core';
 
     .skip-link:focus-visible {
       top: var(--space-2);
+      // This bar is dark (--color-neutral-07) and, being the first
+      // focusable element on the page, can land directly over anything —
+      // a dark hero photo included — so the default blue ring risks
+      // sitting on more dark pixels instead of the page behind it.
+      outline-color: var(--color-neutral-01);
     }
   `,
 })

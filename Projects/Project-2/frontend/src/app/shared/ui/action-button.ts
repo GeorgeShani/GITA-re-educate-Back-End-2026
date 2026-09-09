@@ -101,6 +101,19 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
       opacity: 0.5;
     }
 
+    .btn:active:not(:disabled):not([aria-disabled='true']) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
+    // variant-primary's black fill shows up directly on dark sections too
+    // (the home hero's "Shop the range" CTA sits on the hero photo/scrim),
+    // where the default blue focus ring can land on more dark pixels
+    // instead of the page behind it — swap to a light ring there.
+    .variant-primary:focus-visible {
+      outline-color: var(--color-neutral-01);
+    }
+
     .size-m {
       @include type.button-m;
       height: 40px;
@@ -121,25 +134,16 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
       background: var(--color-brand);
       color: var(--color-white);
     }
-    .variant-primary:hover:not(:disabled) {
-      background: var(--color-neutral-06);
-    }
 
     .variant-secondary {
       background: var(--color-white);
       color: var(--color-neutral-07);
       border-color: var(--color-border-input);
     }
-    .variant-secondary:hover:not(:disabled) {
-      background: var(--color-neutral-02);
-    }
 
     .variant-ghost {
       background: transparent;
       color: var(--color-neutral-07);
-    }
-    .variant-ghost:hover:not(:disabled) {
-      background: var(--color-neutral-02);
     }
 
     .variant-link {
@@ -157,8 +161,25 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
       background: var(--color-success);
       color: var(--color-neutral-07);
     }
-    .variant-accent:hover:not(:disabled) {
-      background: color-mix(in srgb, var(--color-success) 85%, black);
+
+    // Hover-only affordances — guarded so a touch tap doesn't leave the
+    // button stuck in its hover fill with no way to un-hover.
+    @media (hover: hover) and (pointer: fine) {
+      .variant-primary:hover:not(:disabled) {
+        background: var(--color-neutral-06);
+      }
+
+      .variant-secondary:hover:not(:disabled) {
+        background: var(--color-neutral-02);
+      }
+
+      .variant-ghost:hover:not(:disabled) {
+        background: var(--color-neutral-02);
+      }
+
+      .variant-accent:hover:not(:disabled) {
+        background: color-mix(in srgb, var(--color-success) 85%, black);
+      }
     }
 
     .spinner {

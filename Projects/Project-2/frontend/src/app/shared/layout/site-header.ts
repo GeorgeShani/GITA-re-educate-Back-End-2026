@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { CartService } from '@/app/core/services/cart.service';
@@ -30,6 +30,9 @@ const NAV: readonly NavItem[] = [
 @Component({
   selector: 'site-header',
   imports: [RouterLink, PageContainer, NavLink, IconGlyph, IconButton, DrawerPanel],
+  host: {
+    '[class.is-scrolled]': 'isScrolled()',
+  },
   template: `
     <page-container>
       <div class="bar">
@@ -90,7 +93,19 @@ const NAV: readonly NavItem[] = [
       top: 0;
       z-index: var(--z-sticky);
       background: var(--color-neutral-01);
-      border-bottom: 1px solid var(--color-neutral-03);
+      border-bottom: 1px solid transparent;
+      // Own snapshot group for the route cross-fade (styles/_view-transitions.scss)
+      // so the header holds still across a real route change instead of
+      // fading with the rest of the page.
+      view-transition-name: site-header;
+      transition:
+        border-color var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out);
+    }
+
+    :host(.is-scrolled) {
+      border-bottom-color: var(--color-neutral-03);
+      box-shadow: var(--shadow-01);
     }
 
     .bar {
@@ -186,9 +201,11 @@ const NAV: readonly NavItem[] = [
 export class SiteHeader {
   private readonly cart = inject(CartService);
   private readonly tokens = inject(TokenStore);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly nav = NAV;
   protected readonly menuOpen = signal(false);
+  protected readonly isScrolled = signal(false);
   protected readonly itemCount = this.cart.itemCount;
   protected readonly isAuthenticated = this.tokens.isAuthenticated;
 
@@ -196,4 +213,21 @@ export class SiteHeader {
     const count = this.itemCount();
     return count === 0 ? 'Cart, empty' : `Cart, ${count} item${count === 1 ? '' : 's'}`;
   });
+
+  constructor() {
+    // Subtle condense/shadow after a small amount of scroll — Restrained-
+    // mode chrome, not a hero moment. Same SSR-safe idiom as
+    // reveal.directive.ts: only touch `window` once afterNextRender
+    // confirms a real browser, and clean up on destroy.
+    afterNextRender(() => {
+      if (typeof window === 'undefined') return;
+
+      const SCROLL_THRESHOLD = 32;
+      const onScroll = () => this.isScrolled.set(window.scrollY > SCROLL_THRESHOLD);
+
+      onScroll();
+      window.addEventListener('scroll', onScroll, { passive: true });
+      this.destroyRef.onDestroy(() => window.removeEventListener('scroll', onScroll));
+    });
+  }
 }

@@ -4,6 +4,7 @@ import { FormField, form, required } from '@angular/forms/signals';
 
 import type { AddressDto, AddressInput } from '@/app/core/api/dto';
 import { ToastService } from '@/app/core/services/toast.service';
+import { inputValue } from '@/app/core/util/dom-event';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
 import { RadioField } from '@/app/shared/ui/radio-field';
 
@@ -312,7 +313,7 @@ export class CheckoutAddressStep {
   }
 
   protected setCountry(model: typeof this.shippingModel, event: Event): void {
-    const countryCode = (event.target as HTMLSelectElement).value;
+    const countryCode = inputValue(event);
     model.update((m) => ({ ...m, countryCode }));
   }
 

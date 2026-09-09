@@ -71,6 +71,7 @@ interface OptionAdapter extends Highlightable {
 
     <ng-template #panelTemplate>
       <ul
+        #listboxEl
         class="select-field__listbox"
         [class.is-entered]="entered()"
         role="listbox"
@@ -197,6 +198,7 @@ export class SelectField {
   private readonly triggerRef = viewChild.required<ElementRef<HTMLButtonElement>>('trigger');
   private readonly panelTemplate = viewChild.required<TemplateRef<unknown>>('panelTemplate');
   private readonly optionEls = viewChildren<ElementRef<HTMLLIElement>>('optionEl');
+  private readonly listboxEl = viewChild<ElementRef<HTMLUListElement>>('listboxEl');
 
   protected readonly isOpen = signal(false);
   protected readonly entered = signal(false);
@@ -316,12 +318,32 @@ export class SelectField {
     afterNextRender(() => this.entered.set(true), { injector: this.injector });
   }
 
+  /**
+   * Waits for the listbox's scale/fade-out to finish before detaching the
+   * overlay and restoring focus — same transitionend-gated technique as
+   * drawer-panel.ts's detach(), instead of the panel disappearing mid-
+   * animation. `isOpen`/`activeOptionId` still update immediately: they
+   * only drive aria-expanded/aria-activedescendant on the (still-focused)
+   * trigger, which should reflect the real state right away regardless of
+   * how long the panel takes to visually finish closing.
+   */
   private close(): void {
     if (!this.overlayRef?.hasAttached()) return;
-    this.overlayRef.detach();
+
     this.isOpen.set(false);
     this.entered.set(false);
     this.activeOptionId.set(null);
-    this.triggerRef().nativeElement.focus();
+
+    const element = this.listboxEl()?.nativeElement;
+    const finish = () => {
+      this.overlayRef?.detach();
+      this.triggerRef().nativeElement.focus();
+    };
+
+    if (element) {
+      element.addEventListener('transitionend', finish, { once: true });
+    } else {
+      finish();
+    }
   }
 }

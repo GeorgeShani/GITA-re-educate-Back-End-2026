@@ -39,12 +39,18 @@ import {
  *                          transform var(--duration-slow) var(--ease-out) var(--reveal-delay, 0ms); }
  *   [reveal].reveal-pending { opacity: 0; transform: translateY(16px); }
  *   [reveal].is-revealed { opacity: 1; transform: none; }
+ *
+ * Variants — [revealVariant] picks which motion plays; default 'rise' is
+ * exactly the behaviour above, unchanged, so every existing call site keeps
+ * working with zero edits:
+ *   <section reveal [revealVariant]="'scale'">...</section>
  */
 @Directive({
   selector: '[reveal]',
   host: {
     '[class.reveal-pending]': 'isPending()',
     '[class.is-revealed]': 'isRevealed()',
+    '[class]': '"reveal-" + revealVariant()',
     '[style.--reveal-delay.ms]': 'effectiveDelay()',
   },
 })
@@ -59,6 +65,8 @@ export class RevealDirective {
   readonly revealStagger = input(0);
   /** This item's position in a staggered group, typically @for's $index. */
   readonly revealIndex = input(0);
+  /** Which motion plays on reveal. 'rise' (default) is the original 16px up-fade. */
+  readonly revealVariant = input<'rise' | 'fade' | 'scale'>('rise');
 
   /** Exposed as --reveal-delay; combines a base delay with index * stagger. */
   protected readonly effectiveDelay = computed(

@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { ReturnDto, ReturnStatus } from '@/app/core/api/dto';
 import { AdminReturnsService } from '@/app/core/services/admin-returns.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toFilterValue } from '@/app/core/util/string-union';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
@@ -16,6 +17,14 @@ import { StatusBadge } from '@/app/shared/ui/status-badge';
 import { TextField } from '@/app/shared/ui/text-field';
 
 const TAKE = 20;
+
+const RETURN_STATUSES = [
+  'requested',
+  'approved',
+  'rejected',
+  'received',
+  'refunded',
+] as const satisfies readonly ReturnStatus[];
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: '', label: 'All statuses' },
@@ -137,7 +146,7 @@ export default class AdminReturns implements OnInit {
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly acting = signal(false);
-  protected readonly statusFilter = signal('');
+  protected readonly statusFilter = signal<ReturnStatus | ''>('');
 
   protected readonly rejectFormOpen = signal(false);
   protected readonly rejectNote = signal('');
@@ -150,7 +159,7 @@ export default class AdminReturns implements OnInit {
   }
 
   protected onStatusChange(value: string): void {
-    this.statusFilter.set(value);
+    this.statusFilter.set(toFilterValue(value, RETURN_STATUSES));
     this.page.set(1);
     this.load();
   }
@@ -158,7 +167,7 @@ export default class AdminReturns implements OnInit {
   private load(): void {
     this.loading.set(true);
     this.returnsService
-      .list({ status: (this.statusFilter() || undefined) as ReturnStatus | undefined, page: this.page(), take: TAKE })
+      .list({ status: this.statusFilter() || undefined, page: this.page(), take: TAKE })
       .subscribe({
         next: (result) => {
           this.returns.set(result.items);

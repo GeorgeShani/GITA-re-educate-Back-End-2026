@@ -1,5 +1,6 @@
 import {
   Component,
+  ComponentRef,
   Directive,
   ElementRef,
   DestroyRef,
@@ -65,7 +66,7 @@ export class TooltipPanel {
 @Directive({
   selector: '[tooltipHint]',
   host: {
-    '(mouseenter)': 'show()',
+    '(mouseenter)': 'onPointerEnter()',
     '(mouseleave)': 'hide()',
     '(focus)': 'show()',
     '(blur)': 'hide()',
@@ -82,6 +83,20 @@ export class TooltipHint {
   private readonly injector = inject(Injector);
 
   private overlayRef: OverlayRef | null = null;
+  private panelRef: ComponentRef<TooltipPanel> | null = null;
+
+  /**
+   * Touch browsers fire a synthetic mouseenter on tap (to simulate hover
+   * for sites that need it) but typically never a matching mouseleave —
+   * nothing else touches this element to trigger one — so gating the
+   * mouseenter path to genuine hover-capable pointers keeps the tooltip
+   * from getting stuck open after a tap. Same media query already used
+   * to guard bare `:hover` in CSS across shared/ui; focus/blur (below)
+   * stay ungated so keyboard and screen-reader users are unaffected.
+   */
+  private readonly canHover =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   constructor() {
     afterNextRender(() => {
@@ -92,6 +107,10 @@ export class TooltipHint {
       this.overlayRef?.dispose();
       this.ariaDescriber.removeDescription(this.elementRef.nativeElement, this.tooltipHint());
     });
+  }
+
+  protected onPointerEnter(): void {
+    if (this.canHover) this.show();
   }
 
   protected show(): void {
@@ -131,11 +150,31 @@ export class TooltipHint {
 
     const portal = new ComponentPortal(TooltipPanel, this.viewContainerRef, this.injector);
     const ref = this.overlayRef.attach(portal);
+    this.panelRef = ref;
     ref.instance.text.set(this.tooltipHint());
     afterNextRender(() => ref.instance.entered.set(true), { injector: this.injector });
   }
 
+  /**
+   * Waits for the fade-out transition to finish before detaching — same
+   * technique as drawer-panel.ts's detach(): a real `transitionend`
+   * listener, not a fixed setTimeout, so this stays correct regardless of
+   * the actual duration (including under prefers-reduced-motion, where
+   * transitions are neutralised to ~0 rather than removed outright).
+   */
   protected hide(): void {
-    this.overlayRef?.detach();
+    if (!this.overlayRef?.hasAttached()) return;
+
+    const panelRef = this.panelRef;
+    panelRef?.instance.entered.set(false);
+
+    const element = panelRef?.location.nativeElement as HTMLElement | undefined;
+    const finish = () => this.overlayRef?.detach();
+
+    if (element) {
+      element.addEventListener('transitionend', finish, { once: true });
+    } else {
+      finish();
+    }
   }
 }

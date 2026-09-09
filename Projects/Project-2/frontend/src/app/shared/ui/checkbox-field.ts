@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 
+import { checkedValue } from '@/app/core/util/dom-event';
 import { IconGlyph } from './icon-glyph';
 
 /**
@@ -70,6 +71,11 @@ import { IconGlyph } from './icon-glyph';
       opacity: 0.5;
     }
 
+    .box input:active:not(:disabled) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
+    }
+
     .check-icon {
       /* Explicit size, not just inset: 0, otherwise the icon-glyph host
          (display: inline-flex, no intrinsic size of its own) stretches to
@@ -96,6 +102,6 @@ export class CheckboxField {
   readonly checkedChange = output<boolean>();
 
   protected onChange(event: Event): void {
-    this.checkedChange.emit((event.target as HTMLInputElement).checked);
+    this.checkedChange.emit(checkedValue(event));
   }
 }

@@ -14,6 +14,7 @@ import type {
 } from '@/app/core/api/dto';
 import { AdminBlogService } from '@/app/core/services/admin-blog.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toFilterValue, toUnionValue } from '@/app/core/util/string-union';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
@@ -31,6 +32,8 @@ import { TextareaField } from '@/app/shared/ui/textarea-field';
 
 type BlogTab = 'posts' | 'categories' | 'tags' | 'comments';
 
+const BLOG_TABS = ['posts', 'categories', 'tags', 'comments'] as const satisfies readonly BlogTab[];
+
 const TABS: TabItem[] = [
   { id: 'posts', label: 'Posts' },
   { id: 'categories', label: 'Categories' },
@@ -45,6 +48,8 @@ const STATUS_MODE_OPTIONS: SelectOption[] = [
   { value: 'published', label: 'Published now' },
   { value: 'scheduled', label: 'Scheduled' },
 ];
+
+const COMMENT_STATUSES = ['pending', 'approved', 'rejected'] as const satisfies readonly CommentStatus[];
 
 const COMMENT_STATUS_OPTIONS: SelectOption[] = [
   { value: 'pending', label: 'Pending' },
@@ -65,6 +70,12 @@ interface PostFormModel {
   seoTitle: string;
   seoDescription: string;
 }
+
+const POST_STATUS_MODES = [
+  'draft',
+  'published',
+  'scheduled',
+] as const satisfies readonly PostFormModel['statusMode'][];
 
 const EMPTY_POST_FORM: PostFormModel = {
   title: '',
@@ -446,7 +457,7 @@ export default class AdminBlog implements OnInit {
   protected readonly comments = signal<CommentDto[]>([]);
   protected readonly commentsTotal = signal(0);
   protected readonly commentsLoading = signal(true);
-  protected readonly commentStatusFilter = signal('pending');
+  protected readonly commentStatusFilter = signal<CommentStatus>('pending');
   protected readonly commentActing = signal(false);
   protected readonly replyFormOpen = signal(false);
   protected readonly replyText = signal('');
@@ -473,7 +484,7 @@ export default class AdminBlog implements OnInit {
   }
 
   protected selectTab(id: string): void {
-    this.activeTab.set(id as BlogTab);
+    this.activeTab.set(toUnionValue(id, BLOG_TABS) ?? this.activeTab());
     if (id === 'comments' && !this.commentsLoaded) {
       this.commentsLoaded = true;
       this.loadComments();
@@ -516,7 +527,7 @@ export default class AdminBlog implements OnInit {
   }
 
   protected onStatusModeChange(value: string): void {
-    this.patchPost({ statusMode: value as PostFormModel['statusMode'] });
+    this.patchPost({ statusMode: toUnionValue(value, POST_STATUS_MODES) ?? this.postForm().statusMode });
   }
 
   protected isTagSelected(id: string): boolean {
@@ -728,7 +739,7 @@ export default class AdminBlog implements OnInit {
   private loadComments(): void {
     this.commentsLoading.set(true);
     const query: AdminCommentQuery = {
-      status: (this.commentStatusFilter() || undefined) as CommentStatus | undefined,
+      status: this.commentStatusFilter(),
       page: 1,
       take: TAKE,
     };
@@ -759,7 +770,7 @@ export default class AdminBlog implements OnInit {
   }
 
   protected onCommentStatusChange(value: string): void {
-    this.commentStatusFilter.set(value);
+    this.commentStatusFilter.set(toUnionValue(value, COMMENT_STATUSES) ?? this.commentStatusFilter());
     this.loadComments();
   }
 

@@ -2,6 +2,7 @@ import { Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
 import type { AdminReturnQuery, Paginated, ReturnDto } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { ApiClient } from '@/app/core/services/api-client';
 
 @Service()
@@ -9,7 +10,7 @@ export class AdminReturnsService {
   private readonly api = inject(ApiClient);
 
   list(query: AdminReturnQuery): Observable<Paginated<ReturnDto>> {
-    return this.api.get<Paginated<ReturnDto>>('/admin/returns', toParams({ ...query }));
+    return this.api.get<Paginated<ReturnDto>>('/admin/returns', toHttpParams({ ...query }));
   }
 
   getOne(id: string): Observable<ReturnDto> {
@@ -31,13 +32,4 @@ export class AdminReturnsService {
   refund(id: string): Observable<ReturnDto> {
     return this.api.post<ReturnDto>(`/admin/returns/${id}/refund`, {});
   }
-}
-
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined)) as Record<
-    string,
-    string | number | boolean
-  >;
 }

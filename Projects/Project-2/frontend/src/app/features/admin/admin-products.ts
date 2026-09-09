@@ -12,6 +12,7 @@ import { AdminCategoriesService } from '@/app/core/services/admin-categories.ser
 import { AdminMediaService } from '@/app/core/services/admin-media.service';
 import { AdminProductsService } from '@/app/core/services/admin-products.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { firstSelectedFile } from '@/app/core/util/dom-event';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
@@ -550,7 +551,7 @@ export default class AdminProducts implements OnInit {
   }
 
   protected onFileSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const file = firstSelectedFile(event);
     if (!file) return;
     this.uploading.set(true);
     this.mediaService.upload(file).subscribe({

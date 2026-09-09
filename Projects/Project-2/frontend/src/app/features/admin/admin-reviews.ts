@@ -5,6 +5,7 @@ import type { AdminReviewDto, ReviewStatus } from '@/app/core/api/dto';
 import { AdminProductLookupService } from '@/app/core/services/admin-product-lookup.service';
 import { AdminReviewsService } from '@/app/core/services/admin-reviews.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toFilterValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
 import { EmptyState } from '@/app/features/admin/ui/empty-state';
@@ -16,6 +17,8 @@ import { StatusBadge } from '@/app/shared/ui/status-badge';
 import { TextField } from '@/app/shared/ui/text-field';
 
 const TAKE = 20;
+
+const REVIEW_STATUSES = ['pending', 'approved', 'rejected'] as const satisfies readonly ReviewStatus[];
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: 'pending', label: 'Pending' },
@@ -132,7 +135,7 @@ export default class AdminReviews implements OnInit {
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
   protected readonly acting = signal(false);
-  protected readonly statusFilter = signal('pending');
+  protected readonly statusFilter = signal<ReviewStatus | ''>('pending');
 
   protected readonly replyFormOpen = signal(false);
   protected readonly replyText = signal('');
@@ -150,7 +153,7 @@ export default class AdminReviews implements OnInit {
   }
 
   protected onStatusChange(value: string): void {
-    this.statusFilter.set(value);
+    this.statusFilter.set(toFilterValue(value, REVIEW_STATUSES));
     this.page.set(1);
     this.load();
   }
@@ -158,7 +161,7 @@ export default class AdminReviews implements OnInit {
   private load(): void {
     this.loading.set(true);
     this.reviewsService
-      .list({ status: (this.statusFilter() || undefined) as ReviewStatus | undefined, page: this.page(), take: TAKE })
+      .list({ status: this.statusFilter() || undefined, page: this.page(), take: TAKE })
       .subscribe({
         next: (result) => {
           this.reviews.set(result.items);

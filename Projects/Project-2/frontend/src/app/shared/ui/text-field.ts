@@ -1,5 +1,7 @@
 import { Component, input, output } from '@angular/core';
 
+import { inputValue } from '@/app/core/util/dom-event';
+
 export type TextFieldType = 'text' | 'email' | 'password' | 'number' | 'tel' | 'search';
 export type TextFieldHeight = 40 | 48 | 52;
 
@@ -126,6 +128,6 @@ export class TextField {
   }
 
   protected onInput(event: Event): void {
-    this.valueChange.emit((event.target as HTMLInputElement).value);
+    this.valueChange.emit(inputValue(event));
   }
 }

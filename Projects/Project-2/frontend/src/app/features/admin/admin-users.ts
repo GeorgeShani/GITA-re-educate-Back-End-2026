@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { RoleDto, UserDto } from '@/app/core/api/dto';
 import { AdminUsersService } from '@/app/core/services/admin-users.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toUnionValue } from '@/app/core/util/string-union';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
@@ -18,6 +19,8 @@ const TAKE = 25;
 
 // Every RoleDto value — 'customer' included, since demoting staff back to
 // an ordinary shopper is a valid, reachable state from this screen.
+const ROLE_VALUES = ['customer', 'editor', 'support', 'manager', 'admin'] as const satisfies readonly RoleDto[];
+
 const ROLE_OPTIONS: SelectOption[] = [
   { value: 'customer', label: 'Customer' },
   { value: 'editor', label: 'Editor' },
@@ -84,7 +87,7 @@ const ROLE_OPTIONS: SelectOption[] = [
       @if (roleTarget(); as t) {
         <p class="context">{{ t.firstName }} {{ t.lastName }} — {{ t.email }}</p>
       }
-      <select-field label="Role" [options]="roleOptions" [value]="roleValue()" (valueChange)="roleValue.set($event)" />
+      <select-field label="Role" [options]="roleOptions" [value]="roleValue()" (valueChange)="onRoleValueChange($event)" />
     </drawer-form>
   `,
   styles: `
@@ -129,7 +132,7 @@ export default class AdminUsers implements OnInit {
 
   protected readonly roleFormOpen = signal(false);
   protected readonly roleTarget = signal<UserDto | null>(null);
-  protected readonly roleValue = signal<string>('customer');
+  protected readonly roleValue = signal<RoleDto>('customer');
 
   protected readonly pageCount = computed(() => Math.ceil(this.total() / TAKE));
 
@@ -171,11 +174,16 @@ export default class AdminUsers implements OnInit {
     this.roleFormOpen.set(true);
   }
 
+  /** `select-field` emits a bare `string`; narrowed against the same values `roleOptions` actually offers. */
+  protected onRoleValueChange(value: string): void {
+    this.roleValue.set(toUnionValue(value, ROLE_VALUES) ?? this.roleValue());
+  }
+
   protected saveRole(): void {
     const target = this.roleTarget();
     if (!target) return;
     this.saving.set(true);
-    this.usersService.updateRoles(target.id, [this.roleValue() as RoleDto]).subscribe({
+    this.usersService.updateRoles(target.id, [this.roleValue()]).subscribe({
       next: () => {
         this.saving.set(false);
         this.roleFormOpen.set(false);

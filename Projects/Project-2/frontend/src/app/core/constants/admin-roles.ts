@@ -6,16 +6,20 @@ import type { RoleDto } from '@/app/core/api/dto';
 // link the API would 403 on anyway.
 export const ADMIN_ROLES = {
   /** Products, categories, variants, inventory adjustments, media library. */
-  catalog: ['admin', 'manager'] as RoleDto[],
+  catalog: ['admin', 'manager'],
   /** Orders, fulfillment, returns, refunds, review moderation. */
-  commerce: ['admin', 'support'] as RoleDto[],
+  commerce: ['admin', 'support'],
   /** Coupons, gift cards, shipping zones, tax rates. */
-  money: ['admin', 'manager'] as RoleDto[],
+  money: ['admin', 'manager'],
   /** Blog, pages, contact inbox, newsletter, email ops. */
-  content: ['admin', 'editor'] as RoleDto[],
+  content: ['admin', 'editor'],
   /** User role assignment and bans — admin-only, no delegation. */
-  people: ['admin'] as RoleDto[],
-} as const;
+  people: ['admin'],
+  // `as const` narrows each array to a literal tuple; `satisfies` then checks
+  // every entry is a real RoleDto without widening those literal types back
+  // to `RoleDto[]` — the two were fighting each other before (an `as const`
+  // object whose values were separately widened with `as RoleDto[]`).
+} as const satisfies Record<string, readonly RoleDto[]>;
 
 /** Anyone with a staff role can enter the admin shell; individual areas narrow further via ADMIN_ROLES. */
 export const ANY_STAFF_ROLE: RoleDto[] = ['admin', 'manager', 'support', 'editor'];

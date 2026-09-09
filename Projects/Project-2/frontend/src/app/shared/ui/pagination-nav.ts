@@ -91,9 +91,17 @@ function buildPageList(current: number, total: number): number[] {
       transition: background-color var(--duration-fast) var(--ease-out);
     }
 
-    .pagination-nav__step:hover:not(:disabled),
-    .pagination-nav__page:hover {
-      background: var(--color-neutral-02);
+    @media (hover: hover) and (pointer: fine) {
+      .pagination-nav__step:hover:not(:disabled),
+      .pagination-nav__page:hover {
+        background: var(--color-neutral-02);
+      }
+    }
+
+    .pagination-nav__step:active:not(:disabled),
+    .pagination-nav__page:active {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
     }
 
     .pagination-nav__step:disabled {

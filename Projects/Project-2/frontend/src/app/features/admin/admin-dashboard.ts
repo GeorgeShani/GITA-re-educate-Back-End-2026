@@ -81,6 +81,7 @@ function eventLabel(eventName: string): string {
   `,
   styles: `
     @use 'styles/typography' as type;
+    @use 'styles/breakpoints' as bp;
 
     .tiles {
       display: grid;
@@ -93,7 +94,7 @@ function eventLabel(eventName: string): string {
       display: grid;
       gap: var(--space-6);
 
-      @media (min-width: 900px) {
+      @include bp.wide-up {
         grid-template-columns: 1fr 1fr;
         align-items: start;
       }

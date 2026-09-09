@@ -48,13 +48,29 @@ import { IconGlyph, type IconName } from './icon-glyph';
       transition: background-color var(--duration-fast) var(--ease-out);
     }
 
-    button:hover:not(:disabled) {
-      background: color-mix(in srgb, currentColor 14%, transparent);
+    @media (hover: hover) and (pointer: fine) {
+      button:hover:not(:disabled) {
+        background: color-mix(in srgb, currentColor 14%, transparent);
+      }
+    }
+
+    button:active:not(:disabled) {
+      transform: scale(0.97);
+      transition: transform var(--duration-instant) var(--ease-in);
     }
 
     button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
+    }
+
+    // icon-button shows up on both light surfaces and dark ones (toast
+    // close button, tooltip trigger chrome) — color: inherit already
+    // makes the icon itself adapt via currentColor (see class comment
+    // above), so the focus ring adapts the same way instead of a fixed
+    // blue that disappears against a near-black fill.
+    button:focus-visible {
+      outline-color: currentColor;
     }
   `,
 })

@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { MediaDto } from '@/app/core/api/dto';
 import { AdminMediaService } from '@/app/core/services/admin-media.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { firstSelectedFile } from '@/app/core/util/dom-event';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { EmptyState } from '@/app/features/admin/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
@@ -135,7 +136,7 @@ export default class AdminMedia implements OnInit {
   }
 
   protected onFileSelected(event: Event): void {
-    const file = (event.target as HTMLInputElement).files?.[0];
+    const file = firstSelectedFile(event);
     if (!file) return;
     this.uploading.set(true);
     this.mediaService.upload(file).subscribe({

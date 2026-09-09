@@ -46,10 +46,21 @@ import { IconGlyph } from './icon-glyph';
       align-items: center;
       gap: var(--space-1);
       color: var(--color-neutral-07);
+      transition: color var(--duration-fast) var(--ease-out);
     }
 
     .nav-link.is-active {
       color: var(--color-neutral-05);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .nav-link:hover {
+        color: var(--color-neutral-04);
+      }
+    }
+
+    .nav-link:active {
+      color: var(--color-neutral-04);
     }
   `,
 })

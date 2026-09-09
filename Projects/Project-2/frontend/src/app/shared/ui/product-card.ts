@@ -130,8 +130,13 @@ export interface ProductCardProduct {
       transition: transform var(--duration-slow) var(--ease-out);
     }
 
-    .product-card__media:hover .product-card__image {
-      transform: scale(1.05);
+    // Guarded against (hover: hover) — confirmed bug without it: tapping a
+    // card on a touch device leaves the image zoomed and the Quick Add
+    // button stuck open (a touch tap has no way to un-hover).
+    @media (hover: hover) and (pointer: fine) {
+      .product-card__media:hover .product-card__image {
+        transform: scale(1.05);
+      }
     }
 
     .product-card__badges {
@@ -162,10 +167,16 @@ export interface ProductCardProduct {
         transform var(--duration-fast) var(--ease-out);
     }
 
-    .product-card__media:hover .product-card__quick-add,
     .product-card__media:focus-within .product-card__quick-add {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .product-card__media:hover .product-card__quick-add {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .product-card__content {

@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { EmailCategory, EmailMessageDto, EmailStatus } from '@/app/core/api/dto';
 import { AdminEmailService } from '@/app/core/services/admin-email.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { toFilterValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { EmptyState } from '@/app/features/admin/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
@@ -15,6 +16,23 @@ import { StatusBadge } from '@/app/shared/ui/status-badge';
 import { TextField } from '@/app/shared/ui/text-field';
 
 const TAKE = 25;
+
+const EMAIL_STATUSES = [
+  'queued',
+  'sent',
+  'delivered',
+  'bounced',
+  'complained',
+  'failed',
+] as const satisfies readonly EmailStatus[];
+
+const EMAIL_CATEGORIES = [
+  'transactional',
+  'security',
+  'ops',
+  'marketing',
+  'opt-in',
+] as const satisfies readonly EmailCategory[];
 
 const STATUS_OPTIONS: SelectOption[] = [
   { value: '', label: 'All' },
@@ -184,8 +202,8 @@ export default class AdminEmail implements OnInit {
   protected readonly total = signal(0);
   protected readonly page = signal(1);
   protected readonly loading = signal(true);
-  protected readonly statusFilter = signal('');
-  protected readonly categoryFilter = signal('');
+  protected readonly statusFilter = signal<EmailStatus | ''>('');
+  protected readonly categoryFilter = signal<EmailCategory | ''>('');
   protected readonly toFilter = signal('');
 
   protected readonly suppressionEmail = signal('');
@@ -201,13 +219,13 @@ export default class AdminEmail implements OnInit {
   }
 
   protected onStatusChange(value: string): void {
-    this.statusFilter.set(value);
+    this.statusFilter.set(toFilterValue(value, EMAIL_STATUSES));
     this.page.set(1);
     this.load();
   }
 
   protected onCategoryChange(value: string): void {
-    this.categoryFilter.set(value);
+    this.categoryFilter.set(toFilterValue(value, EMAIL_CATEGORIES));
     this.page.set(1);
     this.load();
   }
@@ -227,8 +245,8 @@ export default class AdminEmail implements OnInit {
     this.loading.set(true);
     this.emailService
       .listMessages({
-        status: (this.statusFilter() || undefined) as EmailStatus | undefined,
-        category: (this.categoryFilter() || undefined) as EmailCategory | undefined,
+        status: this.statusFilter() || undefined,
+        category: this.categoryFilter() || undefined,
         to: this.toFilter().trim() || undefined,
         page: this.page(),
         take: TAKE,

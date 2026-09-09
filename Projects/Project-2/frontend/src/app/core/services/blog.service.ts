@@ -11,6 +11,7 @@ import type {
   SubmitCommentRequest,
   TagDto,
 } from '@/app/core/api/dto';
+import { toHttpParams } from '@/app/core/api/http-params';
 import { API_BASE_URL, ApiClient } from '@/app/core/services/api-client';
 
 /**
@@ -27,7 +28,7 @@ export class BlogService {
   postsResource(query: () => PostQuery) {
     return httpResource<Paginated<PostDto>>(() => ({
       url: `${this.baseUrl}/blog/posts`,
-      params: toParams({ ...query() }),
+      params: toHttpParams({ ...query() }),
     }));
   }
 
@@ -56,13 +57,4 @@ export class BlogService {
   submitComment(postId: string, input: SubmitCommentRequest): Observable<CommentDto> {
     return this.api.post<CommentDto>(`/blog/posts/${postId}/comments`, input);
   }
-}
-
-/** Drops undefined keys — the API rejects unknown/empty params outright. */
-function toParams(
-  query: Record<string, string | number | boolean | undefined>,
-): Record<string, string | number | boolean> {
-  return Object.fromEntries(
-    Object.entries(query).filter(([, value]) => value !== undefined),
-  ) as Record<string, string | number | boolean>;
 }

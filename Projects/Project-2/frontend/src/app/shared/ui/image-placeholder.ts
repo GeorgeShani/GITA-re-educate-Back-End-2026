@@ -35,11 +35,26 @@ import { Component, input } from '@angular/core';
       overflow: hidden;
     }
 
+    // @starting-style rather than a [reveal]-style opacity:0 default: the
+    // "current" state below is opacity: 1 (never hidden), so an SSR-
+    // rendered <img> already in the initial HTML parse — the common case,
+    // most product-card grids resolve their data server-side — just
+    // paints normally with no flash. @starting-style only supplies a
+    // "from" frame for an element the browser sees freshly inserted into
+    // the render tree (a lazy panel, a swapped src after a filter/color
+    // change, a client-only fetch), which is exactly the case that
+    // actually benefits from a fade-in, and needs zero JS to do it.
     img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       mix-blend-mode: multiply;
+      opacity: 1;
+      transition: opacity var(--duration-base) var(--ease-out);
+
+      @starting-style {
+        opacity: 0;
+      }
     }
   `,
 })
