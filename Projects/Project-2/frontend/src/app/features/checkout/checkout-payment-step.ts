@@ -1,4 +1,13 @@
-import { Component, ElementRef, afterNextRender, inject, input, output, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  afterNextRender,
+  inject,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import type { Stripe, StripeElements, StripePaymentElement } from '@stripe/stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
@@ -37,13 +46,8 @@ import { environment } from '@/environments/environment';
           <p class="error">{{ err }}</p>
         }
 
-        <button
-          type="button"
-          class="pay"
-          [disabled]="!ready() || confirming()"
-          (click)="onPay()"
-        >
-          {{ confirming() ? 'Processing…' : 'Pay now' }}
+        <button type="button" class="pay" [disabled]="!ready() || confirming()" (click)="onPay()">
+          {{ confirming() ? 'Processing...' : 'Pay now' }}
         </button>
       }
     </section>

@@ -6,7 +6,7 @@ import { AdminMediaService } from '@/app/core/services/admin-media.service';
 import { ToastService } from '@/app/core/services/toast.service';
 import { firstSelectedFile } from '@/app/core/util/dom-event';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
@@ -19,8 +19,13 @@ const TAKE = 24;
   template: `
     <page-toolbar title="Media library" [subtitle]="total() + ' assets'">
       <label class="upload">
-        {{ uploading() ? 'Uploading…' : 'Upload' }}
-        <input type="file" accept="image/*" [disabled]="uploading()" (change)="onFileSelected($event)" />
+        {{ uploading() ? 'Uploading...' : 'Upload' }}
+        <input
+          type="file"
+          accept="image/*"
+          [disabled]="uploading()"
+          (change)="onFileSelected($event)"
+        />
       </label>
     </page-toolbar>
 
@@ -44,7 +49,11 @@ const TAKE = 24;
       </div>
 
       @if (pageCount() > 1) {
-        <pagination-nav [page]="page()" [total]="pageCount()" (pageChange)="page.set($event); load()" />
+        <pagination-nav
+          [page]="page()"
+          [total]="pageCount()"
+          (pageChange)="page.set($event); load()"
+        />
       }
     }
   `,

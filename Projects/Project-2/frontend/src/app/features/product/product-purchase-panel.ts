@@ -31,7 +31,10 @@ function titleCase(value: string): string {
   imports: [RatingStars, MoneyPipe, SelectField, QuantityStepper, ActionButton],
   template: `
     <div class="meta">
-      <rating-stars [value]="product().ratingAverage" [count]="product().ratingCount || undefined" />
+      <rating-stars
+        [value]="product().ratingAverage"
+        [count]="product().ratingCount || undefined"
+      />
     </div>
 
     <h1>{{ product().name }}</h1>
@@ -59,7 +62,11 @@ function titleCase(value: string): string {
     }
 
     <div class="purchase-row">
-      <quantity-stepper [value]="quantity()" [max]="stockCap()" (valueChange)="quantity.set($event)" />
+      <quantity-stepper
+        [value]="quantity()"
+        [max]="stockCap()"
+        (valueChange)="quantity.set($event)"
+      />
       <action-button
         size="m"
         [fullWidth]="true"
@@ -72,9 +79,13 @@ function titleCase(value: string): string {
     </div>
 
     @if (selectedVariant(); as variant) {
-      <p class="stock" [class.is-low]="stock.value()?.lowStock" [class.is-out]="stock.value()?.inStock === false">
+      <p
+        class="stock"
+        [class.is-low]="stock.value()?.lowStock"
+        [class.is-out]="stock.value()?.inStock === false"
+      >
         @if (stock.isLoading()) {
-          Checking stock…
+          Checking stock...
         } @else if (stock.value(); as s) {
           @if (!s.inStock) {
             Out of stock
@@ -184,7 +195,9 @@ export class ProductPurchasePanel {
     const variants = this.product().variants.filter((v) => v.isActive);
     const keys = [...new Set(variants.flatMap((v) => Object.keys(v.attributes)))];
     return keys.map((key) => {
-      const values = [...new Set(variants.map((v) => v.attributes[key]).filter((v): v is string => !!v))];
+      const values = [
+        ...new Set(variants.map((v) => v.attributes[key]).filter((v): v is string => !!v)),
+      ];
       return {
         key,
         label: titleCase(key),

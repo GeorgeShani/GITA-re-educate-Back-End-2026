@@ -22,7 +22,7 @@ type Status = 'pending' | 'confirming' | 'success' | 'error';
       <div class="card">
         @switch (status()) {
           @case ('confirming') {
-            <h1>Confirming…</h1>
+            <h1>Confirming...</h1>
             <p class="subhead">One moment while we confirm your subscription.</p>
           }
           @case ('success') {

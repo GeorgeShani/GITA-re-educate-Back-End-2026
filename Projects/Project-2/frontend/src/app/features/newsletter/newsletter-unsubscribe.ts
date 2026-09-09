@@ -15,7 +15,7 @@ type Status = 'pending' | 'unsubscribing' | 'success' | 'error';
       <div class="card">
         @switch (status()) {
           @case ('unsubscribing') {
-            <h1>One moment…</h1>
+            <h1>One moment...</h1>
             <p class="subhead">Processing your request.</p>
           }
           @case ('success') {

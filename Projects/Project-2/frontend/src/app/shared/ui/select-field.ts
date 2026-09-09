@@ -182,7 +182,7 @@ export class SelectField {
   readonly options = input.required<SelectOption[]>();
   readonly value = input<string>();
   readonly label = input<string>();
-  readonly placeholder = input('Select…');
+  readonly placeholder = input('Select...');
   readonly disabled = input(false);
   readonly valueChange = output<string>();
 

@@ -4,7 +4,7 @@ import { IconGlyph } from './icon-glyph';
 
 const ELLIPSIS = -1;
 
-/** 1 … 4 5 [6] 7 8 … 20 — always shows first, last, current, and current's immediate neighbors. */
+/** 1 ... 4 5 [6] 7 8 ... 20 — always shows first, last, current, and current's immediate neighbors. */
 function buildPageList(current: number, total: number): number[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
@@ -43,7 +43,7 @@ function buildPageList(current: number, total: number): number[] {
     </button>
     @for (p of pages(); track $index) {
       @if (p === ellipsis) {
-        <span class="pagination-nav__ellipsis" aria-hidden="true">…</span>
+        <span class="pagination-nav__ellipsis" aria-hidden="true">...</span>
       } @else {
         <button
           type="button"

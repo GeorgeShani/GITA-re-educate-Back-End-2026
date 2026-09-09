@@ -16,7 +16,7 @@ import { firstSelectedFile } from '@/app/core/util/dom-event';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
-import { EmptyState } from '@/app/features/admin/ui/empty-state';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
@@ -156,7 +156,11 @@ const EMPTY_FORM: ProductFormModel = {
       </data-table>
 
       @if (pageCount() > 1) {
-        <pagination-nav [page]="page()" [total]="pageCount()" (pageChange)="page.set($event); load()" />
+        <pagination-nav
+          [page]="page()"
+          [total]="pageCount()"
+          (pageChange)="page.set($event); load()"
+        />
       }
     }
 
@@ -205,8 +209,13 @@ const EMPTY_FORM: ProductFormModel = {
         <div class="section-head">
           <h3>Images</h3>
           <label class="upload">
-            {{ uploading() ? 'Uploading…' : 'Upload' }}
-            <input type="file" accept="image/*" [disabled]="uploading()" (change)="onFileSelected($event)" />
+            {{ uploading() ? 'Uploading...' : 'Upload' }}
+            <input
+              type="file"
+              accept="image/*"
+              [disabled]="uploading()"
+              (change)="onFileSelected($event)"
+            />
           </label>
         </div>
         @if (form().images.length === 0) {
@@ -234,7 +243,11 @@ const EMPTY_FORM: ProductFormModel = {
         } @else {
           @for (variant of form().variants; track $index; let i = $index) {
             <div class="variant-row">
-              <text-field label="SKU" [value]="variant.sku" (valueChange)="patchVariant(i, { sku: $event })" />
+              <text-field
+                label="SKU"
+                [value]="variant.sku"
+                (valueChange)="patchVariant(i, { sku: $event })"
+              />
               <text-field
                 label="Attributes (key:value, key:value)"
                 [value]="variant.attributesText"
@@ -251,7 +264,9 @@ const EMPTY_FORM: ProductFormModel = {
                 [checked]="variant.isActive"
                 (checkedChange)="patchVariant(i, { isActive: $event })"
               />
-              <button type="button" class="danger" (click)="removeVariant(i)">Remove variant</button>
+              <button type="button" class="danger" (click)="removeVariant(i)">
+                Remove variant
+              </button>
             </div>
           }
         }
@@ -270,7 +285,11 @@ const EMPTY_FORM: ProductFormModel = {
 
       <div class="section">
         <h3>SEO</h3>
-        <text-field label="SEO title" [value]="form().seoTitle" (valueChange)="patch({ seoTitle: $event })" />
+        <text-field
+          label="SEO title"
+          [value]="form().seoTitle"
+          (valueChange)="patch({ seoTitle: $event })"
+        />
         <text-field
           label="SEO description"
           [value]="form().seoDescription"
@@ -492,7 +511,9 @@ export default class AdminProducts implements OnInit {
       description: product.description,
       categoryId: product.categoryId,
       basePriceDollars: (product.basePriceMinor / 100).toString(),
-      compareAtPriceDollars: product.compareAtPriceMinor ? (product.compareAtPriceMinor / 100).toString() : '',
+      compareAtPriceDollars: product.compareAtPriceMinor
+        ? (product.compareAtPriceMinor / 100).toString()
+        : '',
       tagsText: product.tags.join(', '),
       images: product.images.map((img) => ({
         publicId: img.publicId,
@@ -532,7 +553,10 @@ export default class AdminProducts implements OnInit {
   protected addVariant(): void {
     this.form.update((current) => ({
       ...current,
-      variants: [...current.variants, { sku: '', attributesText: '', priceDollars: '', isActive: true }],
+      variants: [
+        ...current.variants,
+        { sku: '', attributesText: '', priceDollars: '', isActive: true },
+      ],
     }));
   }
 
@@ -599,7 +623,9 @@ export default class AdminProducts implements OnInit {
       description: value.description.trim(),
       categoryId: value.categoryId,
       basePriceMinor: toMinor(value.basePriceDollars),
-      compareAtPriceMinor: value.compareAtPriceDollars ? toMinor(value.compareAtPriceDollars) : undefined,
+      compareAtPriceMinor: value.compareAtPriceDollars
+        ? toMinor(value.compareAtPriceDollars)
+        : undefined,
       tags: value.tagsText
         .split(',')
         .map((t) => t.trim())

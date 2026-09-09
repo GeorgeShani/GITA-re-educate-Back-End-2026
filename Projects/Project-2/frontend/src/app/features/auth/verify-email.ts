@@ -19,7 +19,7 @@ type Status = 'pending' | 'verifying' | 'success' | 'error';
       <div class="card">
         @switch (status()) {
           @case ('verifying') {
-            <h1>Verifying…</h1>
+            <h1>Verifying...</h1>
             <p class="subhead">One moment while we confirm your email address.</p>
           }
           @case ('success') {

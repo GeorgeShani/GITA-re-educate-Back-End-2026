@@ -18,7 +18,7 @@ const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 30_000;
 
 const STATUS_LABEL: Record<OrderStatus, string> = {
-  placed: 'Placing your order…',
+  placed: 'Placing your order...',
   paid: 'Payment received',
   payment_failed: 'Payment failed',
   confirmed: 'Order confirmed',
@@ -38,7 +38,16 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
  */
 @Component({
   selector: 'order-complete-page',
-  imports: [RouterLink, RevealDirective, MoneyPipe, ImagePlaceholder, PageContainer, PageSection, SkeletonBlock, StatusBadge],
+  imports: [
+    RouterLink,
+    RevealDirective,
+    MoneyPipe,
+    ImagePlaceholder,
+    PageContainer,
+    PageSection,
+    SkeletonBlock,
+    StatusBadge,
+  ],
   template: `
     <page-section spacing="md">
       <page-container>
@@ -52,7 +61,11 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
               <h1>Order received</h1>
             }
             <p class="order-number">Order #{{ o.orderNumber }}</p>
-            <status-badge variant="custom" [background]="statusBackground(o.status)" [color]="'var(--color-neutral-07)'">
+            <status-badge
+              variant="custom"
+              [background]="statusBackground(o.status)"
+              [color]="'var(--color-neutral-07)'"
+            >
               {{ statusLabel[o.status] }}
             </status-badge>
 
@@ -61,7 +74,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
                 This is taking longer than usual — we'll email you as soon as it's confirmed.
               </p>
             } @else if (o.status === 'placed') {
-              <p class="note">Confirming your payment…</p>
+              <p class="note">Confirming your payment...</p>
             }
           </div>
 
@@ -69,7 +82,12 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
             <ul class="items" role="list">
               @for (item of o.items; track item._id) {
                 <li class="item">
-                  <image-placeholder [src]="item.imageUrlSnapshot" [alt]="item.nameSnapshot" [width]="64" [height]="64" />
+                  <image-placeholder
+                    [src]="item.imageUrlSnapshot"
+                    [alt]="item.nameSnapshot"
+                    [width]="64"
+                    [height]="64"
+                  />
                   <div class="item-body">
                     <span class="item-name">{{ item.nameSnapshot }}</span>
                     <span class="item-sku">{{ item.variantSku }} · Qty {{ item.quantity }}</span>

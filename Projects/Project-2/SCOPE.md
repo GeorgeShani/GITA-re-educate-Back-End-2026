@@ -13,13 +13,13 @@ Phase 9, plus the full Phase 6 admin API, is built, tested, and pushed. The
 shell, home, catalog, product detail, auth, cart + checkout (real Stripe
 test-mode charges), account, blog/content, the AI shopping assistant, and the
 full 19-area admin panel are all built and verified against this live API —
-see *Part C — Frontend rebuild (F0–F12)* at the end of the build plan for the
+see _Part C — Frontend rebuild (F0–F12)_ at the end of the build plan for the
 phase-by-phase detail. **F12 (a Figma-driven visual/animation polish pass
 across the whole storefront) has not started** — it was deliberately deferred
 to a dedicated final pass rather than iterated per-page, and needs a fuller
 plan from the project owner before it begins.
 
-**Scope reality:** this is a large product being built solo. Phases 1–5 are the MVP — a store that can actually take money. Phases 6–7 are the admin and content surfaces. Phases 8–10 are the differentiators. Nothing here is optional to *plan*; the ordering is what protects the deadline.
+**Scope reality:** this is a large product being built solo. Phases 1–5 are the MVP — a store that can actually take money. Phases 6–7 are the admin and content surfaces. Phases 8–10 are the differentiators. Nothing here is optional to _plan_; the ordering is what protects the deadline.
 
 ---
 
@@ -27,11 +27,11 @@ plan from the project owner before it begins.
 
 ## A1. Font families
 
-| Family | Weights used | Role | Install |
-|---|---|---|---|
-| **Poppins** | 400, 500, 600 | All headings, plus a few captions | `@fontsource/poppins` — **static**, not `-variable` |
-| **Inter** | 400, 500, 600, 700 | Body, UI, buttons, captions, form controls | `@fontsource-variable/inter` |
-| **Space Grotesk** | 500 | Navigation-bar links only (the `Button/XSmall` token) | `@fontsource-variable/space-grotesk` |
+| Family            | Weights used       | Role                                                  | Install                                             |
+| ----------------- | ------------------ | ----------------------------------------------------- | --------------------------------------------------- |
+| **Poppins**       | 400, 500, 600      | All headings, plus a few captions                     | `@fontsource/poppins` — **static**, not `-variable` |
+| **Inter**         | 400, 500, 600, 700 | Body, UI, buttons, captions, form controls            | `@fontsource-variable/inter`                        |
+| **Space Grotesk** | 500                | Navigation-bar links only (the `Button/XSmall` token) | `@fontsource-variable/space-grotesk`                |
 
 Self-host via npm packages, not Google Fonts `<link>` tags.
 
@@ -41,43 +41,43 @@ Self-host via npm packages, not Google Fonts `<link>` tags.
 > `_typography.scss`. Use `nav-link` for navigation links and `button-xs` for
 > real `<button>` elements — they are the same metrics in different families.
 
-> ⚠️ **Poppins has no variable-font build.** `@fontsource-variable/poppins` does not exist on npm — Google's Poppins distribution ships static weights only. Install `@fontsource/poppins` and import the three weight files actually used (`400.css`, `500.css`, `600.css`); the family name in CSS is `'Poppins'`, with no "Variable" suffix. Inter *does* have a variable build — `@fontsource-variable/inter`, family name `'Inter Variable'` — so the two fonts are installed differently. Don't assume both follow the Project-1 pattern.
+> ⚠️ **Poppins has no variable-font build.** `@fontsource-variable/poppins` does not exist on npm — Google's Poppins distribution ships static weights only. Install `@fontsource/poppins` and import the three weight files actually used (`400.css`, `500.css`, `600.css`); the family name in CSS is `'Poppins'`, with no "Variable" suffix. Inter _does_ have a variable build — `@fontsource-variable/inter`, family name `'Inter Variable'` — so the two fonts are installed differently. Don't assume both follow the Project-1 pattern.
 >
 > **No `<link rel="preload">` in `index.html`.** These fonts are pulled into `styles.scss` via Sass `@use`, so the build tool content-hashes the emitted `.woff2` filenames on every compile — a static preload href would go stale the moment the hash changes and 404 silently. Rely on `font-display: swap` instead (fontsource's default), which avoids invisible text during load at the cost of a brief flash of fallback-font text. If first-paint font latency ever becomes a measured problem, revisit by copying specific font files into `public/` under stable names — that's a different asset strategy than self-hosting via the npm packages, so treat it as a deliberate trade-off, not a small tweak.
 
 ```scss
---font-poppins: 'Poppins', ui-sans-serif, system-ui, sans-serif;
---font-inter:   'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+--font-poppins: "Poppins", ui-sans-serif, system-ui, sans-serif;
+--font-inter: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 ```
 
 ## A2. Type scale
 
 Every value read directly from Figma variables. Implement as SCSS mixins in `_typography.scss` so no component repeats a font declaration.
 
-| Token | Family | Weight | Size | Line height | Tracking |
-|---|---|---|---|---|---|
-| `headline-2` | Poppins | 500 | 72 | 76 | -2 |
-| `headline-3` | Poppins | 500 | 54 | 58 | -1 |
-| `headline-4` | Poppins | 500 | 40 | 44 | -0.4 |
-| `headline-5` | Poppins | 500 | 34 | 38 | -0.6 |
-| `headline-6` | Poppins | 500 | 28 | 34 | -0.6 |
-| `headline-7` | Poppins | 500 | 20 | 28 | 0 |
-| `body-1` | Inter | 400 | 20 | 32 | 0 |
-| `body-1-semi` | Inter | 600 | 20 | 32 | 0 |
-| `body-2` | Inter | 400 | 16 | 26 | 0 |
-| `body-2-semi` | Inter | 600 | 16 | 26 | 0 |
-| `body-2-bold` | Poppins | 500 | 16 | 24 | 0 |
-| `caption` | Poppins | 400 | 14 | 24 | 0 |
-| `caption-1` | Inter | 400 | 14 | 22 | 0 |
-| `caption-1-semi` | Inter | 600 | 14 | 22 | 0 |
-| `caption-2` | Inter | 400 | 12 | 20 | 0 |
-| `caption-2-semi` | Inter | 600 | 12 | 20 | 0 |
-| `caption-2-bold` | Poppins | 600 | 12 | 20 | 0 |
-| `button-m` | Inter | 500 | 18 | 32 | -0.4 |
-| `button-s` | Inter | 500 | 16 | 28 | -0.4 |
-| `button-xs` | Inter | 500 | 14 | 24 | 0 |
-| `hairline-1` | Inter | 700 | 16 | 16 | 0 |
-| `hairline-2` | Inter | 700 | 12 | 12 | 0 |
+| Token            | Family  | Weight | Size | Line height | Tracking |
+| ---------------- | ------- | ------ | ---- | ----------- | -------- |
+| `headline-2`     | Poppins | 500    | 72   | 76          | -2       |
+| `headline-3`     | Poppins | 500    | 54   | 58          | -1       |
+| `headline-4`     | Poppins | 500    | 40   | 44          | -0.4     |
+| `headline-5`     | Poppins | 500    | 34   | 38          | -0.6     |
+| `headline-6`     | Poppins | 500    | 28   | 34          | -0.6     |
+| `headline-7`     | Poppins | 500    | 20   | 28          | 0        |
+| `body-1`         | Inter   | 400    | 20   | 32          | 0        |
+| `body-1-semi`    | Inter   | 600    | 20   | 32          | 0        |
+| `body-2`         | Inter   | 400    | 16   | 26          | 0        |
+| `body-2-semi`    | Inter   | 600    | 16   | 26          | 0        |
+| `body-2-bold`    | Poppins | 500    | 16   | 24          | 0        |
+| `caption`        | Poppins | 400    | 14   | 24          | 0        |
+| `caption-1`      | Inter   | 400    | 14   | 22          | 0        |
+| `caption-1-semi` | Inter   | 600    | 14   | 22          | 0        |
+| `caption-2`      | Inter   | 400    | 12   | 20          | 0        |
+| `caption-2-semi` | Inter   | 600    | 12   | 20          | 0        |
+| `caption-2-bold` | Poppins | 600    | 12   | 20          | 0        |
+| `button-m`       | Inter   | 500    | 18   | 32          | -0.4     |
+| `button-s`       | Inter   | 500    | 16   | 28          | -0.4     |
+| `button-xs`      | Inter   | 500    | 14   | 24          | 0        |
+| `hairline-1`     | Inter   | 700    | 16   | 16          | 0        |
+| `hairline-2`     | Inter   | 700    | 12   | 12          | 0        |
 
 ### Template inconsistencies — normalise, don't replicate
 
@@ -92,24 +92,24 @@ Recorded here so nobody "fixes" them back later:
 
 ### Primary neutral ramp — use this one everywhere
 
-| Token | Hex | Role |
-|---|---|---|
-| `--color-neutral-01` | `#FEFEFE` | Page background, text on dark |
-| `--color-neutral-02` | `#F3F5F7` | Surface, card fill, image placeholder background |
-| `--color-neutral-03` | `#E8ECEF` | Borders, dividers |
+| Token                | Hex       | Role                                                                       |
+| -------------------- | --------- | -------------------------------------------------------------------------- |
+| `--color-neutral-01` | `#FEFEFE` | Page background, text on dark                                              |
+| `--color-neutral-02` | `#F3F5F7` | Surface, card fill, image placeholder background                           |
+| `--color-neutral-03` | `#E8ECEF` | Borders, dividers                                                          |
 | `--color-neutral-04` | `#6C7275` | Secondary text, form borders, default icon. Also used at 50% and 25% alpha |
-| `--color-neutral-05` | `#343839` | Body text |
-| `--color-neutral-06` | `#232627` | Dark surfaces |
-| `--color-neutral-07` | `#141718` | Primary text, primary button fill |
+| `--color-neutral-05` | `#343839` | Body text                                                                  |
+| `--color-neutral-06` | `#232627` | Dark surfaces                                                              |
+| `--color-neutral-07` | `#141718` | Primary text, primary button fill                                          |
 
 ### Accents
 
-| Token | Hex | Where it appears |
-|---|---|---|
+| Token             | Hex       | Where it appears                                             |
+| ----------------- | --------- | ------------------------------------------------------------ |
 | `--color-success` | `#38CB89` | "In stock", order confirmed, **and the sale/discount badge** |
-| `--color-info` | `#377DFF` | Links, active states (Figma: `Blue`) |
-| `--color-white` | `#FFFFFF` | |
-| `--color-brand` | `#000000` | Logo (Figma: `Brand color`) |
+| `--color-info`    | `#377DFF` | Links, active states (Figma: `Blue`)                         |
+| `--color-white`   | `#FFFFFF` |                                                              |
+| `--color-brand`   | `#000000` | Logo (Figma: `Brand color`)                                  |
 
 `Primary/4 #45B26B` appears on the Order Complete screen only — a second green from another library. Collapse it into `--color-success`.
 
@@ -118,8 +118,8 @@ Recorded here so nobody "fixes" them back later:
 Two additional ramps are bound from imported libraries. Map every occurrence onto the Neutral ramp rather than shipping three greys — **except** the two below, which are genuinely used in component specs and get semantic aliases instead:
 
 ```scss
---color-border-input: #CBCBCB;  /* Black/300 — text input border */
---color-price:        #121212;  /* Black/900 — price text */
+--color-border-input: #cbcbcb; /* Black/300 — text input border */
+--color-price: #121212; /* Black/900 — price text */
 ```
 
 Everything else in these ramps is unused and must not be introduced:
@@ -135,10 +135,10 @@ Verified by inspecting the badge component directly: **the discount badge is gre
 Checkout validation, admin destructive actions, and failed-payment states all need one, so we **define our own semantic set**. These are additions, not extractions:
 
 ```scss
---color-error:   #E5484D;  /* form validation, failed payment, destructive */
---color-warning: #F5A524;  /* low stock, pending states */
---color-info:    #377DFF;  /* from the design */
---color-success: #38CB89;  /* from the design */
+--color-error: #e5484d; /* form validation, failed payment, destructive */
+--color-warning: #f5a524; /* low stock, pending states */
+--color-info: #377dff; /* from the design */
+--color-success: #38cb89; /* from the design */
 ```
 
 Validate each against `--color-neutral-01` for WCAG AA contrast before locking.
@@ -147,12 +147,12 @@ Validate each against `--color-neutral-01` for WCAG AA contrast before locking.
 
 Radius scale — measured off the real components:
 
-| Token | Value | Used by |
-|---|---|---|
-| `--radius-sm` | `4px` | Badges, checkbox/radio, quantity stepper |
-| `--radius-md` | `6px` | Text inputs, textareas |
-| `--radius-lg` | `8px` | Buttons, dropdowns |
-| `--radius-full` | `100px` | Icon buttons, pills, avatars |
+| Token           | Value   | Used by                                  |
+| --------------- | ------- | ---------------------------------------- |
+| `--radius-sm`   | `4px`   | Badges, checkbox/radio, quantity stepper |
+| `--radius-md`   | `6px`   | Text inputs, textareas                   |
+| `--radius-lg`   | `8px`   | Buttons, dropdowns                       |
+| `--radius-full` | `100px` | Icon buttons, pills, avatars             |
 
 **Border widths:** `1px` (inputs, quantity stepper) · `1.5px` (checkbox/radio) · `2px` (dropdown). Default border colour `--color-neutral-04`, except text inputs which use `--color-border-input`.
 
@@ -166,7 +166,7 @@ un-reusable steps.
 **Effects:**
 
 ```scss
---shadow-01:      0 8px 16px rgba(0, 0, 0, 0.035);       /* Figma: Shadow/01, #00000009 */
+--shadow-01: 0 8px 16px rgba(0, 0, 0, 0.035); /* Figma: Shadow/01, #00000009 */
 --shadow-depth-1: 0 8px 16px -8px rgba(15, 15, 15, 0.2); /* Figma: depth/1, #0F0F0F33 */
 ```
 
@@ -179,36 +179,42 @@ Content is capped at `--container-max: 1120px`, with `--page-padding` stepping
 either, and no component in it has a hover, focus, or active state:
 
 ```scss
---z-dropdown: 1000;  --z-sticky: 1100;  --z-overlay: 1200;
---z-drawer:   1300;  --z-modal:  1400;  --z-toast:   1500;
+--z-dropdown: 1000;
+--z-sticky: 1100;
+--z-overlay: 1200;
+--z-drawer: 1300;
+--z-modal: 1400;
+--z-toast: 1500;
 
---duration-fast: 150ms;  --duration-base: 250ms;  --duration-slow: 400ms;
+--duration-fast: 150ms;
+--duration-base: 250ms;
+--duration-slow: 400ms;
 --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 ```
 
 > **Token consumption rule.** Components `@use 'styles/typography'` and
-> `@use 'styles/breakpoints'`, and read colours/spacing as `var(--…)`. A
+> `@use 'styles/breakpoints'`, and read colours/spacing as `var(--...)`. A
 > component must **never** `@use 'styles/tokens'` — that duplicates the whole
 > `:root` block into its scoped CSS and blows the 4 kB per-component style
 > budget.
 
 ## A5. Component specs (measured)
 
-| Component | Size | Padding | Radius | Border | Fill | Type |
-|---|---|---|---|---|---|---|
-| Button (primary) | h40 | `6px 40px` | 8 | — | `--color-neutral-07` | `button-s` |
-| Button heights in file | 24, 26, 32, 36, 40, 48, 52, 56 | — | 8 | — | — | `button-m/s/xs` by size |
-| Icon button | 32 (24 icon + 4 pad) | `4px` | full | — | transparent | — |
-| Badge | auto × 24 | `4px 14px` | 4 | — | `--color-success` (sale) / white (new) | `hairline-1`, uppercase |
-| Text input | h40 (also 48, 52) | `0 16px` | 6 | 1px `--color-border-input` | white | `body-2`; placeholder `--color-neutral-04` |
-| Textarea | h140 | `0 16px` | 6 | 1px `--color-border-input` | white | `body-2` |
-| Dropdown | h48 | `8px 8px 8px 16px` | 8 | 2px `--color-neutral-04` | transparent | `body-2-semi`, 24px chevron |
-| Checkbox / radio | 24 × 24 | — | 4 | 1.5px `--color-neutral-04` | `#FCFCFD` | label `caption-1-semi` |
-| Quantity stepper | 80 × 32 | `12px 8px` | 4 | 1px `--color-neutral-04` | transparent | `caption-2-semi`, 16px icons |
-| Notification bar | 1440 × 40 / 375 × 36 | — | — | — | dark | `caption-1` |
-| Navigation bar | 1440 × 60 | — | — | — | — | — |
-| Icon (standard) | 24 × 24 | — | — | — | — | — |
-| Star (rating) | 16 × 16; group 88 × 16 | — | — | — | — | — |
+| Component              | Size                           | Padding            | Radius | Border                     | Fill                                   | Type                                       |
+| ---------------------- | ------------------------------ | ------------------ | ------ | -------------------------- | -------------------------------------- | ------------------------------------------ |
+| Button (primary)       | h40                            | `6px 40px`         | 8      | —                          | `--color-neutral-07`                   | `button-s`                                 |
+| Button heights in file | 24, 26, 32, 36, 40, 48, 52, 56 | —                  | 8      | —                          | —                                      | `button-m/s/xs` by size                    |
+| Icon button            | 32 (24 icon + 4 pad)           | `4px`              | full   | —                          | transparent                            | —                                          |
+| Badge                  | auto × 24                      | `4px 14px`         | 4      | —                          | `--color-success` (sale) / white (new) | `hairline-1`, uppercase                    |
+| Text input             | h40 (also 48, 52)              | `0 16px`           | 6      | 1px `--color-border-input` | white                                  | `body-2`; placeholder `--color-neutral-04` |
+| Textarea               | h140                           | `0 16px`           | 6      | 1px `--color-border-input` | white                                  | `body-2`                                   |
+| Dropdown               | h48                            | `8px 8px 8px 16px` | 8      | 2px `--color-neutral-04`   | transparent                            | `body-2-semi`, 24px chevron                |
+| Checkbox / radio       | 24 × 24                        | —                  | 4      | 1.5px `--color-neutral-04` | `#FCFCFD`                              | label `caption-1-semi`                     |
+| Quantity stepper       | 80 × 32                        | `12px 8px`         | 4      | 1px `--color-neutral-04`   | transparent                            | `caption-2-semi`, 16px icons               |
+| Notification bar       | 1440 × 40 / 375 × 36           | —                  | —      | —                          | dark                                   | `caption-1`                                |
+| Navigation bar         | 1440 × 60                      | —                  | —      | —                          | —                                      | —                                          |
+| Icon (standard)        | 24 × 24                        | —                  | —      | —                          | —                                      | —                                          |
+| Star (rating)          | 16 × 16; group 88 × 16         | —                  | —      | —                          | —                                      | —                                          |
 
 ### Product Card
 
@@ -234,31 +240,31 @@ either, and no component in it has a hover, focus, or active state:
 
 ## A7. Screen inventory
 
-| Screen | Desktop node | Mobile node |
-|---|---|---|
-| Homepage 01 | `3:677` | `13:2053` |
-| Homepage 02 | `88:10423` | `172:12538` |
+| Screen                             | Desktop node   | Mobile node     |
+| ---------------------------------- | -------------- | --------------- |
+| Homepage 01                        | `3:677`        | `13:2053`       |
+| Homepage 02                        | `88:10423`     | `172:12538`     |
 | **Homepage 03** ← the one we build | **`116:6824`** | **`176:13558`** |
-| Homepage 04 | `150:7552` | `176:14880` |
-| Fly menu | — | `170:10649` |
-| Sign In Popup | `172:12346` | `172:12496` |
-| Sign Up Popup | `171:11483` | `172:12388` |
-| Shop Page 01 | `24:389` | `74:8369` |
-| Shop Page 02 | `33:6663` | `74:9110` |
-| Shop Page 03 | `35:7381` | `74:9497` |
-| Product Page 01 | `37:1912` | `72:6739` |
-| Product Page 02 | `48:9324` | `74:7800` |
-| Flyout Cart | `70:5335` | `72:6176` |
-| Cart | `56:5593` | `78:6488` |
-| CheckOut | `59:10897` | `80:7851` |
-| Order Complete | `61:11644` | `81:8738` |
-| My Account | `63:3891` | `83:9236` |
-| My Account / Address | `67:4507` | `85:9848` |
-| My Account / Orders | `68:4827` | `85:10008` |
-| My Account / Wishlist | `70:5110` | `87:10182` |
-| Blog 01 | `52:4112` | `75:5268` |
-| Blog Post 01 | `54:5208` | `76:5905` |
-| Contact Us 01 | `50:2794` | `77:6255` |
+| Homepage 04                        | `150:7552`     | `176:14880`     |
+| Fly menu                           | —              | `170:10649`     |
+| Sign In Popup                      | `172:12346`    | `172:12496`     |
+| Sign Up Popup                      | `171:11483`    | `172:12388`     |
+| Shop Page 01                       | `24:389`       | `74:8369`       |
+| Shop Page 02                       | `33:6663`      | `74:9110`       |
+| Shop Page 03                       | `35:7381`      | `74:9497`       |
+| Product Page 01                    | `37:1912`      | `72:6739`       |
+| Product Page 02                    | `48:9324`      | `74:7800`       |
+| Flyout Cart                        | `70:5335`      | `72:6176`       |
+| Cart                               | `56:5593`      | `78:6488`       |
+| CheckOut                           | `59:10897`     | `80:7851`       |
+| Order Complete                     | `61:11644`     | `81:8738`       |
+| My Account                         | `63:3891`      | `83:9236`       |
+| My Account / Address               | `67:4507`      | `85:9848`       |
+| My Account / Orders                | `68:4827`      | `85:10008`      |
+| My Account / Wishlist              | `70:5110`      | `87:10182`      |
+| Blog 01                            | `52:4112`      | `75:5268`       |
+| Blog Post 01                       | `54:5208`      | `76:5905`       |
+| Contact Us 01                      | `50:2794`      | `77:6255`       |
 
 **Homepage 03 section order:** Notification Bar → Navigation Bar → Slider Section → Product Carousel → Categories → Banner → Banner Grid → Blog Section → Newsletter → Instagram newsfeed → Footer.
 
@@ -288,25 +294,25 @@ Mongo doesn't enforce what Postgres would have — these are explicit decisions,
 
 ## B1. Decisions
 
-| Area | Decision |
-|---|---|
-| Data layer | **MongoDB Atlas + Mongoose** — orders, stock, coupons, and the outbox all need real transactions; Atlas gives every tier, including free M0, a replica set, and Mongo's multi-document ACID transactions run on top of that |
-| Backend architecture | **Event-driven** — `@nestjs/cqrs` command/query/event buses + transactional outbox + BullMQ/Redis consumers + sagas |
-| Frontend styling | **SCSS + CSS custom properties**, no Tailwind — keeps `inlineStyleLanguage: scss` and the existing Angular config |
-| Payments | **Stripe test mode** — PaymentIntents + webhook-confirmed orders, behind a `PaymentProvider` interface |
-| Media | **Cloudinary** — signed direct-to-Cloudinary uploads, URL-based transformations, CDN included |
-| Email | **Resend + MJML/Handlebars** behind a `MailProvider` interface. Every send is event-triggered, logged, idempotent, and suppression-checked — see B4 |
-| Environments | **Managed services throughout, no local Docker** |
-| AI assistant | **Read + act** — Google Gemini tool-use agent that searches, compares, and mutates the cart, streamed over SSE |
+| Area                 | Decision                                                                                                                                                                                                                    |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data layer           | **MongoDB Atlas + Mongoose** — orders, stock, coupons, and the outbox all need real transactions; Atlas gives every tier, including free M0, a replica set, and Mongo's multi-document ACID transactions run on top of that |
+| Backend architecture | **Event-driven** — `@nestjs/cqrs` command/query/event buses + transactional outbox + BullMQ/Redis consumers + sagas                                                                                                         |
+| Frontend styling     | **SCSS + CSS custom properties**, no Tailwind — keeps `inlineStyleLanguage: scss` and the existing Angular config                                                                                                           |
+| Payments             | **Stripe test mode** — PaymentIntents + webhook-confirmed orders, behind a `PaymentProvider` interface                                                                                                                      |
+| Media                | **Cloudinary** — signed direct-to-Cloudinary uploads, URL-based transformations, CDN included                                                                                                                               |
+| Email                | **Resend + MJML/Handlebars** behind a `MailProvider` interface. Every send is event-triggered, logged, idempotent, and suppression-checked — see B4                                                                         |
+| Environments         | **Managed services throughout, no local Docker**                                                                                                                                                                            |
+| AI assistant         | **Read + act** — Google Gemini tool-use agent that searches, compares, and mutates the cart, streamed over SSE                                                                                                              |
 
 ## B2. The event-driven core
 
 ### Three mechanisms, one rule
 
-| Mechanism | Package | Use for | Delivery |
-|---|---|---|---|
-| **CommandBus** | `@nestjs/cqrs` | Every state change. One handler per command | In-process, sync |
-| **EventBus** | `@nestjs/cqrs` | Domain facts, past tense. Many handlers per event | In-process, sync |
+| Mechanism           | Package          | Use for                                                                    | Delivery               |
+| ------------------- | ---------------- | -------------------------------------------------------------------------- | ---------------------- |
+| **CommandBus**      | `@nestjs/cqrs`   | Every state change. One handler per command                                | In-process, sync       |
+| **EventBus**        | `@nestjs/cqrs`   | Domain facts, past tense. Many handlers per event                          | In-process, sync       |
 | **Outbox → BullMQ** | `bullmq` + Redis | Anything slow, retryable, or deferred — email, images, indexing, analytics | Durable, at-least-once |
 
 > **The rule:** never publish to a queue inside a database transaction, and never do side effects inside a command handler.
@@ -328,7 +334,7 @@ HTTP/SSE ─▶ Controller ─▶ CommandBus ─▶ Handler ──┐ one DB tra
 
 **`outbox_events`** — a collection with `_id`, `aggregateType`, `aggregateId`, `eventName`, `payload`, `occurredAt`, `publishedAt`, `attempts`, `correlationId`.
 
-A change stream on the `outbox_events` collection notifies the relay the moment a row is written — no polling. Each relay instance claims a row with `findOneAndUpdate({ _id, publishedAt: null }, { $set: { publishedAt: now } })` before publishing to BullMQ, so concurrent relay instances never double-publish; that atomic claim is what `SELECT … FOR UPDATE SKIP LOCKED` did for Postgres. Consumers stay idempotent, keyed on `event._id`.
+A change stream on the `outbox_events` collection notifies the relay the moment a row is written — no polling. Each relay instance claims a row with `findOneAndUpdate({ _id, publishedAt: null }, { $set: { publishedAt: now } })` before publishing to BullMQ, so concurrent relay instances never double-publish; that atomic claim is what `SELECT ... FOR UPDATE SKIP LOCKED` did for Postgres. Consumers stay idempotent, keyed on `event._id`.
 
 **Resume tokens are load-bearing.** The change stream's resume token is persisted after every batch, in a `stream_checkpoints` collection keyed by stream name, so a relay restart resumes exactly where it left off instead of dropping or replaying the window. A startup sweep also republishes any `outbox_events` row with `publishedAt: null` older than N seconds — the safety net for the rarer case where a resume token itself is lost.
 
@@ -336,33 +342,33 @@ A change stream on the `outbox_events` collection notifies the relay the moment 
 
 Classes in `src/<domain>/events/`, all extending a `DomainEvent` base carrying `occurredAt` + `correlationId`.
 
-| Aggregate | Events |
-|---|---|
-| User | `registered`, `email_verified`, `logged_in`, `password_reset_requested`, `password_changed`, `profile_updated`, `deleted` |
-| Product | `created`, `updated`, `published`, `unpublished`, `archived`, `price_changed`, `variant_added` |
-| Inventory | `reserved`, `reservation_released`, `decremented`, `adjusted`, `low_stock_reached`, `out_of_stock`, `back_in_stock` |
-| Cart | `created`, `item_added`, `item_removed`, `item_quantity_changed`, `coupon_applied`, `merged`, `abandoned`, `converted` |
-| Order | `placed`, `paid`, `payment_failed`, `confirmed`, `fulfilled`, `shipped`, `delivered`, `cancelled`, `refunded` |
-| Payment | `intent_created`, `succeeded`, `failed`, `refund_issued` |
-| Return | `requested`, `approved`, `rejected`, `received`, `refunded` |
-| Review | `submitted`, `approved`, `rejected`, `replied` |
-| Coupon | `redeemed`, `limit_reached`, `expired` |
-| Media | `uploaded`, `deleted` |
-| Content | `post_published`, `post_unpublished`, `page_updated` |
-| Marketing | `newsletter_subscribed`, `newsletter_unsubscribed`, `back_in_stock_requested` |
-| Wishlist | `item_added`, `item_removed` |
-| Email | `queued`, `sent`, `delivered`, `bounced`, `complained`, `failed` — emitted by the mailer and by provider webhooks |
+| Aggregate | Events                                                                                                                    |
+| --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| User      | `registered`, `email_verified`, `logged_in`, `password_reset_requested`, `password_changed`, `profile_updated`, `deleted` |
+| Product   | `created`, `updated`, `published`, `unpublished`, `archived`, `price_changed`, `variant_added`                            |
+| Inventory | `reserved`, `reservation_released`, `decremented`, `adjusted`, `low_stock_reached`, `out_of_stock`, `back_in_stock`       |
+| Cart      | `created`, `item_added`, `item_removed`, `item_quantity_changed`, `coupon_applied`, `merged`, `abandoned`, `converted`    |
+| Order     | `placed`, `paid`, `payment_failed`, `confirmed`, `fulfilled`, `shipped`, `delivered`, `cancelled`, `refunded`             |
+| Payment   | `intent_created`, `succeeded`, `failed`, `refund_issued`                                                                  |
+| Return    | `requested`, `approved`, `rejected`, `received`, `refunded`                                                               |
+| Review    | `submitted`, `approved`, `rejected`, `replied`                                                                            |
+| Coupon    | `redeemed`, `limit_reached`, `expired`                                                                                    |
+| Media     | `uploaded`, `deleted`                                                                                                     |
+| Content   | `post_published`, `post_unpublished`, `page_updated`                                                                      |
+| Marketing | `newsletter_subscribed`, `newsletter_unsubscribed`, `back_in_stock_requested`                                             |
+| Wishlist  | `item_added`, `item_removed`                                                                                              |
+| Email     | `queued`, `sent`, `delivered`, `bounced`, `complained`, `failed` — emitted by the mailer and by provider webhooks         |
 
 ### Consumers
 
-| Queue | Subscribes to | Does |
-|---|---|---|
+| Queue           | Subscribes to                                                                                           | Does                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `notifications` | `user.*`, `order.*`, `return.*`, `review.*`, `inventory.back_in_stock`, `cart.abandoned`, `marketing.*` | Resolves recipient + preferences, checks suppression, renders MJML/Handlebars, sends via `MailProvider`, writes an `EmailMessage` row. See B4 |
-| `media` | `media.uploaded`, `media.deleted` | Registers the Cloudinary asset, persists metadata (width/height, blur-placeholder URL), calls `destroy` on delete |
-| `search` | `product.*`, `inventory.*`, `content.post_published` | Re-indexes the Atlas Search document + facet cache |
-| `analytics` | Order, cart, product-view events | Writes rollup tables that feed the admin dashboard |
-| `audit-log` | **Every** event (wildcard) | Append-only `audit_log` — powers the admin activity feed |
-| `webhooks` | Configurable subset | Outbound HTTP, HMAC-signed, exponential backoff |
+| `media`         | `media.uploaded`, `media.deleted`                                                                       | Registers the Cloudinary asset, persists metadata (width/height, blur-placeholder URL), calls `destroy` on delete                             |
+| `search`        | `product.*`, `inventory.*`, `content.post_published`                                                    | Re-indexes the Atlas Search document + facet cache                                                                                            |
+| `analytics`     | Order, cart, product-view events                                                                        | Writes rollup tables that feed the admin dashboard                                                                                            |
+| `audit-log`     | **Every** event (wildcard)                                                                              | Append-only `audit_log` — powers the admin activity feed                                                                                      |
+| `webhooks`      | Configurable subset                                                                                     | Outbound HTTP, HMAC-signed, exponential backoff                                                                                               |
 
 ### Sagas
 
@@ -385,16 +391,16 @@ Classes in `src/<domain>/events/`, all extending a `DomainEvent` base carrying `
 
 No local Postgres or Redis. Development points at real free-tier infrastructure, so what we test is what we ship.
 
-| Concern | Service | Why |
-|---|---|---|
-| MongoDB | **MongoDB Atlas** | M0 free tier is a 3-node replica set — required for both multi-document transactions and the change-stream-driven outbox relay |
-| Redis | **Railway Redis**, co-located with the backend | BullMQ holds blocking connections (`BRPOPLPUSH`) and polls continuously; per-command serverless Redis pricing burns quota fast. Upstash works if preferred — set `maxRetriesPerRequest: null`, `enableReadyCheck: false` |
-| Backend API | **Railway** (Render/Fly equivalent) | Must be a **persistent container** — the outbox relay, BullMQ workers, and SSE streams all need long-lived processes. Vercel/Lambda cannot host this backend |
-| Workers | Second Railway service, same image, `ROLE=worker` | API and consumers scale independently; a stuck image job can't stall HTTP traffic |
-| Media storage | **Cloudinary** | Signed direct uploads, URL-based transformations, CDN included — no separate CDN service to wire up |
-| Frontend SSR | **Railway/Render alongside the backend** | `frontend/src/server.ts` is already an Express 5 app — `npm run serve:ssr:3legant` deploys as-is |
-| Email | **Resend** | Generous free tier, simple SDK |
-| Errors | **Sentry** + Railway logs | |
+| Concern       | Service                                           | Why                                                                                                                                                                                                                      |
+| ------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MongoDB       | **MongoDB Atlas**                                 | M0 free tier is a 3-node replica set — required for both multi-document transactions and the change-stream-driven outbox relay                                                                                           |
+| Redis         | **Railway Redis**, co-located with the backend    | BullMQ holds blocking connections (`BRPOPLPUSH`) and polls continuously; per-command serverless Redis pricing burns quota fast. Upstash works if preferred — set `maxRetriesPerRequest: null`, `enableReadyCheck: false` |
+| Backend API   | **Railway** (Render/Fly equivalent)               | Must be a **persistent container** — the outbox relay, BullMQ workers, and SSE streams all need long-lived processes. Vercel/Lambda cannot host this backend                                                             |
+| Workers       | Second Railway service, same image, `ROLE=worker` | API and consumers scale independently; a stuck image job can't stall HTTP traffic                                                                                                                                        |
+| Media storage | **Cloudinary**                                    | Signed direct uploads, URL-based transformations, CDN included — no separate CDN service to wire up                                                                                                                      |
+| Frontend SSR  | **Railway/Render alongside the backend**          | `frontend/src/server.ts` is already an Express 5 app — `npm run serve:ssr:3legant` deploys as-is                                                                                                                         |
+| Email         | **Resend**                                        | Generous free tier, simple SDK                                                                                                                                                                                           |
+| Errors        | **Sentry** + Railway logs                         |                                                                                                                                                                                                                          |
 
 ### Atlas gotchas — handle in Phase 1, not on deploy day
 
@@ -402,7 +408,7 @@ No local Postgres or Redis. Development points at real free-tier infrastructure,
 2. **Connection string** — `retryWrites=true&w=majority` on the single Atlas SRV URI. There's no pooled/direct split to get backwards the way Neon had — one connection string, one code path.
 3. **IP allowlist** — Atlas blocks all connections by default. Railway's egress IPs aren't static on the lower tiers, so either allowlist `0.0.0.0/0` behind a strong, unique credential, or move to VPC peering once on a paid tier. Settle this in Phase 1; it's the kind of thing that blocks deploy day if left late.
 4. **M0 limits** — 512MB storage, 500 connections, shared CPU. Comfortable through Phase 5; revisit before seeding heavy media metadata or analytics rollups.
-5. **No branching.** Neon's branch-per-environment/PR model has no Atlas equivalent on free tiers. Use separate *databases* within one cluster for dev/test, and a separate cluster for production. Preview-environment-per-PR gets materially worse as a result — see Open items.
+5. **No branching.** Neon's branch-per-environment/PR model has no Atlas equivalent on free tiers. Use separate _databases_ within one cluster for dev/test, and a separate cluster for production. Preview-environment-per-PR gets materially worse as a result — see Open items.
 6. **Atlas Search indexes are provisioned separately.** They're defined through the Atlas API or UI, not in application code, so they don't come along for free with a Mongoose schema — budget a provisioning step in Phase 3.
 
 ## B4. Email & notifications
@@ -413,11 +419,11 @@ Email is a first-class subsystem, not a side effect of the queue. Every message 
 
 `MailProvider` interface (`send`, `sendBatch`, `verifyWebhook`) with three implementations, the same pattern as `StorageProvider` and `PaymentProvider`:
 
-| Impl | Used in |
-|---|---|
-| `ResendProvider` | Production |
+| Impl              | Used in                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `ResendProvider`  | Production                                                                                            |
 | `ConsoleProvider` | Dev default — writes rendered HTML to `dist/mail-out/` and logs the plain-text body. No network calls |
-| `NoopProvider` | Tests |
+| `NoopProvider`    | Tests                                                                                                 |
 
 > ⚠️ **Dev safety gate — this is a guard in code, not a convention.** In any non-production environment the mailer rewrites every recipient to `MAIL_DEV_REDIRECT` unless the address is on `MAIL_DEV_ALLOWLIST`. The seed script creates realistic customer accounts; running the notification consumer against those without this gate sends real mail to strangers. Build the gate before the first template.
 
@@ -432,33 +438,33 @@ Email is a first-class subsystem, not a side effect of the queue. Every message 
 
 ### Catalogue — event → email
 
-| Trigger | Email | To | Category |
-|---|---|---|---|
-| `user.registered` | Verify your email | Customer | Transactional |
-| `user.email_verified` | Welcome + first-order discount | Customer | Transactional |
-| `user.password_reset_requested` | Reset your password | Customer | Transactional |
-| `user.password_changed` | Your password was changed | Customer | Security |
-| `order.placed` | We received your order | Customer | Transactional |
-| `order.paid` | Order confirmed — invoice PDF attached | Customer | Transactional |
-| `order.payment_failed` | Payment problem, with retry link | Customer | Transactional |
-| `order.shipped` | On its way + tracking number | Customer | Transactional |
-| `order.delivered` | Delivered | Customer | Transactional |
-| `order.cancelled` | Order cancelled | Customer | Transactional |
-| `order.refunded` | Refund issued | Customer | Transactional |
-| `order.placed` | New order received | Admin | Ops |
-| `return.requested` | We got your return request | Customer | Transactional |
-| `return.approved` | Return approved + shipping label | Customer | Transactional |
-| `return.rejected` | Return declined, with reason | Customer | Transactional |
-| `return.refunded` | Refund on its way | Customer | Transactional |
-| `return.requested` | Return needs review | Admin | Ops |
-| `inventory.back_in_stock` | Back in stock | Waitlist | Opt-in |
-| `inventory.low_stock_reached` | Low stock warning | Admin | Ops |
-| `cart.abandoned` | You left something behind (+ coupon) | Customer | Marketing |
-| `order.delivered` + 7d | How did we do? Review request | Customer | Marketing |
-| `review.replied` | We replied to your review | Customer | Transactional |
-| `marketing.newsletter_subscribed` | Confirm your subscription (double opt-in) | Subscriber | Transactional |
-| `contact.message_received` | We got your message / New enquiry | Customer + Admin | Transactional + Ops |
-| `giftcard.issued` | Your gift card | Recipient | Transactional |
+| Trigger                           | Email                                     | To               | Category            |
+| --------------------------------- | ----------------------------------------- | ---------------- | ------------------- |
+| `user.registered`                 | Verify your email                         | Customer         | Transactional       |
+| `user.email_verified`             | Welcome + first-order discount            | Customer         | Transactional       |
+| `user.password_reset_requested`   | Reset your password                       | Customer         | Transactional       |
+| `user.password_changed`           | Your password was changed                 | Customer         | Security            |
+| `order.placed`                    | We received your order                    | Customer         | Transactional       |
+| `order.paid`                      | Order confirmed — invoice PDF attached    | Customer         | Transactional       |
+| `order.payment_failed`            | Payment problem, with retry link          | Customer         | Transactional       |
+| `order.shipped`                   | On its way + tracking number              | Customer         | Transactional       |
+| `order.delivered`                 | Delivered                                 | Customer         | Transactional       |
+| `order.cancelled`                 | Order cancelled                           | Customer         | Transactional       |
+| `order.refunded`                  | Refund issued                             | Customer         | Transactional       |
+| `order.placed`                    | New order received                        | Admin            | Ops                 |
+| `return.requested`                | We got your return request                | Customer         | Transactional       |
+| `return.approved`                 | Return approved + shipping label          | Customer         | Transactional       |
+| `return.rejected`                 | Return declined, with reason              | Customer         | Transactional       |
+| `return.refunded`                 | Refund on its way                         | Customer         | Transactional       |
+| `return.requested`                | Return needs review                       | Admin            | Ops                 |
+| `inventory.back_in_stock`         | Back in stock                             | Waitlist         | Opt-in              |
+| `inventory.low_stock_reached`     | Low stock warning                         | Admin            | Ops                 |
+| `cart.abandoned`                  | You left something behind (+ coupon)      | Customer         | Marketing           |
+| `order.delivered` + 7d            | How did we do? Review request             | Customer         | Marketing           |
+| `review.replied`                  | We replied to your review                 | Customer         | Transactional       |
+| `marketing.newsletter_subscribed` | Confirm your subscription (double opt-in) | Subscriber       | Transactional       |
+| `contact.message_received`        | We got your message / New enquiry         | Customer + Admin | Transactional + Ops |
+| `giftcard.issued`                 | Your gift card                            | Recipient        | Transactional       |
 
 Each later build phase adds its own rows here. Adding an email is a template file plus a catalogue entry — never new plumbing.
 
@@ -513,7 +519,7 @@ core/
 │   ├── outbox-relay.service.ts     # change stream + findOneAndUpdate claim
 │   ├── stream-checkpoint.schema.ts # persisted resume token
 │   └── outbox.publisher.ts
-├── bus/transactional-command.handler.ts   # withTransaction(session => …)
+├── bus/transactional-command.handler.ts   # withTransaction(session => ...)
 ├── queues/
 │   ├── queue-names.enum.ts
 │   └── base.consumer.ts            # idempotency + retry policy
@@ -653,25 +659,25 @@ Discounts (as Coupons + Gift cards), Shipping & tax, Reviews, Content (as
 Blog + Pages), Media, Inbox (as Contact + Newsletter), Email, Audit log —
 matches this table as written.
 
-| Area | Contents |
-|---|---|
-| Dashboard | Revenue / orders / AOV / conversion tiles, sales chart, top products, low-stock list, live activity feed **read straight from the audit log** |
-| Products | CRUD, variant matrix editor, bulk actions, CSV import/export, media picker, SEO fields, scheduled publish |
-| Categories | Tree CRUD with drag-reorder |
-| Inventory | Stock by variant, adjustments with reason, reservations view, low-stock alerts, restock |
-| Orders | List + filters, detail, status transitions, partial fulfillment, tracking numbers, refunds, internal notes, packing slip |
-| Returns | RMA queue — approve/reject, receive, refund |
-| Customers | List, detail, lifetime value, order history, notes, ban |
-| Discounts | Coupon builder with rule editor, gift cards, usage reports |
-| Shipping & tax | Zones, rates, methods, thresholds, tax rates |
-| Reviews | Moderation queue, reply, feature |
-| Content | Post and page CRUD (rich text), categories, tags, scheduling |
-| Media | Library browse, upload, bulk delete, alt-text editing |
-| Inbox | Contact messages, newsletter subscribers + export |
-| Email | `EmailMessage` log with status filters, per-message payload + rendered preview, resend, suppression-list management, bounce/complaint rate, template gallery with send-test |
-| Users & roles | Staff accounts, RBAC assignment |
-| Settings | Store info, currency, sender identity + reply-to, feature flags |
-| Audit log | Filterable event stream — the EDA payoff, visible in the UI |
+| Area           | Contents                                                                                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard      | Revenue / orders / AOV / conversion tiles, sales chart, top products, low-stock list, live activity feed **read straight from the audit log**                               |
+| Products       | CRUD, variant matrix editor, bulk actions, CSV import/export, media picker, SEO fields, scheduled publish                                                                   |
+| Categories     | Tree CRUD with drag-reorder                                                                                                                                                 |
+| Inventory      | Stock by variant, adjustments with reason, reservations view, low-stock alerts, restock                                                                                     |
+| Orders         | List + filters, detail, status transitions, partial fulfillment, tracking numbers, refunds, internal notes, packing slip                                                    |
+| Returns        | RMA queue — approve/reject, receive, refund                                                                                                                                 |
+| Customers      | List, detail, lifetime value, order history, notes, ban                                                                                                                     |
+| Discounts      | Coupon builder with rule editor, gift cards, usage reports                                                                                                                  |
+| Shipping & tax | Zones, rates, methods, thresholds, tax rates                                                                                                                                |
+| Reviews        | Moderation queue, reply, feature                                                                                                                                            |
+| Content        | Post and page CRUD (rich text), categories, tags, scheduling                                                                                                                |
+| Media          | Library browse, upload, bulk delete, alt-text editing                                                                                                                       |
+| Inbox          | Contact messages, newsletter subscribers + export                                                                                                                           |
+| Email          | `EmailMessage` log with status filters, per-message payload + rendered preview, resend, suppression-list management, bounce/complaint rate, template gallery with send-test |
+| Users & roles  | Staff accounts, RBAC assignment                                                                                                                                             |
+| Settings       | Store info, currency, sender identity + reply-to, feature flags                                                                                                             |
+| Audit log      | Filterable event stream — the EDA payoff, visible in the UI                                                                                                                 |
 
 ## Phase 7 — Content & marketing
 
@@ -714,7 +720,7 @@ Full mobile pass across all 23 screens using the mobile node IDs, AXE / WCAG-AA 
 ## Frontend rebuild (F0–F12)
 
 The phase list above describes the product feature-by-feature. This section
-records the *order the frontend actually gets built in*, which differs because
+records the _order the frontend actually gets built in_, which differs because
 it has to start from an app that currently renders a blank page at `/`.
 
 **Governing rule: Figma is a reference, not a specification.** Four rounds of
@@ -726,21 +732,21 @@ Figma, and nothing is resurrected from `wip/homepage-attempt`. Assets are
 fetched from the internet: **Lucide** (npm) for the ~30 line icons, **Pexels**
 for photography.
 
-| # | Phase | Depends on | Delivers | Status |
-|---|---|---|---|---|
-| F0 | Prerequisites *(manual)* | — | Live backend, seeded catalog, admin account | ✅ Done |
-| F1 | Real data layer | F0 | Typed DTOs, adapters, auth/cart/catalog services, dev proxy | ✅ Done |
-| F2 | App shell | F1 | Icons, header, footer, nav, cart drawer, routing, SSR modes | ✅ Done |
-| F3 | Home | F2 | The page `/` has never had | ✅ Done |
-| F4 | Catalog + search | F2 | `/shop`, filters, facets, typeahead | ✅ Done |
-| F5 | Product detail | F4 | `/product/:slug`, variants, reviews | ✅ Done |
-| F6 | Auth | F1 | Sign in/up, verify, reset, guards, cart merge | ✅ Done |
-| F7 | Cart + checkout | F5, F6 | Cart, Stripe Elements, order polling | ✅ Done |
-| F8 | Account | F6 | Profile, orders, addresses, wishlist, returns | ✅ Done |
-| F9 | Content | F2 | Blog, pages, contact, newsletter | ✅ Done |
-| F10 | AI assistant | F6 | SSE chat panel, confirmation chips | ✅ Done |
-| F11 | Admin panel | F6 | 19 admin areas on a shared table/form layer | ✅ Done |
-| F12 | Polish | all | A11y, SEO, perf, mobile, budgets | ⏸ Not started — awaiting a fuller plan before it begins |
+| #   | Phase                    | Depends on | Delivers                                                    | Status                                                  |
+| --- | ------------------------ | ---------- | ----------------------------------------------------------- | ------------------------------------------------------- |
+| F0  | Prerequisites _(manual)_ | —          | Live backend, seeded catalog, admin account                 | ✅ Done                                                 |
+| F1  | Real data layer          | F0         | Typed DTOs, adapters, auth/cart/catalog services, dev proxy | ✅ Done                                                 |
+| F2  | App shell                | F1         | Icons, header, footer, nav, cart drawer, routing, SSR modes | ✅ Done                                                 |
+| F3  | Home                     | F2         | The page `/` has never had                                  | ✅ Done                                                 |
+| F4  | Catalog + search         | F2         | `/shop`, filters, facets, typeahead                         | ✅ Done                                                 |
+| F5  | Product detail           | F4         | `/product/:slug`, variants, reviews                         | ✅ Done                                                 |
+| F6  | Auth                     | F1         | Sign in/up, verify, reset, guards, cart merge               | ✅ Done                                                 |
+| F7  | Cart + checkout          | F5, F6     | Cart, Stripe Elements, order polling                        | ✅ Done                                                 |
+| F8  | Account                  | F6         | Profile, orders, addresses, wishlist, returns               | ✅ Done                                                 |
+| F9  | Content                  | F2         | Blog, pages, contact, newsletter                            | ✅ Done                                                 |
+| F10 | AI assistant             | F6         | SSE chat panel, confirmation chips                          | ✅ Done                                                 |
+| F11 | Admin panel              | F6         | 19 admin areas on a shared table/form layer                 | ✅ Done                                                 |
+| F12 | Polish                   | all        | A11y, SEO, perf, mobile, budgets                            | ⏸ Not started — awaiting a fuller plan before it begins |
 
 F0–F11 were each built and verified against the real live backend (real
 seeded data, real Stripe test-mode charges, real Cloudinary uploads, real
@@ -748,7 +754,7 @@ Gemini tool calls) as they landed, not deferred to a final integration pass.
 F12 is the one remaining phase: a dedicated visual/animation polish pass
 across every page built so far, using the four Figma frames already on file
 (node-id `3-674`, `116-6824`, `176-13558`, `0-1`) as reference, not
-pixel-matched — see the *Governing rule* above. Deliberately not started
+pixel-matched — see the _Governing rule_ above. Deliberately not started
 alongside F0–F11 so it can be scoped and sequenced as its own piece of work
 once there's a clearer plan for it, rather than picked up ad hoc per page.
 
@@ -799,17 +805,17 @@ Priority coverage, in order:
 
 # Open items
 
-| Item | Decision needed |
-|---|---|
-| **Semantic colours** | The template has no red at all (sale badges are green). `--color-error` / `--color-warning` in A3 are our additions — validate against WCAG AA before locking |
-| **Tablet tier** | No 768px frame exists in the template; that breakpoint's design is ours to make |
-| **Homepage variant** | ✅ Resolved — built against Homepage 03 (node `116:6824`) in F3. 01 / 02 / 04 remain documented alternates, unused |
-| **Admin design language** | ✅ Resolved by default — F11 reuses the storefront's own Poppins/Inter type mixins (`styles/_typography.scss`) throughout rather than a separate Inter-only data-density system. Revisit in F12 if the admin panel's density ever feels wrong at scale |
-| **Sending domain** | B4 assumes `mail.<domain>`. Pick the domain and publish SPF/DKIM/DMARC early — DNS propagation and Resend verification are the kind of thing that blocks a launch day |
-| **Product Card hover state** | Not in the Figma file — no hover/focus/active states exist there for any component. Implemented as image zoom (`scale(1.05)`) + a Quick Add button revealing over the image bottom edge. A deliberate addition, not extracted from a frame — revisit if a real hover spec ever surfaces |
-| **Product Card price row gap** | A5 says the price row has "12px gap" but also says the content block's internal gap is 4px uniformly — ambiguous which one wins for the price row specifically. Shipped using price-tag's existing 8px default; unresolved |
-| **Atlas M0 ceiling** | 512MB storage / 500 connections — define the upgrade trigger before it's hit |
-| **Cloudinary free tier** | 25 monthly credits — define the upgrade trigger |
-| **Gemini SDK surface** | ✅ Verified via `source-driven-development` before/during F10 — and the caution above was justified: `ai.google.dev`'s own thought-signatures page fabricated an unrelated "Interactions API" shape, and the real `@google/genai` `.d.ts` disagreed with it (`thoughtSignature` lives as a sibling of `functionCall` on the response `Part`, not a property of `FunctionCall`). Fixed in `backend/src/assistant/assistant.service.ts`; two regression tests added |
-| **Atlas Search index provisioning** | UI, API, or IaC (Terraform/Atlas CLI)? Not yet decided |
-| **Preview-environment-per-PR** | Materially worse without Neon's branch-per-PR database isolation — accept the loss, or find an Atlas-native equivalent |
+| Item                                | Decision needed                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Semantic colours**                | The template has no red at all (sale badges are green). `--color-error` / `--color-warning` in A3 are our additions — validate against WCAG AA before locking                                                                                                                                                                                                                                                                                                     |
+| **Tablet tier**                     | No 768px frame exists in the template; that breakpoint's design is ours to make                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Homepage variant**                | ✅ Resolved — built against Homepage 03 (node `116:6824`) in F3. 01 / 02 / 04 remain documented alternates, unused                                                                                                                                                                                                                                                                                                                                                |
+| **Admin design language**           | ✅ Resolved by default — F11 reuses the storefront's own Poppins/Inter type mixins (`styles/_typography.scss`) throughout rather than a separate Inter-only data-density system. Revisit in F12 if the admin panel's density ever feels wrong at scale                                                                                                                                                                                                            |
+| **Sending domain**                  | B4 assumes `mail.<domain>`. Pick the domain and publish SPF/DKIM/DMARC early — DNS propagation and Resend verification are the kind of thing that blocks a launch day                                                                                                                                                                                                                                                                                             |
+| **Product Card hover state**        | Not in the Figma file — no hover/focus/active states exist there for any component. Implemented as image zoom (`scale(1.05)`) + a Quick Add button revealing over the image bottom edge. A deliberate addition, not extracted from a frame — revisit if a real hover spec ever surfaces                                                                                                                                                                           |
+| **Product Card price row gap**      | A5 says the price row has "12px gap" but also says the content block's internal gap is 4px uniformly — ambiguous which one wins for the price row specifically. Shipped using price-tag's existing 8px default; unresolved                                                                                                                                                                                                                                        |
+| **Atlas M0 ceiling**                | 512MB storage / 500 connections — define the upgrade trigger before it's hit                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Cloudinary free tier**            | 25 monthly credits — define the upgrade trigger                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Gemini SDK surface**              | ✅ Verified via `source-driven-development` before/during F10 — and the caution above was justified: `ai.google.dev`'s own thought-signatures page fabricated an unrelated "Interactions API" shape, and the real `@google/genai` `.d.ts` disagreed with it (`thoughtSignature` lives as a sibling of `functionCall` on the response `Part`, not a property of `FunctionCall`). Fixed in `backend/src/assistant/assistant.service.ts`; two regression tests added |
+| **Atlas Search index provisioning** | UI, API, or IaC (Terraform/Atlas CLI)? Not yet decided                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Preview-environment-per-PR**      | Materially worse without Neon's branch-per-PR database isolation — accept the loss, or find an Atlas-native equivalent                                                                                                                                                                                                                                                                                                                                            |
