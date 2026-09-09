@@ -4,11 +4,12 @@ import { RouterLink } from '@angular/router';
 
 import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminOrdersService } from '@/app/core/services/admin-orders.service';
-import { toFilterValue } from '@/app/core/util/string-union';
+import { toFilterValue, toUnionValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
+import { SortHeader, type SortChange } from '@/app/features/admin/ui/sort-header';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';
@@ -16,6 +17,7 @@ import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
 
 const TAKE = 20;
+const SORT_FIELDS = ['createdAt', 'status', 'totalMinor'] as const;
 
 const ORDER_STATUSES = [
   'placed',
@@ -42,6 +44,22 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: 'refunded', label: 'Refunded' },
 ];
 
+// Same labels as STATUS_OPTIONS above, keyed for the status-badge display
+// rather than the filter dropdown — the table used to print order.status
+// straight through instead (the raw "payment_failed" enum value, not
+// "Payment failed").
+const STATUS_LABEL: Record<OrderStatus, string> = {
+  placed: 'Placed',
+  paid: 'Paid',
+  payment_failed: 'Payment failed',
+  confirmed: 'Confirmed',
+  fulfilled: 'Fulfilled',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+};
+
 function statusColor(status: OrderStatus): string {
   switch (status) {
     case 'paid':
@@ -60,7 +78,20 @@ function statusColor(status: OrderStatus): string {
 
 @Component({
   selector: 'admin-orders-page',
-  imports: [RouterLink, DatePipe, MoneyPipe, DataTable, EmptyState, FilterBar, PageToolbar, PaginationNav, SelectField, SkeletonBlock, StatusBadge],
+  imports: [
+    RouterLink,
+    DatePipe,
+    MoneyPipe,
+    DataTable,
+    EmptyState,
+    FilterBar,
+    PageToolbar,
+    PaginationNav,
+    SelectField,
+    SkeletonBlock,
+    SortHeader,
+    StatusBadge,
+  ],
   template: `
     <page-toolbar title="Orders" [subtitle]="total() + ' total'"></page-toolbar>
 
@@ -77,20 +108,44 @@ function statusColor(status: OrderStatus): string {
         <thead>
           <tr>
             <th>Order</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Total</th>
+            <th>
+              <sort-header
+                label="Date"
+                field="createdAt"
+                [activeField]="sortField()"
+                [direction]="sortDirection()"
+                (sortChange)="onSortChange($event)"
+              />
+            </th>
+            <th>
+              <sort-header
+                label="Status"
+                field="status"
+                [activeField]="sortField()"
+                [direction]="sortDirection()"
+                (sortChange)="onSortChange($event)"
+              />
+            </th>
+            <th>
+              <sort-header
+                label="Total"
+                field="totalMinor"
+                [activeField]="sortField()"
+                [direction]="sortDirection()"
+                (sortChange)="onSortChange($event)"
+              />
+            </th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (order of orders(); track order.id) {
+          @for (order of sortedOrders(); track order.id) {
             <tr>
               <td>{{ order.orderNumber }}</td>
               <td>{{ order.createdAt | date: 'medium' }}</td>
               <td>
                 <status-badge variant="custom" [background]="statusColor(order.status)" color="var(--color-neutral-07)">
-                  {{ order.status }}
+                  {{ statusLabel[order.status] }}
                 </status-badge>
               </td>
               <td data-numeric>{{ order.totalMinor | money }}</td>
@@ -125,6 +180,7 @@ export default class AdminOrders implements OnInit {
 
   protected readonly statusOptions = STATUS_OPTIONS;
   protected readonly statusColor = statusColor;
+  protected readonly statusLabel = STATUS_LABEL;
 
   protected readonly orders = signal<OrderDto[]>([]);
   protected readonly total = signal(0);
@@ -132,10 +188,41 @@ export default class AdminOrders implements OnInit {
   protected readonly loading = signal(true);
   protected readonly statusFilter = signal<OrderStatus | ''>('');
 
+  // Client-side, over the current page only — the backend hardcodes
+  // .sort({ createdAt: -1 }) with no sort param (admin-orders.service.ts
+  // on the backend), so re-sorting the *whole* filtered result set would
+  // need a real server-side sort param this phase's runway doesn't cover.
+  // Re-ordering the 20 rows already on screen is still a real, honest
+  // feature — sort-header.ts never claims otherwise.
+  protected readonly sortField = signal<'createdAt' | 'status' | 'totalMinor'>('createdAt');
+  protected readonly sortDirection = signal<'asc' | 'desc'>('desc');
+
+  protected readonly sortedOrders = computed(() => {
+    const field = this.sortField();
+    const direction = this.sortDirection();
+    const factor = direction === 'asc' ? 1 : -1;
+    return [...this.orders()].sort((a, b) => {
+      if (field === 'createdAt') {
+        return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * factor;
+      }
+      if (field === 'totalMinor') {
+        return (a.totalMinor - b.totalMinor) * factor;
+      }
+      return a.status.localeCompare(b.status) * factor;
+    });
+  });
+
   protected readonly pageCount = computed(() => Math.ceil(this.total() / TAKE));
 
   ngOnInit(): void {
     this.load();
+  }
+
+  protected onSortChange(change: SortChange): void {
+    const field = toUnionValue(change.field, SORT_FIELDS);
+    if (!field) return;
+    this.sortField.set(field);
+    this.sortDirection.set(change.direction);
   }
 
   protected onStatusChange(value: string): void {

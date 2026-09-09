@@ -56,7 +56,15 @@ function statusOf(s: NewsletterSubscriberDto): { label: string; color: string } 
       </data-table>
     }
   `,
-  styles: ``,
+  styles: `
+    // A long address (subject line-length local part, a long domain) had
+    // nothing stopping it from forcing the whole table wider than its
+    // container — every other admin table either has short cell content
+    // or an action link to anchor a max-width against; this one didn't.
+    td:first-child {
+      overflow-wrap: anywhere;
+    }
+  `,
 })
 export default class AdminNewsletter implements OnInit {
   private readonly newsletterService = inject(AdminNewsletterService);
