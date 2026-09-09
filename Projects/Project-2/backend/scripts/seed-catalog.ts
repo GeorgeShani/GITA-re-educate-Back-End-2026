@@ -29,6 +29,21 @@ const PEXELS_DELAY_MS = 300; // stay well clear of the 200/hour free-tier limit
 const MIN_STOCK = 15;
 const MAX_STOCK = 120;
 
+/**
+ * Every model in this script is deliberately typed `Model<unknown>` — a
+ * raw `mongoose.model(name, schema)` call with no seed-specific document
+ * interface to import, since the point is writing ad hoc seed shapes, not
+ * going through the app's own DTOs. That leaves a write result's real
+ * type as `unknown`; this is the one place that gets narrowed back to
+ * "an id and whatever else the caller needs" instead of a cast at each
+ * call site below.
+ */
+function withId<T extends Record<string, unknown> = Record<string, unknown>>(
+  doc: unknown,
+): { _id: Types.ObjectId } & T {
+  return doc as { _id: Types.ObjectId } & T;
+}
+
 interface PexelsPhoto {
   src: { large: string };
   url: string;
@@ -125,7 +140,7 @@ async function seedCategories(
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).exec();
 
-    const record = doc as unknown as { _id: Types.ObjectId; path?: string };
+    const record = withId<{ path?: string }>(doc);
     if (!record.path) {
       await CategoryModel.updateOne(
         { _id: record._id },
@@ -189,7 +204,7 @@ async function seedProduct(
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).exec();
 
-  const record = product as unknown as { _id: Types.ObjectId };
+  const record = withId(product);
 
   for (const variant of seed.variants) {
     await InventoryItemModel.findOneAndUpdate(

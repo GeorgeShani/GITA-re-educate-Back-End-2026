@@ -5,7 +5,7 @@ import { ClsService } from 'nestjs-cls';
 
 import { BaseConsumer } from '@/core/queues/base.consumer';
 import { QueueName } from '@/core/queues/queue-names.enum';
-import { OutboxJobData } from '@/core/outbox/outbox.publisher';
+import { OutboxJobData, readPayloadString } from '@/core/outbox/outbox.publisher';
 import { STORAGE_PROVIDER_TOKEN } from './providers/storage-provider.interface';
 import type { StorageProvider } from './providers/storage-provider.interface';
 
@@ -32,7 +32,7 @@ export class MediaConsumer extends BaseConsumer {
       return;
     }
 
-    const publicId = job.data.payload.publicId as string;
+    const publicId = readPayloadString(job.data.payload, 'publicId');
     // Idempotent by nature — destroying an already-destroyed public_id
     // is a documented no-op in Cloudinary's API, so a redelivered job
     // needs no extra guard here.

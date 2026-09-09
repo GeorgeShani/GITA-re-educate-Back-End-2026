@@ -8,6 +8,7 @@ import { Role } from '@/common/enums/role.enum';
 import { RolesGuard } from '@/common/guards/roles.guard';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '@/common/interfaces/request-with-user.interface';
+import { mockOf } from '../../test/support/mock';
 import { AdminAuditLogController } from './admin-audit-log.controller';
 import { AdminDashboardController } from './admin-dashboard.controller';
 import { AdminBlogController } from '@/blog/admin-blog.controller';
@@ -193,13 +194,21 @@ describe('Admin RBAC (integration)', () => {
       // itself (descriptor.value) — that lives on the prototype, not on
       // the class/constructor. getHandler() must return that same
       // function reference for Reflector to find it.
-      return {
-        getHandler: () => (target.prototype as never)[handlerName],
+      // Casting the prototype rather than `never`-indexing past it (the
+      // previous code's `as never` "worked" only because `never[key]` is
+      // also `never`, and `never` is assignable to anything — an abuse of
+      // `never`'s meaning to bypass the check, not a real narrowing).
+      // `Record<string, unknown>` says what's actually true here: a
+      // dynamic lookup by method name on an object whose exact shape
+      // isn't statically known at this call site.
+      const prototype = target.prototype as Record<string, unknown>;
+      return mockOf<ExecutionContext>({
+        getHandler: () => prototype[handlerName],
         getClass: () => target,
         switchToHttp: () => ({
           getRequest: () => ({ user }),
         }),
-      } as unknown as ExecutionContext;
+      });
     }
 
     it('allows any authenticated request through when no @Roles() is declared', () => {

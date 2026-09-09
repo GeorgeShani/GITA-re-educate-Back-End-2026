@@ -94,7 +94,10 @@ export class OutboxRepository {
    * to. Resumes from `resumeToken` when provided (see StreamCheckpoint).
    */
   watchInserts(
-    resumeToken: Record<string, unknown> | null,
+    // `unknown`, matching the driver's own opaque ResumeToken type (see
+    // stream-checkpoint.schema.ts's comment) — not a Record we can
+    // inspect, only a value to store and later hand back here.
+    resumeToken: unknown,
   ): ChangeStream<OutboxEvent, ChangeStreamInsertDocument<OutboxEvent>> {
     return this.outboxModel.watch<
       OutboxEvent,

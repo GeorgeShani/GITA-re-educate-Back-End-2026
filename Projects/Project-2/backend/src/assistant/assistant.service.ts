@@ -16,6 +16,8 @@ import { AssistantSseEvent } from './assistant-sse-event';
 import {
   ChatMessage,
   ChatMessageDocument,
+  StoredToolCall,
+  StoredToolResult,
 } from './schemas/chat-message.schema';
 import {
   ChatSession,
@@ -27,24 +29,17 @@ import type { AssistantTool, AssistantToolContext } from './tools';
 const TITLE_MAX_LENGTH = 60;
 const MAX_TOOL_LOOP_DEPTH = 5;
 
-// Index-signature'd so these stay freely assignable both ways against
-// ChatMessage.toolCalls/toolResults' schema type (Record<string,
-// unknown>[], Mixed) — writing one of these to Mongoose and reading one
-// back both need to typecheck without a cast.
-interface StoredToolCall {
-  [key: string]: unknown;
-  id?: string;
-  name?: string;
-  args?: Record<string, unknown>;
-  /** See runTurn()'s comment on Part.thoughtSignature — must round-trip through storage so a later confirm/rehydrate turn can echo it back too. */
-  thoughtSignature?: string;
-}
-
-interface StoredToolResult {
-  [key: string]: unknown;
-  id?: string;
-  name?: string;
-  response?: unknown;
+/**
+ * Narrows a tool result's `response` (typed `unknown` — see
+ * StoredToolResult's own comment) to the object shape Gemini's
+ * `functionResponse.response` requires. A real runtime check, not a
+ * cast: a tool that ever returned a primitive would previously have been
+ * asserted straight through as if it were an object.
+ */
+function asResponseObject(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 // Source for every @google/genai call shape below:
@@ -153,7 +148,7 @@ export class AssistantService {
       );
     }
 
-    const calls = (pending.toolCalls ?? []) as StoredToolCall[];
+    const calls = pending.toolCalls ?? [];
     const ctx: AssistantToolContext = {
       userId,
       correlationId: this.correlationId(),
@@ -340,7 +335,7 @@ export class AssistantService {
       functionResponse: {
         id: result.id,
         name: result.name,
-        response: (result.response ?? {}) as Record<string, unknown>,
+        response: asResponseObject(result.response),
       },
     }));
 
@@ -400,7 +395,7 @@ export class AssistantService {
       } else if (message.role === 'assistant') {
         const parts: Part[] = [];
         if (message.content) parts.push({ text: message.content });
-        for (const call of (message.toolCalls ?? []) as StoredToolCall[]) {
+        for (const call of message.toolCalls ?? []) {
           // thoughtSignature is a sibling of functionCall on the Part, not
           // a property of the call itself — see runTurn()'s comment.
           parts.push({
@@ -410,13 +405,11 @@ export class AssistantService {
         }
         if (parts.length > 0) contents.push({ role: 'model', parts });
       } else {
-        const parts: Part[] = (
-          (message.toolResults ?? []) as StoredToolResult[]
-        ).map((result) => ({
+        const parts: Part[] = (message.toolResults ?? []).map((result) => ({
           functionResponse: {
             id: result.id,
             name: result.name,
-            response: (result.response ?? {}) as Record<string, unknown>,
+            response: asResponseObject(result.response),
           },
         }));
         if (parts.length > 0) contents.push({ role: 'user', parts });
@@ -459,6 +452,24 @@ export class AssistantService {
  * string the moment a layer isn't parseable JSON (a real client-side
  * error's message, e.g. a network failure, never looks like this at all).
  */
+/**
+ * Reads `.error.message` off an untrusted parsed-JSON value with no
+ * cast — `in` narrows `unknown` down to "has this property" one step at
+ * a time (a real, TS-supported narrowing, not an assertion), which is
+ * exactly what walking one layer of untyped external JSON needs.
+ */
+function readErrorMessage(parsed: unknown): string | undefined {
+  if (typeof parsed !== 'object' || parsed === null || !('error' in parsed)) {
+    return undefined;
+  }
+  const { error } = parsed;
+  if (typeof error !== 'object' || error === null || !('message' in error)) {
+    return undefined;
+  }
+  const { message } = error;
+  return typeof message === 'string' ? message : undefined;
+}
+
 function extractGeminiErrorMessage(raw: string): string {
   let current: string = raw;
   for (let i = 0; i < 4; i++) {
@@ -468,9 +479,8 @@ function extractGeminiErrorMessage(raw: string): string {
     } catch {
       return current;
     }
-    const message = (parsed as { error?: { message?: unknown } } | null)?.error
-      ?.message;
-    if (typeof message !== 'string') return current;
+    const message = readErrorMessage(parsed);
+    if (message === undefined) return current;
     current = message;
   }
   return current;

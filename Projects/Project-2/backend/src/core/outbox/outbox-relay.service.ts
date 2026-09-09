@@ -103,7 +103,7 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
     // past it.
     await this.checkpointRepository.saveResumeToken(
       OUTBOX_STREAM_NAME,
-      change._id as Record<string, unknown>,
+      change._id,
     );
   }
 

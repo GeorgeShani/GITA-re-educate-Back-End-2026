@@ -14,6 +14,36 @@ import type {
 
 export const STRIPE_CLIENT_TOKEN = Symbol('STRIPE_CLIENT');
 
+// Every payment_intent.* literal `Stripe.Event['type']` actually has —
+// confirmed against the installed `stripe` package's own .d.ts, not
+// guessed. `Stripe.Event` is a real discriminated union of one named
+// interface per event type (PaymentIntentSucceededEvent, ChargeSucceededEvent,
+// etc.), each with its own correspondingly-typed `data.object` — so an
+// exact-literal check against this list is what actually narrows
+// `event.data.object` down to `Stripe.PaymentIntent`. A `.startsWith('payment_intent.')`
+// check reads the same at a glance but does NOT narrow the discriminated
+// union (confirmed: it still left `event.data.object` typed as the
+// 80+-member union of every possible Stripe object).
+const PAYMENT_INTENT_EVENT_TYPES = [
+  'payment_intent.amount_capturable_updated',
+  'payment_intent.canceled',
+  'payment_intent.created',
+  'payment_intent.partially_funded',
+  'payment_intent.payment_failed',
+  'payment_intent.processing',
+  'payment_intent.requires_action',
+  'payment_intent.succeeded',
+] as const;
+
+type PaymentIntentEvent = Extract<
+  Stripe.Event,
+  { type: (typeof PAYMENT_INTENT_EVENT_TYPES)[number] }
+>;
+
+function isPaymentIntentEvent(event: Stripe.Event): event is PaymentIntentEvent {
+  return (PAYMENT_INTENT_EVENT_TYPES as readonly string[]).includes(event.type);
+}
+
 @Injectable()
 export class StripePaymentProvider implements PaymentProvider {
   constructor(
@@ -67,7 +97,19 @@ export class StripePaymentProvider implements PaymentProvider {
       );
     }
 
-    const intent = event.data.object as Stripe.PaymentIntent;
+    // WebhookEvent is payment-intent-shaped end to end (see the
+    // interface) — this provider only ever handles payment_intent.*
+    // events. The old code asserted `.data.object` straight to
+    // `Stripe.PaymentIntent` regardless of `.type`; a dashboard
+    // misconfigured to also send e.g. `charge.refunded` would have been
+    // silently treated as a PaymentIntent instead of failing here, where
+    // the mistake is actually diagnosable.
+    if (!isPaymentIntentEvent(event)) {
+      throw new BadRequestException(
+        `Unsupported Stripe webhook event type "${event.type}" — this endpoint only handles payment_intent.* events`,
+      );
+    }
+    const intent = event.data.object;
     return {
       type: event.type,
       paymentIntentId: intent.id,

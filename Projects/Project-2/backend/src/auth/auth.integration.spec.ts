@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import type { ClsService } from 'nestjs-cls';
 
+import { mockOf } from '../../test/support/mock';
 import { MongoTestContext } from '../../test/support/mongo-memory-server';
 import { getTestModel } from '../../test/support/test-model';
 import { Role } from '@/common/enums/role.enum';
@@ -41,7 +42,7 @@ async function rejectionMessage(promise: Promise<unknown>): Promise<string> {
   try {
     await promise;
   } catch (error) {
-    return (error as Error).message;
+    return error instanceof Error ? error.message : String(error);
   }
   throw new Error('Expected the call to reject, but it resolved');
 }
@@ -58,10 +59,10 @@ describe('AuthService (integration)', () => {
 
   // execute() is only reached by register/recordLogin/forgot/reset/verify,
   // none of which own the behaviour under test here.
-  const commandBus = {
+  const commandBus = mockOf<CommandBus>({
     execute: () => Promise.resolve(undefined),
-  } as unknown as CommandBus;
-  const cls = { get: () => 'test-correlation-id' } as unknown as ClsService;
+  });
+  const cls = mockOf<ClsService>({ get: () => 'test-correlation-id' });
 
   beforeAll(async () => {
     ctx = await MongoTestContext.start();

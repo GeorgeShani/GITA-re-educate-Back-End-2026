@@ -7,6 +7,31 @@ import { ChatSession } from './chat-session.schema';
 export type ChatMessageDocument = HydratedDocument<ChatMessage>;
 export type ChatMessageRole = 'user' | 'assistant' | 'tool';
 
+// Index-signature'd so these stay freely assignable both ways against
+// Mongoose's Mixed-typed storage (writing one of these AND reading one
+// back both need to typecheck without a cast) while still naming the
+// fields AssistantService actually reads/writes.
+export interface StoredToolCall {
+  [key: string]: unknown;
+  id?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+  /** See assistant.service.ts's runTurn() comment on Part.thoughtSignature — must round-trip through storage so a later confirm/rehydrate turn can echo it back too. */
+  thoughtSignature?: string;
+}
+
+export interface StoredToolResult {
+  [key: string]: unknown;
+  id?: string;
+  name?: string;
+  // Stays `unknown`, not Record<string, unknown> — AssistantTool.execute()
+  // (tools/assistant-tool.interface.ts) returns Promise<unknown>, so a
+  // tool result really can be anything. Narrowed to an object only at the
+  // two call sites that build a Gemini functionResponse Part, which is
+  // the one place that actually requires an object shape.
+  response?: unknown;
+}
+
 // Top-level, referencing ChatSession, rather than an embedded array —
 // SCOPE.md A9 reasoning: independent pagination on long conversations,
 // same as Review referencing Product. The exact tool-call/result shape
@@ -30,10 +55,10 @@ export class ChatMessage {
   content?: string;
 
   @Prop({ type: MongooseSchema.Types.Mixed })
-  toolCalls?: Record<string, unknown>[];
+  toolCalls?: StoredToolCall[];
 
   @Prop({ type: MongooseSchema.Types.Mixed })
-  toolResults?: Record<string, unknown>[];
+  toolResults?: StoredToolResult[];
 
   // Set on a mutating tool call awaiting the user's approve/decline chip
   // (SCOPE.md Phase 8's hand-rolled confirmation gate) — false once

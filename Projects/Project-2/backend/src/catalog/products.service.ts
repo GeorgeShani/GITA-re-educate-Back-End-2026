@@ -131,8 +131,12 @@ export class ProductsService {
 
     return {
       brands: brandRows
-        .filter((row) => row._id)
-        .map((row) => ({ brand: row._id as string, count: row.count })),
+        // A type-predicate filter, not a plain boolean one — that's what
+        // lets the .map() below see `_id: string` on its own, with no
+        // cast, instead of the widened `string | null` .filter() alone
+        // can't narrow back out of.
+        .filter((row): row is { _id: string; count: number } => row._id !== null)
+        .map((row) => ({ brand: row._id, count: row.count })),
       priceRange: priceRows[0]
         ? { min: priceRows[0].min, max: priceRows[0].max }
         : { min: 0, max: 0 },

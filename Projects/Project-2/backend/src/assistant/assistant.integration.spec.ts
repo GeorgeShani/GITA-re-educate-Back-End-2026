@@ -4,8 +4,10 @@ import type { GoogleGenAI } from '@google/genai';
 import type { ClsService } from 'nestjs-cls';
 import mongoose from 'mongoose';
 
+import { mockOf } from '../../test/support/mock';
 import { MongoTestContext } from '../../test/support/mongo-memory-server';
 import { getTestModel } from '../../test/support/test-model';
+import type { AssistantSseEvent } from './assistant-sse-event';
 import { AssistantService } from './assistant.service';
 import {
   ChatMessage,
@@ -90,14 +92,14 @@ function toStubChunk(chunk: {
 
 // Minimal structural stand-in for GoogleGenAI — only the
 // models.generateContentStream surface AssistantService.runTurn
-// actually calls. This is the same "framework typing gap" cast
+// actually calls. mockOf() is the same "framework typing gap" helper
 // documented for cloudinary-storage.provider.ts and test-model.ts: no
 // public type expresses "the subset of GoogleGenAI I stubbed."
 function makeStubGeminiClient(
   chunksPerCall: { text?: string; functionCalls?: StubFunctionCall[] }[][],
 ): GoogleGenAI {
   let call = 0;
-  return {
+  return mockOf<GoogleGenAI>({
     models: {
       generateContentStream: () => {
         const chunks = chunksPerCall[Math.min(call, chunksPerCall.length - 1)];
@@ -109,7 +111,16 @@ function makeStubGeminiClient(
         );
       },
     },
-  } as unknown as GoogleGenAI;
+  });
+}
+
+/** What the tests below actually inspect off a recorded turn — real `Content[]` narrowed to just the fields assertions read, so reading them back needs no cast. */
+interface RecordedContent {
+  role: string;
+  parts: {
+    functionCall?: { name?: string };
+    thoughtSignature?: string;
+  }[];
 }
 
 /**
@@ -120,12 +131,12 @@ function makeStubGeminiClient(
  */
 function makeRecordingStubGeminiClient(
   chunksPerCall: { text?: string; functionCalls?: StubFunctionCall[] }[][],
-): { client: GoogleGenAI; recordedContents: unknown[][] } {
-  const recordedContents: unknown[][] = [];
+): { client: GoogleGenAI; recordedContents: RecordedContent[][] } {
+  const recordedContents: RecordedContent[][] = [];
   let call = 0;
-  const client = {
+  const client = mockOf<GoogleGenAI>({
     models: {
-      generateContentStream: (request: { contents: unknown[] }) => {
+      generateContentStream: (request: { contents: RecordedContent[] }) => {
         recordedContents.push(request.contents);
         const chunks = chunksPerCall[Math.min(call, chunksPerCall.length - 1)];
         call += 1;
@@ -136,11 +147,11 @@ function makeRecordingStubGeminiClient(
         );
       },
     },
-  } as unknown as GoogleGenAI;
+  });
   return { client, recordedContents };
 }
 
-const stubCls = { get: () => 'test-correlation-id' } as unknown as ClsService;
+const stubCls = mockOf<ClsService>({ get: () => 'test-correlation-id' });
 
 describe('AssistantService (integration)', () => {
   let ctx: MongoTestContext;
@@ -327,13 +338,7 @@ describe('AssistantService (integration)', () => {
       await drain(service.sendMessage(session.id, userId, 'do the thing'));
 
       expect(recordedContents).toHaveLength(2);
-      const secondTurnContents = recordedContents[1] as {
-        role: string;
-        parts: {
-          functionCall?: { name?: string };
-          thoughtSignature?: string;
-        }[];
-      }[];
+      const secondTurnContents = recordedContents[1] ?? [];
       const modelTurn = secondTurnContents.find((c) => c.role === 'model');
       const functionCallPart = modelTurn?.parts.find(
         (p) => p.functionCall?.name === 'context_probe',
@@ -375,9 +380,14 @@ describe('AssistantService (integration)', () => {
       const events = await drain(
         service.sendMessage(session.id, userId, 'do the mutating thing'),
       );
+      // A type-predicate `.find()`, not a plain boolean one — `find`'s
+      // standard-lib overload only preserves the narrower type when the
+      // callback itself is declared `is`; a plain `=== 'confirmation_required'`
+      // check compiles fine but leaves the result as the full union.
       const confirmationEvent = events.find(
-        (e) => e.type === 'confirmation_required',
-      ) as { type: 'confirmation_required'; messageId: string } | undefined;
+        (e): e is Extract<AssistantSseEvent, { type: 'confirmation_required' }> =>
+          e.type === 'confirmation_required',
+      );
       expect(confirmationEvent).toBeDefined();
 
       await drain(
@@ -393,13 +403,7 @@ describe('AssistantService (integration)', () => {
       // triggers, rehydrated from storage — proving thoughtSignature
       // survived a real round trip through Mongo, not just in-memory.
       expect(recordedContents).toHaveLength(2);
-      const rehydratedContents = recordedContents[1] as {
-        role: string;
-        parts: {
-          functionCall?: { name?: string };
-          thoughtSignature?: string;
-        }[];
-      }[];
+      const rehydratedContents = recordedContents[1] ?? [];
       const modelTurn = rehydratedContents.find((c) => c.role === 'model');
       const functionCallPart = modelTurn?.parts.find(
         (p) => p.functionCall?.name === 'mutating_probe',

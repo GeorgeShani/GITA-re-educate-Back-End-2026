@@ -65,6 +65,12 @@ describe('CoreModule consumer gating', () => {
     process.env.ROLE = role;
     let names: string[] = [];
     jest.isolateModules(() => {
+      // Both casts here are genuinely unavoidable, not shortcuts: CommonJS
+      // require() is typed `any` by Node's own types (no static type
+      // exists for "a module re-imported into a fresh jest registry"),
+      // and Reflect.getMetadata() is typed `any` by reflect-metadata
+      // itself (it reads arbitrary decorator metadata off an arbitrary
+      // key — there's no narrower type it could honestly return).
       /* eslint-disable @typescript-eslint/no-require-imports */
       const { CoreModule } = require('@/core/core.module') as {
         CoreModule: object;
@@ -104,6 +110,7 @@ describe('CoreModule consumer gating', () => {
     process.env.ROLE = 'api';
     let apiNames: string[] = [];
     jest.isolateModules(() => {
+      // Same two unavoidable casts as providerNamesFor() above.
       /* eslint-disable @typescript-eslint/no-require-imports */
       const { OrdersModule } = require('@/orders/orders.module') as {
         OrdersModule: object;

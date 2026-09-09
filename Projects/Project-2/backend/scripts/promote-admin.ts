@@ -20,6 +20,10 @@ if (existsSync('.env')) {
   process.loadEnvFile('.env');
 }
 
+function isRoleKey(value: string): value is keyof typeof Role {
+  return value in Role;
+}
+
 async function main(): Promise<void> {
   const [, , email, roleArg] = process.argv;
   if (!email) {
@@ -27,13 +31,14 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const role = (roleArg?.toUpperCase() ?? 'ADMIN') as keyof typeof Role;
-  if (!(role in Role)) {
+  const roleValue = roleArg?.toUpperCase() ?? 'ADMIN';
+  if (!isRoleKey(roleValue)) {
     console.error(
       `Unknown role "${roleArg}" — must be one of: admin, manager, support, editor`,
     );
     process.exit(1);
   }
+  const role = roleValue;
 
   const mongoUri = process.env.MONGODB_URI;
   if (!mongoUri) {

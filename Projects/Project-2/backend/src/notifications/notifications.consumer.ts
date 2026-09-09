@@ -4,7 +4,7 @@ import { ClsService } from 'nestjs-cls';
 
 import { BaseConsumer } from '@/core/queues/base.consumer';
 import { QueueName } from '@/core/queues/queue-names.enum';
-import { OutboxJobData } from '@/core/outbox/outbox.publisher';
+import { OutboxJobData, readPayloadString } from '@/core/outbox/outbox.publisher';
 import { EmailCategory } from './schemas/email-message.schema';
 import { NotificationsService } from './notifications.service';
 
@@ -32,7 +32,7 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplateSpec> = {
     subject: 'Verify your email',
     category: 'transactional',
     toVariables: (payload) => ({
-      to: payload.email as string,
+      to: readPayloadString(payload, 'email'),
       variables: {
         firstName: payload.firstName,
         verificationUrl: payload.verificationUrl,
@@ -44,7 +44,7 @@ const EMAIL_TEMPLATES: Record<string, EmailTemplateSpec> = {
     subject: 'Reset your password',
     category: 'transactional',
     toVariables: (payload) => ({
-      to: payload.email as string,
+      to: readPayloadString(payload, 'email'),
       variables: {
         firstName: payload.firstName,
         resetUrl: payload.resetUrl,

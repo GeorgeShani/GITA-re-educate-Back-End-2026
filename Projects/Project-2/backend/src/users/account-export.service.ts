@@ -18,6 +18,18 @@ export interface AccountExport {
   wishlist: Record<string, unknown>[];
 }
 
+/**
+ * A Mongoose document's `.toJSON()` is typed against its own schema
+ * interface, not `Record<string, unknown>` — this export deliberately
+ * doesn't care about any one collection's exact shape, it just needs
+ * "whatever serializes to JSON" for four different schemas. One
+ * `unknown`-typed narrowing here replaces four `as unknown as X` casts
+ * that used to do the same thing at each call site below.
+ */
+function toPlain(doc: { toJSON(): unknown }): Record<string, unknown> {
+  return doc.toJSON() as Record<string, unknown>;
+}
+
 // GDPR "right to access" — a reasonable, scoped export of the personal
 // data a shopper can see about themselves, not a dump of every internal
 // collection that happens to reference their userId (audit log rows,
@@ -43,16 +55,10 @@ export class AccountExportService {
 
     return {
       exportedAt: new Date().toISOString(),
-      profile: user.toJSON() as unknown as Record<string, unknown>,
-      orders: orders.map(
-        (order) => order.toJSON() as unknown as Record<string, unknown>,
-      ),
-      reviews: reviews.map(
-        (review) => review.toJSON() as unknown as Record<string, unknown>,
-      ),
-      wishlist: wishlist.map(
-        (item) => item.toJSON() as unknown as Record<string, unknown>,
-      ),
+      profile: toPlain(user),
+      orders: orders.map(toPlain),
+      reviews: reviews.map(toPlain),
+      wishlist: wishlist.map(toPlain),
     };
   }
 }

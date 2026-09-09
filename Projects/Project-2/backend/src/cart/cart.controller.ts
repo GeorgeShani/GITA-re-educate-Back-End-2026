@@ -27,6 +27,18 @@ import { UpdateCartItemDto } from './dto/update-cart-item.dto';
 const GUEST_CART_COOKIE = 'gct';
 const GUEST_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+/**
+ * `req.signedCookies` is typed `{ [key: string]: any }` by
+ * `@types/cookie-parser` — reading it always required a cast. A real
+ * `typeof` guard is both cast-free and stricter than the cast was: a
+ * tampered or corrupted cookie value that isn't a string now correctly
+ * falls back to "no guest cart" instead of being passed through as-is.
+ */
+function readGuestToken(req: Request): string | undefined {
+  const value: unknown = req.signedCookies[GUEST_CART_COOKIE];
+  return typeof value === 'string' ? value : undefined;
+}
+
 // Every mutating route resolves the cart fresh from cookie/auth state
 // rather than trusting a cart id from the client — a cart id in the
 // request body would let one guest read or edit another guest's cart
@@ -161,8 +173,7 @@ export class CartController {
     @Res({ passthrough: true }) res: Response,
     @CurrentUser('userId') userId: string,
   ) {
-    const guestToken = req.signedCookies[GUEST_CART_COOKIE] as
-      string | undefined;
+    const guestToken = readGuestToken(req);
     if (guestToken) {
       await this.cartService.mergeGuestCart(guestToken, userId);
       res.clearCookie(GUEST_CART_COOKIE);
@@ -174,9 +185,7 @@ export class CartController {
 
   private identity(req: Request, userId?: string): CartIdentity {
     if (userId) return { userId };
-    const guestToken = req.signedCookies[GUEST_CART_COOKIE] as
-      string | undefined;
-    return { guestToken };
+    return { guestToken: readGuestToken(req) };
   }
 
   private maybeSetGuestCookie(res: Response, token?: string): void {

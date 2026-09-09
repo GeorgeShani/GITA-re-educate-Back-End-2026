@@ -25,6 +25,21 @@ if (existsSync('.env')) {
 
 const PEXELS_DELAY_MS = 300; // stay well clear of the 200/hour free-tier limit
 
+/**
+ * Every model in this script is deliberately typed `Model<unknown>` — a
+ * raw `mongoose.model(name, schema)` call with no seed-specific document
+ * interface to import, since the point is writing ad hoc seed shapes, not
+ * going through the app's own DTOs. That leaves a write result's real
+ * type as `unknown`; this is the one place that gets narrowed back to
+ * "an id and whatever else the caller needs" instead of a cast at each
+ * call site below.
+ */
+function withId<T extends Record<string, unknown> = Record<string, unknown>>(
+  doc: unknown,
+): { _id: Types.ObjectId } & T {
+  return doc as { _id: Types.ObjectId } & T;
+}
+
 interface PexelsPhoto {
   src: { large: string };
   url: string;
@@ -109,8 +124,9 @@ async function main(): Promise<void> {
       'No users exist yet — register at least one account (or run promote-admin) before seeding content.',
     );
   }
-  const authorId = (author as unknown as { _id: Types.ObjectId })._id;
-  console.log(`Using "${(author as unknown as { email: string }).email}" as post author.\n`);
+  const authorRecord = withId<{ email: string }>(author);
+  const authorId = authorRecord._id;
+  console.log(`Using "${authorRecord.email}" as post author.\n`);
 
   console.log(`Seeding ${POST_CATEGORY_SEEDS.length} post categories...`);
   const categoryIdBySlug = new Map<string, Types.ObjectId>();
@@ -120,7 +136,7 @@ async function main(): Promise<void> {
       { name: seed.name, slug: seed.slug },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).exec();
-    categoryIdBySlug.set(seed.slug, (doc as unknown as { _id: Types.ObjectId })._id);
+    categoryIdBySlug.set(seed.slug, withId(doc)._id);
   }
 
   console.log(`Seeding ${TAG_SEEDS.length} tags...`);
@@ -131,7 +147,7 @@ async function main(): Promise<void> {
       { name },
       { upsert: true, new: true, setDefaultsOnInsert: true },
     ).exec();
-    tagIdByName.set(name, (doc as unknown as { _id: Types.ObjectId })._id);
+    tagIdByName.set(name, withId(doc)._id);
   }
 
   console.log(`\nSeeding ${POST_SEEDS.length} posts...`);

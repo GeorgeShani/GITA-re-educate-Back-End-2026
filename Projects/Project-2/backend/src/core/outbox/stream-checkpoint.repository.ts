@@ -16,16 +16,14 @@ export class StreamCheckpointRepository {
     private readonly checkpointModel: Model<StreamCheckpointDocument>,
   ) {}
 
-  async getResumeToken(
-    streamName: string,
-  ): Promise<Record<string, unknown> | null> {
+  async getResumeToken(streamName: string): Promise<unknown> {
     const doc = await this.checkpointModel.findOne({ streamName }).exec();
     return doc?.resumeToken ?? null;
   }
 
   async saveResumeToken(
     streamName: string,
-    resumeToken: Record<string, unknown>,
+    resumeToken: unknown,
   ): Promise<void> {
     await this.checkpointModel
       .updateOne({ streamName }, { $set: { resumeToken } }, { upsert: true })

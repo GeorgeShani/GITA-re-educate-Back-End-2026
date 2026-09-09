@@ -16,6 +16,28 @@ export interface OutboxJobData {
   correlationId: string;
 }
 
+/**
+ * Reads a required string field off an outbox job's payload. `payload` is
+ * `Record<string, unknown>` — its shape varies per event name, so it
+ * can't be typed any narrower here — and every consumer used to reach
+ * for `payload.x as string` to read one back out. A real check instead:
+ * a malformed/renamed field now fails loudly with the field name in the
+ * message, rather than an `undefined` silently masquerading as a string
+ * three calls downstream.
+ */
+export function readPayloadString(
+  payload: Record<string, unknown>,
+  key: string,
+): string {
+  const value = payload[key];
+  if (typeof value !== 'string') {
+    throw new Error(
+      `Expected outbox payload.${key} to be a string, got ${typeof value}`,
+    );
+  }
+  return value;
+}
+
 // Fans a claimed outbox row out to every queue its event name routes to
 // (event-routing.ts). Add a new @InjectQueue(...) here in the same
 // change that registers a new queue in CoreModule and adds its pattern

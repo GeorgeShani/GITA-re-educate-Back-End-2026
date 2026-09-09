@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+import { mockOf } from '../../test/support/mock';
 import { MongoTestContext } from '../../test/support/mongo-memory-server';
 import { getTestModel } from '../../test/support/test-model';
 import type { SearchProvider } from '@/search/search-provider.interface';
@@ -25,10 +26,10 @@ import {
 //
 // The whole point is that pagination and sorting only work if the expansion
 // happens inside the same query, so that is what these tests pin down.
-const searchProvider = {
+const searchProvider = mockOf<SearchProvider>({
   searchProducts: () => Promise.resolve({ productIds: [], total: 0 }),
   typeahead: () => Promise.resolve([]),
-} as unknown as SearchProvider;
+});
 
 describe('ProductsService category filtering (integration)', () => {
   let ctx: MongoTestContext;
