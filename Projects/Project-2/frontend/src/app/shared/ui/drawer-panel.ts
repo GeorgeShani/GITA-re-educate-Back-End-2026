@@ -57,6 +57,15 @@ import { IconButton } from './icon-button';
     </ng-template>
   `,
   styles: `
+    // The host renders nothing in place — the panel is portaled into a
+    // CDK overlay while open() — so it must generate no box of its own.
+    // Without this it becomes a phantom flex/grid item wherever it's
+    // dropped (it broke admin-shell's 240px/1fr grid: the real content
+    // got auto-placed into row 2, 240px wide).
+    :host {
+      display: contents;
+    }
+
     .drawer-panel {
       display: flex;
       flex-direction: column;

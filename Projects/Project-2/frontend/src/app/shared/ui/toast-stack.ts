@@ -98,7 +98,11 @@ export class ToastStack {
   constructor() {
     afterNextRender(() => {
       const overlayRef = this.overlay.create({
-        positionStrategy: this.overlay.position().global().top('16px').right('16px'),
+        // Clear the storefront's stacked chrome (notification-bar ~40px +
+        // sticky header 60px) so a toast never lands on top of the header's
+        // search/account/cart controls. Admin has no such chrome, so a
+        // toast just sits a little below its page toolbar there.
+        positionStrategy: this.overlay.position().global().top('112px').right('16px'),
         panelClass: 'toast-overlay-pane',
       });
       overlayRef.attach(new TemplatePortal(this.panelTemplate(), this.viewContainerRef));

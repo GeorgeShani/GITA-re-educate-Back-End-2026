@@ -21,9 +21,15 @@
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "mail:preview": "ts-node -r tsconfig-paths/register scripts/mail-preview.ts",
     "mail:test": "ts-node -r tsconfig-paths/register scripts/mail-test.ts",
+    "seed:reset": "ts-node -r tsconfig-paths/register scripts/seed-reset.ts",
+    "seed:users": "ts-node -r tsconfig-paths/register scripts/seed-users.ts",
     "seed:catalog": "ts-node -r tsconfig-paths/register scripts/seed-catalog.ts",
     "seed:commerce": "ts-node -r tsconfig-paths/register scripts/seed-commerce.ts",
     "seed:content": "ts-node -r tsconfig-paths/register scripts/seed-content.ts",
+    "seed:orders": "ts-node -r tsconfig-paths/register scripts/seed-orders.ts",
+    "seed:reviews": "ts-node -r tsconfig-paths/register scripts/seed-reviews.ts",
+    "seed:all": "ts-node -r tsconfig-paths/register scripts/seed-all.ts",
+    "backfill-ratings": "ts-node -r tsconfig-paths/register scripts/backfill-ratings.ts",
     "promote-admin": "ts-node -r tsconfig-paths/register scripts/promote-admin.ts"
   },
   "dependencies": {

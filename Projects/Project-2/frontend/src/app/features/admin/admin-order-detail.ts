@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminOrdersService } from '@/app/core/services/admin-orders.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
@@ -17,22 +18,6 @@ import { TextField } from '@/app/shared/ui/text-field';
 const SHIPPABLE: OrderStatus[] = ['confirmed'];
 const DELIVERABLE: OrderStatus[] = ['shipped'];
 const REFUNDABLE: OrderStatus[] = ['confirmed', 'fulfilled', 'shipped', 'delivered'];
-
-function statusColor(status: OrderStatus): string {
-  switch (status) {
-    case 'paid':
-    case 'confirmed':
-    case 'fulfilled':
-    case 'shipped':
-    case 'delivered':
-      return 'var(--color-success)';
-    case 'payment_failed':
-    case 'cancelled':
-      return 'var(--color-error)';
-    default:
-      return 'var(--color-neutral-03)';
-  }
-}
 
 @Component({
   selector: 'admin-order-detail-page',
@@ -56,8 +41,8 @@ function statusColor(status: OrderStatus): string {
         }
       </page-toolbar>
 
-      <status-badge variant="custom" [background]="statusColor(o.status)" color="var(--color-neutral-07)">
-        {{ o.status }}
+      <status-badge [variant]="statusMeta(o.status).variant">
+        {{ statusMeta(o.status).label }}
       </status-badge>
 
       <div class="grid">
@@ -242,7 +227,7 @@ export default class AdminOrderDetail implements OnInit {
   protected readonly refundAmount = signal('');
   protected readonly refundReason = signal('');
 
-  protected readonly statusColor = statusColor;
+  protected readonly statusMeta = orderStatusMeta;
 
   ngOnInit(): void {
     this.load();

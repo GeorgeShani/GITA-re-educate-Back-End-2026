@@ -1,0 +1,954 @@
+[
+  {
+    "name": "home",
+    "viewport": "desktop",
+    "path": "/",
+    "status": 200,
+    "finalUrl": "/",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "shop",
+    "viewport": "desktop",
+    "path": "/shop",
+    "status": 200,
+    "finalUrl": "/shop",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"https://res.cloudinary.com/h5jxwipi/image/upload/f_auto,q_auto/v1788989293/dev/products/product-3legant-yardage-distance-wheel.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP) element but"
+    ]
+  },
+  {
+    "name": "shop-filtered",
+    "viewport": "desktop",
+    "path": "/shop?category=gloves",
+    "status": 200,
+    "finalUrl": "/shop?category=gloves",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products?sort=newest&order=desc&category=gloves&page=1&take=12: 400 Bad Request\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (htt",
+      "console.error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products/facets?category=gloves: 500 Internal Server Error\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (http://localhost:4200/@f",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products/facets?category=gloves: 500 Internal Server Error\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (http://localhost:4200/@f"
+    ]
+  },
+  {
+    "name": "product-detail",
+    "viewport": "desktop",
+    "path": "/product/tour-authentic-cabretta-leather-glove",
+    "status": 200,
+    "finalUrl": "/product/tour-authentic-cabretta-leather-glove",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"http://localhost:4200/images/products/sale-banner.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP) element but was not marked \"priority\". This image should be marked \"priority\" in order t"
+    ]
+  },
+  {
+    "name": "sign-in",
+    "viewport": "desktop",
+    "path": "/sign-in",
+    "status": 200,
+    "finalUrl": "/sign-in",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "sign-up",
+    "viewport": "desktop",
+    "path": "/sign-up",
+    "status": 200,
+    "finalUrl": "/sign-up",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "forgot-password",
+    "viewport": "desktop",
+    "path": "/forgot-password",
+    "status": 200,
+    "finalUrl": "/forgot-password",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "reset-password",
+    "viewport": "desktop",
+    "path": "/reset-password?token=demo-token",
+    "status": 200,
+    "finalUrl": "/reset-password?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "verify-email",
+    "viewport": "desktop",
+    "path": "/verify-email?token=demo-token",
+    "status": 200,
+    "finalUrl": "/verify-email?token=demo-token",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ]
+  },
+  {
+    "name": "cart",
+    "viewport": "desktop",
+    "path": "/cart",
+    "status": 200,
+    "finalUrl": "/cart",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "track",
+    "viewport": "desktop",
+    "path": "/track",
+    "status": 200,
+    "finalUrl": "/track",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "blog-list",
+    "viewport": "desktop",
+    "path": "/blog",
+    "status": 200,
+    "finalUrl": "/blog",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "blog-post",
+    "viewport": "desktop",
+    "path": "/blog/mental-game-staying-calm-under-tournament-pressure",
+    "status": 200,
+    "finalUrl": "/blog/mental-game-staying-calm-under-tournament-pressure",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "content-page-about",
+    "viewport": "desktop",
+    "path": "/pages/about",
+    "status": 200,
+    "finalUrl": "/pages/about",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "content-page-faq",
+    "viewport": "desktop",
+    "path": "/pages/faq",
+    "status": 200,
+    "finalUrl": "/pages/faq",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "contact",
+    "viewport": "desktop",
+    "path": "/contact",
+    "status": 200,
+    "finalUrl": "/contact",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "newsletter-confirm",
+    "viewport": "desktop",
+    "path": "/newsletter/confirm?token=demo-token",
+    "status": 200,
+    "finalUrl": "/newsletter/confirm?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "newsletter-unsubscribe",
+    "viewport": "desktop",
+    "path": "/newsletter/unsubscribe?token=demo-token",
+    "status": 200,
+    "finalUrl": "/newsletter/unsubscribe?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "styleguide",
+    "viewport": "desktop",
+    "path": "/styleguide",
+    "status": 200,
+    "finalUrl": "/styleguide",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"https://res.cloudinary.com/h5jxwipi/image/upload/f_auto,q_auto/v1788989291/dev/products/product-3legant-bag-rain-cover.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP) element but was not"
+    ]
+  },
+  {
+    "name": "not-found",
+    "viewport": "desktop",
+    "path": "/no-such-page-xyz",
+    "status": 200,
+    "finalUrl": "/no-such-page-xyz",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-profile",
+    "viewport": "desktop",
+    "path": "/account/profile",
+    "status": 200,
+    "finalUrl": "/account/profile",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-addresses",
+    "viewport": "desktop",
+    "path": "/account/addresses",
+    "status": 200,
+    "finalUrl": "/account/addresses",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-orders",
+    "viewport": "desktop",
+    "path": "/account/orders",
+    "status": 200,
+    "finalUrl": "/account/orders",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-order-detail",
+    "viewport": "desktop",
+    "path": "/account/orders/6aa1cf9a4c79489c7de1d122",
+    "status": 200,
+    "finalUrl": "/account/orders/6aa1cf9a4c79489c7de1d122",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-wishlist",
+    "viewport": "desktop",
+    "path": "/account/wishlist",
+    "status": 200,
+    "finalUrl": "/account/wishlist",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-returns",
+    "viewport": "desktop",
+    "path": "/account/returns",
+    "status": 200,
+    "finalUrl": "/account/returns",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-return-new",
+    "viewport": "desktop",
+    "path": "/account/returns/new",
+    "status": 200,
+    "finalUrl": "/account/returns/new",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "console.error: ERROR HttpErrorResponse"
+    ]
+  },
+  {
+    "name": "account-payment-methods",
+    "viewport": "desktop",
+    "path": "/account/payment-methods",
+    "status": 200,
+    "finalUrl": "/account/payment-methods",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-settings",
+    "viewport": "desktop",
+    "path": "/account/settings",
+    "status": 200,
+    "finalUrl": "/account/settings",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "checkout",
+    "viewport": "desktop",
+    "path": "/checkout",
+    "status": 200,
+    "finalUrl": "/cart",
+    "redirected": true,
+    "problems": []
+  },
+  {
+    "name": "order-complete",
+    "viewport": "desktop",
+    "path": "/checkout/complete/6aa1cf9a4c79489c7de1d122",
+    "status": 200,
+    "finalUrl": "/checkout/complete/6aa1cf9a4c79489c7de1d122",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-dashboard",
+    "viewport": "desktop",
+    "path": "/admin/dashboard",
+    "status": 200,
+    "finalUrl": "/admin/dashboard",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-categories",
+    "viewport": "desktop",
+    "path": "/admin/categories",
+    "status": 200,
+    "finalUrl": "/admin/categories",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-products",
+    "viewport": "desktop",
+    "path": "/admin/products",
+    "status": 200,
+    "finalUrl": "/admin/products",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-inventory",
+    "viewport": "desktop",
+    "path": "/admin/inventory",
+    "status": 200,
+    "finalUrl": "/admin/inventory",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-media",
+    "viewport": "desktop",
+    "path": "/admin/media",
+    "status": 200,
+    "finalUrl": "/admin/media",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-orders",
+    "viewport": "desktop",
+    "path": "/admin/orders",
+    "status": 200,
+    "finalUrl": "/admin/orders",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-order-detail",
+    "viewport": "desktop",
+    "path": "/admin/orders/6aa1cf9c4c79489c7de1d150",
+    "status": 200,
+    "finalUrl": "/admin/orders/6aa1cf9c4c79489c7de1d150",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-returns",
+    "viewport": "desktop",
+    "path": "/admin/returns",
+    "status": 200,
+    "finalUrl": "/admin/returns",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-reviews",
+    "viewport": "desktop",
+    "path": "/admin/reviews",
+    "status": 200,
+    "finalUrl": "/admin/reviews",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-coupons",
+    "viewport": "desktop",
+    "path": "/admin/coupons",
+    "status": 200,
+    "finalUrl": "/admin/coupons",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-gift-cards",
+    "viewport": "desktop",
+    "path": "/admin/gift-cards",
+    "status": 200,
+    "finalUrl": "/admin/gift-cards",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-shipping",
+    "viewport": "desktop",
+    "path": "/admin/shipping",
+    "status": 200,
+    "finalUrl": "/admin/shipping",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-tax",
+    "viewport": "desktop",
+    "path": "/admin/tax",
+    "status": 200,
+    "finalUrl": "/admin/tax",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-blog",
+    "viewport": "desktop",
+    "path": "/admin/blog",
+    "status": 200,
+    "finalUrl": "/admin/blog",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-pages",
+    "viewport": "desktop",
+    "path": "/admin/pages",
+    "status": 200,
+    "finalUrl": "/admin/pages",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-contact",
+    "viewport": "desktop",
+    "path": "/admin/contact",
+    "status": 200,
+    "finalUrl": "/admin/contact",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-newsletter",
+    "viewport": "desktop",
+    "path": "/admin/newsletter",
+    "status": 200,
+    "finalUrl": "/admin/newsletter",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-emails",
+    "viewport": "desktop",
+    "path": "/admin/emails",
+    "status": 200,
+    "finalUrl": "/admin/emails",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-users",
+    "viewport": "desktop",
+    "path": "/admin/users",
+    "status": 200,
+    "finalUrl": "/admin/users",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-audit-log",
+    "viewport": "desktop",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "finalUrl": "/admin/audit-log",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "home",
+    "viewport": "mobile",
+    "path": "/",
+    "status": 200,
+    "finalUrl": "/",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "shop",
+    "viewport": "mobile",
+    "path": "/shop",
+    "status": 200,
+    "finalUrl": "/shop",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"https://res.cloudinary.com/h5jxwipi/image/upload/f_auto,q_auto/v1788989289/dev/products/product-3legant-scorecard-pencils-12-pack.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP) element "
+    ]
+  },
+  {
+    "name": "shop-filtered",
+    "viewport": "mobile",
+    "path": "/shop?category=gloves",
+    "status": 200,
+    "finalUrl": "/shop?category=gloves",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products?sort=newest&order=desc&category=gloves&page=1&take=12: 400 Bad Request\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (htt",
+      "console.error: Failed to load resource: the server responded with a status of 500 (Internal Server Error)",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products/facets?category=gloves: 500 Internal Server Error\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (http://localhost:4200/@f",
+      "console.error: ERROR ResourceValueError: Resource is currently in an error state (see Error.cause for details): Http failure response for http://localhost:4200/api/v1/products/facets?category=gloves: 500 Internal Server Error\n    at ResourceImpl.__spreadValues.equal.equal [as computation] (http://localhost:4200/@f"
+    ]
+  },
+  {
+    "name": "product-detail",
+    "viewport": "mobile",
+    "path": "/product/tour-authentic-cabretta-leather-glove",
+    "status": 200,
+    "finalUrl": "/product/tour-authentic-cabretta-leather-glove",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "sign-in",
+    "viewport": "mobile",
+    "path": "/sign-in",
+    "status": 200,
+    "finalUrl": "/sign-in",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "sign-up",
+    "viewport": "mobile",
+    "path": "/sign-up",
+    "status": 200,
+    "finalUrl": "/sign-up",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "forgot-password",
+    "viewport": "mobile",
+    "path": "/forgot-password",
+    "status": 200,
+    "finalUrl": "/forgot-password",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "reset-password",
+    "viewport": "mobile",
+    "path": "/reset-password?token=demo-token",
+    "status": 200,
+    "finalUrl": "/reset-password?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "verify-email",
+    "viewport": "mobile",
+    "path": "/verify-email?token=demo-token",
+    "status": 200,
+    "finalUrl": "/verify-email?token=demo-token",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)"
+    ]
+  },
+  {
+    "name": "cart",
+    "viewport": "mobile",
+    "path": "/cart",
+    "status": 200,
+    "finalUrl": "/cart",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "track",
+    "viewport": "mobile",
+    "path": "/track",
+    "status": 200,
+    "finalUrl": "/track",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "blog-list",
+    "viewport": "mobile",
+    "path": "/blog",
+    "status": 200,
+    "finalUrl": "/blog",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"https://res.cloudinary.com/h5jxwipi/image/upload/f_auto,q_auto/v1788888027/dev/blog/post-mental-game-staying-calm-under-tournament-pressure.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP"
+    ]
+  },
+  {
+    "name": "blog-post",
+    "viewport": "mobile",
+    "path": "/blog/mental-game-staying-calm-under-tournament-pressure",
+    "status": 200,
+    "finalUrl": "/blog/mental-game-staying-calm-under-tournament-pressure",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "content-page-about",
+    "viewport": "mobile",
+    "path": "/pages/about",
+    "status": 200,
+    "finalUrl": "/pages/about",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "content-page-faq",
+    "viewport": "mobile",
+    "path": "/pages/faq",
+    "status": 200,
+    "finalUrl": "/pages/faq",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "contact",
+    "viewport": "mobile",
+    "path": "/contact",
+    "status": 200,
+    "finalUrl": "/contact",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "newsletter-confirm",
+    "viewport": "mobile",
+    "path": "/newsletter/confirm?token=demo-token",
+    "status": 200,
+    "finalUrl": "/newsletter/confirm?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "newsletter-unsubscribe",
+    "viewport": "mobile",
+    "path": "/newsletter/unsubscribe?token=demo-token",
+    "status": 200,
+    "finalUrl": "/newsletter/unsubscribe?token=demo-token",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "styleguide",
+    "viewport": "mobile",
+    "path": "/styleguide",
+    "status": 200,
+    "finalUrl": "/styleguide",
+    "redirected": false,
+    "problems": [
+      "console.error: NG02955: The NgOptimizedImage directive (activated on an <img> element with the `ngSrc=\"https://res.cloudinary.com/h5jxwipi/image/upload/f_auto,q_auto/v1788989293/dev/products/product-3legant-yardage-distance-wheel.jpg\"`) has detected that this image is the Largest Contentful Paint (LCP) element but"
+    ]
+  },
+  {
+    "name": "not-found",
+    "viewport": "mobile",
+    "path": "/no-such-page-xyz",
+    "status": 200,
+    "finalUrl": "/no-such-page-xyz",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-profile",
+    "viewport": "mobile",
+    "path": "/account/profile",
+    "status": 200,
+    "finalUrl": "/account/profile",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-addresses",
+    "viewport": "mobile",
+    "path": "/account/addresses",
+    "status": 200,
+    "finalUrl": "/account/addresses",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-orders",
+    "viewport": "mobile",
+    "path": "/account/orders",
+    "status": 200,
+    "finalUrl": "/account/orders",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-order-detail",
+    "viewport": "mobile",
+    "path": "/account/orders/6aa1cf9a4c79489c7de1d122",
+    "status": 200,
+    "finalUrl": "/account/orders/6aa1cf9a4c79489c7de1d122",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-wishlist",
+    "viewport": "mobile",
+    "path": "/account/wishlist",
+    "status": 200,
+    "finalUrl": "/account/wishlist",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-returns",
+    "viewport": "mobile",
+    "path": "/account/returns",
+    "status": 200,
+    "finalUrl": "/account/returns",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-return-new",
+    "viewport": "mobile",
+    "path": "/account/returns/new",
+    "status": 200,
+    "finalUrl": "/account/returns/new",
+    "redirected": false,
+    "problems": [
+      "console.error: Failed to load resource: the server responded with a status of 400 (Bad Request)",
+      "console.error: ERROR HttpErrorResponse"
+    ]
+  },
+  {
+    "name": "account-payment-methods",
+    "viewport": "mobile",
+    "path": "/account/payment-methods",
+    "status": 200,
+    "finalUrl": "/account/payment-methods",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "account-settings",
+    "viewport": "mobile",
+    "path": "/account/settings",
+    "status": 200,
+    "finalUrl": "/account/settings",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "checkout",
+    "viewport": "mobile",
+    "path": "/checkout",
+    "status": 200,
+    "finalUrl": "/cart",
+    "redirected": true,
+    "problems": []
+  },
+  {
+    "name": "order-complete",
+    "viewport": "mobile",
+    "path": "/checkout/complete/6aa1cf9a4c79489c7de1d122",
+    "status": 200,
+    "finalUrl": "/checkout/complete/6aa1cf9a4c79489c7de1d122",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-dashboard",
+    "viewport": "mobile",
+    "path": "/admin/dashboard",
+    "status": 200,
+    "finalUrl": "/admin/dashboard",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-categories",
+    "viewport": "mobile",
+    "path": "/admin/categories",
+    "status": 200,
+    "finalUrl": "/admin/categories",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-products",
+    "viewport": "mobile",
+    "path": "/admin/products",
+    "status": 200,
+    "finalUrl": "/admin/products",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-inventory",
+    "viewport": "mobile",
+    "path": "/admin/inventory",
+    "status": 200,
+    "finalUrl": "/admin/inventory",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-media",
+    "viewport": "mobile",
+    "path": "/admin/media",
+    "status": 200,
+    "finalUrl": "/admin/media",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-orders",
+    "viewport": "mobile",
+    "path": "/admin/orders",
+    "status": 200,
+    "finalUrl": "/admin/orders",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-order-detail",
+    "viewport": "mobile",
+    "path": "/admin/orders/6aa1cf9c4c79489c7de1d150",
+    "status": 200,
+    "finalUrl": "/admin/orders/6aa1cf9c4c79489c7de1d150",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-returns",
+    "viewport": "mobile",
+    "path": "/admin/returns",
+    "status": 200,
+    "finalUrl": "/admin/returns",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-reviews",
+    "viewport": "mobile",
+    "path": "/admin/reviews",
+    "status": 200,
+    "finalUrl": "/admin/reviews",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-coupons",
+    "viewport": "mobile",
+    "path": "/admin/coupons",
+    "status": 200,
+    "finalUrl": "/admin/coupons",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-gift-cards",
+    "viewport": "mobile",
+    "path": "/admin/gift-cards",
+    "status": 200,
+    "finalUrl": "/admin/gift-cards",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-shipping",
+    "viewport": "mobile",
+    "path": "/admin/shipping",
+    "status": 200,
+    "finalUrl": "/admin/shipping",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-tax",
+    "viewport": "mobile",
+    "path": "/admin/tax",
+    "status": 200,
+    "finalUrl": "/admin/tax",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-blog",
+    "viewport": "mobile",
+    "path": "/admin/blog",
+    "status": 200,
+    "finalUrl": "/admin/blog",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-pages",
+    "viewport": "mobile",
+    "path": "/admin/pages",
+    "status": 200,
+    "finalUrl": "/admin/pages",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-contact",
+    "viewport": "mobile",
+    "path": "/admin/contact",
+    "status": 200,
+    "finalUrl": "/admin/contact",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-newsletter",
+    "viewport": "mobile",
+    "path": "/admin/newsletter",
+    "status": 200,
+    "finalUrl": "/admin/newsletter",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-emails",
+    "viewport": "mobile",
+    "path": "/admin/emails",
+    "status": 200,
+    "finalUrl": "/admin/emails",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-users",
+    "viewport": "mobile",
+    "path": "/admin/users",
+    "status": 200,
+    "finalUrl": "/admin/users",
+    "redirected": false,
+    "problems": []
+  },
+  {
+    "name": "admin-audit-log",
+    "viewport": "mobile",
+    "path": "/admin/audit-log",
+    "status": 200,
+    "finalUrl": "/admin/audit-log",
+    "redirected": false,
+    "problems": []
+  }
+]

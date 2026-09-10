@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 
 import type { AdjustStockRequest, AdminInventoryItemDto } from '@/app/core/api/dto';
 import { AdminInventoryService } from '@/app/core/services/admin-inventory.service';
@@ -10,6 +10,7 @@ import { EmptyState } from '@/app/shared/ui/empty-state';
 import { FilterBar } from '@/app/features/admin/ui/filter-bar';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
+import { PaginationNav } from '@/app/shared/ui/pagination-nav';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { TextField } from '@/app/shared/ui/text-field';
@@ -21,6 +22,10 @@ const REASON_OPTIONS: SelectOption[] = [
   { value: 'correction', label: 'Correction' },
 ];
 
+// The list endpoint returns every variant unpaged; paginate on the client
+// so the page isn't 20,000px tall with a full catalogue seeded.
+const PAGE_SIZE = 30;
+
 @Component({
   selector: 'admin-inventory-page',
   imports: [
@@ -30,12 +35,13 @@ const REASON_OPTIONS: SelectOption[] = [
     EmptyState,
     FilterBar,
     PageToolbar,
+    PaginationNav,
     SelectField,
     SkeletonBlock,
     TextField,
   ],
   template: `
-    <page-toolbar title="Inventory" [subtitle]="items().length + ' variants'"></page-toolbar>
+    <page-toolbar title="Inventory" [subtitle]="allItems().length + ' variants'"></page-toolbar>
 
     <filter-bar>
       <checkbox-field label="Low stock only" [checked]="lowStockOnly()" (checkedChange)="onFilterChange($event)" />
@@ -43,7 +49,7 @@ const REASON_OPTIONS: SelectOption[] = [
 
     @if (loading()) {
       <skeleton-block height="320px" width="100%" />
-    } @else if (items().length === 0) {
+    } @else if (allItems().length === 0) {
       <empty-state message="Nothing here." icon="truck" />
     } @else {
       <data-table>
@@ -72,6 +78,15 @@ const REASON_OPTIONS: SelectOption[] = [
           }
         </tbody>
       </data-table>
+
+      @if (pageCount() > 1) {
+        <pagination-nav
+          class="pager"
+          [page]="page()"
+          [total]="pageCount()"
+          (pageChange)="page.set($event)"
+        />
+      }
     }
 
     <drawer-form
@@ -115,6 +130,12 @@ const REASON_OPTIONS: SelectOption[] = [
       margin: 0;
       color: var(--color-neutral-05);
     }
+
+    .pager {
+      display: flex;
+      justify-content: center;
+      margin-top: var(--space-6);
+    }
   `,
 })
 export default class AdminInventory implements OnInit {
@@ -122,9 +143,18 @@ export default class AdminInventory implements OnInit {
   private readonly productLookup = inject(AdminProductLookupService);
   private readonly toast = inject(ToastService);
 
-  protected readonly items = signal<AdminInventoryItemDto[]>([]);
+  protected readonly allItems = signal<AdminInventoryItemDto[]>([]);
   protected readonly loading = signal(true);
   protected readonly lowStockOnly = signal(false);
+  protected readonly page = signal(1);
+
+  protected readonly pageCount = computed(() =>
+    Math.max(1, Math.ceil(this.allItems().length / PAGE_SIZE)),
+  );
+  protected readonly items = computed(() => {
+    const start = (this.page() - 1) * PAGE_SIZE;
+    return this.allItems().slice(start, start + PAGE_SIZE);
+  });
 
   protected readonly formOpen = signal(false);
   protected readonly saving = signal(false);
@@ -141,6 +171,7 @@ export default class AdminInventory implements OnInit {
 
   protected onFilterChange(checked: boolean): void {
     this.lowStockOnly.set(checked);
+    this.page.set(1);
     this.load();
   }
 
@@ -153,7 +184,7 @@ export default class AdminInventory implements OnInit {
     const request = this.lowStockOnly() ? this.inventoryService.listLowStock() : this.inventoryService.listAll();
     request.subscribe({
       next: (items) => {
-        this.items.set(items);
+        this.allItems.set(items);
         this.loading.set(false);
       },
       error: () => this.loading.set(false),

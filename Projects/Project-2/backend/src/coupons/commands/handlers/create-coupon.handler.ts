@@ -49,6 +49,7 @@ export class CreateCouponHandler
               startsAt: new Date(dto.startsAt),
               endsAt: dto.endsAt ? new Date(dto.endsAt) : undefined,
               isActive: dto.isActive ?? true,
+              isFeatured: dto.isFeatured ?? false,
             },
           ],
           { session },

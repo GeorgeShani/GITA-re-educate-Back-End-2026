@@ -2,19 +2,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
-import type { ReturnDto, ReturnStatus } from '@/app/core/api/dto';
+import type { ReturnDto } from '@/app/core/api/dto';
 import { ReturnsService } from '@/app/core/services/returns.service';
+import { returnStatusMeta } from '@/app/core/util/status-meta';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { EmptyState } from '@/app/shared/ui/empty-state';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
-
-const STATUS_LABEL: Record<ReturnStatus, string> = {
-  requested: 'Requested',
-  approved: 'Approved',
-  rejected: 'Rejected',
-  received: 'Received',
-  refunded: 'Refunded',
-};
 
 @Component({
   selector: 'account-returns-page',
@@ -37,8 +30,8 @@ const STATUS_LABEL: Record<ReturnStatus, string> = {
                   <strong>{{ ret.items.length }} item{{ ret.items.length === 1 ? '' : 's' }}</strong>
                   <span class="date">Requested {{ ret.createdAt | date: 'mediumDate' }}</span>
                 </div>
-                <status-badge variant="custom" [background]="statusBackground(ret.status)" [color]="'var(--color-neutral-07)'">
-                  {{ statusLabel[ret.status] }}
+                <status-badge [variant]="statusMeta(ret.status).variant">
+                  {{ statusMeta(ret.status).label }}
                 </status-badge>
               </li>
             }
@@ -109,22 +102,9 @@ export default class AccountReturns implements OnInit {
   private readonly returnsService = inject(ReturnsService);
 
   protected readonly returns = signal<ReturnDto[] | null>(null);
-  protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = returnStatusMeta;
 
   ngOnInit(): void {
     this.returnsService.listMine().subscribe((returns) => this.returns.set(returns));
-  }
-
-  protected statusBackground(status: ReturnStatus): string {
-    switch (status) {
-      case 'approved':
-      case 'received':
-      case 'refunded':
-        return 'var(--color-success)';
-      case 'rejected':
-        return 'var(--color-error)';
-      default:
-        return 'var(--color-neutral-03)';
-    }
   }
 }

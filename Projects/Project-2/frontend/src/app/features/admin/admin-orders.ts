@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminOrdersService } from '@/app/core/services/admin-orders.service';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 import { toFilterValue, toUnionValue } from '@/app/core/util/string-union';
 import { DataTable } from '@/app/features/admin/ui/data-table';
 import { EmptyState } from '@/app/shared/ui/empty-state';
@@ -44,37 +45,6 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: 'refunded', label: 'Refunded' },
 ];
 
-// Same labels as STATUS_OPTIONS above, keyed for the status-badge display
-// rather than the filter dropdown — the table used to print order.status
-// straight through instead (the raw "payment_failed" enum value, not
-// "Payment failed").
-const STATUS_LABEL: Record<OrderStatus, string> = {
-  placed: 'Placed',
-  paid: 'Paid',
-  payment_failed: 'Payment failed',
-  confirmed: 'Confirmed',
-  fulfilled: 'Fulfilled',
-  shipped: 'Shipped',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-  refunded: 'Refunded',
-};
-
-function statusColor(status: OrderStatus): string {
-  switch (status) {
-    case 'paid':
-    case 'confirmed':
-    case 'fulfilled':
-    case 'shipped':
-    case 'delivered':
-      return 'var(--color-success)';
-    case 'payment_failed':
-    case 'cancelled':
-      return 'var(--color-error)';
-    default:
-      return 'var(--color-neutral-03)';
-  }
-}
 
 @Component({
   selector: 'admin-orders-page',
@@ -144,8 +114,8 @@ function statusColor(status: OrderStatus): string {
               <td>{{ order.orderNumber }}</td>
               <td>{{ order.createdAt | date: 'medium' }}</td>
               <td>
-                <status-badge variant="custom" [background]="statusColor(order.status)" color="var(--color-neutral-07)">
-                  {{ statusLabel[order.status] }}
+                <status-badge [variant]="statusMeta(order.status).variant">
+                  {{ statusMeta(order.status).label }}
                 </status-badge>
               </td>
               <td data-numeric>{{ order.totalMinor | money }}</td>
@@ -179,8 +149,7 @@ export default class AdminOrders implements OnInit {
   private readonly ordersService = inject(AdminOrdersService);
 
   protected readonly statusOptions = STATUS_OPTIONS;
-  protected readonly statusColor = statusColor;
-  protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = orderStatusMeta;
 
   protected readonly orders = signal<OrderDto[]>([]);
   protected readonly total = signal(0);

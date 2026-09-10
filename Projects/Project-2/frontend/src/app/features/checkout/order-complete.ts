@@ -13,6 +13,7 @@ import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 30_000;
@@ -61,11 +62,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
               <h1>Order received</h1>
             }
             <p class="order-number">Order #{{ o.orderNumber }}</p>
-            <status-badge
-              variant="custom"
-              [background]="statusBackground(o.status)"
-              [color]="'var(--color-neutral-07)'"
-            >
+            <status-badge [variant]="statusMeta(o.status).variant">
               {{ statusLabel[o.status] }}
             </status-badge>
 
@@ -297,6 +294,7 @@ export default class OrderComplete implements OnInit {
   protected readonly order = signal<OrderDto | null>(null);
   protected readonly timedOut = signal(false);
   protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = orderStatusMeta;
 
   ngOnInit(): void {
     const startedAt = Date.now();
@@ -318,19 +316,4 @@ export default class OrderComplete implements OnInit {
       .subscribe((order) => this.order.set(order));
   }
 
-  protected statusBackground(status: OrderStatus): string {
-    switch (status) {
-      case 'paid':
-      case 'confirmed':
-      case 'fulfilled':
-      case 'shipped':
-      case 'delivered':
-        return 'var(--color-success)';
-      case 'payment_failed':
-      case 'cancelled':
-        return 'var(--color-error)';
-      default:
-        return 'var(--color-neutral-03)';
-    }
-  }
 }

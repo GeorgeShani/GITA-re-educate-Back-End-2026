@@ -4,6 +4,7 @@ import { FormField, email, form, required } from '@angular/forms/signals';
 
 import type { OrderStatus, TrackingInfoDto } from '@/app/core/api/dto';
 import { OrdersService } from '@/app/core/services/orders.service';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { PageContainer } from '@/app/shared/ui/page-container';
@@ -71,7 +72,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
           @if (result(); as info) {
             <div class="result" reveal>
               <p class="order-number">Order #{{ info.orderNumber }}</p>
-              <status-badge variant="custom" [background]="'var(--color-neutral-02)'" [color]="'var(--color-neutral-07)'">
+              <status-badge [variant]="statusMeta(info.status).variant">
                 {{ statusLabel[info.status] }}
               </status-badge>
               <p class="detail">
@@ -148,6 +149,7 @@ export default class Track {
   protected readonly notFound = signal(false);
   protected readonly result = signal<TrackingInfoDto | null>(null);
   protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = orderStatusMeta;
 
   private readonly model = signal({ orderNumber: '', email: '' });
 

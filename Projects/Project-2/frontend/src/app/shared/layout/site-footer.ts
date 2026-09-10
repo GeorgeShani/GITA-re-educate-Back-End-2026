@@ -8,14 +8,16 @@ const PAGE_LINKS = [
   { label: 'Home', link: '/' },
   { label: 'Shop', link: '/shop' },
   { label: 'Journal', link: '/blog' },
+  { label: 'About', link: '/about' },
   { label: 'Contact', link: '/contact' },
 ] as const;
 
 const INFO_LINKS = [
-  { label: 'Shipping policy', link: '/pages/shipping' },
-  { label: 'Returns & refunds', link: '/pages/returns' },
-  { label: 'Support', link: '/contact' },
-  { label: 'FAQs', link: '/pages/faq' },
+  { label: 'Shipping policy', link: '/shipping' },
+  { label: 'Returns & refunds', link: '/returns' },
+  { label: 'FAQs', link: '/faq' },
+  { label: 'Privacy policy', link: '/privacy' },
+  { label: 'Terms of service', link: '/terms' },
 ] as const;
 
 /** Brand marks are decorative here — the payment row is informational. */

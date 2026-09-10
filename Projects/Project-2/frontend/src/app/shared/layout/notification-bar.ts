@@ -1,34 +1,41 @@
-import { Component, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 
+import type { FeaturedCouponDto } from '@/app/core/api/dto';
+import { CouponsService } from '@/app/core/services/coupons.service';
 import { IconButton } from '@/app/shared/ui/icon-button';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 
 /**
- * Dismissible promo strip above the header. Dismissal is deliberately
- * per-session and in-memory: persisting it would need storage that is
- * unavailable under SSR and blocked in some browsers, for a banner whose
- * whole job is to be seen once.
+ * Dismissible promo strip above the header. Its message is derived from
+ * the same GET /coupons/featured signal the home sale-banner uses, so the
+ * two never contradict each other — and the bar renders nothing when no
+ * promo is running rather than advertising a stale hardcoded one.
+ * Dismissal is per-session and in-memory: persisting it would need
+ * storage unavailable under SSR and blocked in some browsers, for a
+ * banner whose whole job is to be seen once.
  */
 @Component({
   selector: 'notification-bar',
   imports: [IconGlyph, IconButton],
   template: `
-    <div class="collapse" [class.is-dismissed]="dismissed()">
-      <div class="collapse-inner">
-        <div class="bar">
-          <p class="message">
-            <icon-glyph name="ticket-percent" [size]="16" />
-            <span>30% off storewide &mdash; limited time</span>
-          </p>
-          <icon-button
-            class="dismiss"
-            icon="x"
-            ariaLabel="Dismiss announcement"
-            (clicked)="dismissed.set(true)"
-          />
+    @if (message(); as text) {
+      <div class="collapse" [class.is-dismissed]="dismissed()">
+        <div class="collapse-inner">
+          <div class="bar">
+            <p class="message">
+              <icon-glyph name="ticket-percent" [size]="16" />
+              <span>{{ text }}</span>
+            </p>
+            <icon-button
+              class="dismiss"
+              icon="x"
+              ariaLabel="Dismiss announcement"
+              (clicked)="dismissed.set(true)"
+            />
+          </div>
         </div>
       </div>
-    </div>
+    }
   `,
   styles: `
     @use 'styles/typography' as type;
@@ -102,5 +109,18 @@ import { IconGlyph } from '@/app/shared/ui/icon-glyph';
   `,
 })
 export class NotificationBar {
+  private readonly coupon = inject(CouponsService).featuredCouponResource();
   protected readonly dismissed = signal(false);
+
+  protected readonly message = computed<string | null>(() => {
+    const promo = this.coupon.value();
+    if (!promo) return null;
+    return `${this.discount(promo)} with code ${promo.code} — limited time`;
+  });
+
+  private discount(promo: FeaturedCouponDto): string {
+    if (promo.type === 'percentage') return `${promo.value}% off`;
+    if (promo.type === 'fixed') return `$${(promo.value / 100).toFixed(0)} off`;
+    return 'Free shipping';
+  }
 }

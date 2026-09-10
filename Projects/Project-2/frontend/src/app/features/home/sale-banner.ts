@@ -1,7 +1,9 @@
 import { NgOptimizedImage } from '@angular/common';
-import { Component, DestroyRef, afterNextRender, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import type { FeaturedCouponDto } from '@/app/core/api/dto';
+import { CouponsService } from '@/app/core/services/coupons.service';
 import { ActionButton } from '@/app/shared/ui/action-button';
 
 interface CountdownParts {
@@ -12,7 +14,6 @@ interface CountdownParts {
 }
 
 const ZERO: CountdownParts = { days: '00', hours: '00', minutes: '00', seconds: '00' };
-const SALE_WINDOW_MS = 1000 * 60 * 60 * 24 * 7; // a rolling 7-day window — there's no real sale-end date from the API yet
 
 function pad(value: number): string {
   return value.toString().padStart(2, '0');
@@ -29,41 +30,51 @@ function partsUntil(endsAt: number): CountdownParts {
 }
 
 /**
- * The countdown starts at 00:00:00:00 and only becomes real numbers once
- * `afterNextRender` fires — i.e. in the browser, after hydration. Computing
- * `Date.now()` during the constructor would bake a "now" into the prerendered
- * HTML that's already stale by the time a real visitor's browser hydrates it,
- * so this deliberately starts inert on the server rather than SSR-ing a
- * countdown that immediately jumps on the client.
+ * Real data now, not a client-side `Date.now() + 7 days` that reset on
+ * every reload (this component's own history — see git blame). The
+ * countdown target is GET /coupons/featured's `endsAt`, a real Coupon
+ * document a store owner sets via admin-coupons.ts's "Featured" checkbox
+ * — the same date is what checkout would actually honour if a shopper
+ * applied the code, so the banner can't advertise a deadline the backend
+ * doesn't also enforce.
+ *
+ * Renders nothing at all (not a fallback "sale") when no coupon is
+ * currently marked featured-and-active, and no countdown row when the
+ * featured coupon has no endsAt — an always-on promo is a real, valid
+ * state, not something to fake a deadline for.
  */
 @Component({
   selector: 'sale-banner',
   imports: [RouterLink, NgOptimizedImage, ActionButton],
   template: `
-    <div class="banner">
-      <div class="banner-image">
-        <img ngSrc="/images/products/sale-banner.jpg" alt="" fill priority="false" />
-      </div>
-      <div class="banner-content">
-        <p class="eyebrow">Limited edition</p>
-        <h2>Hurry up! 30% off</h2>
-        <p class="subhead">Find clubs that are right for your game</p>
-
-        <div class="timer">
-          <p class="timer-label">Offer expires in:</p>
-          <div class="timer-cells">
-            @for (cell of cells(); track cell.label) {
-              <div class="timer-cell">
-                <span class="timer-value" data-numeric>{{ cell.value }}</span>
-                <span class="timer-unit">{{ cell.label }}</span>
-              </div>
-            }
-          </div>
+    @if (coupon.value(); as promo) {
+      <div class="banner">
+        <div class="banner-image">
+          <img ngSrc="/images/products/sale-banner.jpg" alt="" fill priority="false" />
         </div>
+        <div class="banner-content">
+          <p class="eyebrow">Limited edition</p>
+          <h2>{{ headline(promo) }}</h2>
+          <p class="subhead">{{ subhead(promo) }}</p>
 
-        <action-button variant="accent" routerLink="/shop">Shop now</action-button>
+          @if (promo.endsAt) {
+            <div class="timer">
+              <p class="timer-label">Offer expires in:</p>
+              <div class="timer-cells">
+                @for (cell of cells(); track cell.label) {
+                  <div class="timer-cell">
+                    <span class="timer-value" data-numeric>{{ cell.value }}</span>
+                    <span class="timer-unit">{{ cell.label }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <action-button variant="inverse" routerLink="/shop">Shop now</action-button>
+        </div>
       </div>
-    </div>
+    }
   `,
   styles: `
     @use 'styles/typography' as type;
@@ -185,7 +196,7 @@ function partsUntil(endsAt: number): CountdownParts {
   `,
 })
 export class SaleBanner {
-  private readonly destroyRef = inject(DestroyRef);
+  protected readonly coupon = inject(CouponsService).featuredCouponResource();
 
   protected readonly cells = signal([
     { label: 'Days', value: ZERO.days },
@@ -194,9 +205,44 @@ export class SaleBanner {
     { label: 'Seconds', value: ZERO.seconds },
   ]);
 
+  private readonly endsAtMs = computed(() => {
+    const endsAt = this.coupon.value()?.endsAt;
+    return endsAt ? new Date(endsAt).getTime() : null;
+  });
+
+  protected headline(promo: FeaturedCouponDto): string {
+    if (promo.type === 'percentage') return `Hurry up! ${promo.value}% off`;
+    if (promo.type === 'fixed') return `Hurry up! $${(promo.value / 100).toFixed(0)} off`;
+    return 'Hurry up! Free shipping';
+  }
+
+  /** Coupon-aware, so the banner tells shoppers how to actually claim it. */
+  protected subhead(promo: FeaturedCouponDto): string {
+    const min =
+      promo.minSpendMinor > 0
+        ? ` on orders over $${(promo.minSpendMinor / 100).toFixed(0)}`
+        : '';
+    if (promo.type === 'free_shipping') {
+      return `Free delivery${min || ' on every order'} — applied automatically at checkout`;
+    }
+    return `Use code ${promo.code} at checkout${min}`;
+  }
+
+  /**
+   * A signal effect, not afterNextRender — the httpResource backing
+   * endsAtMs() resolves asynchronously, after this component's first
+   * render, so the interval has to (re)start reactively once real data
+   * actually arrives, not just once up front. Guarded to the browser only:
+   * computing Date.now() during SSR would bake a "now" into prerendered
+   * HTML that's already stale by the time a real visitor's browser
+   * hydrates it, so this deliberately does nothing server-side rather
+   * than SSR-ing a countdown that immediately jumps on the client.
+   */
   constructor() {
-    afterNextRender(() => {
-      const endsAt = Date.now() + SALE_WINDOW_MS;
+    effect((onCleanup) => {
+      const endsAt = this.endsAtMs();
+      if (typeof window === 'undefined' || !endsAt) return;
+
       const tick = () => {
         const p = partsUntil(endsAt);
         this.cells.set([
@@ -207,8 +253,8 @@ export class SaleBanner {
         ]);
       };
       tick();
-      const id = setInterval(tick, 1000);
-      this.destroyRef.onDestroy(() => clearInterval(id));
+      const intervalId = setInterval(tick, 1000);
+      onCleanup(() => clearInterval(intervalId));
     });
   }
 }

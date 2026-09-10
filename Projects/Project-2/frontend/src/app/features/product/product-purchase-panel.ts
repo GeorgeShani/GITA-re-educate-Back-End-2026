@@ -31,14 +31,17 @@ function titleCase(value: string): string {
   imports: [RatingStars, MoneyPipe, SelectField, QuantityStepper, ActionButton],
   template: `
     <div class="meta">
-      <rating-stars
-        [value]="product().ratingAverage"
-        [count]="product().ratingCount || undefined"
-      />
+      @if (product().ratingCount) {
+        <rating-stars
+          [value]="product().ratingAverage"
+          [count]="product().ratingCount"
+        />
+      } @else {
+        <span class="no-reviews">No reviews yet</span>
+      }
     </div>
 
     <h1>{{ product().name }}</h1>
-    <p class="description">{{ product().description }}</p>
 
     <div class="price">
       <span class="current">{{ activePriceMinor() | money }}</span>
@@ -110,16 +113,15 @@ function titleCase(value: string): string {
       margin-bottom: var(--space-4);
     }
 
-    h1 {
-      @include type.headline-5;
-      margin: 0 0 var(--space-4);
-      color: var(--color-neutral-07);
+    .no-reviews {
+      @include type.caption-1;
+      color: var(--color-neutral-04);
     }
 
-    .description {
-      @include type.body-2;
-      margin: 0 0 var(--space-6);
-      color: var(--color-neutral-05);
+    h1 {
+      @include type.headline-5;
+      margin: 0 0 var(--space-5);
+      color: var(--color-neutral-07);
     }
 
     .price {
@@ -150,12 +152,15 @@ function titleCase(value: string): string {
 
     .purchase-row {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
-      gap: var(--space-4);
+      gap: var(--space-3);
+      max-width: 24rem;
       margin-bottom: var(--space-4);
 
       action-button {
         flex: 1;
+        min-width: 10rem;
       }
     }
 
@@ -193,10 +198,13 @@ export class ProductPurchasePanel {
 
   protected readonly attributeGroups = computed<AttributeGroup[]>(() => {
     const variants = this.product().variants.filter((v) => v.isActive);
-    const keys = [...new Set(variants.flatMap((v) => Object.keys(v.attributes)))];
+    // `attributes` is `{}` for an options-less product (a single SKU), and
+    // has been seen missing entirely on older data — guard both so the
+    // buy box never throws on `Object.keys(undefined)`.
+    const keys = [...new Set(variants.flatMap((v) => Object.keys(v.attributes ?? {})))];
     return keys.map((key) => {
       const values = [
-        ...new Set(variants.map((v) => v.attributes[key]).filter((v): v is string => !!v)),
+        ...new Set(variants.map((v) => v.attributes?.[key]).filter((v): v is string => !!v)),
       ];
       return {
         key,
@@ -211,7 +219,7 @@ export class ProductPurchasePanel {
     const chosen = this.selected();
     if (groups.length && groups.some((g) => !chosen[g.key])) return undefined;
     return this.product().variants.find(
-      (v) => v.isActive && groups.every((g) => v.attributes[g.key] === chosen[g.key]),
+      (v) => v.isActive && groups.every((g) => (v.attributes ?? {})[g.key] === chosen[g.key]),
     );
   });
 

@@ -14,12 +14,25 @@ import {
   CouponRedemption,
   CouponRedemptionDocument,
 } from './schemas/coupon-redemption.schema';
-import { Coupon, CouponDocument } from './schemas/coupon.schema';
+import { Coupon, CouponDocument, CouponType } from './schemas/coupon.schema';
 
 export interface CouponUsageReport {
   redemptionCount: number;
   totalDiscountMinor: number;
   uniqueCustomers: number;
+}
+
+/**
+ * Public-safe projection of a featured coupon — the storefront-wide
+ * promo banner needs a code/discount/expiry to advertise, never the
+ * admin-only targeting/limit fields (productIds, perUserLimit, etc.).
+ */
+export interface FeaturedCouponDto {
+  code: string;
+  type: CouponType;
+  value: number;
+  minSpendMinor: number;
+  endsAt: Date | null;
 }
 
 @Injectable()
@@ -51,6 +64,37 @@ export class CouponsService {
     ]);
 
     return { items, total, page, take };
+  }
+
+  /**
+   * The single active, currently-running, featured coupon — the real
+   * data behind the storefront's sale-banner countdown, replacing what
+   * used to be a client-side `Date.now() + 7 days` that reset on every
+   * reload. Soonest-ending first: if more than one coupon is ever
+   * (mis)marked featured, advertising the one about to expire is more
+   * useful than an arbitrary pick.
+   */
+  async findFeatured(): Promise<FeaturedCouponDto | null> {
+    const now = new Date();
+    const coupon = await this.couponModel
+      .findOne({
+        isFeatured: true,
+        isActive: true,
+        startsAt: { $lte: now },
+        $or: [{ endsAt: { $exists: false } }, { endsAt: { $gt: now } }],
+      })
+      .sort({ endsAt: 1 })
+      .exec();
+
+    if (!coupon) return null;
+
+    return {
+      code: coupon.code,
+      type: coupon.type,
+      value: coupon.value,
+      minSpendMinor: coupon.minSpendMinor,
+      endsAt: coupon.endsAt ?? null,
+    };
   }
 
   async findById(couponId: string): Promise<CouponDocument> {

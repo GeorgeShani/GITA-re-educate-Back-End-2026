@@ -14,6 +14,7 @@ import mongoose from 'mongoose';
 import { ShippingZoneSchema } from '../src/shipping/schemas/shipping-zone.schema';
 import { TaxRateSchema } from '../src/tax/schemas/tax-rate.schema';
 import { CouponSchema } from '../src/coupons/schemas/coupon.schema';
+import { GiftCardSchema } from '../src/gift-cards/schemas/gift-card.schema';
 
 if (existsSync('.env')) {
   process.loadEnvFile('.env');
@@ -62,6 +63,13 @@ const TAX_RATES = [
   { countryCode: 'GB', rateBasisPoints: 2000, isActive: true }, // VAT, country-wide
 ];
 
+// SUMMER30's endsAt is computed at run time (see main()), not a literal
+// date here — a coupon seeded to "expire in 10 days" should actually
+// expire 10 days from whenever the seed last ran, the same way a real
+// merchant would set one up, not drift toward a stale fixed date every
+// time this file sits unrun for a while.
+const FEATURED_COUPON_WINDOW_DAYS = 10;
+
 const COUPONS = [
   {
     code: 'WELCOME10',
@@ -89,6 +97,61 @@ const COUPONS = [
     startsAt: new Date('2020-01-01'),
     isActive: true,
   },
+  {
+    code: 'HOLIDAY15',
+    type: 'percentage' as const,
+    value: 15,
+    minSpendMinor: 15000,
+    perUserLimit: 1,
+    startsAt: new Date('2020-01-01'),
+    isActive: false, // seasonal — on the books, deliberately not running right now
+  },
+  // The one real, live, currently-running promo — home.ts's sale-banner
+  // fetches it via GET /coupons/featured and its own endsAt drives the
+  // banner's countdown for real, not a client-side timer that reset on
+  // every reload.
+  {
+    code: 'SUMMER30',
+    type: 'percentage' as const,
+    value: 30,
+    minSpendMinor: 0,
+    startsAt: new Date('2020-01-01'),
+    isActive: true,
+    isFeatured: true,
+  },
+];
+
+const GIFT_CARDS = [
+  {
+    code: 'GIFT-100-STARTER',
+    initialBalanceMinor: 10000,
+    balanceMinor: 10000,
+    currency: 'usd',
+    isActive: true,
+  },
+  {
+    code: 'GIFT-250-CLASSIC',
+    initialBalanceMinor: 25000,
+    balanceMinor: 25000,
+    currency: 'usd',
+    isActive: true,
+  },
+  {
+    code: 'GIFT-50-PARTIAL',
+    initialBalanceMinor: 5000,
+    // Partially redeemed — a realistic in-use state, not every seeded
+    // gift card sitting at full balance forever.
+    balanceMinor: 2150,
+    currency: 'usd',
+    isActive: true,
+  },
+  {
+    code: 'GIFT-500-VIP',
+    initialBalanceMinor: 50000,
+    balanceMinor: 50000,
+    currency: 'usd',
+    isActive: true,
+  },
 ];
 
 async function main(): Promise<void> {
@@ -102,6 +165,7 @@ async function main(): Promise<void> {
   const ShippingZoneModel = mongoose.model('ShippingZone', ShippingZoneSchema);
   const TaxRateModel = mongoose.model('TaxRate', TaxRateSchema);
   const CouponModel = mongoose.model('Coupon', CouponSchema);
+  const GiftCardModel = mongoose.model('GiftCard', GiftCardSchema);
 
   for (const zone of SHIPPING_ZONES) {
     await ShippingZoneModel.findOneAndUpdate({ name: zone.name }, zone, {
@@ -121,11 +185,28 @@ async function main(): Promise<void> {
     );
   }
 
+  const featuredEndsAt = new Date();
+  featuredEndsAt.setDate(
+    featuredEndsAt.getDate() + FEATURED_COUPON_WINDOW_DAYS,
+  );
+
   for (const coupon of COUPONS) {
-    await CouponModel.findOneAndUpdate({ code: coupon.code }, coupon, {
+    const doc = coupon.isFeatured
+      ? { ...coupon, endsAt: featuredEndsAt }
+      : coupon;
+    await CouponModel.findOneAndUpdate({ code: coupon.code }, doc, {
       upsert: true,
     });
-    console.log(`Coupon: ${coupon.code}`);
+    console.log(
+      `Coupon: ${coupon.code}${coupon.isFeatured ? ` (featured, ends ${featuredEndsAt.toISOString().slice(0, 10)})` : ''}`,
+    );
+  }
+
+  for (const giftCard of GIFT_CARDS) {
+    await GiftCardModel.findOneAndUpdate({ code: giftCard.code }, giftCard, {
+      upsert: true,
+    });
+    console.log(`Gift card: ${giftCard.code}`);
   }
 
   console.log('\nDone.');

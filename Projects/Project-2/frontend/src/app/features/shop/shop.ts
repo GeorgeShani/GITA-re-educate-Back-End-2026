@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 
@@ -91,8 +92,8 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
                   <li>
                     <button
                       type="button"
-                      [class.active]="category() === node.id"
-                      (click)="setParam('category', node.id)"
+                      [class.active]="category() === node.slug"
+                      (click)="setParam('category', node.slug)"
                     >
                       {{ node.name }}
                     </button>
@@ -137,6 +138,12 @@ const ORDER_VALUES: NonNullable<ProductQuery['order']>[] = ['asc', 'desc'];
                   <skeleton-block height="420px" radius="var(--radius-lg)" />
                 }
               </div>
+            } @else if (unknownCategory()) {
+              <empty-state message="We couldn't find that category." icon="search">
+                <action-button action variant="secondary" size="s" (click)="clearFilters()">
+                  Browse all products
+                </action-button>
+              </empty-state>
             } @else if (products.error()) {
               <empty-state message="Could not load products right now." icon="triangle-alert">
                 <action-button action variant="secondary" size="s" (click)="products.reload()">
@@ -317,16 +324,32 @@ export default class Shop {
   protected readonly categories = this.catalog.categoryTreeResource();
   protected readonly facets = this.catalog.facetsResource(() => this.category());
 
-  protected readonly cards = computed(() =>
-    (this.products.value()?.items ?? []).map(toCardProduct),
+  // `.value()` throws while the resource is in an error state, so read it
+  // through hasValue() — these are referenced from the template header
+  // that renders regardless of the loading/error branch.
+  private readonly result = computed(() =>
+    this.products.hasValue() ? this.products.value() : undefined,
   );
-  protected readonly total = computed(() => this.products.value()?.total ?? 0);
+  protected readonly cards = computed(() =>
+    (this.result()?.items ?? []).map(toCardProduct),
+  );
+  protected readonly total = computed(() => this.result()?.total ?? 0);
   protected readonly pageCount = computed(() => Math.ceil(this.total() / TAKE));
+
+  // A 404 from the list endpoint while a category filter is set means the
+  // slug in the URL doesn't resolve — a hand-typed or stale link, not an
+  // outage. Show a "no such category" state, not "try again".
+  protected readonly unknownCategory = computed(() => {
+    const error = this.products.error();
+    return (
+      !!this.category() && error instanceof HttpErrorResponse && error.status === 404
+    );
+  });
 
   protected readonly heading = computed(() => {
     const term = this.q();
     if (term) return `Results for "${term}"`;
-    const name = (this.categories.value() ?? []).find((c) => c.id === this.category())?.name;
+    const name = (this.categories.value() ?? []).find((c) => c.slug === this.category())?.name;
     return name ?? 'All products';
   });
 

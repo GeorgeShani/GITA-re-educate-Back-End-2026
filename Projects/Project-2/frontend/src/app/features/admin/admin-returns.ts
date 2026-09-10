@@ -4,6 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { ReturnDto, ReturnStatus } from '@/app/core/api/dto';
 import { AdminReturnsService } from '@/app/core/services/admin-returns.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { returnStatusMeta } from '@/app/core/util/status-meta';
 import { toFilterValue } from '@/app/core/util/string-union';
 import { AdminConfirmService } from '@/app/features/admin/ui/admin-confirm.service';
 import { DataTable } from '@/app/features/admin/ui/data-table';
@@ -35,18 +36,6 @@ const STATUS_OPTIONS: SelectOption[] = [
   { value: 'refunded', label: 'Refunded' },
 ];
 
-function statusColor(status: ReturnStatus): string {
-  switch (status) {
-    case 'approved':
-    case 'received':
-    case 'refunded':
-      return 'var(--color-success)';
-    case 'rejected':
-      return 'var(--color-error)';
-    default:
-      return 'var(--color-neutral-03)';
-  }
-}
 
 /** The RMA queue — one page combines list + inline actions rather than a separate detail route, since every action here (approve/reject/receive/refund) only ever needs the row's own id and a short admin note. */
 @Component({
@@ -79,8 +68,8 @@ function statusColor(status: ReturnStatus): string {
               <td>{{ r.createdAt | date: 'medium' }}</td>
               <td>{{ r.items.length }} item(s)</td>
               <td>
-                <status-badge variant="custom" [background]="statusColor(r.status)" color="var(--color-neutral-07)">
-                  {{ r.status }}
+                <status-badge [variant]="statusMeta(r.status).variant">
+                  {{ statusMeta(r.status).label }}
                 </status-badge>
               </td>
               <td class="actions">
@@ -139,7 +128,7 @@ export default class AdminReturns implements OnInit {
   private readonly confirmService = inject(AdminConfirmService);
 
   protected readonly statusOptions = STATUS_OPTIONS;
-  protected readonly statusColor = statusColor;
+  protected readonly statusMeta = returnStatusMeta;
 
   protected readonly returns = signal<ReturnDto[]>([]);
   protected readonly total = signal(0);

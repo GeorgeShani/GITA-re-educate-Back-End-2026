@@ -134,7 +134,7 @@ async function main(): Promise<void> {
     const doc = await PostCategoryModel.findOneAndUpdate(
       { slug: seed.slug },
       { name: seed.name, slug: seed.slug },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     ).exec();
     categoryIdBySlug.set(seed.slug, withId(doc)._id);
   }
@@ -145,7 +145,7 @@ async function main(): Promise<void> {
     const doc = await TagModel.findOneAndUpdate(
       { name },
       { name },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     ).exec();
     tagIdByName.set(name, withId(doc)._id);
   }
@@ -183,7 +183,7 @@ async function main(): Promise<void> {
           tagIds,
           publishedAt,
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
       ).exec();
       succeeded++;
     } catch (error) {
@@ -205,7 +205,7 @@ async function main(): Promise<void> {
         seoTitle: seed.seoTitle,
         seoDescription: seed.seoDescription,
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     ).exec();
   }
   console.log(`Done. ${PAGE_SEEDS.length}/${PAGE_SEEDS.length} pages seeded.`);

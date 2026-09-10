@@ -43,13 +43,20 @@ export class CategoriesService {
    * path prefix — SCOPE.md Phase 3 ($graphLookup is the documented
    * fallback if this ever falls short). Used for "show products in this
    * category, including subcategories."
+   *
+   * Accepts either an ObjectId or a slug: storefront URLs carry the slug
+   * (`/shop?category=gloves`) so they stay readable and shareable, and a
+   * bare `findById` on a slug throws a CastError (→ 500). An unknown
+   * value is a client mistake, so it's a 404, not a crash.
    */
   async findSelfAndDescendantIds(
-    categoryId: string,
+    idOrSlug: string,
   ): Promise<Types.ObjectId[]> {
-    const category = await this.categoryModel.findById(categoryId).exec();
+    const category = Types.ObjectId.isValid(idOrSlug)
+      ? await this.categoryModel.findById(idOrSlug).exec()
+      : await this.categoryModel.findOne({ slug: idOrSlug }).exec();
     if (!category) {
-      throw new NotFoundException(`Category with id ${categoryId} not found`);
+      throw new NotFoundException(`Category "${idOrSlug}" not found`);
     }
 
     const descendants = await this.categoryModel

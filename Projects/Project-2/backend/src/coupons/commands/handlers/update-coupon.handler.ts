@@ -65,6 +65,7 @@ export class UpdateCouponHandler
           coupon.startsAt = new Date(dto.startsAt);
         if (dto.endsAt !== undefined) coupon.endsAt = new Date(dto.endsAt);
         if (dto.isActive !== undefined) coupon.isActive = dto.isActive;
+        if (dto.isFeatured !== undefined) coupon.isFeatured = dto.isFeatured;
 
         await coupon.save({ session });
 

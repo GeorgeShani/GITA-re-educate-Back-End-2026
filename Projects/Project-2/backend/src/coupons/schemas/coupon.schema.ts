@@ -49,6 +49,13 @@ export class Coupon {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  // Drives the one storefront-wide promo banner (home.ts's sale-banner)
+  // — at most one coupon should carry this at a time, but nothing
+  // enforces that at the schema level; CouponsService.findFeatured()
+  // just takes the most recent match if more than one is ever set.
+  @Prop({ default: false })
+  isFeatured!: boolean;
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);

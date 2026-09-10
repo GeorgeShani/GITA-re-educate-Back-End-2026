@@ -1,6 +1,7 @@
 import { Component, inject, input } from '@angular/core';
 
 import { ContentPagesService } from '@/app/core/services/content-pages.service';
+import NotFound from '@/app/features/not-found/not-found';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
@@ -9,30 +10,33 @@ import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 /**
  * Static CMS pages (about, shipping, returns, privacy, terms, FAQ) — one
  * component for all of them, since they're all just a title + rich body.
- * No admin UI exists for these (page.schema.ts: seeded directly), and
- * that's by design, not a gap this component needs to work around.
+ * Bound to the root-level `:slug` route, so it's also the effective
+ * catch-all for any unknown single-segment path: an unresolved slug 404s
+ * from the API and this renders the real not-found page.
  */
 @Component({
   selector: 'content-page',
-  imports: [RevealDirective, PageContainer, PageSection, SkeletonBlock],
+  imports: [RevealDirective, PageContainer, PageSection, SkeletonBlock, NotFound],
   template: `
-    <page-section spacing="md">
-      <page-container>
-        @if (page.isLoading()) {
-          <div class="loading" reveal>
-            <skeleton-block height="40px" width="280px" />
-            <skeleton-block height="20px" width="100%" />
-            <skeleton-block height="20px" width="90%" />
-            <skeleton-block height="20px" width="95%" />
-          </div>
-        } @else if (page.error()) {
-          <p class="message" reveal>This page couldn't be found.</p>
-        } @else if (page.value(); as p) {
-          <h1 reveal>{{ p.title }}</h1>
-          <div class="body" reveal [innerHTML]="p.body"></div>
-        }
-      </page-container>
-    </page-section>
+    @if (page.error()) {
+      <not-found-page />
+    } @else {
+      <page-section spacing="md">
+        <page-container>
+          @if (page.isLoading()) {
+            <div class="loading" reveal>
+              <skeleton-block height="40px" width="280px" />
+              <skeleton-block height="20px" width="100%" />
+              <skeleton-block height="20px" width="90%" />
+              <skeleton-block height="20px" width="95%" />
+            </div>
+          } @else if (page.value(); as p) {
+            <h1 reveal>{{ p.title }}</h1>
+            <div class="body" reveal [innerHTML]="p.body"></div>
+          }
+        </page-container>
+      </page-section>
+    }
   `,
   styles: `
     @use 'styles/typography' as type;
@@ -48,11 +52,6 @@ import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
       @include type.headline-4;
       margin: 0 0 var(--space-8);
       color: var(--color-neutral-07);
-    }
-
-    .message {
-      @include type.body-2;
-      color: var(--color-neutral-04);
     }
 
     /* Same ::ng-deep rationale as blog-post.ts — [innerHTML] content never
@@ -86,7 +85,7 @@ import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
       }
 
       ::ng-deep a {
-        color: var(--color-neutral-07);
+        color: var(--color-info-text);
         text-decoration: underline;
       }
 

@@ -301,7 +301,7 @@ export const PAGE_SEEDS: PageSeed[] = [
     seoDescription: 'Answers to the questions we get asked most often.',
     body: `
       <h2>Ordering</h2>
-      <p><strong>Do I need an account to order?</strong> No — guest checkout is available. Creating an account lets you track orders, save addresses, and request returns more easily.</p>
+      <p><strong>Do I need an account to order?</strong> Yes — a free account keeps your order history, saved addresses, and returns in one place, and takes under a minute to set up at checkout.</p>
       <p><strong>Can I change or cancel an order after placing it?</strong> Contact us as soon as possible after ordering. Once an order has shipped, it can no longer be changed or cancelled — you're welcome to request a return instead.</p>
       <h2>Shipping</h2>
       <p><strong>How do I track my order?</strong> You'll receive a tracking link by email once your order ships, and you can also view tracking from your <a href="/account/orders">order history</a> at any time.</p>

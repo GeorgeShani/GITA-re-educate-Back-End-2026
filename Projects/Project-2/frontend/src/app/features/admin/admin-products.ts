@@ -525,7 +525,7 @@ export default class AdminProducts implements OnInit {
       })),
       variants: product.variants.map((v) => ({
         sku: v.sku,
-        attributesText: Object.entries(v.attributes)
+        attributesText: Object.entries(v.attributes ?? {})
           .map(([k, val]) => `${k}:${val}`)
           .join(', '),
         priceDollars: v.priceMinor ? (v.priceMinor / 100).toString() : '',

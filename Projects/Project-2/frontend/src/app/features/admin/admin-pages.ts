@@ -48,7 +48,7 @@ const EMPTY_FORM: PageFormModel = { title: '', slug: '', body: '', seoTitle: '',
           @for (p of pages(); track p.id) {
             <tr>
               <td>{{ p.title }}</td>
-              <td>/pages/{{ p.slug }}</td>
+              <td>/{{ p.slug }}</td>
               <td class="actions">
                 <button type="button" (click)="startEdit(p)">Edit</button>
                 <button type="button" class="danger" (click)="remove(p)">Delete</button>
@@ -68,7 +68,7 @@ const EMPTY_FORM: PageFormModel = { title: '', slug: '', body: '', seoTitle: '',
       (save)="save()"
     >
       <text-field label="Title" [value]="form().title" (valueChange)="patch({ title: $event })" />
-      <text-field label="Slug" [value]="form().slug" (valueChange)="patch({ slug: $event })" hint="Public URL is /pages/<slug>" />
+      <text-field label="Slug" [value]="form().slug" (valueChange)="patch({ slug: $event })" hint="Public URL is /<slug>" />
       <textarea-field label="Body (HTML)" [value]="form().body" (valueChange)="patch({ body: $event })" />
       <text-field label="SEO title (optional)" [value]="form().seoTitle" (valueChange)="patch({ seoTitle: $event })" />
       <text-field label="SEO description (optional)" [value]="form().seoDescription" (valueChange)="patch({ seoDescription: $event })" />

@@ -5,6 +5,8 @@ import { Router, RouterLink } from '@angular/router';
 import type { PostQuery } from '@/app/core/api/dto';
 import { BlogService } from '@/app/core/services/blog.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { ActionButton } from '@/app/shared/ui/action-button';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageContainer } from '@/app/shared/ui/page-container';
 import { PageSection } from '@/app/shared/ui/page-section';
 import { PaginationNav } from '@/app/shared/ui/pagination-nav';
@@ -22,7 +24,7 @@ const TAKE = 9;
  */
 @Component({
   selector: 'blog-list-page',
-  imports: [RouterLink, DatePipe, NgOptimizedImage, RevealDirective, PageContainer, PageSection, PaginationNav, SkeletonBlock],
+  imports: [RouterLink, DatePipe, NgOptimizedImage, RevealDirective, ActionButton, EmptyState, PageContainer, PageSection, PaginationNav, SkeletonBlock],
   template: `
     <page-section spacing="md">
       <page-container>
@@ -79,9 +81,13 @@ const TAKE = 9;
                 }
               </div>
             } @else if (posts.error()) {
-              <p class="message">Could not load the journal right now.</p>
+              <empty-state message="Could not load the journal right now." icon="triangle-alert">
+                <action-button action variant="secondary" size="s" (click)="posts.reload()">
+                  Try again
+                </action-button>
+              </empty-state>
             } @else if (items().length === 0) {
-              <p class="message">No posts match those filters.</p>
+              <empty-state message="No posts match those filters." icon="search" />
             } @else {
               <div class="grid">
                 @for (post of items(); track post.id) {

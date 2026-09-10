@@ -4,6 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 
 import { CoreModule } from '@/core/core.module';
 import { AdminCouponsController } from './admin-coupons.controller';
+import { CouponsController } from './coupons.controller';
 import { CreateCouponHandler } from './commands/handlers/create-coupon.handler';
 import { UpdateCouponHandler } from './commands/handlers/update-coupon.handler';
 import { CouponsService } from './coupons.service';
@@ -28,7 +29,7 @@ const COMMAND_HANDLERS = [CreateCouponHandler, UpdateCouponHandler];
       { name: CouponRedemption.name, schema: CouponRedemptionSchema },
     ]),
   ],
-  controllers: [AdminCouponsController],
+  controllers: [AdminCouponsController, CouponsController],
   providers: [CouponsService, ...COMMAND_HANDLERS],
 })
 export class CouponsModule {}

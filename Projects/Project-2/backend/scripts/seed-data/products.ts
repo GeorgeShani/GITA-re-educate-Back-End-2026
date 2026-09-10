@@ -70,6 +70,21 @@ function packSize(prefix: string, values: string[]): VariantSeed[] {
   }));
 }
 
+// compression is a real SCOPE.md A8 variant attribute nothing used until
+// this pass — every existing ball entry only varied by packSize.
+function compressionAndPack(
+  prefix: string,
+  compressions: string[],
+  packSizes: string[],
+): VariantSeed[] {
+  return compressions.flatMap((compression) =>
+    packSizes.map((packSizeValue) => ({
+      sku: `${prefix}-C${compression}-${packSizeValue.replace(/\s+/g, '')}`,
+      attributes: { compression, packSize: packSizeValue },
+    })),
+  );
+}
+
 // --- The catalog. Real, well-known golf brands throughout — same
 // convention the original 3legant template used (its own fixtures
 // named Callaway/G-FORE/Air Jordan). ~80 products across every SCOPE.md
@@ -990,5 +1005,421 @@ export const PRODUCT_SEEDS: ProductSeed[] = [
     tags: ['cooling', 'towel'],
     imageQuery: 'cooling towel sports hot',
     variants: colors('COOL-TOWEL', ['Black', 'Blue']),
+  },
+
+  // --- F12 expansion: more depth in every existing category, no new
+  // categories (SCOPE.md A8's list is a locked decision, not a gap).
+
+  // More Gloves
+  {
+    name: 'WeatherSof Glove 3-Pack',
+    slug: 'footjoy-weathersof-glove-3-pack',
+    brand: 'FootJoy',
+    description:
+      'A value 3-pack of the best-selling all-weather glove on tour, synthetic leather that holds up in heat and humidity.',
+    categorySlug: 'gloves',
+    basePriceMinor: 3999,
+    tags: ['synthetic', 'value', 'pack'],
+    imageQuery: 'golf glove pair table',
+    variants: handAndSize('WEATHERSOF'),
+  },
+  {
+    name: 'Tour Preferred Glove',
+    slug: 'taylormade-tour-preferred-glove',
+    brand: 'TaylorMade',
+    description:
+      'Genuine cabretta leather with a perforated palm for a tour-level grip in the heat.',
+    categorySlug: 'gloves',
+    basePriceMinor: 2299,
+    tags: ['leather', 'tour', 'perforated'],
+    imageQuery: 'leather glove golfer swing',
+    variants: handAndSize('TM-TOURPREF'),
+  },
+  {
+    name: 'ThermaGrip Winter Glove Pair',
+    slug: 'srixon-thermagrip-winter-glove-pair',
+    brand: 'Srixon',
+    description:
+      'Fleece-lined pair built to keep hands warm and grip intact on cold-morning tee times.',
+    categorySlug: 'gloves',
+    basePriceMinor: 2999,
+    tags: ['winter', 'fleece', 'pair'],
+    imageQuery: 'winter gloves fleece cold hands',
+    variants: sizes('THERMAGRIP', ['S', 'M', 'L', 'XL']),
+  },
+
+  // More Golf Balls — compression finally used, per SCOPE.md A8.
+  {
+    name: 'Tour B X Golf Balls',
+    slug: 'bridgestone-tour-b-x-golf-balls',
+    brand: 'Bridgestone',
+    description:
+      'A firmer-compression tour ball built for faster swing speeds, with a REACTIV cover for tour-level spin.',
+    categorySlug: 'golf-balls',
+    basePriceMinor: 4999,
+    tags: ['tour', 'firm', 'dozen'],
+    imageQuery: 'golf ball sleeve unboxing',
+    variants: compressionAndPack('TOURBX', ['High'], ['1 dozen']),
+  },
+  {
+    name: 'AVX Golf Balls',
+    slug: 'titleist-avx-golf-balls',
+    brand: 'Titleist',
+    description:
+      'A lower-flight, softer-feel alternative to the Pro V1 line, with more greenside spin at moderate swing speeds.',
+    categorySlug: 'golf-balls',
+    basePriceMinor: 5299,
+    tags: ['tour', 'soft', 'dozen'],
+    imageQuery: 'golf ball logo closeup',
+    variants: compressionAndPack('AVX', ['Low'], ['1 dozen']),
+  },
+  {
+    name: 'Supersoft Golf Balls',
+    slug: 'callaway-supersoft-golf-balls',
+    brand: 'Callaway',
+    description:
+      "The lowest-compression ball in Callaway's lineup, built for maximum distance at any swing speed.",
+    categorySlug: 'golf-balls',
+    basePriceMinor: 2799,
+    tags: ['soft', 'distance', 'dozen'],
+    imageQuery: 'golf balls basket range',
+    variants: compressionAndPack('SUPERSOFT', ['Low'], ['1 dozen', '2 dozen']),
+  },
+  {
+    name: 'Q-Star Tour Golf Balls',
+    slug: 'srixon-q-star-tour-golf-balls',
+    brand: 'Srixon',
+    description:
+      'A urethane cover at a mid-tier price — tour-level short-game spin without the tour-ball cost.',
+    categorySlug: 'golf-balls',
+    basePriceMinor: 3799,
+    tags: ['urethane', 'value', 'dozen'],
+    imageQuery: 'golf ball hand hold',
+    variants: packSize('QSTARTOUR', ['1 dozen']),
+  },
+
+  // More Tees
+  {
+    name: 'Martini Tees',
+    slug: 'martini-golf-tees',
+    brand: 'Martini',
+    description:
+      'A patented flared design that reduces friction and adds distance versus a standard wooden tee.',
+    categorySlug: 'tees',
+    basePriceMinor: 1099,
+    tags: ['low-friction', 'distance', 'pack'],
+    imageQuery: 'golf tee flared design',
+    variants: sizes('MARTINI-TEE', ['2.75in', '3.25in']),
+  },
+  {
+    name: '4 Yards More Tees',
+    slug: '4-yards-more-golf-tees',
+    brand: '4 Yards More',
+    description:
+      "A reduced-surface-contact head shape that's claimed and independently tested for real distance gains.",
+    categorySlug: 'tees',
+    basePriceMinor: 999,
+    tags: ['distance', 'tested', 'pack'],
+    imageQuery: 'golf tee bucket range balls',
+    variants: single('4YM-TEE-40'),
+  },
+
+  // More Headcovers
+  {
+    name: 'Hybrid Headcover',
+    slug: 'hybrid-headcover',
+    brand: 'Titleist',
+    description:
+      'A snug-fit cover sized specifically for hybrid heads, not a loose fairway cover stretched to fit.',
+    categorySlug: 'headcovers',
+    basePriceMinor: 2699,
+    tags: ['hybrid', 'fit'],
+    imageQuery: 'hybrid club cover golf bag',
+    variants: colors('HYBRID-COVER', ['Black', 'Grey']),
+  },
+  {
+    name: 'Alignment Blade Putter Headcover',
+    slug: 'scotty-cameron-style-blade-putter-headcover',
+    brand: 'Odyssey',
+    description:
+      'A magnetic-closure blade cover with a built-in alignment stripe for a quick pre-shot check.',
+    categorySlug: 'headcovers',
+    basePriceMinor: 3299,
+    tags: ['putter', 'alignment'],
+    imageQuery: 'putter cover magnetic golf',
+    variants: colors('ALIGN-BLADE', ['Black', 'White']),
+  },
+  {
+    name: 'Numbered Fairway Headcover Set',
+    slug: 'numbered-fairway-headcover-set',
+    brand: 'PING',
+    description:
+      'A matching 3-piece set, numbered for 3-, 5-, and 7-wood so the right cover is never a guess.',
+    categorySlug: 'headcovers',
+    basePriceMinor: 4799,
+    tags: ['fairway', 'numbered', 'set'],
+    imageQuery: 'golf club covers numbered bag',
+    variants: single('NUM-FW-SET'),
+  },
+
+  // More Towels
+  {
+    name: 'Sport Cooling Towel',
+    slug: 'nike-sport-cooling-towel',
+    brand: 'Nike Golf',
+    description:
+      'A lightweight microfiber towel that stays cool to the touch through a full 18.',
+    categorySlug: 'towels',
+    basePriceMinor: 1399,
+    tags: ['cooling', 'microfiber'],
+    imageQuery: 'sports towel around neck',
+    variants: colors('NIKE-COOL-TOWEL', ['Black', 'Grey']),
+  },
+  {
+    name: 'Waffle Towel XL',
+    slug: 'taylormade-waffle-towel-xl',
+    brand: 'TaylorMade',
+    description:
+      'An oversized waffle-weave towel for golfers who want more surface than a standard tour towel.',
+    categorySlug: 'towels',
+    basePriceMinor: 2299,
+    tags: ['waffle', 'oversized'],
+    imageQuery: 'golf towel large bag hanging',
+    variants: single('TM-WAFFLE-XL'),
+  },
+
+  // More Bags
+  {
+    name: 'Sunday Carry Bag',
+    slug: 'sunday-carry-bag',
+    brand: 'Jones Golf Bags',
+    description:
+      'A minimalist single-strap bag for a quick nine with half a set — no stand, no frills.',
+    categorySlug: 'bags',
+    basePriceMinor: 12999,
+    tags: ['sunday', 'minimalist', 'carry'],
+    imageQuery: 'golf sunday bag minimal',
+    variants: colors('SUNDAY-BAG', ['Tan', 'Black', 'Navy']),
+  },
+  {
+    name: 'Junior Stand Bag',
+    slug: 'us-kids-junior-stand-bag',
+    brand: 'U.S. Kids Golf',
+    description:
+      'A scaled-down stand bag sized for junior clubs, light enough for a kid to carry all round.',
+    categorySlug: 'bags',
+    basePriceMinor: 8999,
+    tags: ['junior', 'lightweight', 'stand'],
+    imageQuery: 'junior golf bag kids course',
+    variants: colors('JR-STAND', ['Blue', 'Pink', 'Red']),
+  },
+  {
+    name: 'Lightweight Pencil Bag',
+    slug: 'sun-mountain-lightweight-pencil-bag',
+    brand: 'Sun Mountain',
+    description:
+      'A slim, no-frills carry bag for practice rounds and the range — barely more than a shaft holder.',
+    categorySlug: 'bags',
+    basePriceMinor: 6999,
+    tags: ['pencil', 'lightweight', 'practice'],
+    imageQuery: 'slim golf bag range practice',
+    variants: colors('PENCIL-BAG', ['Black', 'Charcoal']),
+  },
+
+  // More Rangefinders & GPS
+  {
+    name: 'Approach Z30 Handheld GPS',
+    slug: 'garmin-approach-z30-handheld-gps',
+    brand: 'Garmin',
+    description:
+      'Projects yardages and hazard lines directly onto the ground with laser precision.',
+    categorySlug: 'rangefinders-gps',
+    basePriceMinor: 39999,
+    tags: ['gps', 'laser', 'projection'],
+    imageQuery: 'golf gps projector device green',
+    isFeatured: true,
+    variants: single('GARMIN-Z30'),
+  },
+  {
+    name: 'Voice+ 2 GPS Speaker',
+    slug: 'golfbuddy-voice-plus-2-gps-speaker',
+    brand: 'GolfBuddy',
+    description:
+      'Clips to the bag and calls out yardages out loud — no screen to check mid-swing-thought.',
+    categorySlug: 'rangefinders-gps',
+    basePriceMinor: 14999,
+    tags: ['gps', 'voice', 'clip'],
+    variants: single('GB-VOICE2'),
+    imageQuery: 'golf gps speaker clip bag',
+  },
+
+  // More Apparel
+  {
+    name: 'Frostguard Insulated Jacket',
+    slug: 'footjoy-frostguard-insulated-jacket',
+    brand: 'FootJoy',
+    description:
+      'A full-zip insulated jacket built for cold-weather rounds without restricting the backswing.',
+    categorySlug: 'apparel',
+    basePriceMinor: 15999,
+    tags: ['jacket', 'insulated', 'winter'],
+    imageQuery: 'golf jacket winter course walking',
+    variants: colorAndSize(
+      'FROSTJKT',
+      ['Black', 'Navy'],
+      ['S', 'M', 'L', 'XL'],
+    ),
+  },
+  {
+    name: 'Reversible Leather Belt',
+    slug: 'nike-reversible-leather-belt',
+    brand: 'Nike Golf',
+    description:
+      'A two-in-one belt — flip it for black or brown, one buckle for both.',
+    categorySlug: 'apparel',
+    basePriceMinor: 4499,
+    tags: ['belt', 'leather', 'reversible'],
+    imageQuery: 'leather belt golf accessory',
+    variants: sizes('BELT', ['32', '34', '36', '38', '40']),
+  },
+  {
+    name: 'Crew Performance Socks 3-Pack',
+    slug: 'footjoy-crew-performance-socks-3-pack',
+    brand: 'FootJoy',
+    description:
+      'Moisture-wicking crew socks with cushioned zones at the heel and forefoot.',
+    categorySlug: 'apparel',
+    basePriceMinor: 2499,
+    tags: ['socks', 'pack', 'moisture-wicking'],
+    imageQuery: 'athletic socks pair folded',
+    variants: sizes('SOCKS-CREW', ['M', 'L']),
+  },
+  {
+    name: 'Mock Neck Golf Shirt',
+    slug: 'adidas-mock-neck-golf-shirt',
+    brand: 'Adidas',
+    description:
+      'A modern mock-neck cut in four-way stretch fabric — no collar to fight with under a pullover.',
+    categorySlug: 'apparel',
+    basePriceMinor: 7499,
+    tags: ['mock-neck', 'stretch'],
+    imageQuery: 'golf shirt mock neck course',
+    variants: colorAndSize(
+      'MOCKNECK',
+      ['Black', 'White', 'Grey'],
+      ['S', 'M', 'L', 'XL'],
+    ),
+  },
+  {
+    name: 'Warm-Up Joggers',
+    slug: 'puma-warm-up-joggers',
+    brand: 'Puma Golf',
+    description:
+      'Tapered, stretch-woven joggers for the range and the walk to the first tee.',
+    categorySlug: 'apparel',
+    basePriceMinor: 7999,
+    tags: ['joggers', 'stretch', 'tapered'],
+    imageQuery: 'golf joggers pants walking',
+    variants: colorAndSize('JOGGERS', ['Black', 'Grey'], ['S', 'M', 'L', 'XL']),
+  },
+  {
+    name: 'Structured Visor',
+    slug: 'titleist-structured-visor',
+    brand: 'Titleist',
+    description:
+      'An adjustable-strap visor for golfers who want sun coverage without hat hair.',
+    categorySlug: 'apparel',
+    basePriceMinor: 2799,
+    tags: ['visor', 'adjustable'],
+    imageQuery: 'golf visor sun course',
+    variants: colors('VISOR', ['White', 'Navy', 'Black']),
+  },
+
+  // More Training Aids
+  {
+    name: 'Putting Alignment Mirror',
+    slug: 'eyeline-putting-alignment-mirror',
+    brand: 'EyeLine Golf',
+    description:
+      'A full-length mirror that shows eye position, ball position, and stroke path all at once.',
+    categorySlug: 'training-aids',
+    basePriceMinor: 4999,
+    tags: ['putting', 'mirror', 'alignment'],
+    imageQuery: 'putting mirror practice green',
+    variants: single('PUTT-MIRROR'),
+  },
+  {
+    name: 'Speed Training Sticks Set',
+    slug: 'sklz-speed-training-sticks-set',
+    brand: 'SKLZ',
+    description:
+      'A graduated 3-stick set that trains faster swing speed through overspeed training.',
+    categorySlug: 'training-aids',
+    basePriceMinor: 14999,
+    tags: ['speed', 'overspeed', 'set'],
+    imageQuery: 'golf swing speed training stick',
+    variants: single('SPEED-STICKS'),
+  },
+
+  // More Accessories
+  {
+    name: 'Tee & Marker Pouch',
+    slug: '3legant-tee-marker-pouch',
+    brand: '3legant Golf',
+    description:
+      'A magnetic-snap leather pouch that clips to the bag and keeps tees and markers from rattling loose.',
+    categorySlug: 'accessories',
+    basePriceMinor: 1899,
+    tags: ['pouch', 'leather', 'organizer'],
+    imageQuery: 'small leather pouch golf bag',
+    variants: colors('TEE-POUCH', ['Black', 'Brown']),
+  },
+  {
+    name: 'GPS Watch Silicone Band',
+    slug: 'garmin-gps-watch-silicone-band',
+    brand: 'Garmin',
+    description:
+      'A replacement sport band compatible with Garmin Approach GPS watches.',
+    categorySlug: 'accessories',
+    basePriceMinor: 1999,
+    tags: ['band', 'silicone', 'watch'],
+    imageQuery: 'silicone watch band sport',
+    variants: colors('GARMIN-BAND', ['Black', 'Blue', 'Grey']),
+  },
+  {
+    name: 'Scorecard Pencils 12-Pack',
+    slug: '3legant-scorecard-pencils-12-pack',
+    brand: '3legant Golf',
+    description:
+      'Pre-sharpened, half-length pencils sized to fit any scorecard holder.',
+    categorySlug: 'accessories',
+    basePriceMinor: 599,
+    tags: ['pencils', 'pack'],
+    imageQuery: 'small pencils golf scorecard',
+    variants: single('PENCILS-12'),
+  },
+  {
+    name: 'Bag Rain Cover',
+    slug: '3legant-bag-rain-cover',
+    brand: '3legant Golf',
+    description:
+      'A packable, elasticated cover that keeps a full bag dry through a sudden downpour.',
+    categorySlug: 'accessories',
+    basePriceMinor: 2999,
+    tags: ['rain', 'cover', 'protection'],
+    imageQuery: 'golf bag rain cover course',
+    variants: single('RAIN-COVER'),
+  },
+  {
+    name: 'Yardage Distance Wheel',
+    slug: '3legant-yardage-distance-wheel',
+    brand: '3legant Golf',
+    description:
+      'A compact clip-on wheel calculator for club selection when a rangefinder is overkill.',
+    categorySlug: 'accessories',
+    basePriceMinor: 899,
+    tags: ['yardage', 'calculator'],
+    imageQuery: 'golf club distance chart',
+    variants: single('DIST-WHEEL'),
   },
 ];

@@ -44,6 +44,25 @@ export class CatalogService {
     }));
   }
 
+  /**
+   * Search results for `/search`. Separate from `productsResource` because
+   * search has different defaults: an empty `q` keeps the resource idle
+   * (no request, no empty grid), and an unset `sort` means "let the API
+   * rank by relevance" rather than falling back to `newest`.
+   */
+  searchResource(
+    query: () => { q: string } & Pick<ProductQuery, 'page' | 'take' | 'sort' | 'order'>,
+  ) {
+    return httpResource<Paginated<ProductDto>>(() => {
+      const { q, ...rest } = query();
+      if (!q.trim()) return undefined;
+      return {
+        url: `${this.baseUrl}/products`,
+        params: toHttpParams({ q: q.trim(), ...rest }),
+      };
+    });
+  }
+
   productResource(slug: () => string | undefined) {
     return httpResource<ProductDto>(() => {
       const value = slug();

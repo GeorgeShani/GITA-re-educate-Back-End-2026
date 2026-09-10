@@ -146,7 +146,7 @@ const ASSURANCES = [
                 [revealIndex]="i"
                 [revealStagger]="60"
                 [routerLink]="['/shop']"
-                [queryParams]="{ category: category.id }"
+                [queryParams]="{ category: category.slug }"
               >
                 @if (category.imageUrl) {
                   <img [ngSrc]="category.imageUrl" [alt]="''" fill />
@@ -189,8 +189,14 @@ const ASSURANCES = [
     // fixed floor and only tablet-up approaches the Figma proportion.
     .hero {
       position: relative;
-      display: grid;
-      align-items: center;
+      // Flex column, not grid: as a grid item, page-container's own
+      // margin-inline:auto shrink-wrapped it to content width and centred
+      // it, so the headline sat ~300px right of the page gutter every
+      // other section aligns to. As a stretched flex item it fills the
+      // band and its max-width + auto margins behave like everywhere else.
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
       min-height: 560px;
       padding-block: calc(var(--space-10) * 2) var(--space-10);
       overflow: hidden;
@@ -199,6 +205,14 @@ const ASSURANCES = [
       @include bp.tablet-up {
         min-height: 760px;
       }
+    }
+
+    // An explicit width stops page-container's own margin-inline:auto from
+    // disabling flex stretch (auto cross-axis margins otherwise shrink-wrap
+    // it). The auto margins still centre it on viewports wider than its
+    // max-width, exactly as they do inside a page-section elsewhere.
+    .hero page-container {
+      width: 100%;
     }
 
     .hero-image {
@@ -348,7 +362,9 @@ const ASSURANCES = [
       grid-template-columns: repeat(2, minmax(0, 1fr));
 
       @include bp.tablet-up {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        // 10 categories — 5 across leaves two full rows instead of a
+        // ragged 4 + 4 + 2.
+        grid-template-columns: repeat(5, minmax(0, 1fr));
       }
     }
 

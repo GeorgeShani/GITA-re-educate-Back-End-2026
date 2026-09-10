@@ -1,14 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import {
-  IsBoolean,
-  IsIn,
-  IsInt,
-  IsMongoId,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 import { PaginationQueryDto } from '@/common/dto/pagination-query.dto';
 
@@ -20,9 +12,11 @@ export class FindProductsDto extends PaginationQueryDto {
   @IsString()
   q?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Category ObjectId or slug — both are accepted',
+  })
   @IsOptional()
-  @IsMongoId()
+  @IsString()
   category?: string;
 
   @ApiPropertyOptional()

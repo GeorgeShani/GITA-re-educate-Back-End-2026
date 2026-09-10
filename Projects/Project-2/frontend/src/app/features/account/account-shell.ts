@@ -104,10 +104,17 @@ const NAV_ITEMS: AccountNavItem[] = [
         background: var(--color-neutral-03);
       }
 
+      // Solid inverted pill for the selected item — the same active
+      // treatment the shop and blog filter lists use, so "this is
+      // selected" reads the same across every left-hand nav.
       &.active {
         @include type.body-2-semi;
-        background: var(--color-white);
-        color: var(--color-neutral-07);
+        background: var(--color-neutral-07);
+        color: var(--color-neutral-01);
+      }
+
+      &.active:hover {
+        background: var(--color-neutral-07);
       }
     }
 

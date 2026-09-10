@@ -30,6 +30,11 @@ export const routes: Routes = [
     title: 'Product — 3legant Golf',
   },
   {
+    path: 'search',
+    loadComponent: () => import('@/app/features/search/search'),
+    title: 'Search — 3legant Golf',
+  },
+  {
     path: 'sign-in',
     loadComponent: () => import('@/app/features/auth/sign-in'),
     title: 'Sign in — 3legant Golf',
@@ -138,11 +143,6 @@ export const routes: Routes = [
     path: 'blog/:slug',
     loadComponent: () => import('@/app/features/blog/blog-post'),
     title: 'Journal — 3legant Golf',
-  },
-  {
-    path: 'pages/:slug',
-    loadComponent: () => import('@/app/features/pages/content-page'),
-    title: '3legant Golf',
   },
   {
     path: 'contact',
@@ -292,6 +292,16 @@ export const routes: Routes = [
     canActivate: [devOnlyGuard],
     loadComponent: () => import('@/app/features/styleguide/styleguide').then((m) => m.Styleguide),
     title: 'Style Guide',
+  },
+  // CMS pages (about, faq, privacy, terms, shipping, returns) sit at the
+  // root — `/about`, not `/pages/about`. Must stay second-to-last: a
+  // single-segment `:slug` would otherwise shadow every route above it.
+  // An unknown slug 404s from the API and the component renders the
+  // not-found page, so `**` below only catches multi-segment garbage.
+  {
+    path: ':slug',
+    loadComponent: () => import('@/app/features/pages/content-page'),
+    title: '3legant Golf',
   },
   {
     path: '**',

@@ -35,6 +35,7 @@ interface CouponFormModel {
   startsAt: string;
   endsAt: string;
   isActive: boolean;
+  isFeatured: boolean;
 }
 
 const EMPTY_FORM: CouponFormModel = {
@@ -48,6 +49,7 @@ const EMPTY_FORM: CouponFormModel = {
   startsAt: new Date().toISOString().slice(0, 10),
   endsAt: '',
   isActive: true,
+  isFeatured: false,
 };
 
 @Component({
@@ -85,6 +87,11 @@ const EMPTY_FORM: CouponFormModel = {
                 <status-badge variant="custom" [background]="c.isActive ? 'var(--color-success)' : 'var(--color-neutral-03)'" color="var(--color-neutral-07)">
                   {{ c.isActive ? 'Active' : 'Inactive' }}
                 </status-badge>
+                @if (c.isFeatured) {
+                  <status-badge variant="custom" background="var(--color-info)" color="var(--color-white)">
+                    Featured
+                  </status-badge>
+                }
               </td>
               <td><button type="button" (click)="startEdit(c)">Edit</button></td>
             </tr>
@@ -116,6 +123,11 @@ const EMPTY_FORM: CouponFormModel = {
       <text-field label="Ends at (optional)" type="text" [value]="form().endsAt" (valueChange)="patch({ endsAt: $event })" hint="YYYY-MM-DD" />
       <checkbox-field label="Allow stacking with other coupons" [checked]="form().allowStacking" (checkedChange)="patch({ allowStacking: $event })" />
       <checkbox-field label="Active" [checked]="form().isActive" (checkedChange)="patch({ isActive: $event })" />
+      <checkbox-field
+        label="Featured — drives the storefront sale banner"
+        [checked]="form().isFeatured"
+        (checkedChange)="patch({ isFeatured: $event })"
+      />
     </drawer-form>
   `,
   styles: `
@@ -184,6 +196,7 @@ export default class AdminCoupons implements OnInit {
       startsAt: coupon.startsAt.slice(0, 10),
       endsAt: coupon.endsAt?.slice(0, 10) ?? '',
       isActive: coupon.isActive,
+      isFeatured: coupon.isFeatured,
     });
     this.formOpen.set(true);
   }
@@ -209,6 +222,7 @@ export default class AdminCoupons implements OnInit {
       startsAt: new Date(value.startsAt).toISOString(),
       endsAt: value.endsAt ? new Date(value.endsAt).toISOString() : undefined,
       isActive: value.isActive,
+      isFeatured: value.isFeatured,
     };
 
     this.saving.set(true);

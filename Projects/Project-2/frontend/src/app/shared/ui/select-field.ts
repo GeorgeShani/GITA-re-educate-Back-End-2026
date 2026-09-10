@@ -116,7 +116,10 @@ interface OptionAdapter extends Highlightable {
       height: var(--field-height, 48px);
       padding: 0 16px;
       border-radius: var(--radius-lg);
-      box-shadow: inset 0 0 0 2px var(--color-border-input);
+      // SCOPE.md A5: the dropdown control's resting border is 2px
+      // --color-neutral-04. Was --color-border-input (the lighter
+      // text-input token), which at 2px read as a permanent focus ring.
+      box-shadow: inset 0 0 0 2px var(--color-neutral-04);
       background: var(--color-white);
       transition: box-shadow var(--duration-fast) var(--ease-out);
     }

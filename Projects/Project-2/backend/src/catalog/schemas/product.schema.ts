@@ -149,3 +149,17 @@ export const ProductSchema = SchemaFactory.createForClass(Product);
 // gotcha #6) — this one is for plain equality/range filtering, not
 // full-text search.
 ProductSchema.index({ categoryId: 1, publishedAt: 1 });
+
+// Full-text index backing MongoTextSearchProvider (the default
+// SearchProvider until SEARCH_PROVIDER=atlas). `weights` reproduce Atlas
+// Search's name > brand > description > tags boosting so both providers
+// rank results the same way. MongoDB allows only one $text index per
+// collection, so this is deliberately the only one.
+ProductSchema.index(
+  { name: 'text', brand: 'text', description: 'text', tags: 'text' },
+  {
+    name: 'product_text',
+    weights: { name: 10, brand: 6, description: 3, tags: 2 },
+    default_language: 'english',
+  },
+);

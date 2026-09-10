@@ -127,6 +127,9 @@ export interface ProductCardProduct {
     .product-card__image {
       aspect-ratio: 262 / 349;
       width: 100%;
+      // Product photos aren't all the 3:4 the card slot is — cover-crop
+      // rather than stretch them into it.
+      object-fit: cover;
       transition: transform var(--duration-slow) var(--ease-out);
     }
 

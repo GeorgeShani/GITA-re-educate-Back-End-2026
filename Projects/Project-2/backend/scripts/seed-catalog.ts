@@ -50,7 +50,13 @@ interface PexelsPhoto {
   photographer: string;
 }
 
-async function searchPexels(query: string): Promise<PexelsPhoto | null> {
+// Every photo URL already claimed this run. Pexels' free library has very
+// little true golf-*product* photography, so a lot of "golf X" queries
+// resolve to the same handful of lifestyle shots — without this the same
+// man-mid-swing photo ended up on a dozen unrelated products.
+const usedPhotoUrls = new Set<string>();
+
+async function searchPexels(query: string): Promise<PexelsPhoto[]> {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) {
     throw new Error('PEXELS_API_KEY is not set in .env');
@@ -58,8 +64,11 @@ async function searchPexels(query: string): Promise<PexelsPhoto | null> {
 
   const url = new URL('https://api.pexels.com/v1/search');
   url.searchParams.set('query', query);
-  url.searchParams.set('per_page', '1');
-  url.searchParams.set('orientation', 'square');
+  url.searchParams.set('per_page', '20');
+  // Portrait to match the 3:4 product-card / gallery slots (SCOPE.md A5) —
+  // a square source gets cover-cropped and NgOptimizedImage warns about
+  // the ratio mismatch on every card.
+  url.searchParams.set('orientation', 'portrait');
 
   const res = await fetch(url, { headers: { Authorization: apiKey } });
   if (!res.ok) {
@@ -67,7 +76,7 @@ async function searchPexels(query: string): Promise<PexelsPhoto | null> {
   }
 
   const json = (await res.json()) as { photos: PexelsPhoto[] };
-  return json.photos[0] ?? null;
+  return json.photos ?? [];
 }
 
 async function uploadFromPexels(
@@ -75,10 +84,15 @@ async function uploadFromPexels(
   publicId: string,
   folder: string,
 ): Promise<{ publicId: string; url: string; width: number; height: number }> {
-  const photo = await searchPexels(query);
-  if (!photo) {
+  const photos = await searchPexels(query);
+  if (photos.length === 0) {
     throw new Error(`No Pexels result for "${query}"`);
   }
+
+  // First result not already used elsewhere this run; fall back to the top
+  // hit only if every candidate is taken.
+  const photo = photos.find((p) => !usedPhotoUrls.has(p.url)) ?? photos[0];
+  usedPhotoUrls.add(photo.url);
 
   // Cloudinary fetches the remote URL server-side — no local temp file
   // needed, unlike the frontend's fetch-pexels-images.mjs (which saves
@@ -137,7 +151,7 @@ async function seedCategories(
         imageUrl: image.url,
         isActive: true,
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
     ).exec();
 
     const record = withId<{ path?: string }>(doc);
@@ -181,7 +195,9 @@ async function seedProduct(
 
   const variants: Partial<ProductVariant>[] = seed.variants.map((variant) => ({
     sku: variant.sku,
-    attributes: variant.attributes,
+    // Always an object, never undefined — the storefront buy box and the
+    // admin editor both iterate this with Object.keys/entries.
+    attributes: variant.attributes ?? {},
     priceMinor: variant.priceMinor,
     isActive: true,
   }));
@@ -201,7 +217,7 @@ async function seedProduct(
       isFeatured: seed.isFeatured ?? false,
       publishedAt: new Date(),
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   ).exec();
 
   const record = withId(product);
@@ -277,7 +293,14 @@ async function main(): Promise<void> {
       );
       succeeded++;
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      // Cloudinary/Pexels reject with a plain object, not an Error — so
+      // don't let those degrade to a useless "[object Object]".
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === 'object' && error !== null
+            ? JSON.stringify(error)
+            : String(error);
       console.error(`  FAILED: ${message}`);
       failures.push({ slug: seed.slug, error: message });
     }

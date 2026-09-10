@@ -5,6 +5,7 @@ import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { CartService } from '@/app/core/services/cart.service';
 import { OrdersService } from '@/app/core/services/orders.service';
 import { ToastService } from '@/app/core/services/toast.service';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
@@ -39,7 +40,7 @@ const RETURNABLE_STATUSES: OrderStatus[] = ['delivered', 'fulfilled', 'shipped']
         <div class="head">
           <div>
             <h1>Order #{{ o.orderNumber }}</h1>
-            <status-badge variant="custom" [background]="statusBackground(o.status)" [color]="'var(--color-neutral-07)'">
+            <status-badge [variant]="statusMeta(o.status).variant">
               {{ statusLabel[o.status] }}
             </status-badge>
           </div>
@@ -265,6 +266,7 @@ export default class AccountOrderDetail implements OnInit {
   protected readonly order = signal<OrderDto | null>(null);
   protected readonly reordering = signal(false);
   protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = orderStatusMeta;
 
   ngOnInit(): void {
     this.ordersService.getOrder(this.id()).subscribe((order) => this.order.set(order));
@@ -273,22 +275,6 @@ export default class AccountOrderDetail implements OnInit {
   protected canReturn(): boolean {
     const status = this.order()?.status;
     return !!status && RETURNABLE_STATUSES.includes(status);
-  }
-
-  protected statusBackground(status: OrderStatus): string {
-    switch (status) {
-      case 'paid':
-      case 'confirmed':
-      case 'fulfilled':
-      case 'shipped':
-      case 'delivered':
-        return 'var(--color-success)';
-      case 'payment_failed':
-      case 'cancelled':
-        return 'var(--color-error)';
-      default:
-        return 'var(--color-neutral-03)';
-    }
   }
 
   protected reorder(): void {

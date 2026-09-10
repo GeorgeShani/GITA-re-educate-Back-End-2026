@@ -143,7 +143,9 @@ const NAV_ITEMS: AdminNavItem[] = [
       color: var(--color-white);
 
       span {
-        color: var(--color-neutral-04);
+        // The wordmark dot is green everywhere on the storefront — keep it
+        // green here too so admin reads as the same brand.
+        color: var(--color-success);
       }
     }
 
@@ -178,7 +180,7 @@ const NAV_ITEMS: AdminNavItem[] = [
       color: var(--color-neutral-07);
 
       span {
-        color: var(--color-neutral-04);
+        color: var(--color-success);
       }
     }
 

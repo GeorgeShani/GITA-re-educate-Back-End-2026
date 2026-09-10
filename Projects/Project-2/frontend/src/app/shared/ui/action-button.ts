@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-export type ActionButtonVariant = 'primary' | 'secondary' | 'ghost' | 'link' | 'accent';
+export type ActionButtonVariant = 'primary' | 'secondary' | 'ghost' | 'link' | 'inverse';
 export type ActionButtonSize = 'm' | 's' | 'xs';
 
 /**
@@ -98,7 +98,25 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
     .btn:disabled,
     .btn[aria-disabled='true'] {
       cursor: not-allowed;
-      opacity: 0.5;
+    }
+
+    // A real disabled treatment, not just opacity: 0.5 (which turned the
+    // black primary into a mid-grey that read as an ordinary button).
+    .variant-primary:disabled,
+    .variant-primary[aria-disabled='true'] {
+      background: var(--color-neutral-03);
+      color: var(--color-neutral-04);
+    }
+
+    .variant-secondary:disabled,
+    .variant-secondary[aria-disabled='true'],
+    .variant-ghost:disabled,
+    .variant-ghost[aria-disabled='true'],
+    .variant-link:disabled,
+    .variant-link[aria-disabled='true'],
+    .variant-inverse:disabled,
+    .variant-inverse[aria-disabled='true'] {
+      opacity: 0.45;
     }
 
     .btn:active:not(:disabled):not([aria-disabled='true']) {
@@ -154,11 +172,12 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
       text-decoration: underline;
     }
 
-    // Green-on-dark: the sale banner, newsletter, and notification bar CTAs
-    // all sit on a dark surface where the primary (black) variant would
-    // disappear. --color-success is already the system's one accent hue.
-    .variant-accent {
-      background: var(--color-success);
+    // For CTAs on a dark surface (the sale banner, newsletter) where the
+    // primary black fill would disappear: invert to a white fill. Reads as
+    // the same button, just flipped — and leaves --color-success free to
+    // mean "sale / success" rather than "this is a button".
+    .variant-inverse {
+      background: var(--color-white);
       color: var(--color-neutral-07);
     }
 
@@ -177,8 +196,8 @@ export type ActionButtonSize = 'm' | 's' | 'xs';
         background: var(--color-neutral-02);
       }
 
-      .variant-accent:hover:not(:disabled) {
-        background: color-mix(in srgb, var(--color-success) 85%, black);
+      .variant-inverse:hover:not(:disabled) {
+        background: var(--color-neutral-02);
       }
     }
 

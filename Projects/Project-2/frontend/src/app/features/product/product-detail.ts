@@ -78,7 +78,7 @@ const TABS: TabItem[] = [
         </page-container>
       </page-section>
 
-      <page-section spacing="lg" reveal>
+      <page-section spacing="md" reveal>
         <page-container>
           <tab-group
             [tabs]="tabs"
@@ -126,11 +126,15 @@ const TABS: TabItem[] = [
 
     .layout {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-8);
 
       @include bp.tablet-up {
-        grid-template-columns: 1fr 1fr;
+        // The gallery is tall and the buy box is short — pin the buy box
+        // to the top rather than stretching/centring it, and give it a
+        // little less than half so it doesn't run wide on big screens.
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        align-items: start;
         gap: var(--space-10);
       }
     }
@@ -200,7 +204,9 @@ export default class ProductDetail {
   protected readonly relatedCards = computed(() => (this.related.value() ?? []).map(toCardProduct));
 
   protected readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
-    const name = this.product.value()?.name;
+    // `.value()` throws while the resource is in an error state (bad
+    // slug -> 404), which would take the whole page down with it.
+    const name = this.product.hasValue() ? this.product.value().name : undefined;
     return [
       { label: 'Home', link: '/' },
       { label: 'Shop', link: '/shop' },
@@ -215,8 +221,8 @@ export default class ProductDetail {
     // with the same static <title>3legant</title> from index.html and no
     // description or Open Graph tags at all.
     effect(() => {
+      if (!this.product.hasValue()) return;
       const p = this.product.value();
-      if (!p) return;
 
       const image = p.images[0];
       this.seo.set({

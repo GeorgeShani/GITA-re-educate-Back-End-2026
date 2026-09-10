@@ -1,7 +1,7 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { RouterLink, Router } from '@angular/router';
 
-import type { OrderDto } from '@/app/core/api/dto';
+import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { OrdersService } from '@/app/core/services/orders.service';
 import { ReturnsService } from '@/app/core/services/returns.service';
 import { ToastService } from '@/app/core/services/toast.service';
@@ -10,8 +10,10 @@ import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { CheckboxField } from '@/app/shared/ui/checkbox-field';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { QuantityStepper } from '@/app/shared/ui/quantity-stepper';
+import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 
 interface ReturnLineState {
   orderItemId: string;
@@ -20,15 +22,41 @@ interface ReturnLineState {
   reason: string;
 }
 
-/** POST /returns. Reached from an order's "Request a return" action with ?orderId=. */
+// Only orders that have actually shipped can be returned; the rest have
+// nothing to send back yet (or never will).
+const RETURNABLE: readonly OrderStatus[] = ['shipped', 'delivered', 'fulfilled'];
+
+/**
+ * POST /returns. Normally reached from an order's "Request a return" action
+ * with `?orderId=`. Reached without one (a bookmarked/typed URL), it shows a
+ * picker of the orders that can be returned instead of a blank page.
+ */
 @Component({
   selector: 'account-return-new-page',
-  imports: [MoneyPipe, RevealDirective, ActionButton, CheckboxField, ImagePlaceholder, QuantityStepper],
+  imports: [
+    RouterLink,
+    MoneyPipe,
+    RevealDirective,
+    ActionButton,
+    CheckboxField,
+    EmptyState,
+    ImagePlaceholder,
+    QuantityStepper,
+    SkeletonBlock,
+  ],
   template: `
     <section reveal>
       <h1>Request a return</h1>
 
-      @if (order(); as o) {
+      @if (loading()) {
+        <skeleton-block height="120px" radius="var(--radius-md)" />
+      } @else if (loadError()) {
+        <empty-state message="We couldn't load that order." icon="triangle-alert">
+          <action-button action variant="secondary" size="s" routerLink="/account/orders">
+            Back to orders
+          </action-button>
+        </empty-state>
+      } @else if (order(); as o) {
         <p class="subhead">Order #{{ o.orderNumber }} — select the items you'd like to return.</p>
 
         <ul class="items" role="list">
@@ -65,6 +93,27 @@ interface ReturnLineState {
         <action-button size="m" [loading]="submitting()" [disabled]="!hasValidSelection()" (click)="onSubmit()">
           Submit return request
         </action-button>
+      } @else if (returnableOrders().length) {
+        <p class="subhead">Which order is this about?</p>
+        <ul class="orders" role="list">
+          @for (o of returnableOrders(); track o.id) {
+            <li>
+              <a class="order-card" [routerLink]="['/account/returns', 'new']" [queryParams]="{ orderId: o.id }">
+                <span class="order-number">Order #{{ o.orderNumber }}</span>
+                <span class="order-meta">
+                  {{ o.items.length }} {{ o.items.length === 1 ? 'item' : 'items' }} ·
+                  <span data-numeric>{{ o.totalMinor | money }}</span>
+                </span>
+              </a>
+            </li>
+          }
+        </ul>
+      } @else {
+        <empty-state message="None of your orders are eligible for a return yet." icon="ticket-percent">
+          <action-button action variant="secondary" size="s" routerLink="/account/orders">
+            View your orders
+          </action-button>
+        </empty-state>
       }
     </section>
   `,
@@ -134,6 +183,40 @@ interface ReturnLineState {
       box-shadow: inset 0 0 0 1px var(--color-border-input);
       resize: vertical;
     }
+
+    .orders {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      max-width: 32rem;
+    }
+
+    .order-card {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      padding: var(--space-4);
+      border: 1px solid var(--color-neutral-03);
+      border-radius: var(--radius-md);
+      transition: border-color var(--duration-fast) var(--ease-out);
+    }
+
+    .order-card:hover {
+      border-color: var(--color-neutral-05);
+    }
+
+    .order-number {
+      @include type.body-2-semi;
+      color: var(--color-neutral-07);
+    }
+
+    .order-meta {
+      @include type.caption-1;
+      color: var(--color-neutral-04);
+    }
   `,
 })
 export default class AccountReturnNew implements OnInit {
@@ -142,24 +225,53 @@ export default class AccountReturnNew implements OnInit {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
 
-  readonly orderId = input.required<string>();
+  readonly orderId = input<string>();
 
   protected readonly inputValue = inputValue;
   protected readonly order = signal<OrderDto | null>(null);
+  protected readonly loading = signal(true);
+  protected readonly loadError = signal(false);
   protected readonly submitting = signal(false);
+  private readonly allOrders = signal<OrderDto[]>([]);
   private readonly lines = signal<Record<string, ReturnLineState>>({});
 
+  protected readonly returnableOrders = computed(() =>
+    this.allOrders().filter((o) => RETURNABLE.includes(o.status)),
+  );
+
   ngOnInit(): void {
-    this.ordersService.getOrder(this.orderId()).subscribe((order) => {
-      this.order.set(order);
-      this.lines.set(
-        Object.fromEntries(
-          order.items.map((item) => [
-            item._id,
-            { orderItemId: item._id, selected: false, quantity: 1, reason: '' } satisfies ReturnLineState,
-          ]),
-        ),
-      );
+    const id = this.orderId();
+    if (id) {
+      this.ordersService.getOrder(id).subscribe({
+        next: (order) => {
+          this.order.set(order);
+          this.lines.set(
+            Object.fromEntries(
+              order.items.map((item) => [
+                item._id,
+                { orderItemId: item._id, selected: false, quantity: 1, reason: '' } satisfies ReturnLineState,
+              ]),
+            ),
+          );
+          this.loading.set(false);
+        },
+        error: () => {
+          this.loadError.set(true);
+          this.loading.set(false);
+        },
+      });
+      return;
+    }
+
+    this.ordersService.listMine(1, 50).subscribe({
+      next: (page) => {
+        this.allOrders.set(page.items);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loadError.set(true);
+        this.loading.set(false);
+      },
     });
   }
 

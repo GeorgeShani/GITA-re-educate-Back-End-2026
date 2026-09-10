@@ -7,6 +7,7 @@ import { CartService } from '@/app/core/services/cart.service';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { EmptyState } from '@/app/shared/ui/empty-state';
 import { IconButton } from '@/app/shared/ui/icon-button';
 import { ImagePlaceholder } from '@/app/shared/ui/image-placeholder';
 import { PageContainer } from '@/app/shared/ui/page-container';
@@ -29,6 +30,7 @@ const QUANTITY_DEBOUNCE_MS = 500;
     MoneyPipe,
     RevealDirective,
     ActionButton,
+    EmptyState,
     IconButton,
     ImagePlaceholder,
     PageContainer,
@@ -58,10 +60,9 @@ const QUANTITY_DEBOUNCE_MS = 500;
             <skeleton-block height="280px" radius="var(--radius-lg)" />
           </div>
         } @else if (cart.isEmpty()) {
-          <div class="empty" reveal>
-            <p>Your cart is empty.</p>
-            <action-button routerLink="/shop">Continue shopping</action-button>
-          </div>
+          <empty-state message="Your cart is empty." icon="shopping-bag" reveal>
+            <action-button action routerLink="/shop">Continue shopping</action-button>
+          </empty-state>
         } @else {
           <div class="layout">
             <ul class="items" role="list" reveal>
@@ -158,25 +159,16 @@ const QUANTITY_DEBOUNCE_MS = 500;
       color: var(--color-neutral-07);
     }
 
-    .empty {
-      display: flex;
-      flex-direction: column;
-      align-items: start;
-      gap: var(--space-6);
-    }
-
-    .empty p {
-      @include type.body-1;
-      color: var(--color-neutral-04);
-    }
-
     .layout {
       display: grid;
-      grid-template-columns: 1fr;
+      // minmax(0, …) not a bare fr: a bare fr track can't shrink below its
+      // content's min size, so a long product name / the qty+price row
+      // pushed the whole grid wider than the phone screen.
+      grid-template-columns: minmax(0, 1fr);
       gap: var(--space-8);
 
       @include bp.tablet-up {
-        grid-template-columns: 2fr 1fr;
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
         align-items: start;
       }
     }
@@ -217,11 +209,18 @@ const QUANTITY_DEBOUNCE_MS = 500;
       align-items: start;
       justify-content: space-between;
       gap: var(--space-3);
+      min-width: 0;
     }
 
     .item-name {
       @include type.body-2-semi;
+      min-width: 0;
+      overflow-wrap: anywhere;
       color: var(--color-neutral-07);
+    }
+
+    .item-head icon-button {
+      flex-shrink: 0;
     }
 
     .item-variant {
@@ -234,11 +233,14 @@ const QUANTITY_DEBOUNCE_MS = 500;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: var(--space-3);
+      min-width: 0;
       margin-top: auto;
     }
 
     .item-total {
       @include type.body-2-semi;
+      flex-shrink: 0;
       color: var(--color-price);
     }
 
@@ -258,6 +260,11 @@ const QUANTITY_DEBOUNCE_MS = 500;
 
       text-field {
         flex: 1;
+        min-width: 0;
+      }
+
+      action-button {
+        flex-shrink: 0;
       }
     }
 

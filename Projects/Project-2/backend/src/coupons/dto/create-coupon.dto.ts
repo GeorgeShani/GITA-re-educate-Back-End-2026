@@ -84,4 +84,12 @@ export class CreateCouponDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    default: false,
+    description: 'Drives the storefront-wide promo banner — at most one coupon should be featured at a time.',
+  })
+  @IsOptional()
+  @IsBoolean()
+  isFeatured?: boolean;
 }

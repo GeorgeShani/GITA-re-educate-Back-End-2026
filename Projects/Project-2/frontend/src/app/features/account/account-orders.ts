@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import type { OrderDto, OrderStatus } from '@/app/core/api/dto';
 import { OrdersService } from '@/app/core/services/orders.service';
+import { orderStatusMeta } from '@/app/core/util/status-meta';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
 import { EmptyState } from '@/app/shared/ui/empty-state';
@@ -41,7 +42,7 @@ const STATUS_LABEL: Record<OrderStatus, string> = {
                     <strong>Order #{{ order.orderNumber }}</strong>
                     <span class="date">{{ order.createdAt | date: 'mediumDate' }}</span>
                   </div>
-                  <status-badge variant="custom" [background]="statusBackground(order.status)" [color]="'var(--color-neutral-07)'">
+                  <status-badge [variant]="statusMeta(order.status).variant">
                     {{ statusLabel[order.status] }}
                   </status-badge>
                   <span class="total" data-numeric>{{ order.totalMinor | money }}</span>
@@ -120,24 +121,9 @@ export default class AccountOrders implements OnInit {
 
   protected readonly orders = signal<OrderDto[] | null>(null);
   protected readonly statusLabel = STATUS_LABEL;
+  protected readonly statusMeta = orderStatusMeta;
 
   ngOnInit(): void {
     this.ordersService.listMine().subscribe((result) => this.orders.set(result.items));
-  }
-
-  protected statusBackground(status: OrderStatus): string {
-    switch (status) {
-      case 'paid':
-      case 'confirmed':
-      case 'fulfilled':
-      case 'shipped':
-      case 'delivered':
-        return 'var(--color-success)';
-      case 'payment_failed':
-      case 'cancelled':
-        return 'var(--color-error)';
-      default:
-        return 'var(--color-neutral-03)';
-    }
   }
 }

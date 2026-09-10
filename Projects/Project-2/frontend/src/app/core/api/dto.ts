@@ -824,6 +824,7 @@ export interface CouponDto {
   startsAt: string;
   endsAt?: string;
   isActive: boolean;
+  isFeatured: boolean;
   createdAt: string;
 }
 
@@ -840,6 +841,16 @@ export interface UpsertCouponRequest {
   startsAt: string;
   endsAt?: string;
   isActive?: boolean;
+  isFeatured?: boolean;
+}
+
+/** GET /coupons/featured — the public-safe projection backing the storefront's sale-banner. */
+export interface FeaturedCouponDto {
+  code: string;
+  type: CouponType;
+  value: number;
+  minSpendMinor: number;
+  endsAt: string | null;
 }
 
 // -- gift cards --

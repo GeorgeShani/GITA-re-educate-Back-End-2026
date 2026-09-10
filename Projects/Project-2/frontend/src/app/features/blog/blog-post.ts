@@ -210,7 +210,7 @@ interface CommentFormModel {
       }
 
       ::ng-deep a {
-        color: var(--color-neutral-07);
+        color: var(--color-info-text);
         text-decoration: underline;
       }
     }
