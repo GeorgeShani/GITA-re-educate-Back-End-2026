@@ -77,7 +77,7 @@ export class AssistantService {
   ) {
     this.model = this.configService.get<string>(
       'GEMINI_MODEL',
-      'gemini-2.5-flash',
+      'gemini-3.8-flash',
     );
     for (const tool of tools) {
       this.toolByName.set(tool.declaration.name!, tool);

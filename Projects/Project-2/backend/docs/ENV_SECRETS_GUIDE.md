@@ -190,9 +190,9 @@ pattern as Stripe/Resend.
 1. [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → Create API key. The free tier is enough for development.
 2. ```
    GEMINI_API_KEY=...
-   GEMINI_MODEL=gemini-2.5-flash
+   GEMINI_MODEL=gemini-3.8-flash
    ```
-   `GEMINI_MODEL` defaults to `gemini-2.5-flash` if unset — swap in `gemini-2.5-pro` for better reasoning at higher cost and latency.
+   `GEMINI_MODEL` defaults to `gemini-3.8-flash` if unset — swap in a pro-tier model for better reasoning at higher cost and latency.
 
 ## 9. Atlas Search index (not an env var)
 

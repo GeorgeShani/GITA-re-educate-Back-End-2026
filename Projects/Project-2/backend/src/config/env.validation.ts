@@ -55,7 +55,7 @@ export const envValidationSchema = Joi.object({
   MAIL_DEV_ALLOWLIST: optionalString(),
 
   GEMINI_API_KEY: optionalString(),
-  GEMINI_MODEL: Joi.string().default('gemini-2.5-flash'),
+  GEMINI_MODEL: Joi.string().default('gemini-3.8-flash'),
 
   // S13 — read directly via process.env in instrument.ts, before
   // ConfigModule exists, so this Joi entry is for validation/docs only.

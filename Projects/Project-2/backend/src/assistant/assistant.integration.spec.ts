@@ -157,7 +157,7 @@ describe('AssistantService (integration)', () => {
   let ctx: MongoTestContext;
   let chatSessionModel: mongoose.Model<ChatSessionDocument>;
   let chatMessageModel: mongoose.Model<ChatMessageDocument>;
-  const configService = new ConfigService({ GEMINI_MODEL: 'gemini-2.5-flash' });
+  const configService = new ConfigService({ GEMINI_MODEL: 'gemini-3.8-flash' });
 
   beforeAll(async () => {
     ctx = await MongoTestContext.start();
