@@ -192,7 +192,7 @@ pattern as Stripe/Resend.
    GEMINI_API_KEY=...
    GEMINI_MODEL=gemini-2.5-flash
    ```
-   `GEMINI_MODEL` defaults to `gemini-2.5-flash` if unset — swap in `gemini-2.5-pro` for better reasoning at higher cost/latency per SCOPE.md Phase 8's own guidance.
+   `GEMINI_MODEL` defaults to `gemini-2.5-flash` if unset — swap in `gemini-2.5-pro` for better reasoning at higher cost and latency.
 
 ## 9. Atlas Search index (not an env var)
 

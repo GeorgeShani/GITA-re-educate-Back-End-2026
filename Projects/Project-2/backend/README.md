@@ -3,16 +3,13 @@
 Event-driven e-commerce backend for a golf storefront. NestJS 11, MongoDB
 Atlas, BullMQ, Stripe, Cloudinary, and a Gemini-powered shopping assistant.
 
-The product spec lives one level up in [`../SCOPE.md`](../SCOPE.md) and is the
-source of truth for design tokens, domain model, and build phases. This file
-covers running and working on the API itself.
+See the [repo root README](../README.md) for the project overview and the
+combined quick start. This file covers running and working on the API itself.
 
-**Status:** this API is complete and stable — every phase through Phase 9,
-including the full Phase 6 admin surface, is built, tested, and pushed. The
-frontend (`../frontend/`) now consumes essentially all of it: F0 through F11
-(real data layer through the 19-area admin panel) are done against this live
-API, not mock fixtures. See [`../frontend/README.md`](../frontend/README.md)
-for that side.
+**Status:** complete and stable — the full domain model, the event backbone,
+and the 19-area admin surface are built, tested, and pushed. The frontend
+(`../frontend/`) consumes essentially all of it against this live API, not mock
+fixtures. See [`../frontend/README.md`](../frontend/README.md) for that side.
 
 ---
 
@@ -76,16 +73,30 @@ change streams both require it, so a standalone `mongod` will not work.
 npm run start:dev
 ```
 
-Then seed a catalog and grant yourself admin:
+Then populate the database and grant yourself admin:
 
 ```bash
-npm run seed:catalog      # ~80 golf products (needs PEXELS_API_KEY + Cloudinary)
-npm run seed:commerce     # coupons, shipping zones, tax rates
-npm run promote-admin -- you@example.com   # after registering normally
+npm run seed:all                            # wipes the DB, then reseeds every entity
+npm run promote-admin -- you@example.com    # after registering normally
 ```
+
+`seed:all` runs, in dependency order: `seed:reset` (drops the DB — refuses a
+non-local `MONGODB_URI` without `FORCE_SEED_RESET=1`), `seed:users` (staff +
+customers, all with password `Password123!`), `seed:catalog` (~105 golf
+products + images), `seed:commerce` (shipping, tax, coupons, gift cards — one
+coupon is marked `isFeatured` and drives the storefront's sale banner),
+`seed:content` (blog + pages), `seed:orders`, `seed:reviews`. Each step is also
+its own script if you only need one. `seed:catalog` and `seed:content` each
+make one Pexels + one Cloudinary round trip per item, rate-limited to stay
+under Pexels' free-tier 200/hour cap.
 
 `promote-admin` exists because no HTTP route can ever mint the first admin —
 registration always assigns `[customer]`.
+
+**Search** runs on a MongoDB `$text` index out of the box
+(`SEARCH_PROVIDER=mongo`, the default). Set `SEARCH_PROVIDER=atlas` only after
+provisioning the `products_search` Atlas Search index by hand — see
+[`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md).
 
 - API: `http://localhost:4000/api/v1`
 - Swagger: `http://localhost:4000/api`
@@ -108,8 +119,15 @@ SSR `apiOrigin` fallback both need updating too; they don't read this `.env`.
 | `npm run start:prod` | `node dist/main` |
 | `npm test` | Full test suite |
 | `npm run lint` | ESLint with `--fix` |
-| `npm run seed:catalog` | Products, categories, inventory, images |
-| `npm run seed:commerce` | Coupons, shipping zones, tax rates |
+| `npm run seed:all` | Wipe the DB and reseed every entity (runs the steps below) |
+| `npm run seed:reset` | Drop the database (local/dev only unless `FORCE_SEED_RESET=1`) |
+| `npm run seed:users` | Staff + customers (password `Password123!`) |
+| `npm run seed:catalog` | ~105 products, categories, inventory, images |
+| `npm run seed:commerce` | Coupons, gift cards, shipping zones, tax rates |
+| `npm run seed:content` | Blog posts, tags, and CMS pages |
+| `npm run seed:orders` | Backdated order history for the seeded customers |
+| `npm run seed:reviews` | Product reviews + rating rollup |
+| `npm run backfill-ratings` | Recompute `Product.ratingAverage`/`ratingCount` from approved reviews |
 | `npm run promote-admin -- <email>` | Grant the admin role |
 | `npm run mail:preview` | Render every email template to `dist/mail-out/` |
 

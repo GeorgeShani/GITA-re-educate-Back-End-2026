@@ -4,19 +4,25 @@ Angular 22 (SSR) storefront, account, blog, AI shopping assistant, and staff
 admin panel for a golf e-commerce platform. Built against a real live backend
 throughout, never mock fixtures.
 
-The product spec lives one level up in [`../SCOPE.md`](../SCOPE.md) and is the
-source of truth for design tokens, domain model, and build phases — see its
-*Frontend rebuild (F0–F12)* section for the phase-by-phase plan this app was
-built to. This file covers running and working on the frontend itself.
+See the [repo root README](../README.md) for the project overview and the
+combined quick start. This file covers running and working on the frontend
+itself.
+
+The **design system is `src/styles/_tokens.scss`** — the single source for
+colour, spacing, radii, shadows, z-index, and motion. Component styles
+reference the custom properties; they never hardcode a value that has a token.
+Type scale is `_typography.scss`, breakpoints `_breakpoints.scss`.
 
 ---
 
 ## Status
 
-F0 (real data layer) through F11 (admin panel, 19 areas) are done and pushed.
-**F12 (a Figma-driven visual/animation polish pass) has not started** — it
-needs a fuller plan from the project owner first; do not begin it
-unprompted. Everything described below is real, running code, not a plan.
+Every feature area is built and running: storefront, `/search`, cart and
+checkout, the account area, the blog, the AI assistant, and the 19-area admin
+panel. A UI-consistency and polish pass has since gone over the whole surface
+(status-colour system, shared field/button treatments, broken-layout fixes,
+responsive fixes) — a deeper per-page visual-fidelity pass against the Figma
+reference is still open. Everything described below is real, running code.
 
 ---
 
@@ -110,6 +116,18 @@ just one.
 nothing.** The dev-server proxy config loads once at server startup and does
 not hot-reload — restart the server after changing it.
 
+**CMS pages live at the root** (`/about`, `/faq`, `/privacy`, …), matched by a
+single-segment `:slug` route that sits second-to-last in `app.routes.ts`. It
+must stay there — a `:slug` route above any real route shadows it — and a new
+CMS page whose slug collides with a real route (`shop`, `cart`, `admin`, …)
+will never be reachable. An unresolved slug 404s from the API and the
+component renders the real not-found page.
+
+**Reading a resource's `.value()` while it's in its error state throws**
+(`ResourceValueError`) and takes the render down with it. Guard template-side
+reads that run regardless of the loading/error branch with `.hasValue()` —
+`shop`, `search`, and `product-detail` all do.
+
 **`withViewTransitions()` (app-wide routing) can abort specific
 post-mutation navigations** — seen after a successful Stripe payment and
 after a reorder — leaving the router silently stuck on the old URL with no
@@ -162,11 +180,11 @@ this endpoint needs.
 
 Recorded so they read as decisions rather than surprises.
 
-- **F12 (Figma-driven visual/animation polish pass) has not started.** F0–F11
-  built and verified real functionality against the live backend; visual
-  fidelity to the Figma reference and animation were deliberately deferred
-  to a dedicated final pass rather than iterated per-page. Needs the project
-  owner's own plan before starting — see the top of this file.
+- **A deeper visual-fidelity pass against the Figma reference is still open.**
+  A cross-cutting consistency/polish pass has been done (broken layouts,
+  status colours, shared field/button treatments, responsive fixes); matching
+  each page pixel-for-pixel to the Figma comps and adding the intended
+  animation is the remaining work.
 - **Saved payment methods aren't wired into checkout.** The backend's
   `PlaceOrderDto` has no `paymentMethodId` yet (see the backend README's
   Known gaps), so `account-payment-methods` is management-only — every
