@@ -671,12 +671,26 @@ export interface AdjustStockRequest {
   note?: string;
 }
 
+export interface DashboardTimePointDto {
+  /** UTC calendar day, `YYYY-MM-DD`. */
+  date: string;
+  revenueMinor: number;
+  orderCount: number;
+}
+
+export interface DashboardStatusCountDto {
+  status: OrderStatus;
+  count: number;
+}
+
 export interface DashboardSummaryDto {
   from: string;
   to: string;
   revenueMinor: number;
   orderCount: number;
   averageOrderValueMinor: number;
+  revenueByDay: DashboardTimePointDto[];
+  ordersByStatus: DashboardStatusCountDto[];
   lowStock: AdminInventoryItemDto[];
   recentActivity: AuditLogEntryDto[];
 }

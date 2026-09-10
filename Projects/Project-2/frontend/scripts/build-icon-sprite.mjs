@@ -65,6 +65,22 @@ const LUCIDE = [
   'store',
   'sparkles',
   'triangle-alert',
+  // rich-text editor toolbar (admin blog/pages)
+  'bold',
+  'italic',
+  'underline',
+  'strikethrough',
+  'code',
+  'heading-1',
+  'heading-2',
+  'heading-3',
+  'list',
+  'list-ordered',
+  'text-quote',
+  'link',
+  'image',
+  'undo',
+  'redo',
 ];
 
 /** Simple Icons exports, keyed by the name the sprite should expose. */

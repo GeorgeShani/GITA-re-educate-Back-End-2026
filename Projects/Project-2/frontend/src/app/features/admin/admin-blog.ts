@@ -26,9 +26,9 @@ import { CheckboxField } from '@/app/shared/ui/checkbox-field';
 import { SelectField, type SelectOption } from '@/app/shared/ui/select-field';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { StatusBadge } from '@/app/shared/ui/status-badge';
+import { RichTextEditor } from '@/app/shared/ui/rich-text-editor';
 import { TabGroup, type TabItem } from '@/app/shared/ui/tab-group';
 import { TextField } from '@/app/shared/ui/text-field';
-import { TextareaField } from '@/app/shared/ui/textarea-field';
 
 type BlogTab = 'posts' | 'categories' | 'tags' | 'comments';
 
@@ -130,10 +130,10 @@ function commentStatusColor(status: CommentStatus): string {
     PageToolbar,
     SelectField,
     SkeletonBlock,
+    RichTextEditor,
     StatusBadge,
     TabGroup,
     TextField,
-    TextareaField,
   ],
   template: `
     <page-toolbar title="Blog" [subtitle]="tabSubtitle()">
@@ -307,7 +307,7 @@ function commentStatusColor(status: CommentStatus): string {
       <text-field label="Title" [value]="postForm().title" (valueChange)="patchPost({ title: $event })" />
       <text-field label="Slug" [value]="postForm().slug" (valueChange)="patchPost({ slug: $event })" />
       <text-field label="Excerpt (optional)" [value]="postForm().excerpt" (valueChange)="patchPost({ excerpt: $event })" />
-      <textarea-field label="Body (HTML)" [value]="postForm().body" (valueChange)="patchPost({ body: $event })" />
+      <rich-text-editor label="Body" [value]="postForm().body" (valueChange)="patchPost({ body: $event })" />
       <text-field label="Cover image URL (optional)" [value]="postForm().coverImageUrl" (valueChange)="patchPost({ coverImageUrl: $event })" />
       <select-field label="Category" [options]="categoryOptions()" [value]="postForm().categoryId" (valueChange)="patchPost({ categoryId: $event })" />
 

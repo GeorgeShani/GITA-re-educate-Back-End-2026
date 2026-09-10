@@ -13,6 +13,7 @@ import {
 } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { IMAGE_LOADER, type ImageLoaderConfig } from '@angular/common';
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 
 import { routes } from './app.routes';
 import { authInterceptor } from '@/app/core/interceptors/auth.interceptor';
@@ -95,5 +96,9 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(
       withInterceptors([correlationIdInterceptor, authInterceptor, errorInterceptor]),
     ),
+    // Chart.js registerables for the admin dashboard charts (ng2-charts v10).
+    // Only /admin/dashboard renders a chart, and that route is lazy + Client
+    // render mode, so this never touches an SSR or storefront payload.
+    provideCharts(withDefaultRegisterables()),
   ],
 };

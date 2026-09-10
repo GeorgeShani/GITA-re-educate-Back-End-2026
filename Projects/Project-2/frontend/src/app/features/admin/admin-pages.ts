@@ -9,9 +9,9 @@ import { DrawerForm } from '@/app/features/admin/ui/drawer-form';
 import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { RichTextEditor } from '@/app/shared/ui/rich-text-editor';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 import { TextField } from '@/app/shared/ui/text-field';
-import { TextareaField } from '@/app/shared/ui/textarea-field';
 
 interface PageFormModel {
   title: string;
@@ -25,7 +25,7 @@ const EMPTY_FORM: PageFormModel = { title: '', slug: '', body: '', seoTitle: '',
 
 @Component({
   selector: 'admin-pages-page',
-  imports: [ActionButton, DataTable, DrawerForm, EmptyState, PageToolbar, SkeletonBlock, TextField, TextareaField],
+  imports: [ActionButton, DataTable, DrawerForm, EmptyState, PageToolbar, RichTextEditor, SkeletonBlock, TextField],
   template: `
     <page-toolbar title="Pages" [subtitle]="pages().length + ' total'">
       <action-button size="s" (click)="startCreate()">New page</action-button>
@@ -69,7 +69,7 @@ const EMPTY_FORM: PageFormModel = { title: '', slug: '', body: '', seoTitle: '',
     >
       <text-field label="Title" [value]="form().title" (valueChange)="patch({ title: $event })" />
       <text-field label="Slug" [value]="form().slug" (valueChange)="patch({ slug: $event })" hint="Public URL is /<slug>" />
-      <textarea-field label="Body (HTML)" [value]="form().body" (valueChange)="patch({ body: $event })" />
+      <rich-text-editor label="Body" [value]="form().body" (valueChange)="patch({ body: $event })" />
       <text-field label="SEO title (optional)" [value]="form().seoTitle" (valueChange)="patch({ seoTitle: $event })" />
       <text-field label="SEO description (optional)" [value]="form().seoDescription" (valueChange)="patch({ seoDescription: $event })" />
     </drawer-form>
