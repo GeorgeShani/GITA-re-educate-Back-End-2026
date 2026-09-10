@@ -568,6 +568,12 @@ interface ProductChip {
 
     .bubble {
       @include type.body-2;
+      // Sit at content height in the thread's flex column — never grow to
+      // fill it. (Belt-and-suspenders against the .assistant class-name
+      // collision that used to stretch every bubble; the rename to .chat
+      // is the actual fix.)
+      flex: 0 0 auto;
+      height: auto;
       max-width: 88%;
       padding: var(--space-3) var(--space-4);
       border-radius: var(--radius-lg);
