@@ -67,10 +67,10 @@ export class NotificationsService {
     // EmailMessage row always reflects what actually happened.
     const deliveryTo = this.resolveDeliveryTarget(params.to);
 
-    const { html, text } = await this.templateRenderer.render(
-      params.template,
-      params.variables,
-    );
+    const { html, text } = await this.templateRenderer.render(params.template, {
+      ...this.commonTemplateVariables(),
+      ...params.variables,
+    });
 
     let emailMessage: EmailMessageDocument;
     try {
@@ -147,6 +147,21 @@ export class NotificationsService {
       await emailMessage.save();
       throw error;
     }
+  }
+
+  /**
+   * Merged under every template's own variables (so a template can always
+   * override) — the header/footer chrome all templates share needs the
+   * storefront URL and the current year without every event spec in
+   * notifications.consumer.ts repeating them.
+   */
+  private commonTemplateVariables(): Record<string, unknown> {
+    return {
+      appUrl: (
+        this.configService.get<string>('APP_URL') ?? 'https://3legant.golf'
+      ).replace(/\/$/, ''),
+      year: new Date().getFullYear(),
+    };
   }
 
   private resolveDeliveryTarget(to: string): string {

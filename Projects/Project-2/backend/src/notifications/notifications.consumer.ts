@@ -19,13 +19,11 @@ interface EmailTemplateSpec {
   };
 }
 
-// SCOPE.md B4's event->email catalogue, one entry per template that has
-// actually shipped. Only user.registered and user.password_reset_requested
-// exist as of S4 (Phase 1's own scope — "two templates... every later
-// phase adds templates against these rails"); event-routing.ts only
-// routes those two event names to this queue, so nothing else reaches
-// here yet. Later slices (S9 orders, S10 returns, S11 content) add their
-// own entries in the same commit that adds their event-routing pattern.
+// The event->email catalogue: one entry per template that has actually
+// shipped. Only user.registered and user.password_reset_requested exist
+// so far — event-routing.ts only routes those two event names to this
+// queue. A later template is added here in the same commit that adds its
+// event-routing pattern.
 const EMAIL_TEMPLATES: Record<string, EmailTemplateSpec> = {
   'user.registered': {
     template: 'verify-email',

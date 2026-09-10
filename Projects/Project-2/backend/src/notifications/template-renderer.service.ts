@@ -13,14 +13,12 @@ export interface RenderedEmail {
   text: string;
 }
 
-// SCOPE.md B4 — "MJML -> compiled HTML at build time, Handlebars for
-// interpolation." The MJML structural compile (tags -> tables) runs once
-// per template and is cached; Handlebars fills in per-send variables
-// against that cached HTML, so a busy queue isn't re-parsing MJML on
-// every job. Design tokens are inlined as literal hex directly in the
-// .mjml source (SCOPE.md A3 values) rather than through a separate
-// substitution pass — with only two templates, a token-pipeline
-// abstraction isn't earning its keep yet.
+// MJML -> compiled HTML once per template (cached); Handlebars then fills
+// in per-send variables against that cached HTML, so a busy queue isn't
+// re-parsing MJML on every job. Design tokens are inlined as literal hex
+// in the .mjml source (the values from frontend/src/styles/_tokens.scss)
+// rather than through a separate substitution pass — with a handful of
+// templates, a token-pipeline abstraction isn't earning its keep yet.
 @Injectable()
 export class TemplateRendererService {
   private readonly htmlCache = new Map<string, string>();
