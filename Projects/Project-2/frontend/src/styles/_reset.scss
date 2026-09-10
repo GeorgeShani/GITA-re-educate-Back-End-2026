@@ -59,6 +59,19 @@ textarea {
   color: inherit;
 }
 
+// Bare <button>s start from nothing — no UA bevel, no grey face, no
+// force-centred label. Every button in the app either renders through a
+// styled component (action-button, icon-button) or gives itself a look;
+// one that does neither is meant to read as plain interactive text, not
+// as a browser-chrome box.
+button {
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: inherit;
+  appearance: none;
+}
+
 button,
 [role='button'],
 a {

@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Param,
   Post,
   Sse,
@@ -46,6 +48,17 @@ export class AssistantController {
   @ApiOperation({ summary: 'Start a new chat session' })
   createSession(@CurrentUser('userId') userId: string) {
     return this.assistantService.createSession(userId);
+  }
+
+  @Throttle(WRITE_THROTTLE)
+  @Delete(':id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a chat session and its transcript' })
+  async deleteSession(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ): Promise<void> {
+    await this.assistantService.deleteSession(id, userId);
   }
 
   @Get(':id/messages')

@@ -28,6 +28,10 @@ export class AssistantService {
     return this.api.post<ChatSessionDto>('/assistant/sessions', {});
   }
 
+  deleteSession(sessionId: string): Observable<void> {
+    return this.api.delete<void>(`/assistant/sessions/${sessionId}`);
+  }
+
   getMessages(sessionId: string): Observable<ChatMessageDto[]> {
     return this.api.get<ChatMessageDto[]>(`/assistant/sessions/${sessionId}/messages`);
   }

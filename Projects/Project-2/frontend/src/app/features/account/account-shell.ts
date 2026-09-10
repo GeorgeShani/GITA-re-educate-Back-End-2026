@@ -123,8 +123,16 @@ const NAV_ITEMS: AccountNavItem[] = [
       align-self: start;
       margin-top: var(--space-2);
       padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
       color: var(--color-neutral-04);
-      text-decoration: underline;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        color var(--duration-fast) var(--ease-out);
+
+      &:hover {
+        background: var(--color-neutral-03);
+        color: var(--color-neutral-06);
+      }
     }
 
     .content {

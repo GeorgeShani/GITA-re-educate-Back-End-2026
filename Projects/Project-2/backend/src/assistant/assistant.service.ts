@@ -106,6 +106,14 @@ export class AssistantService {
       .exec();
   }
 
+  async deleteSession(sessionId: string, userId: string): Promise<void> {
+    const session = await this.findOwnedSession(sessionId, userId);
+    await this.chatMessageModel
+      .deleteMany({ sessionId: session._id })
+      .exec();
+    await session.deleteOne();
+  }
+
   async *sendMessage(
     sessionId: string,
     userId: string,

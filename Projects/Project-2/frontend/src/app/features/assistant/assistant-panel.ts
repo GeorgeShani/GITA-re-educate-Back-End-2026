@@ -24,11 +24,18 @@ import { CartService } from '@/app/core/services/cart.service';
 import { closestForm, inputValue } from '@/app/core/util/dom-event';
 import { ActionButton } from '@/app/shared/ui/action-button';
 import { DrawerPanel } from '@/app/shared/ui/drawer-panel';
+import { IconButton } from '@/app/shared/ui/icon-button';
 import { IconGlyph } from '@/app/shared/ui/icon-glyph';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { SkeletonBlock } from '@/app/shared/ui/skeleton-block';
 
 const SESSION_STORAGE_KEY = 'assistant.activeSessionId';
+
+const SUGGESTIONS = [
+  'What clubs suit a beginner?',
+  'Show me golf balls under $30',
+  'Compare two rangefinders',
+];
 
 interface ProductChip {
   slug: string;
@@ -39,9 +46,9 @@ interface ProductChip {
 }
 
 /**
- * The SSE chat panel — slide-over via drawer-panel, launched from
- * site-header's sparkles button (auth-gated: assistant routes are
- * JWT-only, backend/src/assistant/assistant.controller.ts).
+ * The SSE chat panel — slide-over via drawer-panel, launched from the
+ * bottom-right sparkles FAB (auth-gated: assistant routes are JWT-only,
+ * backend/src/assistant/assistant.controller.ts).
  *
  * State model: `messages` is always the last-fetched, authoritative
  * server transcript. A send/confirm appends nothing to it directly —
@@ -50,10 +57,24 @@ interface ProductChip {
  * (done/confirmation_required/error) the transcript is refetched and
  * streamingText clears. Simpler and more correct than hand-reconstructing
  * ids/toolCalls/toolResults locally to match what the server persisted.
+ *
+ * The root wrapper is `.chat`, NOT `.assistant` — an assistant message
+ * bubble is `.bubble.assistant`, and a shared `.assistant` class name let
+ * the wrapper's `display:flex; height:100%` rule land on every bubble and
+ * stretch it (and collapse the typing dots into a vertical sliver).
  */
 @Component({
   selector: 'assistant-panel',
-  imports: [RouterLink, DatePipe, MoneyPipe, ActionButton, DrawerPanel, IconGlyph, SkeletonBlock],
+  imports: [
+    RouterLink,
+    DatePipe,
+    MoneyPipe,
+    ActionButton,
+    DrawerPanel,
+    IconButton,
+    IconGlyph,
+    SkeletonBlock,
+  ],
   template: `
     @if (auth.isAuthenticated() && !panelState.open()) {
       <button
@@ -67,16 +88,19 @@ interface ProductChip {
     }
 
     <drawer-panel side="right" [open]="panelState.open()" (openChange)="onOpenChange($event)">
-      <div class="assistant">
+      <div class="chat">
         <header class="head">
-          <div class="title">
-            <icon-glyph name="sparkles" [size]="20" />
+          <div class="head-title">
+            <span class="head-badge"><icon-glyph name="sparkles" [size]="18" /></span>
             <h2>Shopping Assistant</h2>
           </div>
           <div class="head-actions">
-            <button type="button" (click)="startNewChat()">New chat</button>
-            <button type="button" (click)="toggleHistory()">
-              {{ view() === 'history' ? 'Back' : 'History' }}
+            <button type="button" class="head-btn" (click)="startNewChat()">
+              <icon-glyph name="plus" [size]="16" />
+              New chat
+            </button>
+            <button type="button" class="head-btn" (click)="toggleHistory()">
+              {{ view() === 'history' ? 'Back to chat' : 'History' }}
             </button>
           </div>
         </header>
@@ -84,22 +108,45 @@ interface ProductChip {
         @if (view() === 'history') {
           <div class="history">
             @if (sessionsLoading()) {
-              <skeleton-block height="48px" width="100%" />
-              <skeleton-block height="48px" width="100%" />
+              <skeleton-block height="52px" width="100%" />
+              <skeleton-block height="52px" width="100%" />
+              <skeleton-block height="52px" width="100%" />
             } @else if (sessions().length === 0) {
-              <p class="empty">No conversations yet.</p>
+              <div class="history-empty">
+                <p>No conversations yet.</p>
+                <action-button size="s" variant="secondary" (click)="startNewChat()">
+                  Start one
+                </action-button>
+              </div>
             } @else {
               <ul role="list">
                 @for (s of sessions(); track s.id) {
-                  <li>
-                    <button
-                      type="button"
-                      [class.active]="s.id === activeSessionId()"
-                      (click)="selectSession(s.id)"
-                    >
+                  <li class="session" [class.is-active]="s.id === activeSessionId()">
+                    <button type="button" class="session-open" (click)="selectSession(s.id)">
                       <span class="session-title">{{ s.title || 'New conversation' }}</span>
                       <span class="session-date">{{ s.updatedAt | date: 'mediumDate' }}</span>
                     </button>
+                    @if (confirmingDeleteId() === s.id) {
+                      <div class="session-confirm">
+                        <span>Delete?</span>
+                        <button type="button" (click)="confirmingDeleteId.set(null)">Cancel</button>
+                        <button
+                          type="button"
+                          class="danger"
+                          [disabled]="deletingId() === s.id"
+                          (click)="deleteSession(s.id)"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    } @else {
+                      <icon-button
+                        icon="trash-2"
+                        ariaLabel="Delete conversation"
+                        class="session-trash"
+                        (clicked)="confirmingDeleteId.set(s.id)"
+                      />
+                    }
                   </li>
                 }
               </ul>
@@ -111,9 +158,18 @@ interface ProductChip {
               <skeleton-block height="60px" width="100%" />
               <skeleton-block height="40px" width="70%" />
             } @else if (messages().length === 0 && !streamingText() && !sending()) {
-              <p class="welcome">
-                Ask me to find gear, compare products, check stock, or add something to your cart.
-              </p>
+              <div class="welcome">
+                <span class="welcome-badge"><icon-glyph name="sparkles" [size]="24" /></span>
+                <h3>How can I help?</h3>
+                <p>Find gear, compare products, check stock, or add things to your cart.</p>
+                <div class="suggestions">
+                  @for (s of suggestions; track s) {
+                    <button type="button" class="suggestion" (click)="useSuggestion(s)">
+                      {{ s }}
+                    </button>
+                  }
+                </div>
+              </div>
             }
 
             @for (m of messages(); track m.id) {
@@ -192,7 +248,7 @@ interface ProductChip {
           <form class="composer" (submit)="onSend($event)">
             <textarea
               rows="1"
-              placeholder="Ask about golf gear..."
+              placeholder="Ask about golf gear…"
               [value]="draft()"
               [disabled]="sending()"
               (input)="draft.set(inputValue($event))"
@@ -201,9 +257,7 @@ interface ProductChip {
             @if (sending()) {
               <button type="button" class="stop" (click)="stopStreaming()">Stop</button>
             } @else {
-              <action-button type="submit" size="s" [disabled]="!draft().trim()"
-                >Send</action-button
-              >
+              <action-button type="submit" size="s" [disabled]="!draft().trim()">Send</action-button>
             }
           </form>
         }
@@ -231,87 +285,162 @@ interface ProductChip {
       justify-content: center;
       width: 56px;
       height: 56px;
-      border-radius: 50%;
+      border-radius: var(--radius-full);
       background: var(--color-neutral-07);
       color: var(--color-white);
-      box-shadow: var(--shadow-depth-1);
+      box-shadow: 0 6px 20px -4px rgba(15, 15, 15, 0.35);
       transition:
         transform var(--duration-fast) var(--ease-out),
         background-color var(--duration-fast) var(--ease-out);
 
       &:hover {
         background: var(--color-neutral-06);
-        transform: scale(1.05);
+        transform: translateY(-1px) scale(1.04);
+      }
+
+      &:active {
+        transform: scale(0.96);
       }
     }
 
-    .assistant {
+    .chat {
       display: flex;
       flex-direction: column;
       height: 100%;
       min-height: 0;
     }
 
+    /* ---- header ------------------------------------------------------ */
+
     .head {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: var(--space-3);
       padding-bottom: var(--space-4);
       border-bottom: 1px solid var(--color-neutral-03);
       margin-bottom: var(--space-4);
     }
 
-    .title {
+    .head-title {
       display: flex;
       align-items: center;
-      gap: var(--space-2);
+      gap: var(--space-3);
       color: var(--color-neutral-07);
     }
 
-    .title h2 {
+    .head-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-full);
+      background: var(--color-neutral-07);
+      color: var(--color-white);
+      flex-shrink: 0;
+    }
+
+    .head-title h2 {
       @include type.body-1-semi;
       margin: 0;
+      white-space: nowrap;
     }
 
     .head-actions {
       display: flex;
-      gap: var(--space-3);
+      align-items: center;
+      gap: var(--space-2);
     }
 
-    .head-actions button {
+    .head-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-3);
+      border-radius: var(--radius-full);
+      box-shadow: inset 0 0 0 1px var(--color-neutral-03);
+      color: var(--color-neutral-06);
       @include type.caption-1-semi;
-      color: var(--color-neutral-05);
-      text-decoration: underline;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out);
+
+      &:hover {
+        background: var(--color-neutral-02);
+        box-shadow: inset 0 0 0 1px var(--color-neutral-04);
+      }
+
+      &:last-child {
+        margin-left: auto;
+        box-shadow: none;
+
+        &:hover {
+          box-shadow: none;
+        }
+      }
+    }
+
+    /* ---- history ---------------------------------------------------- */
+
+    .history {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
     }
 
     .history ul {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-1);
       margin: 0;
       padding: 0;
       list-style: none;
     }
 
-    .history button {
+    .history-empty {
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      gap: var(--space-4);
+      padding-top: var(--space-4);
+
+      p {
+        @include type.caption-1;
+        margin: 0;
+        color: var(--color-neutral-04);
+      }
+    }
+
+    .session {
+      display: flex;
+      align-items: center;
       gap: var(--space-1);
-      width: 100%;
-      padding: var(--space-3);
+      padding-right: var(--space-2);
       border-radius: var(--radius-md);
-      text-align: left;
+      transition: background-color var(--duration-fast) var(--ease-out);
 
       &:hover,
-      &.active {
+      &.is-active {
         background: var(--color-neutral-02);
       }
     }
 
+    .session-open {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      flex: 1;
+      min-width: 0;
+      padding: var(--space-3);
+    }
+
     .session-title {
       @include type.caption-1-semi;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       color: var(--color-neutral-07);
     }
 
@@ -320,11 +449,52 @@ interface ProductChip {
       color: var(--color-neutral-04);
     }
 
-    .empty,
-    .welcome {
-      @include type.caption-1;
+    .session-trash {
       color: var(--color-neutral-04);
+      opacity: 0;
+      transition: opacity var(--duration-fast) var(--ease-out);
     }
+
+    .session:hover .session-trash,
+    .session-trash:focus-within {
+      opacity: 1;
+    }
+
+    @media (hover: none) {
+      .session-trash {
+        opacity: 1;
+      }
+    }
+
+    .session-confirm {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-1) 0;
+      @include type.caption-2;
+      color: var(--color-neutral-05);
+
+      button {
+        @include type.caption-2-semi;
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
+        color: var(--color-neutral-06);
+
+        &:hover {
+          background: var(--color-neutral-03);
+        }
+      }
+
+      button.danger {
+        color: var(--color-error);
+
+        &:disabled {
+          opacity: 0.5;
+        }
+      }
+    }
+
+    /* ---- thread ---------------------------------------------------- */
 
     .thread {
       flex: 1;
@@ -334,6 +504,66 @@ interface ProductChip {
       flex-direction: column;
       gap: var(--space-3);
       padding-bottom: var(--space-3);
+    }
+
+    .welcome {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: var(--space-2);
+      margin: auto 0;
+      padding: var(--space-6) var(--space-2);
+    }
+
+    .welcome-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: var(--space-2);
+      border-radius: var(--radius-full);
+      background: var(--color-neutral-02);
+      color: var(--color-neutral-07);
+    }
+
+    .welcome h3 {
+      @include type.body-1-semi;
+      margin: 0;
+      color: var(--color-neutral-07);
+    }
+
+    .welcome p {
+      @include type.caption-1;
+      margin: 0;
+      max-width: 22rem;
+      color: var(--color-neutral-04);
+    }
+
+    .suggestions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      width: 100%;
+      margin-top: var(--space-4);
+    }
+
+    .suggestion {
+      @include type.caption-1;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      box-shadow: inset 0 0 0 1px var(--color-neutral-03);
+      color: var(--color-neutral-07);
+      text-align: left;
+      transition:
+        background-color var(--duration-fast) var(--ease-out),
+        box-shadow var(--duration-fast) var(--ease-out);
+
+      &:hover {
+        background: var(--color-neutral-02);
+        box-shadow: inset 0 0 0 1px var(--color-neutral-04);
+      }
     }
 
     .bubble {
@@ -347,12 +577,14 @@ interface ProductChip {
       align-self: flex-end;
       background: var(--color-neutral-07);
       color: var(--color-white);
+      border-bottom-right-radius: var(--radius-sm);
     }
 
     .bubble.assistant {
       align-self: flex-start;
       background: var(--color-neutral-02);
       color: var(--color-neutral-07);
+      border-bottom-left-radius: var(--radius-sm);
 
       ::ng-deep p {
         margin: 0 0 var(--space-2);
@@ -376,12 +608,12 @@ interface ProductChip {
       display: flex;
       align-items: center;
       gap: 4px;
-      padding: var(--space-3);
+      padding: var(--space-3) var(--space-4);
 
       span {
         width: 6px;
         height: 6px;
-        border-radius: 50%;
+        border-radius: var(--radius-full);
         background: var(--color-neutral-04);
         animation: typing-bounce 1.2s infinite ease-in-out;
 
@@ -434,8 +666,13 @@ interface ProductChip {
 
     .decline {
       @include type.caption-1-semi;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
       color: var(--color-neutral-05);
-      text-decoration: underline;
+
+      &:hover {
+        background: var(--color-neutral-02);
+      }
     }
 
     .chips {
@@ -454,6 +691,7 @@ interface ProductChip {
       border-radius: var(--radius-md);
       box-shadow: inset 0 0 0 1px var(--color-neutral-03);
       color: var(--color-neutral-07);
+      transition: background-color var(--duration-fast) var(--ease-out);
 
       &:hover {
         background: var(--color-neutral-02);
@@ -485,35 +723,53 @@ interface ProductChip {
       color: var(--color-error);
     }
 
+    /* ---- composer ------------------------------------------------- */
+
     .composer {
       display: flex;
       align-items: flex-end;
-      gap: var(--space-3);
-      padding-top: var(--space-4);
-      border-top: 1px solid var(--color-neutral-03);
+      gap: var(--space-2);
+      padding: var(--space-2);
+      border-radius: var(--radius-lg);
+      box-shadow: inset 0 0 0 1px var(--color-neutral-03);
+      transition: box-shadow var(--duration-fast) var(--ease-out);
+
+      &:focus-within {
+        box-shadow: inset 0 0 0 1px var(--color-neutral-07);
+      }
     }
 
     .composer textarea {
       @include type.body-2;
       flex: 1;
-      min-height: 40px;
+      min-height: 32px;
       max-height: 120px;
-      padding: var(--space-2) var(--space-3);
-      border-radius: var(--radius-md);
-      box-shadow: inset 0 0 0 1px var(--color-border-input);
+      padding: var(--space-2);
+      border: none;
+      background: none;
       color: var(--color-neutral-07);
       resize: none;
 
+      &::placeholder {
+        color: var(--color-neutral-04);
+      }
+
       &:focus-visible {
         outline: none;
-        box-shadow: inset 0 0 0 1px var(--color-info);
       }
     }
 
     .stop {
       @include type.caption-1-semi;
       flex-shrink: 0;
+      align-self: center;
+      padding: var(--space-2) var(--space-3);
       color: var(--color-error);
+
+      &:hover {
+        background: var(--color-neutral-02);
+        border-radius: var(--radius-md);
+      }
     }
   `,
 })
@@ -526,11 +782,15 @@ export class AssistantPanel {
 
   private readonly threadEl = viewChild<ElementRef<HTMLDivElement>>('threadEl');
 
+  protected readonly suggestions = SUGGESTIONS;
+
   protected readonly view = signal<'chat' | 'history'>('chat');
   protected readonly activeSessionId = signal<string | null>(readStoredSessionId());
 
   protected readonly sessions = signal<ChatSessionDto[]>([]);
   protected readonly sessionsLoading = signal(false);
+  protected readonly confirmingDeleteId = signal<string | null>(null);
+  protected readonly deletingId = signal<string | null>(null);
 
   protected readonly messages = signal<ChatMessageDto[]>([]);
   protected readonly messagesLoading = signal(false);
@@ -589,12 +849,18 @@ export class AssistantPanel {
     this.view.set('chat');
   }
 
+  protected useSuggestion(text: string): void {
+    this.draft.set(text);
+    this.submitDraft();
+  }
+
   protected toggleHistory(): void {
     if (this.view() === 'history') {
       this.view.set('chat');
       return;
     }
     this.view.set('history');
+    this.confirmingDeleteId.set(null);
     this.sessionsLoading.set(true);
     this.assistant.listSessions().subscribe({
       next: (list) => {
@@ -612,6 +878,23 @@ export class AssistantPanel {
     this.loadMessages(sessionId);
   }
 
+  protected deleteSession(sessionId: string): void {
+    if (this.deletingId()) return;
+    this.deletingId.set(sessionId);
+    this.assistant.deleteSession(sessionId).subscribe({
+      next: () => {
+        this.deletingId.set(null);
+        this.confirmingDeleteId.set(null);
+        this.sessions.update((list) => list.filter((s) => s.id !== sessionId));
+        if (this.activeSessionId() === sessionId) this.startNewChat();
+      },
+      error: () => {
+        this.deletingId.set(null);
+        this.confirmingDeleteId.set(null);
+      },
+    });
+  }
+
   protected onEnterKey(event: Event): void {
     // Angular types a filtered binding like `(keydown.enter)`'s $event as
     // plain Event, not KeyboardEvent (confirmed against the compiler, not
@@ -623,6 +906,10 @@ export class AssistantPanel {
 
   protected onSend(event: SubmitEvent): void {
     event.preventDefault();
+    this.submitDraft();
+  }
+
+  private submitDraft(): void {
     const text = this.draft().trim();
     if (!text || this.sending()) return;
     this.draft.set('');

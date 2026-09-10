@@ -34,13 +34,13 @@ import { ModalDialog } from '@/app/shared/ui/modal-dialog';
         </action-button>
       </div>
 
-      <div class="block danger">
+      <div class="block">
         <h2>Delete account</h2>
         <p class="hint">
           Permanently anonymizes your account. Orders and reviews are kept as historical records but
           are no longer linked to you.
         </p>
-        <button type="button" class="delete-link" (click)="openDeleteConfirm()">
+        <button type="button" class="delete-btn" (click)="openDeleteConfirm()">
           Delete my account
         </button>
       </div>
@@ -94,10 +94,25 @@ import { ModalDialog } from '@/app/shared/ui/modal-dialog';
       color: var(--color-neutral-06);
     }
 
-    .danger .delete-link {
-      @include type.caption-1-semi;
+    .delete-btn {
+      @include type.button-s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 6px var(--space-6);
+      border-radius: var(--radius-lg);
+      box-shadow: inset 0 0 0 1px var(--color-error);
       color: var(--color-error);
-      text-decoration: underline;
+      transition: background-color var(--duration-fast) var(--ease-out);
+
+      &:hover {
+        background: color-mix(in srgb, var(--color-error) 8%, transparent);
+      }
+
+      &:active {
+        transform: scale(0.97);
+      }
     }
 
     .modal-copy {
