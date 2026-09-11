@@ -1,0 +1,40 @@
+:3000 {
+	# Next's own BFF route handlers: exchange the API's JWT for an httpOnly
+	# session cookie. Must be matched before the generic /api/* rule below —
+	# otherwise every login attempt would be forwarded straight to the real
+	# API instead of being intercepted here to set the cookie.
+	handle /session/* {
+		reverse_proxy web:3000
+	}
+
+	# WebSocket upgrades — live file-processing status, live quota. Caddy
+	# proxies the Upgrade/Connection headers automatically with zero extra
+	# config, which is the one thing Next's own rewrites() genuinely cannot
+	# do, and the reason this proxy exists at all.
+	handle /socket.io/* {
+		reverse_proxy api:4000
+	}
+
+	# The REST API is public at /api/*, but the backend's own routes are
+	# unprefixed (see SCOPE.md's Modules & routes). handle_path strips the
+	# /api segment before forwarding, so /api/auth/login reaches the backend
+	# as /auth/login — no change needed on the backend side.
+	handle_path /api/* {
+		reverse_proxy api:4000
+	}
+
+	# These already match the backend's real, unprefixed mount points.
+	handle /reference* {
+		reverse_proxy api:4000
+	}
+
+	handle /graphql {
+		reverse_proxy api:4000
+	}
+
+	# Everything else — pages, the /docs/* MDX guides, static assets — is
+	# the Next.js app.
+	handle {
+		reverse_proxy web:3000
+	}
+}

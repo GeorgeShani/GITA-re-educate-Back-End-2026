@@ -1,0 +1,108 @@
+name: gridline
+
+services:
+  # Local Postgres — only for developing without a Neon project. Never
+  # starts unless the "dev" profile is active; the graded/production path
+  # always points DATABASE_URL/DIRECT_URL at Neon instead.
+  #
+  #   docker compose --profile dev up      # with a local db
+  #   docker compose up                    # without it (Neon)
+  db:
+    image: postgres:17-alpine
+    profiles: ["dev"]
+    environment:
+      POSTGRES_USER: gridline
+      POSTGRES_PASSWORD: gridline
+      POSTGRES_DB: gridline
+    ports:
+      - "5432:5432"
+    volumes:
+      - gridline_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gridline -d gridline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: runs the TypeORM migrations against DIRECT_URL, then exits.
+  # `api` waits for this to succeed before it starts.
+  migrate:
+    build:
+      context: ./backend
+      target: build
+    env_file: ./backend/.env
+    command: ["npm", "run", "migration:run"]
+    depends_on:
+      db:
+        condition: service_healthy
+        required: false # only relevant when --profile dev is active
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+      target: runtime
+    env_file: ./backend/.env
+    environment:
+      PORT: "4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "4000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  web:
+    build:
+      context: ./frontend
+      target: runtime
+    env_file: ./frontend/.env
+    environment:
+      API_ORIGIN: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # The only published port. Fronts web + api on one origin — see
+  # proxy/Caddyfile for the routing rules and why Caddy specifically (it
+  # proxies WebSocket upgrades with no extra config; Next's rewrites() can't
+  # proxy an upgrade at all).
+  proxy:
+    image: caddy:2-alpine
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  gridline_db_data:
