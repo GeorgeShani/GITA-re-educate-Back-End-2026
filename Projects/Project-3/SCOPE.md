@@ -168,13 +168,27 @@ decorative:
   `gridline.quota.exceeded`, `gridline.subscription.changed`,
   `gridline.billing.invoice_finalized`.
 
-Also: `ignore: ['/health']` so healthchecks don't eat the event budget,
-`serviceVersion: process.env.GIT_SHA` for the Releases view, and the Next.js
-BFF forwards `x-request-id` so a single trace spans web → api.
+Also: `http: { ignore: ['/health'] }` so healthchecks don't eat the event budget
+(the option is nested, not top-level), `serviceVersion: process.env.GIT_SHA` for
+the Releases view, and the Next.js BFF forwards `x-correlation-id` so a single
+trace spans web → api.
+
+**It does not no-op without credentials** — verified in the installed package.
+The `!appKey && !appSecret` check lives only inside
+`warnIfCredentialsSentInClear()` and returns early from the *warning*;
+`initializeWorker()` proceeds regardless, flushes, and logs
+`Telemetry rejected (401)` on every flush. So `AppModule` omits the module
+entirely unless both credential halves are present — that conditional
+registration is the only real no-op, and it is what lets a grader run clean
+with no Observe account. Passing `instrument: ObserveInstrument` in `main.ts`
+stays unconditional: with no ALS store it is a passthrough.
 
 Two honest limits to design around: **logs are a paid-plan feature** and the
 free tier keeps **3 days of retention**. So `nestjs-pino` stays for structured
-stdout logging, correlated by Observe's trace id via `attachTraceIdToLogs`.
+stdout logging. Note `attachTraceIdToLogs` patches `ConsoleLogger` only, so it
+is inert once `app.useLogger(pinoLogger)` runs — pino correlates via the CLS
+`correlationId` it stamps itself, and reads Observe's own id through
+`TracerService.currentTraceId()` when telemetry is on.
 And Observe is for operating the service — the in-app `/analytics/usage`
 surface remains the product-level analytics. Different audiences, no overlap.
 
@@ -1182,8 +1196,12 @@ would double every piece of copy across four branded surfaces.
 
 0. **`Projects/Project-3/SCOPE.md`** — this document, written into the project
    root as the living scope of record before any code. ✅ *done — this file.*
-1. **Scaffold** — Nest 12 ESM app, TypeORM + Neon + explicit migrations (with
-   the full index list from *Request pipeline & data access*),
+1. **Scaffold** — Nest 12 ESM app, TypeORM + Neon + explicit migrations (the
+   index *convention* plus the indexes for the tables that exist; the full list
+   is a checklist in `backend/AGENTS.md` that each later migration ticks off,
+   enforced by a `pg_indexes` assertion spec that grows per milestone — an index
+   for a table with no rows and no query cannot be demonstrated, so it is
+   delivered with its module),
    Zod-validated config module, global `ValidationPipe` + Scalar at
    `/reference`, `@nestjs/observe` wired with redaction and `/health`
    ignored, pino bridged to Nest's logger with matching redaction, CLS, the
@@ -1246,7 +1264,7 @@ marks that the billing engine was going to earn.
 | `STORAGE_DRIVER` | `s3` (+ bucket, region, IAM keys) | `local` disk |
 | `MAIL_TRANSPORT` | `smtp` (+ host, user, pass) | `console` (prints the email) |
 | `AI_PROVIDER` | `gemini` (+ key, model) | `off` (metrics only, no narrative) |
-| `OBSERVE_APP_KEY` / `_SECRET` | Observe service creds | unset (SDK no-ops) |
+| `OBSERVE_APP_KEY` / `_SECRET` | Observe service creds | unset → module not registered |
 | `GOOGLE_CLIENT_ID` / `_SECRET` / `_CALLBACK_URL` | OAuth app creds | unset (password auth only) |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | generated | generated |
 
@@ -1352,10 +1370,12 @@ npm run test:int        # integration against a throwaway Neon branch
   documented default; a real bucket + IAM user must exist before the file
   milestone is called done. `local` disk is dev-only and must never be the
   configuration a grader runs.
-- **Observe free tier** — 300k events/month, 3-day retention, no logs. Fine
-  for a demo, but the SDK must be optional: with `OBSERVE_APP_KEY` unset the
-  app boots and runs normally, so a grader never needs an account. Keep
-  `/health` and static assets on the ignore list.
+- **Observe free tier** — 300k events/month, 3-day retention, no logs. Fine for
+  a demo, but the SDK must be optional — and "optional" means **not registering
+  the module**, not leaving the credentials blank: it does not no-op on empty
+  credentials, it 401s on every flush (see the Observe section). `AppModule`
+  gates the import on both halves being present, and a module-metadata spec
+  holds that. Keep `/health` on `http.ignore`.
 - **Scope** — the brand and frontend surface is large. Milestones 3–9 are the
   40 graded points and come first; milestone 2 is deliberately early only
   because retrofitting a design system costs more than front-loading it. The

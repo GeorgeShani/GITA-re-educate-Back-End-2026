@@ -11,6 +11,13 @@
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
     "target": "ES2023",
+    // MUST stay false. At target ES2022+ both tsc and oxc default this to true,
+    // which makes `name: string;` on a TypeORM entity emit a real class field.
+    // Every `new Entity()` then owns all its keys as `undefined`, so a partial
+    // save() starts nulling columns and declared relations shadow the prototype
+    // accessors lazy relations install. Both compilers agree, so nothing errors
+    // — you just get wrong writes. See SCOPE.md and the plan's trap list.
+    "useDefineForClassFields": false,
     "sourceMap": true,
     "outDir": "./dist",
     "incremental": true,
