@@ -19,9 +19,9 @@ import { APP_CONFIG, loadConfig } from './load-config.js';
       isGlobal: true,
       cache: true,
       // Returning the parsed object also normalises process.env for anything
-      // that reads it directly before the injector exists.
-      validate: (raw: Record<string, unknown>) =>
-        loadConfig(raw as NodeJS.ProcessEnv),
+      // that reads it directly before the injector exists. No cast needed —
+      // loadConfig's parameter is Record<string, unknown> for exactly this.
+      validate: (raw: Record<string, unknown>) => loadConfig(raw),
     }),
   ],
   providers: [

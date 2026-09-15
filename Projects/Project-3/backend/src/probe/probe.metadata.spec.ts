@@ -25,21 +25,24 @@ import { ProbeService } from './probe.service.js';
  */
 describe('decorator metadata (toolchain canary)', () => {
   it('emits design:paramtypes for injectable constructors', () => {
-    const paramTypes = Reflect.getMetadata(
+    // Reflect.getMetadata's own type is `any`; declaring the binding as
+    // `unknown` rather than casting is what actually stops that `any` from
+    // spreading into the rest of the test.
+    const paramTypes: unknown = Reflect.getMetadata(
       'design:paramtypes',
       ProbeService,
-    ) as unknown[] | undefined;
+    );
 
     expect(paramTypes).toBeDefined();
     expect(paramTypes).toEqual([RequestContextService]);
   });
 
   it('emits design:type for decorated properties', () => {
-    const propertyType = Reflect.getMetadata(
+    const propertyType: unknown = Reflect.getMetadata(
       'design:type',
       ProbeQueryDto.prototype,
       'n',
-    ) as unknown;
+    );
 
     expect(propertyType).toBe(Number);
   });

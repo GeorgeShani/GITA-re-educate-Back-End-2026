@@ -30,10 +30,17 @@ async function importAppModuleWith(
   }
 
   const module = await import('./app.module.js');
-  const imports =
-    (Reflect.getMetadata('imports', module.AppModule) as unknown[]) ?? [];
+  // Reflect.getMetadata's own type is `any`; an `unknown` binding plus
+  // Array.isArray narrows it for real, rather than casting.
+  const rawImports: unknown = Reflect.getMetadata('imports', module.AppModule);
+  const imports = Array.isArray(rawImports) ? rawImports : [];
 
   return { imports, observeModuleClass: module.ObserveModule };
+}
+
+/** Type-predicate guard — `in` narrows `entry`, no assertion needed. */
+function hasModuleProperty(entry: object): entry is { module: unknown } {
+  return 'module' in entry;
 }
 
 /** A DynamicModule produced by `ObserveModule.forRoot()` carries `module`. */
@@ -43,8 +50,21 @@ function includesObserve(imports: unknown[], observeModuleClass: unknown) {
       entry === observeModuleClass ||
       (typeof entry === 'object' &&
         entry !== null &&
-        (entry as { module?: unknown }).module === observeModuleClass),
+        hasModuleProperty(entry) &&
+        entry.module === observeModuleClass),
   );
+}
+
+/** A class's own `.name`, whether `entry` is the class or a DynamicModule. */
+function moduleNameOf(entry: unknown): string {
+  if (typeof entry === 'function') return entry.name;
+
+  if (typeof entry === 'object' && entry !== null && hasModuleProperty(entry)) {
+    const inner = entry.module;
+    if (typeof inner === 'function') return inner.name;
+  }
+
+  return '';
 }
 
 describe('AppModule telemetry wiring', () => {
@@ -85,11 +105,7 @@ describe('AppModule telemetry wiring', () => {
 
   it('always registers the core infrastructure modules', async () => {
     const { imports } = await importAppModuleWith({});
-    const names = imports.map((entry) =>
-      typeof entry === 'function'
-        ? entry.name
-        : ((entry as { module?: { name?: string } })?.module?.name ?? ''),
-    );
+    const names = imports.map(moduleNameOf);
 
     expect(names).toContain('AppConfigModule');
     expect(names).toContain('CoreModule');

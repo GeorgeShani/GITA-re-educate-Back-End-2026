@@ -10,8 +10,15 @@ import { type AppConfig, envSchema } from './env.schema.js';
  *
  * Throws with every offending key listed at once — a boot failure should tell
  * you everything wrong with the file, not just the first thing.
+ *
+ * Takes `Record<string, unknown>` — wider than `NodeJS.ProcessEnv` — on
+ * purpose: Zod's `safeParse` accepts `unknown` regardless, and this is what
+ * lets `@nestjs/config`'s `validate` hook (typed to receive exactly
+ * `Record<string, unknown>`) call this directly with no cast at the call site.
  */
-export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
+export function loadConfig(
+  source: Record<string, unknown> = process.env,
+): AppConfig {
   const result = envSchema.safeParse(source);
 
   if (!result.success) {

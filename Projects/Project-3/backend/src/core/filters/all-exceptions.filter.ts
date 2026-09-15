@@ -87,9 +87,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
 function extractMessage(body: string | object): string | string[] {
   if (typeof body === 'string') return body;
 
-  const message = (body as { message?: unknown }).message;
+  const message = hasMessageProperty(body) ? body.message : undefined;
   if (typeof message === 'string') return message;
   if (Array.isArray(message)) return message.map(String);
 
   return 'Request failed';
+}
+
+/** Type-predicate guard, not an assertion — `in` narrows `body` for real. */
+function hasMessageProperty(body: object): body is { message: unknown } {
+  return 'message' in body;
 }
