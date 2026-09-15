@@ -206,6 +206,9 @@ export class SaleBanner {
   ]);
 
   private readonly endsAtMs = computed(() => {
+    // value() throws in the error state; this computed drives the
+    // countdown ticker and runs regardless of template branch.
+    if (!this.coupon.hasValue()) return null;
     const endsAt = this.coupon.value()?.endsAt;
     return endsAt ? new Date(endsAt).getTime() : null;
   });

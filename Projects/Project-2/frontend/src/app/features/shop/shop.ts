@@ -349,7 +349,8 @@ export default class Shop {
   protected readonly heading = computed(() => {
     const term = this.q();
     if (term) return `Results for "${term}"`;
-    const name = (this.categories.value() ?? []).find((c) => c.slug === this.category())?.name;
+    const cats = this.categories.hasValue() ? (this.categories.value() ?? []) : [];
+    const name = cats.find((c) => c.slug === this.category())?.name;
     return name ?? 'All products';
   });
 

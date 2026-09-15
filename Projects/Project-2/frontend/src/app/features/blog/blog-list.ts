@@ -313,13 +313,22 @@ export default class BlogList {
   protected readonly categories = this.blog.categoriesResource();
   protected readonly tags = this.blog.tagsResource();
 
-  protected readonly items = computed(() => this.posts.value()?.items ?? []);
-  protected readonly total = computed(() => this.posts.value()?.total ?? 0);
+  // hasValue() before value(): httpResource.value() throws while the
+  // resource is in its error state, and these computeds run regardless of
+  // which template branch renders — so an API failure here would take the
+  // page down instead of falling through to the empty state.
+  private readonly postsPage = computed(() =>
+    this.posts.hasValue() ? this.posts.value() : undefined,
+  );
+
+  protected readonly items = computed(() => this.postsPage()?.items ?? []);
+  protected readonly total = computed(() => this.postsPage()?.total ?? 0);
   protected readonly pageCount = computed(() => Math.ceil(this.total() / TAKE));
 
   protected categoryName(categoryId: string | undefined): string | undefined {
     if (!categoryId) return undefined;
-    return (this.categories.value() ?? []).find((c) => c.id === categoryId)?.name;
+    const list = this.categories.hasValue() ? this.categories.value() : [];
+    return (list ?? []).find((c) => c.id === categoryId)?.name;
   }
 
   protected setParam(key: string, value: string | null): void {

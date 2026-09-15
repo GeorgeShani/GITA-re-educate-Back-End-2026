@@ -106,8 +106,10 @@ export class LatestArticles {
 
   private readonly posts = this.blog.postsResource(() => ({ take: TAKE }));
 
+  // hasValue() guard — value() throws in the resource's error state and
+  // this computed runs regardless of which template branch renders.
   protected readonly articles = computed(() =>
-    (this.posts.value()?.items ?? []).map((post) => ({
+    (this.posts.hasValue() ? (this.posts.value()?.items ?? []) : []).map((post) => ({
       slug: post.slug,
       title: post.title,
       coverImageUrl: post.coverImageUrl,

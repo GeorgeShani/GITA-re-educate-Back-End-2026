@@ -319,12 +319,21 @@ export default class BlogPost {
   readonly slug = input.required<string>();
 
   protected readonly post = this.blog.postResource(() => this.slug());
-  protected readonly comments = this.blog.commentsResource(() => this.post.value()?.id);
+  // hasValue() before value(): httpResource.value() THROWS a
+  // ResourceValueError while the resource is in its error state, and this
+  // computed runs regardless of which template branch renders. Without the
+  // guard an unknown slug threw here instead of 404ing, which left the
+  // page stuck on its loading skeleton forever. Same guard as the SEO
+  // effect below, and as product-detail.ts/shop.ts/search.ts already use.
+  protected readonly comments = this.blog.commentsResource(() =>
+    this.post.hasValue() ? this.post.value().id : undefined,
+  );
 
   constructor() {
     // Same PostDto.seoTitle/seoDescription story as product-detail.ts —
     // modeled on the backend, never read on the frontend before this.
     effect(() => {
+      if (!this.post.hasValue()) return;
       const p = this.post.value();
       if (!p) return;
 

@@ -201,7 +201,11 @@ export default class ProductDetail {
   protected readonly product = this.catalog.productResource(() => this.slug());
   protected readonly related = this.catalog.relatedResource(() => this.slug());
 
-  protected readonly relatedCards = computed(() => (this.related.value() ?? []).map(toCardProduct));
+  // Same hasValue() guard as `breadcrumbs` below — `related` 404s too when
+  // the slug is bad, and this computed runs regardless of branch.
+  protected readonly relatedCards = computed(() =>
+    (this.related.hasValue() ? (this.related.value() ?? []) : []).map(toCardProduct),
+  );
 
   protected readonly breadcrumbs = computed<BreadcrumbItem[]>(() => {
     // `.value()` throws while the resource is in an error state (bad

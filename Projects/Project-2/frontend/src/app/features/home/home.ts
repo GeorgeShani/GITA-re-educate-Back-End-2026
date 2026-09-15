@@ -446,7 +446,10 @@ export default class Home {
 
   protected readonly categories = this.catalog.categoryTreeResource();
 
+  // hasValue() guard: httpResource.value() throws in the error state, and
+  // this computed runs regardless of template branch — an API blip would
+  // otherwise take the whole home page down instead of just this rail.
   protected readonly featuredCards = computed(() =>
-    (this.featured.value()?.items ?? []).map(toCardProduct),
+    (this.featured.hasValue() ? (this.featured.value()?.items ?? []) : []).map(toCardProduct),
   );
 }

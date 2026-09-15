@@ -691,7 +691,7 @@ export class Styleguide {
   // renders whatever the API actually returns.
   private readonly products = this.catalog.productsResource(() => ({ take: 4 }));
   protected readonly demoProducts = computed(() =>
-    (this.products.value()?.items ?? []).map(toCardProduct),
+    (this.products.hasValue() ? (this.products.value()?.items ?? []) : []).map(toCardProduct),
   );
 
   protected toggleDemoWishlist(slug: string): void {

@@ -113,6 +113,9 @@ export class NotificationBar {
   protected readonly dismissed = signal(false);
 
   protected readonly message = computed<string | null>(() => {
+    // The bar is global chrome — value() throwing in the resource's error
+    // state would break every page, not just this strip.
+    if (!this.coupon.hasValue()) return null;
     const promo = this.coupon.value();
     if (!promo) return null;
     return `${this.discount(promo)} with code ${promo.code} — limited time`;

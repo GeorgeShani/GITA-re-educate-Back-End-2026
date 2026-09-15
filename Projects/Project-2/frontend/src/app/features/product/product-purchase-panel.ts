@@ -238,6 +238,10 @@ export class ProductPurchasePanel {
   });
 
   protected readonly stockCap = computed(() => {
+    // value() throws in the error state — a stock lookup that 404s (an
+    // unknown SKU) would otherwise break the whole purchase panel rather
+    // than just falling back to the default quantity cap.
+    if (!this.stock.hasValue()) return 99;
     const available = this.stock.value()?.quantityAvailable;
     return available && available > 0 ? Math.min(available, 99) : 99;
   });

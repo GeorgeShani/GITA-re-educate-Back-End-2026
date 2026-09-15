@@ -29,4 +29,15 @@ export class StreamCheckpointRepository {
       .updateOne({ streamName }, { $set: { resumeToken } }, { upsert: true })
       .exec();
   }
+
+  /**
+   * Forgets the stored token so the next watch starts a fresh stream.
+   * Used when Mongo rejects the token as unresumable — the resume point
+   * has aged out of the oplog (see OutboxRelayService.startWatching).
+   */
+  async clearResumeToken(streamName: string): Promise<void> {
+    await this.checkpointModel
+      .updateOne({ streamName }, { $unset: { resumeToken: '' } })
+      .exec();
+  }
 }
