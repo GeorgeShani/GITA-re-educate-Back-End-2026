@@ -59,16 +59,21 @@ export class SitemapService {
   private async buildSitemap(): Promise<string> {
     const appUrl = this.configService.get<string>('APP_URL') ?? '';
 
+    // `updatedAt` has to be in the projection: selecting 'slug' alone left
+    // p.get('updatedAt') undefined on every document, so the
+    // `.toISOString()` below threw on the first entry — /sitemap.xml 500ed
+    // for every caller and the regeneration cron logged a TypeError on
+    // each run.
     const [products, posts, pages] = await Promise.all([
       this.productModel
         .find({ publishedAt: { $ne: null } })
-        .select('slug')
+        .select('slug updatedAt')
         .exec(),
       this.postModel
         .find({ publishedAt: { $ne: null, $lte: new Date() } })
-        .select('slug')
+        .select('slug updatedAt')
         .exec(),
-      this.pageModel.find({}).select('slug').exec(),
+      this.pageModel.find({}).select('slug updatedAt').exec(),
     ]);
 
     // Document.get() is typed `any` by mongoose — no cast needed, the
@@ -89,11 +94,13 @@ export class SitemapService {
       })),
     ];
 
+    // Fall back rather than throw: one document missing a timestamp should
+    // cost that entry its <lastmod>, not 500 the whole sitemap.
     const entries = urls
-      .map(
-        (url) =>
-          `  <url><loc>${appUrl}${url.path}</loc><lastmod>${url.updatedAt.toISOString()}</lastmod></url>`,
-      )
+      .map((url) => {
+        const lastmod = url.updatedAt instanceof Date ? url.updatedAt : new Date();
+        return `  <url><loc>${appUrl}${url.path}</loc><lastmod>${lastmod.toISOString()}</lastmod></url>`;
+      })
       .join('\n');
 
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries}\n</urlset>`;

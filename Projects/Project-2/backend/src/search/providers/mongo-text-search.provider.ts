@@ -92,15 +92,23 @@ export class MongoTextSearchProvider implements SearchProvider {
     if (!text) return [];
 
     // Atlas' `autocomplete` operator needs an edge-ngram index; without
-    // it, a case-insensitive "contains" on the product name is the
-    // closest no-setup approximation. Anchored to a word boundary so
-    // "grip" matches "RainGrip" and "All-Weather Grip" but not a stray
-    // substring mid-word.
+    // it, a case-insensitive "contains" is the closest no-setup
+    // approximation. Anchored to a word boundary so "grip" matches
+    // "RainGrip" and "All-Weather Grip" but not a stray substring
+    // mid-word.
+    //
+    // Matches brand as well as name: brand is its own field and almost
+    // never appears in `name`, so a name-only match made every brand
+    // query ("titleist", "TaylorMade") return zero suggestions while the
+    // results page behind it — which searches the weighted `product_text`
+    // index, brand included — showed a dozen hits. The suggestion list is
+    // product names either way; brand only widens what can match.
     const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wordPrefix = { $regex: `\\b${escaped}`, $options: 'i' };
     const pipeline: PipelineStage[] = [
       {
         $match: {
-          name: { $regex: `\\b${escaped}`, $options: 'i' },
+          $or: [{ name: wordPrefix }, { brand: wordPrefix }],
           publishedAt: { $ne: null },
         },
       },

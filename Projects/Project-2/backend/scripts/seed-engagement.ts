@@ -18,11 +18,18 @@
 const API = process.env.API_URL ?? 'http://localhost:4000/api/v1';
 const PASSWORD = 'Password123!';
 
+// WRITE_THROTTLE is 5 requests per minute per IP, so ~13s between writes
+// keeps the seed comfortably under it without a retry storm.
+const WRITE_SPACING_MS = 13_000;
+const THROTTLE_BACKOFF_MS = 62_000;
+const MAX_THROTTLE_RETRIES = 2;
+
 interface Counters {
   contact: number;
   newsletter: number;
   comments: number;
   returns: number;
+  reviews: number;
 }
 
 const CONTACT_MESSAGES = [
@@ -96,13 +103,46 @@ const COMMENTS = [
   },
 ];
 
+const PENDING_REVIEWS = [
+  {
+    rating: 5,
+    title: 'Grips like it is part of your hand',
+    body: 'Third season on cabretta and this is the best of them. Broke in after two rounds and has not gone slick in the heat.',
+  },
+  {
+    rating: 4,
+    title: 'Great, one caveat',
+    body: 'Fit and feel are excellent. Half a size small though — I normally take a medium and the large is the better fit here.',
+  },
+  {
+    rating: 2,
+    title: 'Stitching let go early',
+    body: 'Looked and felt great out of the box but the seam by the thumb opened up inside a month of twice-weekly play.',
+  },
+  {
+    rating: 5,
+    title: 'Exactly what I wanted',
+    body: 'Arrived two days early, packaging was spotless, and it performs as described. No notes.',
+  },
+];
+
 const RETURN_REASONS = [
   'Ordered the wrong size — need a large instead.',
   'Arrived with a scuff on the sole, not as described.',
   'Changed my mind after a fitting; found a better match.',
 ];
 
-async function post(path: string, body: unknown, token?: string) {
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * POSTs, and backs off when the app's own rate limiter says to.
+ *
+ * Public writes are capped by WRITE_THROTTLE (5 per minute per IP), so a
+ * seed that fires as fast as Node can loop trips the limiter after five
+ * rows and reports failures that are really self-inflicted. Pace the
+ * requests, and retry a 429 once the window has rolled over.
+ */
+async function post(path: string, body: unknown, token?: string, attempt = 0): Promise<Response> {
   const res = await fetch(`${API}${path}`, {
     method: 'POST',
     headers: {
@@ -111,6 +151,15 @@ async function post(path: string, body: unknown, token?: string) {
     },
     body: JSON.stringify(body),
   });
+
+  if (res.status === 429 && attempt < MAX_THROTTLE_RETRIES) {
+    const waitMs = Number(res.headers.get('retry-after') ?? 0) * 1000 || THROTTLE_BACKOFF_MS;
+    console.log(`    … rate limited, waiting ${Math.round(waitMs / 1000)}s`);
+    await sleep(waitMs);
+    return post(path, body, token, attempt + 1);
+  }
+
+  await sleep(WRITE_SPACING_MS);
   return res;
 }
 
@@ -119,6 +168,23 @@ async function get<T>(path: string, token?: string): Promise<T | null> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
   return res.ok ? ((await res.json()) as T) : null;
+}
+
+/** Seeded customers, in fallback order — see loginAsAnyCustomer. */
+const REVIEWER_EMAILS = [
+  'james.whitaker@example.com',
+  'sofia.marchetti@example.com',
+  'liam.oconnell@example.com',
+  'hannah.kim@example.com',
+  'charlotte.bennett@example.com',
+];
+
+async function loginAsAnyCustomer(emails: string[]): Promise<string | null> {
+  for (const email of emails) {
+    const token = await login(email);
+    if (token) return token;
+  }
+  return null;
 }
 
 async function login(email: string): Promise<string | null> {
@@ -258,6 +324,45 @@ async function seedReturns(counters: Counters, adminToken: string): Promise<void
   }
 }
 
+/**
+ * Reviews submitted through the public endpoint land as `pending`, which
+ * is exactly what the admin moderation queue filters to by default — the
+ * seeded catalogue reviews are all pre-approved, so without these the
+ * queue is empty and the approve/reject flow has nothing to act on.
+ */
+async function seedReviews(counters: Counters, adminToken: string): Promise<void> {
+  console.log('\nPending reviews');
+  const products = await get<{ items: { id: string; name: string }[] }>(
+    '/admin/products?take=4',
+    adminToken,
+  );
+  if (!products?.items?.length) {
+    console.warn('  ! no products — run `npm run seed:catalog` first');
+    return;
+  }
+
+  // One customer files all of them: /auth/login is throttled at 5 attempts
+  // per 15 minutes, so a login per review would trip the limiter. Falls
+  // through a few seeded customers because a re-run inside that window
+  // will find the first one already rate-limited.
+  const token = await loginAsAnyCustomer(REVIEWER_EMAILS);
+  if (!token) {
+    console.warn('  ! could not sign in as any reviewing customer (rate limited?)');
+    return;
+  }
+
+  for (const [index, review] of PENDING_REVIEWS.entries()) {
+    const product = products.items[index % products.items.length];
+    const res = await post('/reviews', { productId: product.id, ...review }, token);
+    if (res.ok) {
+      counters.reviews += 1;
+      console.log(`  + ${review.rating}★ on "${product.name}"`);
+    } else {
+      console.warn(`  ! ${product.name} -> ${res.status} ${(await res.text()).slice(0, 120)}`);
+    }
+  }
+}
+
 interface OrderRow {
   id: string;
   status: string;
@@ -270,7 +375,7 @@ async function main(): Promise<void> {
   await assertApiUp();
   console.log(`Seeding engagement data via ${API}`);
 
-  const counters: Counters = { contact: 0, newsletter: 0, comments: 0, returns: 0 };
+  const counters: Counters = { contact: 0, newsletter: 0, comments: 0, returns: 0, reviews: 0 };
 
   await seedContact(counters);
   await seedNewsletter(counters);
@@ -279,16 +384,17 @@ async function main(): Promise<void> {
   const adminToken = await login('admin@3legantgolf.com');
   if (adminToken) {
     await seedReturns(counters, adminToken);
+    await seedReviews(counters, adminToken);
   } else {
     console.warn('\nReturns skipped — could not sign in as admin.');
   }
 
   console.log(
     `\nDone: ${counters.contact} contact messages, ${counters.newsletter} newsletter signups, ` +
-      `${counters.comments} comments, ${counters.returns} returns.`,
+      `${counters.comments} comments, ${counters.returns} returns, ${counters.reviews} pending reviews.`,
   );
   console.log(
-    'Comments and returns land in their pending/requested state — moderate them in the admin panel.',
+    'Comments, reviews and returns land in their pending/requested state — moderate them in the admin panel.',
   );
 }
 
