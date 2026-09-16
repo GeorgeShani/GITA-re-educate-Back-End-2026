@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 
@@ -30,12 +30,14 @@ interface CloudinaryResourceResponse {
 // happened (getAssetMetadata, called from the registration command) or
 // clean up (destroy, called from the media.deleted consumer).
 @Injectable()
-export class CloudinaryStorageProvider
-  implements StorageProvider, OnModuleInit
-{
-  constructor(private readonly configService: ConfigService) {}
-
-  onModuleInit(): void {
+export class CloudinaryStorageProvider implements StorageProvider {
+  // Configured in the constructor, not onModuleInit: @nestjs/bullmq starts
+  // its workers from its own onModuleInit, and Nest gives no ordering
+  // between two modules' hooks. A job already waiting at boot (e.g. an
+  // order.paid invoice) could reach uploadBuffer() before this provider's
+  // hook ran and fail with Cloudinary's "Must supply api_key". Construction
+  // finishes for every provider before any onModuleInit is called.
+  constructor(private readonly configService: ConfigService) {
     cloudinary.config({
       cloud_name: this.configService.getOrThrow<string>(
         'CLOUDINARY_CLOUD_NAME',
