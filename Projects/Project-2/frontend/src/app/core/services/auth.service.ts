@@ -2,6 +2,7 @@ import { Service, computed, inject, signal } from '@angular/core';
 import { Observable, finalize, of, shareReplay, switchMap, tap } from 'rxjs';
 
 import type { AuthTokensDto, UserDto } from '@/app/core/api/dto';
+import { inlineErrors } from '@/app/core/interceptors/error.interceptor';
 import { ApiClient } from '@/app/core/services/api-client';
 import { TokenStore } from '@/app/core/services/token-store';
 
@@ -36,13 +37,13 @@ export class AuthService {
 
   register(input: RegisterInput): Observable<AuthTokensDto> {
     return this.api
-      .post<AuthTokensDto>('/auth/register', input)
+      .post<AuthTokensDto>('/auth/register', input, { context: inlineErrors() })
       .pipe(switchMap((tokens) => this.adopt(tokens)));
   }
 
   login(email: string, password: string): Observable<AuthTokensDto> {
     return this.api
-      .post<AuthTokensDto>('/auth/login', { email, password })
+      .post<AuthTokensDto>('/auth/login', { email, password }, { context: inlineErrors() })
       .pipe(switchMap((tokens) => this.adopt(tokens)));
   }
 
@@ -86,11 +87,15 @@ export class AuthService {
   }
 
   forgotPassword(email: string): Observable<void> {
-    return this.api.post<void>('/auth/forgot-password', { email });
+    return this.api.post<void>('/auth/forgot-password', { email }, { context: inlineErrors() });
   }
 
   resetPassword(token: string, newPassword: string): Observable<void> {
-    return this.api.post<void>('/auth/reset-password', { token, newPassword });
+    return this.api.post<void>(
+      '/auth/reset-password',
+      { token, newPassword },
+      { context: inlineErrors() },
+    );
   }
 
   private adopt(tokens: AuthTokensDto): Observable<AuthTokensDto> {

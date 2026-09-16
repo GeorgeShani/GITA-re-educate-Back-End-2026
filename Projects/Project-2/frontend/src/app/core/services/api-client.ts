@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, type HttpContext } from '@angular/common/http';
 import { InjectionToken, Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
@@ -31,8 +31,8 @@ export class ApiClient {
     return this.http.get<T>(this.url(path), { params });
   }
 
-  post<T>(path: string, body: unknown): Observable<T> {
-    return this.http.post<T>(this.url(path), body);
+  post<T>(path: string, body: unknown, options?: { context?: HttpContext }): Observable<T> {
+    return this.http.post<T>(this.url(path), body, options);
   }
 
   patch<T>(path: string, body: unknown): Observable<T> {

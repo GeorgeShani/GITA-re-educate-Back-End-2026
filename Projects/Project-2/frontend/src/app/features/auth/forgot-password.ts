@@ -1,10 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormField, email, form, required } from '@angular/forms/signals';
 
 import { AuthService } from '@/app/core/services/auth.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { apiErrorMessage } from '@/app/core/util/api-error-message';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { FormError } from '@/app/shared/ui/form-error';
 import { TextField } from '@/app/shared/ui/text-field';
 
 /**
@@ -16,7 +19,7 @@ import { TextField } from '@/app/shared/ui/text-field';
  */
 @Component({
   selector: 'forgot-password-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
+  imports: [RouterLink, ActionButton, FormError, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -38,6 +41,10 @@ import { TextField } from '@/app/shared/ui/text-field';
               autocomplete="email"
               [formField]="requestForm.email"
             />
+
+            @if (formError(); as message) {
+              <form-error [message]="message" />
+            }
 
             <action-button type="submit" size="m" [fullWidth]="true" [loading]="submitting()">
               Send reset link
@@ -103,6 +110,16 @@ export default class ForgotPassword {
     email(f.email, { message: 'Enter a valid email address' });
   });
 
+  protected readonly formError = signal<string | null>(null);
+
+  constructor() {
+    // Drop a server error as soon as the form is edited, same as sign-in.
+    effect(() => {
+      this.model();
+      untracked(() => this.formError.set(null));
+    });
+  }
+
   protected onSubmit(event: SubmitEvent): void {
     event.preventDefault();
     this.requestForm().markAsTouched();
@@ -110,16 +127,19 @@ export default class ForgotPassword {
 
     this.submitting.set(true);
     this.auth.forgotPassword(this.model().email).subscribe({
-      // Same generic success on error too, EXCEPT the throttle case — a
-      // 429 needs to be seen (error.interceptor already toasts it), not
-      // silently painted over as "check your email" when nothing was sent.
+      // Same generic success on error too, EXCEPT when nothing can have
+      // been sent: a 429, a network failure (status 0) or a 5xx is shown in
+      // the form instead of being painted over as "check your email".
       next: () => {
         this.submitting.set(false);
         this.sent.set(true);
       },
       error: (err: unknown) => {
         this.submitting.set(false);
-        if (!(err instanceof Object && 'status' in err && err.status === 429)) {
+        const status = err instanceof HttpErrorResponse ? err.status : 0;
+        if (status === 429 || status === 0 || status >= 500) {
+          this.formError.set(apiErrorMessage(err));
+        } else {
           this.sent.set(true);
         }
       },

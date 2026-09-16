@@ -1,11 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormField, email, form, minLength, required } from '@angular/forms/signals';
 
 import { AuthService } from '@/app/core/services/auth.service';
 import { CartService } from '@/app/core/services/cart.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { apiErrorMessage } from '@/app/core/util/api-error-message';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { FormError } from '@/app/shared/ui/form-error';
 import { TextField } from '@/app/shared/ui/text-field';
 
 interface SignUpModel {
@@ -17,7 +19,7 @@ interface SignUpModel {
 
 @Component({
   selector: 'sign-up-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
+  imports: [RouterLink, ActionButton, FormError, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -56,6 +58,10 @@ interface SignUpModel {
             hint="At least 8 characters."
             [formField]="signUpForm.password"
           />
+
+          @if (formError(); as message) {
+            <form-error [message]="message" />
+          }
 
           <action-button type="submit" size="m" [fullWidth]="true" [loading]="submitting()">
             Create account
@@ -155,6 +161,16 @@ export default class SignUp {
     minLength(f.password, 8, { message: 'Password must be at least 8 characters' });
   });
 
+  protected readonly formError = signal<string | null>(null);
+
+  constructor() {
+    // Drop a server error as soon as the form is edited, same as sign-in.
+    effect(() => {
+      this.model();
+      untracked(() => this.formError.set(null));
+    });
+  }
+
   protected onSubmit(event: SubmitEvent): void {
     event.preventDefault();
     this.signUpForm().markAsTouched();
@@ -167,7 +183,10 @@ export default class SignUp {
         this.cart.mergeGuestCart().subscribe();
         this.router.navigateByUrl('/');
       },
-      error: () => this.submitting.set(false),
+      error: (err: unknown) => {
+        this.submitting.set(false);
+        this.formError.set(apiErrorMessage(err));
+      },
     });
   }
 }

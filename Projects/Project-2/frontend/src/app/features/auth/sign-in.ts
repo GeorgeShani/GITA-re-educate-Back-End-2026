@@ -1,11 +1,13 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormField, email, form, required } from '@angular/forms/signals';
 
 import { AuthService } from '@/app/core/services/auth.service';
 import { CartService } from '@/app/core/services/cart.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { apiErrorMessage } from '@/app/core/util/api-error-message';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { FormError } from '@/app/shared/ui/form-error';
 import { TextField } from '@/app/shared/ui/text-field';
 
 /**
@@ -15,7 +17,7 @@ import { TextField } from '@/app/shared/ui/text-field';
  */
 @Component({
   selector: 'sign-in-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
+  imports: [RouterLink, ActionButton, FormError, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -39,6 +41,10 @@ import { TextField } from '@/app/shared/ui/text-field';
           />
 
           <a class="forgot" routerLink="/forgot-password">Forgot password?</a>
+
+          @if (formError(); as message) {
+            <form-error [message]="message" />
+          }
 
           <action-button type="submit" size="m" [fullWidth]="true" [loading]="submitting()">
             Sign in
@@ -122,6 +128,17 @@ export default class SignIn {
     required(f.password, { message: 'Password is required' });
   });
 
+  protected readonly formError = signal<string | null>(null);
+
+  constructor() {
+    // Drop a server error as soon as the form is edited: left in place, an
+    // "Invalid email or password" reads as a verdict on the corrected input.
+    effect(() => {
+      this.model();
+      untracked(() => this.formError.set(null));
+    });
+  }
+
   protected onSubmit(event: SubmitEvent): void {
     event.preventDefault();
     this.signInForm().markAsTouched();
@@ -138,7 +155,10 @@ export default class SignIn {
         this.cart.mergeGuestCart().subscribe();
         this.router.navigateByUrl(this.redirectTo());
       },
-      error: () => this.submitting.set(false),
+      error: (err: unknown) => {
+        this.submitting.set(false);
+        this.formError.set(apiErrorMessage(err));
+      },
     });
   }
 }

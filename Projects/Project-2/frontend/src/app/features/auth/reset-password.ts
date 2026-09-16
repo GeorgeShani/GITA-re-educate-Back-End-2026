@@ -1,10 +1,12 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormField, form, minLength, required } from '@angular/forms/signals';
 
 import { AuthService } from '@/app/core/services/auth.service';
 import { RevealDirective } from '@/app/shared/directives/reveal.directive';
+import { apiErrorMessage } from '@/app/core/util/api-error-message';
 import { ActionButton } from '@/app/shared/ui/action-button';
+import { FormError } from '@/app/shared/ui/form-error';
 import { TextField } from '@/app/shared/ui/text-field';
 
 /**
@@ -19,7 +21,7 @@ import { TextField } from '@/app/shared/ui/text-field';
  */
 @Component({
   selector: 'reset-password-page',
-  imports: [RouterLink, ActionButton, RevealDirective, FormField, TextField],
+  imports: [RouterLink, ActionButton, FormError, RevealDirective, FormField, TextField],
   template: `
     <div class="shell" reveal>
       <div class="card">
@@ -65,6 +67,10 @@ import { TextField } from '@/app/shared/ui/text-field';
                 <p class="mismatch">Passwords don't match</p>
               }
             </div>
+
+            @if (formError(); as message) {
+              <form-error [message]="message" />
+            }
 
             <action-button
               type="submit"
@@ -149,6 +155,16 @@ export default class ResetPassword {
     required(f.confirmPassword, { message: 'Please confirm your password' });
   });
 
+  protected readonly formError = signal<string | null>(null);
+
+  constructor() {
+    // Drop a server error as soon as the form is edited, same as sign-in.
+    effect(() => {
+      this.model();
+      untracked(() => this.formError.set(null));
+    });
+  }
+
   protected readonly passwordsMatch = computed(() => {
     const { newPassword, confirmPassword } = this.model();
     return confirmPassword.length > 0 && newPassword === confirmPassword;
@@ -166,7 +182,10 @@ export default class ResetPassword {
         this.submitting.set(false);
         this.done.set(true);
       },
-      error: () => this.submitting.set(false),
+      error: (err: unknown) => {
+        this.submitting.set(false);
+        this.formError.set(apiErrorMessage(err));
+      },
     });
   }
 }
