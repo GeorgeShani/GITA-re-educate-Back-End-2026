@@ -235,6 +235,8 @@ interface CommentFormModel {
 
     .empty {
       @include type.body-2;
+      // Same gap the populated comment list leaves above the form.
+      margin: 0 0 var(--space-8);
       color: var(--color-neutral-04);
     }
 
@@ -299,7 +301,7 @@ interface CommentFormModel {
 
       // Was an unconditional 1fr 1fr.
       @include bp.tablet-up {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 

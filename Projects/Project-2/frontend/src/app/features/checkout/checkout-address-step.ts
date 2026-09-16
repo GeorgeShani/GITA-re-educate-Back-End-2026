@@ -1,5 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
 import { FormField, form, required } from '@angular/forms/signals';
 
 import type { AddressDto, AddressInput } from '@/app/core/api/dto';
@@ -37,13 +37,13 @@ function blankAddress(): AddressInput {
 
       @if (savedAddresses().length > 0) {
         <ul class="saved-list" role="list">
-          @for (address of savedAddresses(); track address.id) {
+          @for (address of savedAddresses(); track address._id) {
             <li>
               <label class="saved-option">
                 <radio-field
                   name="shipping-address"
-                  [value]="address.id"
-                  [checked]="selectedShippingId() === address.id"
+                  [value]="address._id"
+                  [checked]="selectedShippingId() === address._id"
                   (selected)="selectedShippingId.set($event)"
                 />
                 <span class="saved-text">
@@ -205,7 +205,7 @@ function blankAddress(): AddressInput {
       // two address fields squeezed side by side broke down well before
       // mobile width.
       @include bp.tablet-up {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -262,14 +262,24 @@ export class CheckoutAddressStep {
   });
 
   private readonly defaultAddressId = computed(
-    () => this.savedAddresses().find((a) => a.isDefault)?.id ?? this.savedAddresses()[0]?.id,
+    () => this.savedAddresses().find((a) => a.isDefault)?._id ?? this.savedAddresses()[0]?._id,
   );
 
+  private autoSelectedAddress = false;
+
   constructor() {
-    // Pre-select the default saved address once one arrives (savedAddresses
-    // is fed by an async GET /auth/me — empty on first render).
-    const defaultId = this.defaultAddressId();
-    if (defaultId) this.selectedShippingId.set(defaultId);
+    // Pre-select the default saved address once one arrives. savedAddresses
+    // is fed by an async GET /auth/me and is empty on first render, so this
+    // has to be an effect: the one-shot read it replaced always saw an empty
+    // list, and a returning customer landed on "Use a new address" instead
+    // of their own saved one. Runs once, so it never overrides a choice the
+    // customer has already made.
+    effect(() => {
+      const defaultId = this.defaultAddressId();
+      if (!defaultId || this.autoSelectedAddress) return;
+      this.autoSelectedAddress = true;
+      untracked(() => this.selectedShippingId.set(defaultId));
+    });
   }
 
   protected setCountry(model: typeof this.shippingModel, countryCode: string): void {
@@ -284,12 +294,14 @@ export class CheckoutAddressStep {
       if (!this.shippingForm().valid()) return;
       shipping = this.shippingModel();
     } else {
-      const saved = this.savedAddresses().find((a) => a.id === this.selectedShippingId());
+      const saved = this.savedAddresses().find((a) => a._id === this.selectedShippingId());
       if (!saved) {
         this.toast.show('Select a shipping address to continue', 'error');
         return;
       }
-      const { id: _id, ...rest } = saved;
+      // Strip the subdocument id: the backend's ValidationPipe runs with
+      // forbidNonWhitelisted, so an `_id` left in the address body is a 400.
+      const { _id, ...rest } = saved;
       shipping = rest;
     }
 

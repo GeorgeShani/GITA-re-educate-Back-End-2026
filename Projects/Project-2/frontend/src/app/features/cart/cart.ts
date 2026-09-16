@@ -137,7 +137,13 @@ const QUANTITY_DEBOUNCE_MS = 500;
                   <span>Subtotal</span>
                   <span data-numeric>{{ cart.subtotalMinor() | money }}</span>
                 </div>
-                <p class="totals-note">Shipping and tax calculated at checkout.</p>
+                <p class="totals-note">
+                  {{
+                    cart.couponCode()
+                      ? 'Your discount, shipping and tax are applied at checkout.'
+                      : 'Shipping and tax calculated at checkout.'
+                  }}
+                </p>
               </div>
 
               <action-button size="m" [fullWidth]="true" (click)="checkout()">

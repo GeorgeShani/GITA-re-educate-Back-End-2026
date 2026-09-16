@@ -3,11 +3,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import type { ChartConfiguration, ChartData } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 
-import type { DashboardSummaryDto } from '@/app/core/api/dto';
+import type { DashboardSummaryDto, OrderStatus } from '@/app/core/api/dto';
 import { AdminDashboardService } from '@/app/core/services/admin-dashboard.service';
 import { AdminProductLookupService } from '@/app/core/services/admin-product-lookup.service';
 import { orderStatusMeta } from '@/app/core/util/status-meta';
-import type { StatusBadgeVariant } from '@/app/shared/ui/status-badge';
 import { MoneyPipe } from '@/app/shared/pipes/money.pipe';
 import { EmptyState } from '@/app/shared/ui/empty-state';
 import { PageToolbar } from '@/app/features/admin/ui/page-toolbar';
@@ -22,23 +21,27 @@ const RANGE_OPTIONS: SelectOption[] = [
 ];
 
 // Chart.js paints onto a <canvas> and can't read CSS custom properties, so
-// the token hex values are mirrored here. Status colours reuse the same
-// variant→meaning mapping as <status-badge> (core/util/status-meta.ts) so a
-// "delivered" slice is the same green as its badge everywhere else.
+// the token hex values are mirrored here.
 const INK = '#141718'; // --color-neutral-07
 const MUTED = '#6c7275'; // --color-neutral-04
 const HAIRLINE = '#e8ecef'; // --color-neutral-03
 const ACCENT = '#38cb89'; // --color-success
 
-const VARIANT_HEX: Record<StatusBadgeVariant, string> = {
-  neutral: MUTED,
-  info: '#377dff', // --color-info
-  success: ACCENT,
-  warning: '#f5a524', // --color-warning
-  danger: '#d04246', // --color-error
-  sale: ACCENT,
-  new: INK,
-  custom: MUTED,
+// One distinct colour per status. The chart used to borrow <status-badge>'s
+// variant palette, but that collapses every in-flight state (paid, confirmed,
+// fulfilled, shipped) onto the same "info" blue — fine for a badge that also
+// prints its label, unreadable for doughnut slices told apart only by colour.
+// Delivered/cancelled keep their badge meaning (green/red).
+const STATUS_HEX: Record<OrderStatus, string> = {
+  placed: MUTED,
+  paid: '#377dff', // --color-info
+  confirmed: '#7c5cff',
+  fulfilled: '#0ea5a4',
+  shipped: '#f5a524', // --color-warning
+  delivered: ACCENT,
+  refunded: '#94a3b8',
+  cancelled: '#d04246', // --color-error
+  payment_failed: '#8f2d31',
 };
 
 const DAY_LABEL = new Intl.DateTimeFormat('en-US', {
@@ -180,7 +183,7 @@ function eventLabel(eventName: string): string {
       gap: var(--space-6);
 
       @include bp.wide-up {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         align-items: start;
       }
     }
@@ -292,7 +295,7 @@ export default class AdminDashboard implements OnInit {
       datasets: [
         {
           data: rows.map((row) => row.count),
-          backgroundColor: rows.map((row) => VARIANT_HEX[orderStatusMeta(row.status).variant]),
+          backgroundColor: rows.map((row) => STATUS_HEX[row.status] ?? MUTED),
           borderColor: '#ffffff',
           borderWidth: 2,
           hoverOffset: 6,

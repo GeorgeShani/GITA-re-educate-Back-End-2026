@@ -35,6 +35,12 @@ import { inputValue } from '@/app/core/util/dom-event';
 
     :host {
       display: block;
+      // A grid/flex item's automatic minimum width is its min-content
+      // width, and an <input>/<textarea> has an intrinsic width of ~20
+      // characters. Without this a field refused to shrink below ~250px,
+      // so two side by side in a 1fr 1fr row (sign-up's first/last name)
+      // spilled 70px past a 28rem card.
+      min-width: 0;
     }
 
     label {
@@ -53,6 +59,10 @@ import { inputValue } from '@/app/core/util/dom-event';
       box-shadow: inset 0 0 0 1px var(--color-border-input);
       outline: none;
       resize: vertical;
+      // A native <textarea> keeps the browser's own border underneath this
+      // box-shadow, which read as a heavier edge than text-field (whose
+      // <input> sits borderless inside a wrapper) in the same form.
+      border: none;
       color: var(--color-neutral-07);
       transition: box-shadow var(--duration-fast) var(--ease-out);
     }

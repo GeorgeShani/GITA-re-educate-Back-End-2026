@@ -185,8 +185,17 @@ export interface AuthTokensDto {
 
 export type RoleDto = 'admin' | 'manager' | 'support' | 'editor' | 'customer';
 
+/**
+ * `_id`, not `id`: Address is an embedded subdocument
+ * (address.schema.ts's `@Schema({ _id: true })`) that does NOT use
+ * baseSchemaOptions — same exception as ProductImageDto and OrderItemDto,
+ * confirmed against a real GET /auth/me response. Was typed `id`, which
+ * is always undefined at runtime: checkout never pre-selected the saved
+ * address, and the address book's Edit/Remove called
+ * /users/me/addresses/undefined.
+ */
 export interface AddressDto {
-  id: string;
+  _id: string;
   fullName: string;
   company?: string;
   line1: string;
@@ -230,7 +239,7 @@ export interface AccessTokenClaims {
 
 /**
  * What a new/typed-in address looks like on the wire — the same shape as
- * `AddressDto` minus `id`, since an id only exists once it's been saved to
+ * `AddressDto` minus `_id`, since an id only exists once it's been saved to
  * a user's address book. Mirrors backend/src/common/dto/address.dto.ts.
  */
 export interface AddressInput {

@@ -166,7 +166,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
           <empty-state message="You have no saved addresses yet." icon="map-pin" />
         } @else {
           <ul class="list" role="list">
-            @for (address of list; track address.id) {
+            @for (address of list; track address._id) {
               <li class="card">
                 <div class="card-body">
                   <strong>{{ address.fullName }}</strong>
@@ -181,7 +181,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
                 </div>
                 <div class="card-actions">
                   <button type="button" (click)="startEdit(address)">Edit</button>
-                  <button type="button" class="remove" (click)="remove(address.id)">Remove</button>
+                  <button type="button" class="remove" (click)="remove(address._id)">Remove</button>
                 </div>
               </li>
             }
@@ -225,7 +225,7 @@ function toAddressInput(model: AddressFormModel): AddressInput {
 
       // Was an unconditional 1fr 1fr.
       @include bp.tablet-up {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 
@@ -339,7 +339,7 @@ export default class AccountAddresses implements OnInit {
   }
 
   protected startEdit(address: AddressDto): void {
-    this.editingId.set(address.id);
+    this.editingId.set(address._id);
     this.model.set(toFormModel(address));
     this.showForm.set(true);
   }

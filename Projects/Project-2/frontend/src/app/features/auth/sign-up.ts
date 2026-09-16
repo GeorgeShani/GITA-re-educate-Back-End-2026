@@ -111,7 +111,7 @@ interface SignUpModel {
       // Was an unconditional 1fr 1fr — broke below ~360px, two name
       // fields squeezed to unreadable width on the smallest phones.
       @include bp.tablet-up {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
 

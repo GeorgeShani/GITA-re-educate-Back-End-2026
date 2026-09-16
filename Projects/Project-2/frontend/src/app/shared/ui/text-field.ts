@@ -63,6 +63,12 @@ export type TextFieldHeight = 40 | 48 | 52;
 
     :host {
       display: block;
+      // A grid/flex item's automatic minimum width is its min-content
+      // width, and an <input>/<textarea> has an intrinsic width of ~20
+      // characters. Without this a field refused to shrink below ~250px,
+      // so two side by side in a 1fr 1fr row (sign-up's first/last name)
+      // spilled 70px past a 28rem card.
+      min-width: 0;
     }
 
     label {
