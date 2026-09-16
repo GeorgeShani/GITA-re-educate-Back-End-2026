@@ -125,7 +125,16 @@ export class CheckoutPaymentStep {
     const elements = stripe.elements({ clientSecret: this.clientSecret() });
     this.elements = elements;
 
-    const paymentElement = elements.create('payment');
+    // Card first and already expanded. Left to Stripe's default, the account's
+    // extra methods (Amazon Pay) turned this into a collapsed accordion with
+    // no fields showing, so the step read as just a "Pay now" button: easy to
+    // leave with the order placed and nothing paid.
+    // Source: https://docs.stripe.com/js/elements_object/create_payment_element
+    // ("layout.defaultCollapsed", "paymentMethodOrder")
+    const paymentElement = elements.create('payment', {
+      layout: { type: 'accordion', defaultCollapsed: false },
+      paymentMethodOrder: ['card'],
+    });
     const container = this.paymentElementRef()?.nativeElement;
     if (!container) {
       this.mountError.set('Could not load the payment form. Please try again.');
