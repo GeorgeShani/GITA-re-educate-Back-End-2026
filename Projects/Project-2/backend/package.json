@@ -31,7 +31,8 @@
     "seed:all": "ts-node -r tsconfig-paths/register scripts/seed-all.ts",
     "backfill-ratings": "ts-node -r tsconfig-paths/register scripts/backfill-ratings.ts",
     "promote-admin": "ts-node -r tsconfig-paths/register scripts/promote-admin.ts",
-    "seed:engagement": "ts-node -r tsconfig-paths/register scripts/seed-engagement.ts"
+    "seed:engagement": "ts-node -r tsconfig-paths/register scripts/seed-engagement.ts",
+    "images:refresh": "ts-node -r tsconfig-paths/register scripts/refresh-images.ts"
   },
   "dependencies": {
     "@bull-board/api": "^9.5.0",

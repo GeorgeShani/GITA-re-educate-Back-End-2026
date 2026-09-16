@@ -55,3 +55,6 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# image refresh backups (old URLs; see scripts/refresh-images.ts)
+scripts/.backups/
