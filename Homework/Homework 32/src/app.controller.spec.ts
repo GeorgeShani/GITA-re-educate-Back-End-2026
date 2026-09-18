@@ -17,7 +17,7 @@ describe('AppController', () => {
   describe('root', () => {
     it('returns the API description', () => {
       expect(appController.getHello()).toBe(
-        'Homework 31 API - Users, Products, Auth & S3/CloudFront Photo Uploads (MySQL, TypeORM)',
+        'Homework 32 API - Users, Products, Auth & S3/CloudFront Photo Uploads (MySQL, TypeORM)',
       );
     });
   });
