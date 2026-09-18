@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+import { Public } from '../common/auth/public.decorator.js';
 
 /**
  * `GET /health` — liveness AND readiness now that the database indicator is
@@ -9,6 +10,12 @@ import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs
  * any future platform probe expect it there, and `@nestjs/observe` is
  * configured to ignore it so healthchecks every 10s don't consume the
  * telemetry event budget.
+ *
+ * `@Public()` has no runtime effect yet — the global auth guard it's an
+ * escape hatch for doesn't exist until Milestone 3 — but marking it now is
+ * both accurate (health checks must stay public in the finished app) and
+ * what `route-audit.spec.ts` checks against, so this route is provably
+ * accounted for rather than un-annotated by omission.
  */
 @Controller('health')
 export class HealthController {
@@ -17,6 +24,7 @@ export class HealthController {
     private readonly db: TypeOrmHealthIndicator,
   ) {}
 
+  @Public()
   @Get()
   @HealthCheck()
   check() {

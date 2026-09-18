@@ -112,6 +112,82 @@ document.
 - Add the new index to the checklist below and to the `pg_indexes` assertion
   spec in the same change.
 
+## Auth & RBAC *(from Phase 3 — built ahead of its populator)*
+
+- `@CurrentUser()` / `@CurrentUser('userId')` reads `request.user`, typed
+  `keyof AuthenticatedUser` so a typo is a compile error. Nothing populates
+  `request.user` yet — that's the auth guard, Milestone 3.
+- `@Public()` marks a route exempt from the global auth guard **before that
+  guard exists**. Auth here is opt-out, not opt-in: once the guard is
+  registered, every route needs a valid identity unless marked `@Public()`.
+  Every current route must be `@Public()` or `@Roles(...)` — never neither —
+  enforced by `src/common/auth/route-audit.spec.ts`.
+- `@Roles('admin', …)` + `RolesGuard` — built, **not yet registered globally**.
+  Absent `@Roles()` means "any authenticated user", not "admin only": the
+  guard only narrows, it never widens what the auth guard already granted.
+- `@RequireScopes(...)` is the API-key analogue of `@Roles`, for
+  `ApiKeyGuard` (Milestone 10). A key's effective permission is
+  `(creator's live role) ∩ (key's scopes)` — never wider than either.
+- `@IdempotencyKey()` reads and validates the `Idempotency-Key` header.
+  Returns `undefined` when absent; a route that requires one checks for that
+  itself.
+- **`route-audit.spec.ts` is the enforcement mechanism, not code review.**
+  Add a controller to its `AUDITED_CONTROLLERS` array the moment it has a
+  real (non-scaffold) route, and every route on it must satisfy the checks
+  above or the build fails.
+
+## Pagination & sorting *(from Phase 3)*
+
+- Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
+  never redeclared inside a domain module (Project-2's worst structural
+  mistake was `PaginatedResult<T>` living inside `products.service.ts`,
+  imported by eight other modules).
+  - **Offset** (`OffsetQueryDto` → `OffsetPage<T>`) for small, bounded lists
+    that want real page numbers: employees, invoices, API keys.
+  - **Cursor** (`CursorQueryDto` → `CursorPage<T>`, via `applyCursor` +
+    `toCursorPage`) for append-only, potentially large, time-ordered lists:
+    files, audit log. The cursor is an opaque `(createdAt, id)` pair — never
+    `createdAt` alone, or two rows in the same millisecond break the page
+    boundary. Proven against real Postgres, including a deliberate
+    same-millisecond collision, in
+    `src/database/keyset-pagination.integration.spec.ts` (the raw technique)
+    and `src/common/pagination/paginate.integration.spec.ts` (the reusable
+    helpers).
+- `ParseSortPipe`'s whitelist is a **constructor argument**
+  (`new ParseSortPipe(['createdAt', 'fileName'])`), not a `@SortableFields()`
+  route decorator as first sketched — verified against `@nestjs/common`'s own
+  types: a `PipeTransform` receives only `{ type, metatype, data }`, with no
+  access to the controller class or method, so it structurally cannot read
+  metadata a decorator set on the route handler. Never make the whitelist
+  wider than the entity's actual indexed columns.
+- **Filter-DTO convention** (pattern, not yet built — no resource needs it
+  before Milestone 5): one typed filter DTO per resource
+  (`FilesFilterDto { mimeType?, uploaderId?, … }`), validated by the global
+  `ValidationPipe`, translated into conditional `QueryBuilder.andWhere()`
+  calls built up one at a time. Never string-concatenated SQL. On a
+  tenant-scoped resource, `TenantScope`'s predicate always applies **first**;
+  a filter narrows what a caller sees, never widens it.
+
+## File-type validation *(deferred to Milestone 7 — do not build early)*
+
+Nest 12's built-in `FileTypeValidator` already performs real magic-byte
+detection by default (`fileTypeFromBuffer` from the `file-type` package,
+verified in the installed `@nestjs/common` source — `skipMagicNumbersValidation`
+defaults to `false`). The premise for a hand-rolled `MagicByteValidator` — "the
+built-in only trusts the reported MIME type" — was true in older Nest
+versions and is **false** for this one. Do not build one.
+
+The real remaining gap: **CSV has no magic bytes at all.**
+`fileTypeFromBuffer` returns `undefined` for plain text (verified: a real CSV
+buffer detects as `undefined`), so relying on the built-in validator alone
+would reject every legitimate CSV upload unless `fallbackToMimetype: true` is
+set — which reopens the exact spoofing hole (a renamed `.exe` claiming
+`Content-Type: text/csv`) this validation exists to close. Closing it
+properly needs a resource-aware heuristic (reject known binary signatures,
+confirm the buffer is plausibly UTF-8 text) that only makes sense once
+`files/`'s real MIME list and upload endpoint exist — build it there, in
+Milestone 7, not as generic HTTP-kit plumbing now.
+
 ## Errors
 
 - Throw Nest's built-in HTTP exceptions (`NotFoundException`,
@@ -125,10 +201,17 @@ document.
 ## Responses
 
 - Return **explicit response DTOs**, never raw entities. Enforced by a spec.
-- Map with `plainToInstance(Dto, entity, { excludeExtraneousValues: true })` and
-  `@Expose()` on the DTO; one `static from(entity)` per DTO.
+- Map with `toDto(DtoClass, entity)` / `toDtoList(DtoClass, entities)` from
+  `src/common/response/to-dto.ts` (a thin wrapper over
+  `plainToInstance(Dto, entity, { excludeExtraneousValues: true })`) and
+  `@Expose()` on the DTO; give each DTO its own `static from(entity)` that
+  calls `toDto` internally.
 - This is opt-in by design: forget a field and something is visibly missing,
   rather than a new column leaking silently.
+- For a paginated response, map the page's `data` through the DTO with
+  `mapPageData(page, DtoClass.from)` from `src/common/pagination/paginate.ts`
+  — this is the "one shared `toPaginated()`" — leaving `meta` untouched and
+  working identically for both `OffsetPage` and `CursorPage`.
 
 ## Testing
 
