@@ -3,8 +3,11 @@
 # Gridline web — Next.js 16, built with `output: "standalone"` (see
 # next.config.ts) so the runtime image ships a self-contained server bundle
 # instead of the full node_modules tree plus the Next CLI.
+#
+# Node 24 — the current Active LTS — rather than 22.x, which is heading into
+# Maintenance LTS. Matches the same reasoning as backend/Dockerfile.
 
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
 
 FROM base AS deps

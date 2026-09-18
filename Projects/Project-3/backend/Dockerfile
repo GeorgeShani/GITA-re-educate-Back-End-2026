@@ -2,7 +2,11 @@
 #
 # Gridline API — NestJS 12, built as ESM ("type": "module" in package.json,
 # "module": "nodenext" in tsconfig.json). Nest 12 requires Node 20.19+ or
-# 22.12+; this pins to the 22.x line to stay comfortably inside that floor.
+# 22.12+; this pins to the 24.x line — the current Active LTS — rather than
+# 22.x, which is heading into Maintenance LTS. A floating major tag also
+# pulls whatever patch Docker Hub has published most recently, so this stays
+# reasonably ahead of upstream CVE fixes without pinning a patch version that
+# would silently go stale.
 #
 # Stages:
 #   deps       full install (incl. devDependencies) — reused by build + migrate
@@ -10,7 +14,7 @@
 #   prod-deps  a second, dev-dependency-free install for the runtime image
 #   runtime    what actually ships: prod deps + compiled dist only
 
-FROM node:22-alpine AS base
+FROM node:24-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
