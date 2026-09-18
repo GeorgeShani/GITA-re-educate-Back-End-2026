@@ -1,0 +1,121 @@
+paths:
+  /movies:
+    post:
+      tags: [Movies]
+      summary: Create a movie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMovieDto'
+      responses:
+        '201':
+          description: Created movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          description: directorId does not reference an existing director
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+              example:
+                message: Director with id 999 not found
+                error: Not Found
+                statusCode: 404
+    get:
+      tags: [Movies]
+      summary: List movies with pagination and filters
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: name
+          in: query
+          required: false
+          description: Case-insensitive prefix match on the movie name
+          schema:
+            type: string
+            example: hang
+        - name: genre
+          in: query
+          required: false
+          schema:
+            type: string
+            example: comedy
+        - name: yearFrom
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2002
+        - name: yearTo
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 2010
+        - name: directorId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated list of movies
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMovies'
+
+  /movies/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      tags: [Movies]
+      summary: Get a movie by id
+      responses:
+        '200':
+          description: Movie document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Movies]
+      summary: Update a movie
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMovieDto'
+      responses:
+        '200':
+          description: Updated movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Movies]
+      summary: Delete a movie
+      responses:
+        '200':
+          description: Deleted movie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '404':
+          $ref: '#/components/responses/NotFound'

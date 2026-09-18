@@ -1,0 +1,193 @@
+paths:
+  /products:
+    post:
+      tags: [Products]
+      summary: Create a product
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductDto'
+      responses:
+        '201':
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+    get:
+      tags: [Products]
+      summary: List products with pagination and an optional category filter
+      description: >-
+        Applies a 20% subscriber discount to `finalPrice` when the caller
+        sends an `x-user-email` header for a user with an active
+        subscription. This endpoint does not require a bearer token.
+      parameters:
+        - name: x-user-email
+          in: header
+          required: false
+          description: Email to check for an active-subscription discount
+          schema:
+            type: string
+            format: email
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: category
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/ProductCategory'
+      responses:
+        '200':
+          description: Paginated list of products, each with pricing applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProductsWithPricing'
+
+  /products/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    get:
+      tags: [Products]
+      summary: Get a product by id, with its photo gallery
+      responses:
+        '200':
+          description: Product document
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags: [Products]
+      summary: Update a product
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductDto'
+      responses:
+        '200':
+          description: Updated product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Products]
+      summary: Delete a product
+      description: >-
+        Also deletes every photo in its gallery from S3 first — the photo
+        rows cascade at the DB level via a foreign key, but that's a
+        SQL-level cascade with no way to turn into an S3 delete call on its
+        own.
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: Deleted product
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /products/{id}/photos:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+    post:
+      tags: [Products]
+      summary: Add one or more photos to the product's gallery
+      description: >-
+        Accepts 1..10 files under the same "photos" field — a single-file
+        upload and a multi-file upload are the same request, there's no
+        separate endpoint for each.
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photos]
+              properties:
+                photos:
+                  type: array
+                  maxItems: 10
+                  items:
+                    type: string
+                    format: binary
+                    description: JPEG, PNG, WebP, or GIF, up to 5 MB each
+      responses:
+        '201':
+          description: The newly created photo records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductPhoto'
+        '400':
+          description: No files provided, or an unsupported file type/size
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /products/{id}/photos/{photoId}:
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+      - name: photoId
+        in: path
+        required: true
+        schema:
+          type: integer
+          example: 3
+    delete:
+      tags: [Products]
+      summary: Remove a single photo from the product's gallery
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: Photo deleted (no response body)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Product or photo not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+              example:
+                message: Photo with id 3 not found on product 1
+                error: Not Found
+                statusCode: 404

@@ -1,0 +1,140 @@
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: >-
+        Throttled to 5 requests per minute. The account starts unverified;
+        an OTP code is emailed and must be confirmed via /auth/verify-otp
+        before login is allowed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDto'
+      responses:
+        '201':
+          description: Registration accepted, OTP code emailed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: A user with this email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+              example:
+                message: User with email ada.lovelace@example.com already exists
+                error: Conflict
+                statusCode: 409
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Sign in and receive a JWT
+      description: Fails for unverified or deactivated accounts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: Access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials, unverified account, or deactivated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+              example:
+                message: Invalid email or password
+                error: Unauthorized
+                statusCode: 401
+
+  /auth/verify-otp:
+    post:
+      tags: [Auth]
+      summary: Confirm the OTP code emailed at registration
+      description: >-
+        Marks the account verified, sends a welcome email, and returns an
+        access token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOtpDto'
+      responses:
+        '200':
+          description: Access token for the now-verified user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: >-
+            Invalid or expired code, or the account is already verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/resend-otp:
+    post:
+      tags: [Auth]
+      summary: Send a new OTP code to an unverified account
+      description: Throttled to 5 requests per minute.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendOtpDto'
+      responses:
+        '200':
+          description: A new OTP code was emailed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+        '400':
+          description: The account is already verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/current-user:
+    get:
+      tags: [Auth]
+      summary: Get the authenticated user
+      security:
+        - bearer: []
+      responses:
+        '200':
+          description: The user the bearer token belongs to
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
