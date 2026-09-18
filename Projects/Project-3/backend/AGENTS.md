@@ -223,16 +223,36 @@ Milestone 7, not as generic HTTP-kit plumbing now.
 - Pure functions with an injected clock over anything time-dependent. The
   billing calculator is the most heavily tested file in the repo.
 
-## API documentation *(from Phase 4)*
+## API documentation
 
-- `@ApiTags` exactly once per controller, `@ApiOperation` on every route, and an
-  `@ApiOkResponse`/`@ApiCreatedResponse` whose `type` is a response DTO.
+- `@ApiTags` exactly once per controller, and an `@ApiOkResponse`/
+  `@ApiCreatedResponse` whose `type` is a response DTO — not an entity class.
+  `route-audit.spec.ts` enforces both, exempting `HealthController`'s response
+  type (Terminus's own dynamic `HealthCheckResult`, not a domain DTO).
+- **No `@ApiOperation`.** Prose lives entirely in `docs/descriptions/*.yaml`,
+  keyed by the generated `operationId` (`${ControllerKey}_${methodKey}`, set
+  by the explicit `operationIdFactory` in `swagger-document.ts` — the default
+  factory's key format would silently orphan every prose entry on a
+  controller rename), merged post-generation by `mergeProse()`. Keeps
+  controllers readable and copy editable in one sitting with the whole API in
+  view, rather than scattered across `@ApiOperation({ description })` calls.
+  `npm run docs:generate` fails, naming the operationId, when one has no
+  matching prose entry.
 - **No `@nestjs/swagger` CLI plugin** — it is a tsc transformer, so the
   document's completeness would depend on how the generator was invoked. Write
   `@ApiProperty` explicitly.
-- Prose lives in `docs/descriptions/*.yaml`, keyed by `operationId`, never
-  inline. `npm run docs:generate` fails on an operation with no prose entry.
-- `docs/openapi.yaml` is generated and committed. Never hand-edit it.
+- `docs/openapi.yaml`, its per-tag split under `docs/openapi/`, and
+  `docs/openapi.d.ts` are generated and committed. Never hand-edit them —
+  `npm run docs:check` diffs a fresh regeneration against what's committed.
+- `/reference` (Scalar) needs a per-request CSP nonce, not `'unsafe-inline'`,
+  because Scalar's renderer embeds its bootstrap as an inline `<script>` (see
+  `@scalar/client-side-rendering`'s `getScriptTags`). `main.ts` mints one nonce
+  per request into `res.locals[CSP_NONCE_LOCALS_KEY]` *before* helmet runs —
+  helmet's `script-src` directive and `mountScalarReference`'s handler both
+  read the same value back, via `docs/csp-nonce.ts`'s shared key. Passing a
+  `nonce` also makes Scalar choose its single-file UMD bundle over the ESM
+  build, which is required: the ESM build's `import`-loaded chunks can't carry
+  a nonce at all.
 
 ## Index checklist
 

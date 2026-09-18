@@ -1,114 +1,118 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Gridline API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Multi-tenant SaaS backend — NestJS 12 (ESM), TypeORM 1.x, Neon Postgres. See
+[`../SCOPE.md`](../SCOPE.md) for the full design and grading rubric, and
+[`AGENTS.md`](./AGENTS.md) for the coding conventions this codebase follows.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+## Setup
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env
 ```
 
-## Compile and run the project
+Every key in `.env` is validated at boot by `src/config/env.schema.ts`. A
+missing required key exits the process non-zero before it starts listening,
+naming the key. `.env.example` documents the graded default for each var,
+with the offline-dev fallback commented beneath it.
+
+## Database — Neon pooled vs. direct
+
+Neon fronts every connection with PgBouncer in transaction-pooling mode,
+which breaks DDL and prepared statements. That's why there are **two**
+connection strings, not one:
+
+| Var | Endpoint | Used by |
+|---|---|---|
+| `DATABASE_URL` | Neon's **pooled** endpoint (`-pooler` in the hostname) | The running app (`TypeOrmModule.forRootAsync`) |
+| `DIRECT_URL` | Neon's **direct** endpoint | Migrations only — `migration:run`, `migration:generate`, `migration:revert`, `migration:show` |
+
+Both are built from one function, `buildDataSourceOptions(urls, { direct })`
+in `src/database/data-source-options.ts` — the app calls it with
+`direct: false`, the standalone migration CLI/runner call it with
+`direct: true`. There's no other branching between the two paths, so they
+can't silently drift apart.
+
+**Branching:** create a Neon project, then a branch per purpose (e.g. a `dev`
+branch for local work, separate from whatever the graded/CI branch is). Each
+branch gets its own pooled + direct connection string pair from the Neon
+console — copy both into `.env`. Branching is how you get an isolated,
+disposable database for a feature or a CI run without touching the primary
+branch's data or requiring a fresh `migration:run` history.
+
+**Local Postgres instead of Neon** — a working fallback for everything except
+branch-per-CI:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+docker compose --profile dev up db
 ```
 
-## Run tests
+Then point both `DATABASE_URL` and `DIRECT_URL` at it (same value is fine —
+there's no PgBouncer in front of a local container):
+
+```
+DATABASE_URL=postgres://gridline:gridline@localhost:5432/gridline
+DIRECT_URL=postgres://gridline:gridline@localhost:5432/gridline
+```
+
+Swap `localhost` for the Compose service name `db` only when these values are
+consumed *from inside another container* (e.g. if you add a service-level
+override) — `db:5432` doesn't resolve from the host.
+
+**Migrations** are never auto-run by the app (`migrationsRun: false`,
+`synchronize: false` — see the comment in `data-source-options.ts` for why).
+Run them explicitly:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migration:run      # applies pending migrations; safe to re-run
+npm run migration:show     # lists applied/pending
+npm run migration:revert   # rolls back the last migration
+npm run migration:generate # diffs entities against the DB, writes a new migration
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Running locally
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev          # watch mode, host-based
+node dist/main.js          # after `npm run build` — proves compiled ESM resolves
+docker compose --profile dev up   # full stack: local db + migrate + api + web + proxy
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Without Docker's `proxy` (Caddy) in front, the API has no `/api` prefix —
+`main.ts` deliberately never calls `setGlobalPrefix`, since Caddy strips that
+segment before forwarding. Hit routes bare (`/health`, `/_probe`) when running
+`node dist/main.js` directly.
 
-## Observability
+## API documentation
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+`/reference` serves a branded Scalar UI generated from the live `@ApiTags`/
+`@ApiOkResponse` annotations plus prose sidecars — see AGENTS.md's "API
+documentation" section for the full convention (why there's no
+`@ApiOperation`, how the CSP nonce for Scalar's inline bootstrap script
+works, why the CLI plugin is deliberately not used).
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+```bash
+npm run docs:generate   # regenerates docs/openapi.yaml + per-tag split; fails naming any operationId missing prose
+npm run docs:check      # diffs a fresh regeneration against the committed docs/openapi.yaml
+npm run docs:types      # docs/openapi.yaml -> docs/openapi.d.ts, for a typed frontend API client
+```
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+## Testing
 
-## Resources
+```bash
+npm test          # unit — no database required
+npm run test:int  # integration — needs a reachable DATABASE_URL (local db or Neon)
+npm run lint       # oxlint
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Docker
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```bash
+docker compose --profile dev up      # with a local Postgres
+docker compose up                    # without it — DATABASE_URL/DIRECT_URL must point at Neon
+```
 
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+`migrate` runs once against `DIRECT_URL` and exits; `api` waits for it to
+succeed before starting. `proxy` (Caddy) is the only published port — it
+fronts both `web` and `api` on one origin so the browser never needs CORS in
+the deployed topology.

@@ -1,7 +1,10 @@
 import 'reflect-metadata';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { DECORATORS } from '@nestjs/swagger';
 import { describe, expect, it } from 'vitest';
+import { ENTITIES } from '../../database/entities.js';
 import { HealthController } from '../../health/health.controller.js';
+import { ProbeController } from '../../probe/probe.controller.js';
 import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
@@ -16,16 +19,20 @@ import { ROLES_KEY } from './roles.decorator.js';
  * it silently un-audited rather than silently open. This spec is what turns
  * that from a review habit into something that fails a build.
  *
- * Deliberately excludes `ProbeController` — temporary scaffolding, deleted
- * once Milestone 3 lands real modules, not worth annotating for production
- * auth semantics it will never actually run under.
- *
- * The `@ApiTags`/`@ApiOkResponse` checks named alongside these in SCOPE.md
- * belong here too, but land in Phase 4 — `@nestjs/swagger` isn't installed
- * yet, and faking Swagger annotations now just to satisfy this spec early
- * would be worse than not checking it yet.
+ * `ProbeController` is temporary scaffolding (deleted once Milestone 3 lands
+ * real modules) but is included anyway — it's fully annotated already (see
+ * its own doc comment) and excluding it would leave the newer Phase 4 checks
+ * below exercising only one controller.
  */
-const AUDITED_CONTROLLERS = [HealthController];
+const AUDITED_CONTROLLERS = [HealthController, ProbeController];
+
+/**
+ * `HealthController`'s response is Terminus's own dynamic `HealthCheckResult`
+ * — an operational detail, not a domain response worth a DTO — so it's
+ * exempt from the "response type is a DTO, not an entity" check by name,
+ * exactly as its own doc comment says `route-audit.spec.ts` does.
+ */
+const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([HealthController.name]);
 
 interface RouteHandle {
   controller: string;
@@ -67,6 +74,19 @@ function isRouteHandler(value: unknown): value is (() => unknown) & { name: stri
  */
 function isArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** Narrows to a class reference without asserting — any `function` typeof qualifies. */
+function isConstructorFunction(value: unknown): value is new () => object {
+  return typeof value === 'function';
+}
+
+function isEntityClass(value: unknown): boolean {
+  return isConstructorFunction(value) && ENTITIES.includes(value);
 }
 
 describe('route audit', () => {
@@ -133,6 +153,49 @@ describe('route audit', () => {
 
       for (const scope of scopes) {
         expect(validScopes).toContain(scope);
+      }
+    }
+  });
+
+  it('every audited controller carries exactly one @ApiTags', () => {
+    for (const ControllerClass of AUDITED_CONTROLLERS) {
+      const tags: unknown = Reflect.getMetadata(DECORATORS.API_TAGS, ControllerClass);
+
+      expect(isArray(tags), `${ControllerClass.name} has no @ApiTags`).toBe(true);
+      if (!isArray(tags)) continue;
+
+      expect(
+        tags.length,
+        `${ControllerClass.name} must carry exactly one @ApiTags, found ${tags.length}`,
+      ).toBe(1);
+    }
+  });
+
+  it("every route's @ApiOkResponse/@ApiCreatedResponse type is a DTO, not an entity", () => {
+    for (const route of routes) {
+      if (EXEMPT_FROM_RESPONSE_TYPE_CHECK.has(route.controller)) continue;
+
+      const responses: unknown = Reflect.getMetadata(DECORATORS.API_RESPONSE, route.handler);
+
+      expect(
+        isRecord(responses),
+        `${route.controller}.${route.method} has no @ApiOkResponse/@ApiCreatedResponse`,
+      ).toBe(true);
+      if (!isRecord(responses)) continue;
+
+      const entries = Object.values(responses).filter(isRecord);
+      const typedEntries = entries.filter((entry) => 'type' in entry);
+
+      expect(
+        typedEntries.length,
+        `${route.controller}.${route.method}'s @ApiResponse declares no \`type\``,
+      ).toBeGreaterThan(0);
+
+      for (const entry of typedEntries) {
+        expect(
+          isEntityClass(entry.type),
+          `${route.controller}.${route.method} must respond with a DTO, not an entity class`,
+        ).toBe(false);
       }
     }
   });

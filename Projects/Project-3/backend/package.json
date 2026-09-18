@@ -14,6 +14,9 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "oxlint src/ test/",
+    "docs:generate": "npm run build && node dist/docs/generate.js",
+    "docs:check": "npm run build && node dist/docs/check.js",
+    "docs:types": "openapi-typescript docs/openapi.yaml -o docs/openapi.d.ts",
     "migration:generate": "npm run build && typeorm migration:generate -d dist/database/data-source.js",
     "migration:run": "node dist/database/migrate.js",
     "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",
@@ -31,11 +34,14 @@
     "@nestjs/core": "^12.0.1",
     "@nestjs/observe": "^0.1.8",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/swagger": "^12.0.1",
     "@nestjs/terminus": "^12.0.0",
     "@nestjs/typeorm": "^12.0.1",
+    "@scalar/nestjs-api-reference": "^1.2.19",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "helmet": "^8.3.0",
+    "js-yaml": "^5.4.2",
     "nestjs-cls": "^6.3.0",
     "nestjs-pino": "^5.1.0",
     "pg": "^8.23.0",
@@ -54,6 +60,7 @@
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
     "@vitest/coverage-v8": "^4.1.2",
+    "openapi-typescript": "^7.13.0",
     "oxlint": "^1.58.0",
     "pino-pretty": "^13.1.3",
     "prettier": "^3.4.2",
@@ -63,6 +70,9 @@
     "vitest": "^4.1.2"
   },
   "overrides": {
-    "multer": "2.3.0"
+    "multer": "2.3.0",
+    "openapi-typescript": {
+      "typescript": "$typescript"
+    }
   }
 }

@@ -1,0 +1,12 @@
+# Prose for the `health` tag, keyed by operationId. Hand-written — the only
+# file in docs/ a human ever edits directly. `npm run docs:generate` merges
+# this into the generated document and fails, naming the operationId, if a
+# route exists with no matching entry here.
+
+HealthController_check:
+  summary: Liveness and readiness check
+  description: >-
+    Confirms the process is running and that Postgres is reachable. Excluded
+    from the (not-yet-registered) global auth guard and from Observe's event
+    budget — a platform healthcheck should never need credentials or count
+    against a telemetry quota.

@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+import { ApiTags } from '@nestjs/swagger';
 import { Public } from '../common/auth/public.decorator.js';
 
 /**
@@ -16,7 +17,12 @@ import { Public } from '../common/auth/public.decorator.js';
  * both accurate (health checks must stay public in the finished app) and
  * what `route-audit.spec.ts` checks against, so this route is provably
  * accounted for rather than un-annotated by omission.
+ *
+ * Deliberately has no `@ApiOkResponse` — its shape is Terminus's own dynamic
+ * `HealthCheckResult`, an operational detail, not a domain response worth a
+ * DTO. `route-audit.spec.ts`'s response-type check exempts it by name.
  */
+@ApiTags('health')
 @Controller('health')
 export class HealthController {
   constructor(
