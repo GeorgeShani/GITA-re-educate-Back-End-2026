@@ -1,3 +1,4 @@
+import './load-env.js'; // MUST be the first import — see load-env.ts
 import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';

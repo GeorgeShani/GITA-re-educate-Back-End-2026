@@ -31,6 +31,13 @@ services:
       context: ./backend
       target: build
     env_file: ./backend/.env
+    # Overrides whatever NODE_ENV backend/.env carries. That file is shared
+    # with host-based `npm run start:dev`, where "development" is correct and
+    # devDependencies (pino-pretty) are actually installed; this container
+    # runs the same image as `api` regardless, and must assert its own truth
+    # rather than inherit a value meant for a different environment.
+    environment:
+      NODE_ENV: production
     command: ["npm", "run", "migration:run"]
     depends_on:
       db:
@@ -43,7 +50,14 @@ services:
       context: ./backend
       target: runtime
     env_file: ./backend/.env
+    # See the identical override on `migrate` above — backend/.env's NODE_ENV
+    # is for host-based dev; this container's runtime image never has
+    # pino-pretty installed (an `npm ci --omit=dev` stage), so LoggingModule
+    # must see "production" regardless of what the shared .env says, or it
+    # tries to load a transport that isn't there and the process crashes on
+    # boot.
     environment:
+      NODE_ENV: production
       PORT: "4000"
     depends_on:
       migrate:

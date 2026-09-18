@@ -7,6 +7,7 @@ import { loadConfig } from './config/load-config.js';
 import './core/context/cls-store.js';
 import { CoreModule } from './core/core.module.js';
 import { REDACT_KEYS } from './core/redaction.js';
+import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
 import { ProbeModule } from './probe/probe.module.js';
 
@@ -79,6 +80,7 @@ function observeImports(): DynamicModule[] {
 
     CoreModule,
     ...observeImports(),
+    DatabaseModule,
     HealthModule,
     ProbeModule,
   ],

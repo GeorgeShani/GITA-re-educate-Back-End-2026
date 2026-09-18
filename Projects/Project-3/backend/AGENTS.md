@@ -154,16 +154,22 @@ document.
 ## Index checklist
 
 The full index plan from SCOPE.md. Tick each off as its table lands, and extend
-the `pg_indexes` assertion spec in the same change.
+`indexes.integration.spec.ts`'s `pg_indexes` assertions in the same change —
+every `[x]` below has a corresponding assertion there, not just a claim here.
 
-- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`
-- [x] `user` — UNIQUE `(companyId, email)`
+- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`, plus a plain
+      index on `userId` (not covered by the unique index, needed for "every
+      identity for this user")
+- [x] `auth_token` — UNIQUE `(tokenHash)`, plus a plain index on `userId`
+- [x] `refresh_token` — UNIQUE `(tokenHash)`, plus a plain index on `userId`
+- [x] `company` — UNIQUE `(billingEmail)`
+- [x] `user` — UNIQUE `(companyId, email)`, leading with `companyId` — no
+      separate tenant index needed, this composite already serves it
 - [ ] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
       `(companyId, createdAt) WHERE deleted_at IS NULL`
 - [ ] `file_access_grant` — UNIQUE `(fileId, userId)`
 - [ ] `usage_event` — `(companyId, periodKey)`
 - [ ] `audit_log_entry` — `(companyId, createdAt DESC, id)`
-- [x] `refresh_token` — UNIQUE `(tokenHash)`
 - [ ] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
 

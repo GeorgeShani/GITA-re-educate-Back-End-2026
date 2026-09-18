@@ -13,7 +13,7 @@ export default defineConfig({
     root: './',
     include: ['**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
-    setupFiles: ['./test/setup.ts'],
+    setupFiles: ['./test/setup.ts', './test/setup-env.ts'],
     fileParallelism: false,
     // First run may create a schema and pull a container image.
     testTimeout: 30_000,
