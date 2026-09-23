@@ -1,10 +1,25 @@
 import 'reflect-metadata';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
 import { DECORATORS } from '@nestjs/swagger';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// `AppModule` reads config while its decorator evaluates, so the Tier-1 keys
+// must exist before the import below runs. `vi.hoisted` runs ahead of imports.
+vi.hoisted(() => {
+  const defaults = {
+    DATABASE_URL: 'postgres://u:p@localhost:5432/gridline',
+    DIRECT_URL: 'postgres://u:p@localhost:5432/gridline',
+    JWT_ACCESS_SECRET: 'a'.repeat(32),
+    JWT_REFRESH_SECRET: 'b'.repeat(32),
+  };
+  for (const [key, value] of Object.entries(defaults)) {
+    process.env[key] ??= value;
+  }
+});
+
+import { AppModule } from '../../app.module.js';
 import { ENTITIES } from '../../database/entities.js';
 import { HealthController } from '../../health/health.controller.js';
-import { ProbeController } from '../../probe/probe.controller.js';
 import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
@@ -19,12 +34,64 @@ import { ROLES_KEY } from './roles.decorator.js';
  * it silently un-audited rather than silently open. This spec is what turns
  * that from a review habit into something that fails a build.
  *
- * `ProbeController` is temporary scaffolding (deleted once Milestone 3 lands
- * real modules) but is included anyway — it's fully annotated already (see
- * its own doc comment) and excluding it would leave the newer Phase 4 checks
- * below exercising only one controller.
+ * Controllers are DISCOVERED by walking `AppModule`'s import graph, not listed
+ * by hand: a hand-kept list is a second thing to remember, and forgetting to
+ * add a new controller to it silently exempts that controller from every
+ * check below. A module that isn't imported anywhere isn't reachable, so it
+ * isn't a route either.
  */
-const AUDITED_CONTROLLERS = [HealthController, ProbeController];
+type ControllerClass = new (...args: never[]) => unknown;
+
+function isControllerClass(value: unknown): value is ControllerClass {
+  return typeof value === 'function';
+}
+
+/** A `DynamicModule` (`forRoot()` etc.) is `{ module, controllers?, imports? }`. */
+function isDynamicModule(value: unknown): value is {
+  module: ControllerClass;
+  controllers?: unknown;
+  imports?: unknown;
+} {
+  return typeof value === 'object' && value !== null && 'module' in value;
+}
+
+function collectControllers(
+  moduleRef: unknown,
+  seen: Set<unknown> = new Set(),
+): ControllerClass[] {
+  if (seen.has(moduleRef)) return [];
+  seen.add(moduleRef);
+
+  let moduleClass: ControllerClass;
+  let dynamicControllers: unknown[] = [];
+  let dynamicImports: unknown[] = [];
+
+  if (isDynamicModule(moduleRef)) {
+    moduleClass = moduleRef.module;
+    dynamicControllers = isArray(moduleRef.controllers) ? moduleRef.controllers : [];
+    dynamicImports = isArray(moduleRef.imports) ? moduleRef.imports : [];
+  } else if (isControllerClass(moduleRef)) {
+    moduleClass = moduleRef;
+  } else {
+    return [];
+  }
+
+  const ownControllers: unknown = Reflect.getMetadata('controllers', moduleClass);
+  const ownImports: unknown = Reflect.getMetadata('imports', moduleClass);
+
+  const controllers = [
+    ...(isArray(ownControllers) ? ownControllers : []),
+    ...dynamicControllers,
+  ].filter(isControllerClass);
+
+  const nested = [...(isArray(ownImports) ? ownImports : []), ...dynamicImports].flatMap(
+    (imported) => collectControllers(imported, seen),
+  );
+
+  return [...controllers, ...nested];
+}
+
+const AUDITED_CONTROLLERS = [...new Set(collectControllers(AppModule))];
 
 /**
  * `HealthController`'s response is Terminus's own dynamic `HealthCheckResult`

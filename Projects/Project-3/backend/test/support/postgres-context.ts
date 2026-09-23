@@ -39,7 +39,13 @@ export class PostgresTestContext {
     await this.dataSource.query(`TRUNCATE ${quotedNames} RESTART IDENTITY CASCADE`);
   }
 
+  /**
+   * Resets before disconnecting. These specs share the developer's database,
+   * and rows left behind by the last test are not inert: a running dev server's
+   * task scheduler picks up leftover `background_task` rows and runs them.
+   */
   async stop(): Promise<void> {
+    await this.reset();
     await this.dataSource.destroy();
   }
 }

@@ -24,64 +24,10 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/_probe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Echo a number, doubled
-         * @description Smoke-test route for the global ValidationPipe and AllExceptionsFilter. `n` must be an integer between 1 and 100; anything else returns the standard error envelope.
-         */
-        get: operations["ProbeController_echo"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/_probe/sorted": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Echo a parsed sort specification
-         * @description Smoke-test route for ParseSortPipe. `sort` accepts a comma-separated list of `n`/`createdAt`, each optionally prefixed with `-` for descending; any other field name returns the standard error envelope naming it.
-         */
-        get: operations["ProbeController_sorted"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        ProbeEchoResponseDto: {
-            n: number;
-            doubled: number;
-            correlationId?: string;
-        };
-        SortFieldDto: {
-            field: string;
-            /** @enum {string} */
-            direction: "ASC" | "DESC";
-        };
-        ProbeSortedResponseDto: {
-            sort: components["schemas"]["SortFieldDto"][];
-        };
-    };
+    schemas: never;
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -234,46 +180,6 @@ export interface operations {
                             };
                         };
                     };
-                };
-            };
-        };
-    };
-    ProbeController_echo: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProbeEchoResponseDto"];
-                };
-            };
-        };
-    };
-    ProbeController_sorted: {
-        parameters: {
-            query: {
-                sort: string[];
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProbeSortedResponseDto"];
                 };
             };
         };

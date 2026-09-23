@@ -1,5 +1,6 @@
 import type { MixedList } from 'typeorm';
 import { InitialSchema1789722852579 } from './1789722852579-InitialSchema.js';
+import { PlatformServices1790182668122 } from './1790182668122-PlatformServices.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -11,4 +12,7 @@ import { InitialSchema1789722852579 } from './1789722852579-InitialSchema.js';
  * `migration:generate` emits a new file under this directory; add its class
  * here by hand as part of the same change.
  */
-export const MIGRATIONS: MixedList<Function> = [InitialSchema1789722852579];
+export const MIGRATIONS: MixedList<Function> = [
+  InitialSchema1789722852579,
+  PlatformServices1790182668122,
+];

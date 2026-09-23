@@ -180,38 +180,4 @@ components:
       scheme: bearer
       bearerFormat: JWT
       type: http
-  schemas:
-    ProbeEchoResponseDto:
-      type: object
-      properties:
-        'n':
-          type: number
-        doubled:
-          type: number
-        correlationId:
-          type: string
-      required:
-        - 'n'
-        - doubled
-    SortFieldDto:
-      type: object
-      properties:
-        field:
-          type: string
-        direction:
-          type: string
-          enum:
-            - ASC
-            - DESC
-      required:
-        - field
-        - direction
-    ProbeSortedResponseDto:
-      type: object
-      properties:
-        sort:
-          type: array
-          items:
-            $ref: '#/components/schemas/SortFieldDto'
-      required:
-        - sort
+  schemas: {}

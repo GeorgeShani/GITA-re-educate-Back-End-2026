@@ -163,49 +163,6 @@ paths:
         from the (not-yet-registered) global auth guard and from Observe's event
         budget — a platform healthcheck should never need credentials or count
         against a telemetry quota.
-  /_probe:
-    get:
-      operationId: ProbeController_echo
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProbeEchoResponseDto'
-      tags: &ref_3
-        - probe
-      summary: Echo a number, doubled
-      description: >-
-        Smoke-test route for the global ValidationPipe and AllExceptionsFilter.
-        `n` must be an integer between 1 and 100; anything else returns the
-        standard error envelope.
-  /_probe/sorted:
-    get:
-      operationId: ProbeController_sorted
-      parameters:
-        - name: sort
-          required: true
-          in: query
-          schema:
-            type: array
-            items:
-              type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProbeSortedResponseDto'
-      tags: *ref_3
-      summary: Echo a parsed sort specification
-      description: >-
-        Smoke-test route for ParseSortPipe. `sort` accepts a comma-separated
-        list of `n`/`createdAt`, each optionally prefixed with `-` for
-        descending; any other field name returns the standard error envelope
-        naming it.
 info:
   title: Gridline API
   description: >-
@@ -223,38 +180,4 @@ components:
       scheme: bearer
       bearerFormat: JWT
       type: http
-  schemas:
-    ProbeEchoResponseDto:
-      type: object
-      properties:
-        'n':
-          type: number
-        doubled:
-          type: number
-        correlationId:
-          type: string
-      required:
-        - 'n'
-        - doubled
-    SortFieldDto:
-      type: object
-      properties:
-        field:
-          type: string
-        direction:
-          type: string
-          enum:
-            - ASC
-            - DESC
-      required:
-        - field
-        - direction
-    ProbeSortedResponseDto:
-      type: object
-      properties:
-        sort:
-          type: array
-          items:
-            $ref: '#/components/schemas/SortFieldDto'
-      required:
-        - sort
+  schemas: {}

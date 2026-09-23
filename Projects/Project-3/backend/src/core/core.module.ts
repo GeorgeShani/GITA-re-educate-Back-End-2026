@@ -1,5 +1,6 @@
 import { Global, Module, ValidationPipe } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { CLOCK, SystemClock } from './clock/clock.js';
 import { RequestContextService } from './context/request-context.service.js';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter.js';
 import { LoggingModule } from './logging.module.js';
@@ -17,6 +18,7 @@ import { LoggingModule } from './logging.module.js';
   imports: [LoggingModule],
   providers: [
     RequestContextService,
+    { provide: CLOCK, useClass: SystemClock },
     {
       provide: APP_PIPE,
       useFactory: () =>
@@ -38,6 +40,6 @@ import { LoggingModule } from './logging.module.js';
       useClass: AllExceptionsFilter,
     },
   ],
-  exports: [LoggingModule, RequestContextService],
+  exports: [LoggingModule, RequestContextService, CLOCK],
 })
 export class CoreModule {}

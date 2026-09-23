@@ -69,6 +69,28 @@ describe('database indexes', () => {
     expect(find('refresh_token', 'userId')).toBeDefined();
   });
 
+  it('indexes audit_log_entry on (companyId, createdAt DESC, id) for keyset paging', () => {
+    const index = find('audit_log_entry', 'companyId', 'createdAt', 'id');
+    expect(index).toBeDefined();
+    if (!index) return;
+
+    expect(index.indexname).toBe('idx_audit_log_company_created');
+    // Order of columns and the DESC on createdAt are the whole point: `GET
+    // /audit` is newest-first, keyset-paginated within one tenant.
+    expect(index.indexdef).toMatch(/\("companyId", "createdAt" DESC, id\)/);
+  });
+
+  it('indexes background_task on (status, runAfter) for the claim query', () => {
+    expect(find('background_task', 'status', 'runAfter')).toBeDefined();
+  });
+
+  it('deliberately does not index background_task.payload', () => {
+    const payloadIndexes = indexes.filter(
+      (index) => index.tablename === 'background_task' && index.indexdef.includes('payload'),
+    );
+    expect(payloadIndexes).toEqual([]);
+  });
+
   it('uniquely indexes tokenHash on auth_token and refresh_token', () => {
     const authToken = find('auth_token', 'tokenHash');
     const refreshToken = find('refresh_token', 'tokenHash');

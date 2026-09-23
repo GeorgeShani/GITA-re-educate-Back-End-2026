@@ -29,7 +29,7 @@ recorded as a trap in the implementation plan.
 - **No `setGlobalPrefix`.** Caddy's `handle_path /api/*` strips that segment
   before forwarding, so routes are declared unprefixed. Adding a prefix makes
   the public path `/api/api/...`.
-- **Never break the canary.** `src/probe/probe.metadata.spec.ts` asserts that
+- **Never break the canary.** `src/core/audit/audit.metadata.spec.ts` asserts that
   decorator metadata is still emitted. If it fails, fix the compiler
   configuration — do not debug the DI graph or TypeORM column types.
 
@@ -132,9 +132,10 @@ document.
   Returns `undefined` when absent; a route that requires one checks for that
   itself.
 - **`route-audit.spec.ts` is the enforcement mechanism, not code review.**
-  Add a controller to its `AUDITED_CONTROLLERS` array the moment it has a
-  real (non-scaffold) route, and every route on it must satisfy the checks
-  above or the build fails.
+  It discovers controllers by walking `AppModule`'s import graph, so there is
+  no list to maintain: a controller in any module reachable from `AppModule`
+  is audited automatically, and every route on it must satisfy the checks
+  above or the build fails. A module not imported anywhere isn't a route.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -213,13 +214,61 @@ Milestone 7, not as generic HTTP-kit plumbing now.
   — this is the "one shared `toPaginated()`" — leaving `meta` untouched and
   working identically for both `OffsetPage` and `CursorPage`.
 
+## Platform services *(from Phase 1 of the feature plan)*
+
+- **Time goes through `CLOCK`** (`src/core/clock/`), never `new Date()` in
+  domain logic: token expiry, billing periods, proration, the task backoff.
+  Inject `@Inject(CLOCK) clock: Clock`; tests use `test/support/fake-clock.ts`.
+- **Slow or external work goes through the task queue, not inline.**
+  `TaskQueue.enqueue(type, payload, { manager })` — pass the caller's
+  `EntityManager` so the task exists only if the surrounding transaction
+  commits (a rolled-back registration must not send an activation email).
+  It is a durable job queue (`FOR UPDATE SKIP LOCKED`, exponential backoff,
+  dead after 5 attempts), **not an event bus**.
+- **Adding a task type**: add it to `BACKGROUND_TASK_TYPES` in
+  `background-task.entity.ts` plus a migration (`ALTER TYPE
+  background_task_type ADD VALUE`), write a `TaskHandler` with a Zod payload
+  schema (the `jsonb` column is untyped by definition), and register it in
+  `TaskRunnerModule`'s `TASK_HANDLERS` factory. Forgetting the last step
+  parks that type's tasks as `dead` with "No handler registered".
+- **Email is never sent directly.** Enqueue a `send_email` task whose payload
+  is a `MailMessage` (`core/mail/mail-message.ts` — one Zod schema per
+  template, so a missing variable fails at the boundary). `MailService.send`
+  is called only by `SendEmailHandler`. Templates are MJML + Handlebars held
+  as TS strings in `templates.ts` (no asset pipeline), compiled once at boot;
+  brand colors are literal hex in `brand.ts` until the Milestone 2 brand pass.
+- **Audit**: `AuditService.record({ action, target, metadata }, manager?)`.
+  Pass the caller's `manager` so the entry commits with the change it
+  describes. Flows with no authenticated request (registration, activation,
+  the task runner) pass `companyId` and `actorUserId` explicitly; otherwise the
+  tenant, actor, ip and correlation id come from request context. The table is
+  immutable at the database level (a trigger rejects UPDATE/DELETE), so there
+  is deliberately no edit or delete method.
+- `action`/`targetType` on the audit log are open-ended text, not Postgres
+  enums, unlike the small closed `status`/`type` vocabularies elsewhere — a new
+  action per feature would otherwise cost an `ALTER TYPE` migration each time.
+
 ## Testing
 
 - Colocate `*.spec.ts` next to the file under test. Suffix anything that needs a
   real database `*.integration.spec.ts` — `npm test` excludes those, `npm run
-  test:int` runs them.
+  test:int` runs them. **There is no e2e tier**: HTTP behaviour is covered by
+  integration specs against the real database.
+- Integration specs construct the service under test directly against
+  `PostgresTestContext` (see `tenant-scope.integration.spec.ts`); a
+  `ClsService` needs only `new ClsService(new AsyncLocalStorage())`.
+  `PostgresTestContext.stop()` resets first, because the specs share the
+  developer's database and a running dev server's task scheduler will execute
+  leftover `background_task` rows.
+- A test that "passes first time" proves little for concurrency or locking
+  code — mutate the implementation (e.g. remove `.setOnLocked('skip_locked')`)
+  and confirm the test fails. The SKIP LOCKED spec holds row locks in an open
+  transaction rather than racing, so it is deterministic.
 - Prefer asserting metadata over booting the app for decorator-time wiring
   (`Reflect.getMetadata('imports', SomeModule)`).
+- Specs that re-import `AppModule` after `vi.resetModules()` need a generous
+  timeout: a cold import of the Nest/TypeORM/Swagger graph is seconds on a
+  slow disk.
 - Pure functions with an injected clock over anything time-dependent. The
   billing calculator is the most heavily tested file in the repo.
 
@@ -272,9 +321,11 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
       `(companyId, createdAt) WHERE deleted_at IS NULL`
 - [ ] `file_access_grant` — UNIQUE `(fileId, userId)`
 - [ ] `usage_event` — `(companyId, periodKey)`
-- [ ] `audit_log_entry` — `(companyId, createdAt DESC, id)`
-- [ ] Deliberately **not** indexed: `invoice.lineItems`,
+- [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`
+- [x] Deliberately **not** indexed: `invoice.lineItems` (table not built yet),
       `background_task.payload` — opaque jsonb read only by primary key.
+      The `background_task` claim index `(status, runAfter)` is infra, not
+      tenant-scoped, and is asserted alongside.
 
 ## Platform
 

@@ -83,6 +83,14 @@ export const envSchema = z
      */
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
 
+    /**
+     * The browser-facing origin — used to build links in emails (activation,
+     * invite, password reset) and, from Phase 5, the OAuth redirect target.
+     * The shared Caddy origin in Docker; `localhost:3000` for local non-Docker
+     * dev, where the web app owns that port.
+     */
+    APP_PUBLIC_URL: z.string().default('http://localhost:3000'),
+
     // ---- Tier 2: required by its phase --------------------------------------
     /** `local` is an offline-dev convenience; `s3` is the graded path. */
     STORAGE_DRIVER: z.enum(['s3', 'local']).default('s3'),

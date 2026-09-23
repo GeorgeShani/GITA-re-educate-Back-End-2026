@@ -5,11 +5,13 @@ import { ClsModule } from 'nestjs-cls';
 import { AppConfigModule } from './config/config.module.js';
 import { loadConfig } from './config/load-config.js';
 import './core/context/cls-store.js';
+import { AuditModule } from './core/audit/audit.module.js';
 import { CoreModule } from './core/core.module.js';
 import { REDACT_KEYS } from './core/redaction.js';
+import { TaskRunnerModule } from './core/tasks/task-runner.module.js';
+import { TasksModule } from './core/tasks/tasks.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
-import { ProbeModule } from './probe/probe.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -67,13 +69,18 @@ function observeImports(): DynamicModule[] {
       global: true,
       middleware: {
         mount: true,
-        setup: (cls, req: { headers: Record<string, string | string[] | undefined> }) => {
+        setup: (
+          cls,
+          req: { headers: Record<string, string | string[] | undefined>; ip?: string },
+        ) => {
           // Reuse an inbound id so a single trace spans web -> api. The Next.js
           // BFF forwards this header.
           const header = req.headers['x-correlation-id'];
           const correlationId =
             (Array.isArray(header) ? header[0] : header) ?? randomUUID();
           cls.set('correlationId', correlationId);
+          // `AuditLogEntry.ip` reads this back via RequestContextService.
+          if (req.ip) cls.set('ip', req.ip);
         },
       },
     }),
@@ -81,8 +88,10 @@ function observeImports(): DynamicModule[] {
     CoreModule,
     ...observeImports(),
     DatabaseModule,
+    AuditModule,
+    TasksModule,
+    TaskRunnerModule,
     HealthModule,
-    ProbeModule,
   ],
 })
 export class AppModule {}

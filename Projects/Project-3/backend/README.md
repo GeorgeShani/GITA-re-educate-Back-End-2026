@@ -80,7 +80,7 @@ docker compose --profile dev up   # full stack: local db + migrate + api + web +
 
 Without Docker's `proxy` (Caddy) in front, the API has no `/api` prefix —
 `main.ts` deliberately never calls `setGlobalPrefix`, since Caddy strips that
-segment before forwarding. Hit routes bare (`/health`, `/_probe`) when running
+segment before forwarding. Hit routes bare (e.g. `/health`) when running
 `node dist/main.js` directly.
 
 ## API documentation

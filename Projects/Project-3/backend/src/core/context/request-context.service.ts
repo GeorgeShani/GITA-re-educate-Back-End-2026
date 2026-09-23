@@ -37,6 +37,11 @@ export class RequestContextService {
     return this.cls.isActive() ? this.cls.get('role') : undefined;
   }
 
+  /** The inbound request's IP; `undefined` outside HTTP (jobs, scheduled tasks). */
+  get ip(): string | undefined {
+    return this.cls.isActive() ? this.cls.get('ip') : undefined;
+  }
+
   /**
    * Same as `companyId` but throws instead of returning `undefined`.
    * For code paths that are only ever reached behind the auth guard, where a

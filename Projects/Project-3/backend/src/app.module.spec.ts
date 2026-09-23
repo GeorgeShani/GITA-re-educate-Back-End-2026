@@ -67,7 +67,10 @@ function moduleNameOf(entry: unknown): string {
   return '';
 }
 
-describe('AppModule telemetry wiring', () => {
+// Each case re-imports the whole AppModule graph after `vi.resetModules()`, so a
+// cold import (Nest, TypeORM, Swagger, schedule…) dominates — the default 5s is
+// a coin flip on a slow disk, and a timeout here says nothing about telemetry.
+describe('AppModule telemetry wiring', { timeout: 30_000 }, () => {
   const original = { ...process.env };
 
   beforeEach(() => {
