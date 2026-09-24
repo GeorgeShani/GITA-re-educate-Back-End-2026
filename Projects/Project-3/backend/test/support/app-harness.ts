@@ -7,12 +7,14 @@ import { AppModule } from '#/app.module.js';
 import { SeatInterval } from '#/billing/seat-interval.entity.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { PasswordHasher } from '#/auth/crypto/password-hasher.js';
+import { GOOGLE_OAUTH, type OAuthProfile } from '#/auth/oauth/oauth-provider.js';
 import { CLOCK } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { MAIL_TRANSPORT } from '#/core/mail/mail-transport.js';
 import { TaskRunner } from '#/core/tasks/task-runner.service.js';
 import { FakeClock } from './fake-clock.js';
+import { FakeGoogleOAuthProvider } from './fake-oauth.js';
 import { MailCapture } from './mail-capture.js';
 import { PostgresTestContext } from './postgres-context.js';
 
@@ -35,6 +37,20 @@ export interface RegisteredAccount {
 
 export const DEFAULT_PASSWORD = 'correct-horse-battery';
 
+export interface GoogleStart {
+  url: string;
+  state: string;
+  /** The `name=value` pair to send back as `Cookie`. */
+  cookie: string;
+}
+
+export interface GoogleFlowResult {
+  status: number;
+  /** Where the API sent the browser: `/session/oauth-complete?code=…`, `?error=…`, `/register?oauthRegistration=…`. */
+  location: URL;
+  start: GoogleStart;
+}
+
 /** A fixed start, so a spec that forgets to move time still gets deterministic tokens. */
 const START = new Date('2026-03-01T12:00:00.000Z');
 
@@ -54,31 +70,37 @@ export class AppHarness {
     readonly app: INestApplication,
     readonly clock: FakeClock,
     readonly mail: MailCapture,
+    readonly google: FakeGoogleOAuthProvider,
     private readonly runner: TaskRunner,
     private readonly db: PostgresTestContext,
   ) {}
 
-  static async start(): Promise<AppHarness> {
+  /** `googleConfigured: false` boots as if the `GOOGLE_*` variables were unset (the routes then answer 503). */
+  static async start(options: { googleConfigured?: boolean } = {}): Promise<AppHarness> {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
+    const google = new FakeGoogleOAuthProvider();
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(CLOCK)
       .useValue(clock)
       .overrideProvider(MAIL_TRANSPORT)
       .useValue(mail)
+      .overrideProvider(GOOGLE_OAUTH)
+      .useValue(options.googleConfigured === false ? null : google)
       .compile();
 
     const app = moduleRef.createNestApplication();
     await app.init();
 
-    return new AppHarness(app, clock, mail, app.get(TaskRunner), await PostgresTestContext.start());
+    return new AppHarness(app, clock, mail, google, app.get(TaskRunner), await PostgresTestContext.start());
   }
 
   /** Clean slate between tests: empty tables, empty outbox, clock back at the start. */
   async reset(): Promise<void> {
     await this.db.reset();
     this.mail.clear();
+    this.google.clear();
     this.clock.set(START);
   }
 
@@ -254,6 +276,85 @@ export class AppHarness {
   async login(email: string, password: string = DEFAULT_PASSWORD): Promise<SessionBody> {
     const response = await this.http().post('/auth/login').send({ email, password }).expect(200);
     return sessionSchema.parse(response.body);
+  }
+
+  /**
+   * Drives one whole Google round trip the way a browser would: ask the API for the
+   * authorization URL (keeping its nonce cookie), "sign in at Google" as `profile`,
+   * then hit the callback with the code, the state and the cookie. Redirects are not
+   * followed — the spec reads where the API sent the browser.
+   */
+  async googleFlow(
+    flow: {
+      intent: 'login' | 'register' | 'invite' | 'link';
+      profile?: Partial<OAuthProfile>;
+      inviteToken?: string;
+      /** Required for `link`: who is linking. */
+      session?: SessionBody;
+    },
+  ): Promise<GoogleFlowResult> {
+    const start = await this.googleStart(flow);
+    return this.googleCallback(start, this.google.issueCode(flow.profile));
+  }
+
+  async googleStart(flow: {
+    intent: 'login' | 'register' | 'invite' | 'link';
+    inviteToken?: string;
+    session?: SessionBody;
+  }): Promise<GoogleStart> {
+    const response =
+      flow.intent === 'link'
+        ? await this.http()
+            .post('/auth/identities/google/link')
+            .set(...this.bearer(this.requireSession(flow.session)))
+            .expect(200)
+        : await this.http()
+            .post('/auth/oauth/google/url')
+            .send({ intent: flow.intent, inviteToken: flow.inviteToken })
+            .expect(200);
+
+    const { url } = z.object({ url: z.string() }).parse(response.body);
+    const state = new URL(url).searchParams.get('state');
+    if (!state) throw new Error('The authorization URL carries no state');
+
+    const setCookie: unknown = response.headers['set-cookie'];
+    const cookie = (Array.isArray(setCookie) ? setCookie : [])
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.split(';')[0])
+      .find((pair) => pair?.startsWith('gl_oauth_nonce='));
+    if (!cookie) throw new Error('The URL response set no nonce cookie');
+
+    return { url, state, cookie };
+  }
+
+  /** The provider redirecting the browser back. Override `cookie`/`state` to simulate tampering. */
+  async googleCallback(
+    start: GoogleStart,
+    code: string,
+    overrides: Partial<{ state: string; cookie: string | null }> = {},
+  ): Promise<GoogleFlowResult> {
+    const request = this.http()
+      .get('/auth/google/callback')
+      .query({ code, state: overrides.state ?? start.state });
+    const cookie = overrides.cookie === undefined ? start.cookie : overrides.cookie;
+    if (cookie) request.set('Cookie', cookie);
+
+    const response = await request;
+    const location = response.headers['location'];
+    if (typeof location !== 'string') {
+      throw new Error(`The callback did not redirect (status ${response.status}): ${response.text}`);
+    }
+    return { status: response.status, location: new URL(location), start };
+  }
+
+  /** Trades a callback's `code` for a session, as the BFF does. */
+  async exchangeOAuthCode(code: string) {
+    return this.http().post('/auth/oauth/exchange').send({ code });
+  }
+
+  private requireSession(session: SessionBody | undefined): SessionBody {
+    if (!session) throw new Error('This Google flow needs a signed-in session');
+    return session;
   }
 
   parseSession(body: unknown): SessionBody {

@@ -398,6 +398,167 @@ components:
       required:
         - user
         - company
+    GoogleUrlDto:
+      type: object
+      properties:
+        intent:
+          type: string
+          enum:
+            - login
+            - register
+            - invite
+          description: >-
+            `login` and `register` behave identically (a known Google account
+            signs in, an unknown one is offered company registration); the value
+            is for the frontend. `invite` binds the Google account to the
+            invited user.
+        inviteToken:
+          type: string
+          description: 'Required for `invite`: the token from the invitation email.'
+      required:
+        - intent
+    OAuthUrlDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Send the browser here. Google sends it back to the API callback.
+      required:
+        - url
+    OAuthExchangeDto:
+      type: object
+      properties:
+        code:
+          type: string
+          description: >-
+            The single-use `code` from the redirect to
+            `/session/oauth-complete`. Valid for 60 seconds.
+      required:
+        - code
+    OAuthRegistrationTokenDto:
+      type: object
+      properties:
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+      required:
+        - oauthRegistrationToken
+    OAuthRegistrationPreviewDto:
+      type: object
+      properties:
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address to prefill, or null when Google reported a relay/alias
+            address (ask the person for one).
+        emailVerified:
+          type: boolean
+          description: >-
+            True when Google vouches for `email`; registration then needs no
+            activation email.
+        name:
+          type: string
+          nullable: true
+      required:
+        - email
+        - emailVerified
+        - name
+    OAuthRegisterCompanyDto:
+      type: object
+      properties:
+        companyName:
+          type: string
+          example: Acme Logistics
+          minLength: 2
+          maxLength: 120
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: *ref_2
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+      required:
+        - companyName
+        - country
+        - industry
+        - oauthRegistrationToken
+    OAuthRegisterCompanyResponseDto:
+      type: object
+      properties:
+        companyId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending_activation
+            - active
+        message:
+          type: string
+        session:
+          nullable: true
+          description: >-
+            Present when Google vouched for the address, so the company is
+            active at once and the person is signed in.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SessionDto'
+      required:
+        - companyId
+        - userId
+        - status
+        - message
+    IdentityDto:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum:
+            - password
+            - google
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address as that provider reports it; may differ from the work
+            address.
+        emailVerified:
+          type: boolean
+        lastUsedAt:
+          format: date-time
+          type: string
+          nullable: true
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - provider
+        - email
+        - emailVerified
+        - lastUsedAt
+        - createdAt
+    IdentityListDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentityDto'
+      required:
+        - data
     UpdateMeDto:
       type: object
       properties:

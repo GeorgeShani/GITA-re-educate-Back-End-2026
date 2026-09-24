@@ -19,3 +19,20 @@ export function isUniqueViolation(error: unknown): boolean {
     driverError.code === UNIQUE_VIOLATION
   );
 }
+
+/**
+ * The name of the constraint a unique violation tripped, or `undefined`. Lets a
+ * caller tell two unique constraints on one table apart (e.g. "this Google
+ * account is taken" vs "this user already has a Google account").
+ */
+export function uniqueViolationConstraint(error: unknown): string | undefined {
+  if (!isUniqueViolation(error) || !(error instanceof QueryFailedError)) return undefined;
+
+  const driverError: unknown = error.driverError;
+  return typeof driverError === 'object' &&
+    driverError !== null &&
+    'constraint' in driverError &&
+    typeof driverError.constraint === 'string'
+    ? driverError.constraint
+    : undefined;
+}

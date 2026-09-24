@@ -244,6 +244,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/oauth/google/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start signing in, registering or accepting an invite with Google
+         * @description Returns the Google authorization URL to send the browser to, and sets an httpOnly `gl_oauth_nonce` cookie that pins the flow to this browser — the callback refuses to continue without it, which is what stops a victim being signed into an attacker's account. Call it from the browser, or forward the `Set-Cookie` if a server makes the call. `login` and `register` behave identically: a Google account already known signs in, an unknown one is offered company registration. `invite` needs the `inviteToken` from the invitation email and binds the Google account to the invited user, with no email comparison. A dead invite is refused here with 400, before any trip to Google. Answers 503 when Google sign-in is not configured; password auth is unaffected.
+         */
+        post: operations["OAuthController_googleUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/google/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Google redirects the browser back here
+         * @description Not called by API clients: Google navigates the browser to it, and it always answers with a redirect to the web app — never JSON, because a person is looking at the page. Success redirects to `/session/oauth-complete?code=…`, where `code` is a single-use, 60-second value to trade at `POST /auth/oauth/exchange`; no token ever appears in a URL. An unknown Google account redirects to `/register?oauthRegistration=…`. A linking flow redirects to `/settings/linked-accounts?linked=google`. Any refusal redirects with `?error=` set to one of `invalid_state`, `access_denied`, `provider_error`, `invalid_invite`, `identity_in_use`, `already_linked`, `not_activated`, `account_unavailable` or `ambiguous_email`. A known `(google, sub)` signs in whatever email Google now reports. An unknown one is linked to an existing user only when Google verified the address, it is not a relay/alias address, and it exactly matches one active user's contact address.
+         */
+        get: operations["OAuthController_googleCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/exchange": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trade the callback's code for a session
+         * @description Called by the web app's server after the redirect to `/session/oauth-complete`. The code is single-use and expires after 60 seconds; the account is re-checked at this moment, so someone disabled in the meantime gets 401. Returns the same session as login.
+         */
+        post: operations["OAuthController_exchange"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/registration/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read what a Google registration token prefills
+         * @description Decodes the `oauthRegistration` token from the redirect to `/register` into what the form should prefill. `email` is null when Google reported a relay or alias address — the person must supply a real one. `emailVerified` says whether Google vouches for it, which decides whether registration skips the activation email.
+         */
+        post: operations["OAuthController_registrationPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/register-company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a company with a Google account
+         * @description The same form as `POST /auth/register-company` minus the password (Google is the credential), plus the `oauthRegistration` token. When Google vouches for the address it becomes the contact address, the company is active at once, no activation email is sent, and the response carries a session. Otherwise `email` is required and the flow is a password registration's: an activation email is sent and no session is returned. The token is valid for 15 minutes. Returns 409 when the company address or the Google account is already registered.
+         */
+        post: operations["OAuthController_registerCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/identities/google/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start linking a Google account to the signed-in user
+         * @description "Settings → Linked accounts." Returns the Google URL and sets the same flow cookie as `POST /auth/oauth/google/url`. When the callback returns, the Google account is bound to the signed-in user with no email comparison at all — a relay address, a personal Gmail and an unrelated one all work. A Google account that already belongs to someone else, or a user who already has a different one, is refused with `?error=`.
+         */
+        post: operations["OAuthController_linkGoogle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List your sign-in methods
+         * @description The caller's own identities — password and/or Google — with the address each provider reports, which may differ from the work address forever. Never returns a hash or the provider's subject.
+         */
+        get: operations["OAuthController_listIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/identities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a sign-in method
+         * @description Removes one of the caller's own identities. Returns 409 when it is the only one left — a user with no way to sign in cannot be helped by anyone but a DBA. Someone else's identity is a 404.
+         */
+        delete: operations["OAuthController_unlinkIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/users/me": {
         parameters: {
             query?: never;
@@ -534,6 +694,73 @@ export interface components {
         MeDto: {
             user: components["schemas"]["UserProfileDto"];
             company: components["schemas"]["CompanyDto"];
+        };
+        GoogleUrlDto: {
+            /**
+             * @description `login` and `register` behave identically (a known Google account signs in, an unknown one is offered company registration); the value is for the frontend. `invite` binds the Google account to the invited user.
+             * @enum {string}
+             */
+            intent: "login" | "register" | "invite";
+            /** @description Required for `invite`: the token from the invitation email. */
+            inviteToken?: string;
+        };
+        OAuthUrlDto: {
+            /** @description Send the browser here. Google sends it back to the API callback. */
+            url: string;
+        };
+        OAuthExchangeDto: {
+            /** @description The single-use `code` from the redirect to `/session/oauth-complete`. Valid for 60 seconds. */
+            code: string;
+        };
+        OAuthRegistrationTokenDto: {
+            /** @description The `oauthRegistration` token from the redirect to `/register`. */
+            oauthRegistrationToken: string;
+        };
+        OAuthRegistrationPreviewDto: {
+            /** @description The address to prefill, or null when Google reported a relay/alias address (ask the person for one). */
+            email: string | null;
+            /** @description True when Google vouches for `email`; registration then needs no activation email. */
+            emailVerified: boolean;
+            name: string | null;
+        };
+        OAuthRegisterCompanyDto: {
+            /** @example Acme Logistics */
+            companyName: string;
+            /**
+             * @description ISO 3166-1 alpha-2 country code
+             * @example GE
+             */
+            country: string;
+            /** @enum {string} */
+            industry: "finance" | "e-commerce" | "healthcare" | "education" | "logistics" | "manufacturing" | "media" | "real-estate" | "technology" | "other";
+            /** @description The `oauthRegistration` token from the redirect to `/register`. */
+            oauthRegistrationToken: string;
+            /** @example nino@acme.com */
+            email?: string;
+        };
+        OAuthRegisterCompanyResponseDto: {
+            companyId: string;
+            userId: string;
+            /** @enum {string} */
+            status: "pending_activation" | "active";
+            message: string;
+            /** @description Present when Google vouched for the address, so the company is active at once and the person is signed in. */
+            session?: components["schemas"]["SessionDto"] | null;
+        };
+        IdentityDto: {
+            id: string;
+            /** @enum {string} */
+            provider: "password" | "google";
+            /** @description The address as that provider reports it; may differ from the work address. */
+            email: string | null;
+            emailVerified: boolean;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        IdentityListDto: {
+            data: components["schemas"]["IdentityDto"][];
         };
         UpdateMeDto: {
             /** @example Nino Beridze */
@@ -1067,6 +1294,179 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeDto"];
+                };
+            };
+        };
+    };
+    OAuthController_googleUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GoogleUrlDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthUrlDto"];
+                };
+            };
+        };
+    };
+    OAuthController_googleCallback: {
+        parameters: {
+            query?: {
+                error?: unknown;
+                state?: unknown;
+                code?: unknown;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirects the browser to the web app. */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    OAuthController_exchange: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthExchangeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+        };
+    };
+    OAuthController_registrationPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthRegistrationTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRegistrationPreviewDto"];
+                };
+            };
+        };
+    };
+    OAuthController_registerCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthRegisterCompanyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthRegisterCompanyResponseDto"];
+                };
+            };
+        };
+    };
+    OAuthController_linkGoogle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthUrlDto"];
+                };
+            };
+        };
+    };
+    OAuthController_listIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityListDto"];
+                };
+            };
+        };
+    };
+    OAuthController_unlinkIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
                 };
             };
         };

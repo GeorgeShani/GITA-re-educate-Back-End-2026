@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants.js';
+import { METHOD_METADATA, PATH_METADATA, REDIRECT_METADATA } from '@nestjs/common/constants.js';
 import { DECORATORS } from '@nestjs/swagger';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -259,6 +259,16 @@ describe('route audit', () => {
       if (EXEMPT_FROM_RESPONSE_TYPE_CHECK.has(route.controller)) continue;
 
       const responses: unknown = Reflect.getMetadata(DECORATORS.API_RESPONSE, route.handler);
+
+      // A `@Redirect()` route (the OAuth callback) has no body to type: it must
+      // declare its 302 instead.
+      if (Reflect.hasMetadata(REDIRECT_METADATA, route.handler)) {
+        expect(
+          isRecord(responses) && '302' in responses,
+          `${route.controller}.${route.method} redirects but does not document its 302`,
+        ).toBe(true);
+        continue;
+      }
 
       expect(
         isRecord(responses),

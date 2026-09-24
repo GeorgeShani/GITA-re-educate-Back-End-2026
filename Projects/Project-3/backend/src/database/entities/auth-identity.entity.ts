@@ -26,6 +26,9 @@ export type AuthProvider = (typeof AUTH_PROVIDERS)[number];
  */
 @Entity({ name: 'auth_identity' })
 @Unique(['provider', 'providerUserId'])
+// One identity per provider per user: "link Google" twice cannot leave a user
+// answering to two different Google accounts.
+@Unique('uq_auth_identity_user_provider', ['userId', 'provider'])
 @Index('uq_auth_identity_password_email', { synchronize: false })
 export class AuthIdentity extends BaseEntity {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })

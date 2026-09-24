@@ -77,6 +77,13 @@ describe('database indexes', () => {
     expect(index.indexdef).toMatch(/WHERE.*provider.*password/);
   });
 
+  it('allows one identity per provider per user', () => {
+    const index = indexes.find((row) => row.indexname === 'uq_auth_identity_user_provider');
+    expect(index?.tablename).toBe('auth_identity');
+    expect(index?.indexdef).toMatch(/UNIQUE/);
+    expect(index?.indexdef).toMatch(/\("userId", provider\)/);
+  });
+
   it('indexes refresh_token.familyId, which family revocation updates by', () => {
     expect(find('refresh_token', 'familyId')).toBeDefined();
   });

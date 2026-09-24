@@ -2,7 +2,8 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from 'typ
 import { BaseEntity } from '#/database/base.entity.js';
 import { User } from './user.entity.js';
 
-export const AUTH_TOKEN_TYPES = ['activation', 'invite', 'password_reset'] as const;
+/** `oauth_exchange` is the 60-second code a Google callback hands the browser in place of a session. */
+export const AUTH_TOKEN_TYPES = ['activation', 'invite', 'password_reset', 'oauth_exchange'] as const;
 export type AuthTokenType = (typeof AUTH_TOKEN_TYPES)[number];
 
 /**

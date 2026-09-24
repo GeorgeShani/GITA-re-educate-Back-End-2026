@@ -59,6 +59,41 @@ export class AuthTokenService {
     type: AuthTokenType,
     plaintext: string,
   ): Promise<string | null> {
+    return this.consumeByHash(manager, type, this.tokens.hash(plaintext));
+  }
+
+  /** The SHA-256 a token is stored under — lets a signed OAuth `state` name an invite without carrying it. */
+  hashOf(plaintext: string): string {
+    return this.tokens.hash(plaintext);
+  }
+
+  /**
+   * Whose token this is, if it is currently usable — WITHOUT spending it. For
+   * refusing early (an OAuth flow that starts from a dead invite link) only;
+   * spending is still `consume`, which re-checks atomically.
+   */
+  async peek(
+    manager: EntityManager,
+    type: AuthTokenType,
+    plaintext: string,
+  ): Promise<string | null> {
+    const row = await manager
+      .createQueryBuilder(AuthToken, 'token')
+      .select('token.userId', 'userId')
+      .where(
+        'token.tokenHash = :hash AND token.type = :type AND token.consumedAt IS NULL AND token.expiresAt > :now',
+        { hash: this.tokens.hash(plaintext), type, now: this.clock.now() },
+      )
+      .getRawOne<{ userId: string }>();
+    return row?.userId ?? null;
+  }
+
+  /** `consume` for a caller that only holds the stored hash (the OAuth callback, via signed state). */
+  async consumeByHash(
+    manager: EntityManager,
+    type: AuthTokenType,
+    hash: string,
+  ): Promise<string | null> {
     const now = this.clock.now();
 
     const result = await manager
@@ -67,7 +102,7 @@ export class AuthTokenService {
       .set({ consumedAt: now })
       .where(
         '"tokenHash" = :hash AND "type" = :type AND "consumedAt" IS NULL AND "expiresAt" > :now',
-        { hash: this.tokens.hash(plaintext), type, now },
+        { hash, type, now },
       )
       .returning(['userId'])
       .execute();

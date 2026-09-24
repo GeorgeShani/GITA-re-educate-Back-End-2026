@@ -250,6 +250,57 @@ document.
 - Class-level `@Roles(...)`/`@Public()` count for `route-audit.spec.ts` exactly as
   they do for the guards (route value wins, else the controller's).
 
+## Google sign-in & linked accounts *(from Phase 5 of the feature plan)*
+
+- **Email is not the key.** Sign-in looks up `(provider, providerUserId)`; the email a
+  provider reports is an attribute of the identity and may differ from `User.email`
+  forever. `auth/oauth/oauth-resolution.ts` is SCOPE's identity table as one pure
+  function (unit-tested row by row) — change a rule there, not in the service.
+- **The seam is `OAuthProvider`** (`authorizationUrl`, `exchangeCode` → `{ providerUserId,
+  email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOOGLE_*`
+  variables are unset (routes answer 503, password auth untouched); the harness
+  replaces it with `FakeGoogleOAuthProvider`. The real provider is plain `fetch`: code
+  exchange with the client secret, then the userinfo endpoint — back-channel to Google,
+  no ID-token signature to verify.
+- **The invite token is the proof of identity.** `intent: invite` carries the token's
+  *hash* in the signed state; the callback consumes it and binds whatever Google
+  account came back with no email comparison. Accepting an invite this way does
+  everything `POST /auth/accept-invite` does — activates, sets `activatedAt`, **opens the
+  `seat_interval`**, audits `employee.accepted_invite`. Any new way to accept an invite
+  must do the same.
+- **Auto-link by email is the narrow, dangerous path**: only for an *unknown* identity,
+  a provider-**verified**, non-relay address, matching **exactly one** *active* user's
+  contact address (an active user's address was proved by an emailed link). Unverified,
+  relay, ambiguous (two companies) or inactive-company matches never link.
+  `relay-address.ts` lists the relay domains; a relay address is never a contact
+  address, never a discovery key, never mailed.
+- **State and registration tokens are signed JWTs with their own derived key and
+  audience** (`OAuthStateService`) — neither can be replayed as the other or as an
+  access token. `iat` comes from the injected clock.
+- **Login CSRF is closed by a cookie.** The state carries a nonce; `/oauth/google/url`
+  and `/identities/google/link` also set it in an httpOnly `gl_oauth_nonce` cookie
+  (`Path=/`, because Caddy strips `/api` — a narrower path is never sent back). The
+  callback needs the two to agree. A server-side caller of those two routes must forward
+  `Set-Cookie` to the browser.
+- **Tokens never appear in a URL.** The callback always *redirects* (never JSON — a person
+  is looking at it): `/session/oauth-complete?code=` (a 60-second single-use
+  `oauth_exchange` AuthToken, traded at `POST /auth/oauth/exchange`, re-checking the
+  account), `?error=<code>`, `/register?oauthRegistration=` (signed profile, no session),
+  or `/settings/linked-accounts?linked=google`. Google appends `scope`, `authuser`…, so
+  the callback's query is Zod-parsed loosely, not a class-validator DTO (which would 400).
+- **Registration with Google** is `POST /auth/oauth/register-company` (a separate route
+  from the password one so each contract is exact). A verified, non-relay address is the
+  contact address: company + admin are `active` at once, no activation email, a session is
+  returned. Otherwise `email` is required and it is a password registration minus the
+  password. The form may not substitute a different address for a vouched-for one. A
+  Google-only account has no password (forgot-password finds nothing).
+- **One identity per provider per user** (`uq_auth_identity_user_provider`). Unlinking
+  locks the user's identity rows and refuses the last one (409) so two concurrent unlinks
+  of different identities cannot together remove them all; the spec proves it by locking
+  the row that is *not* being deleted (locking the target would block regardless).
+- `route-audit.spec.ts` lets a `@Redirect()` handler declare `@ApiResponse({ status: 302 })`
+  in place of a typed body.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -427,7 +478,7 @@ The full index plan from SCOPE.md. Tick each off as its table lands, and extend
 `indexes.integration.spec.ts`'s `pg_indexes` assertions in the same change —
 every `[x]` below has a corresponding assertion there, not just a claim here.
 
-- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`, UNIQUE `lower(email)` for password identities (partial), plus a plain
+- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`, UNIQUE `(userId, provider)`, UNIQUE `lower(email)` for password identities (partial), plus a plain
       index on `userId` (not covered by the unique index, needed for "every
       identity for this user")
 - [x] `auth_token` — UNIQUE `(tokenHash)`, plus a plain index on `userId`

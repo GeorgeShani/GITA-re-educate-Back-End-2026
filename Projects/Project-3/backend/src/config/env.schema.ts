@@ -143,6 +143,10 @@ export const envSchema = z
     isTest: env.NODE_ENV === 'test',
     /** Telemetry is only wired when both halves of the credential exist. */
     observeEnabled: Boolean(env.OBSERVE_APP_KEY && env.OBSERVE_APP_SECRET),
+    /** Google sign-in is registered only when all three halves exist; otherwise its routes answer 503. */
+    googleOAuthEnabled: Boolean(
+      env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_CALLBACK_URL,
+    ),
     corsOrigins: env.CORS_ORIGIN.split(',')
       .map((origin) => origin.trim())
       .filter(Boolean),
