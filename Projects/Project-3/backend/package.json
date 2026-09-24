@@ -26,6 +26,7 @@
     "docs:generate": "npm run build && node dist/docs/generate.js",
     "docs:check": "npm run build && node dist/docs/check.js",
     "docs:types": "openapi-typescript docs/openapi.yaml -o docs/openapi.d.ts",
+    "billing:run-cycle": "node dist/billing/cycle/run-cycle.js",
     "migration:generate": "npm run build && typeorm migration:generate -d dist/database/data-source.js",
     "migration:run": "node dist/database/migrate.js",
     "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",
@@ -39,6 +40,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1139.0",
     "@aws-sdk/s3-request-presigner": "^3.1139.0",
+    "@google/genai": "^2.24.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",
@@ -53,6 +55,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "csv-parse": "^7.0.2",
+    "exceljs": "^4.4.0",
     "file-type": "^22.1.1",
     "handlebars": "^4.7.9",
     "helmet": "^8.3.0",

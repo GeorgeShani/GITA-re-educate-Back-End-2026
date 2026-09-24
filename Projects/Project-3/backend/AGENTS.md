@@ -348,6 +348,31 @@ document.
   `TaskRunnerModule` (which now imports `FilesModule`). `build_data_quality_report` is a
   real, durable task whose handler is a no-op until Phase 8.
 
+## Billing endpoints & the rollover *(from Phase 7 of the feature plan)*
+
+- **`GET /billing/current|invoices|invoices/:id`** are admin-only, `@RequiresSubscription()` and
+  `@AllowWhenSuspended()` (a suspended company reads what it owes and nothing else).
+  `BillingService.currentStatement` runs the SAME calculator as invoicing — there is no second
+  implementation. It is a pure READ: while the stored period lags (daily job not yet run) it
+  prices `effectivePeriod(anchor, stored, now)` and writes nothing. Open seat intervals project to
+  the period's end ("what the invoice will be if nothing changes").
+- **The rollover is `BillingCycleService.runCycle(now)`** (`billing/cycle/`, its own module because
+  it needs both `BillingModule` and `SubscriptionsModule`). Per due subscription: own transaction →
+  `lockForUpdate` → re-check under the lock → `InvoicingService.rollForward`. Idempotent and safe
+  from two instances (lock + `UNIQUE (companyId, periodStart)` backstop); one company failing is
+  logged and counted, never stops the others. Triggered by `@Cron('5 0 * * *', UTC)`
+  (`BillingCycleScheduler`, inert under test) and by `npm run billing:run-cycle`
+  (`dist/billing/cycle/run-cycle.js`: a standalone application context with no HTTP, no task
+  runner, no schedule; it QUEUES invoice emails, the API's runner sends them; exit code 1 if any
+  company failed).
+- **Every invoice is announced from the one place they are created** (`InvoicingService.closePeriod`
+  → `announce`): an audit entry `billing.invoice_finalized` (actor null when no request), and — only
+  when the total is > $0 — a `send_email` `invoice_finalized` to `Company.billingEmail`, in the same
+  transaction as the invoice. So the rollover, a plan change, and an upload that rolls the period
+  forward all behave alike.
+- `formatCents` (`invoicing.service.ts`) is integer maths only. `UNIQUE (companyId, periodStart)`
+  is the tenant index for invoice listing too.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —

@@ -1,168 +1,99 @@
 openapi: 3.0.0
 paths:
-  /health:
+  /billing/current:
     get:
-      operationId: HealthController_check
+      operationId: BillingController_current
       parameters: []
       responses:
         '200':
-          description: The Health Check is successful
+          description: ''
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - ok
-                      - degraded
-                    example: ok
-                  info:
-                    type: object
-                    example: &ref_0
-                      database:
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example: {}
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example: *ref_0
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-        '503':
-          description: The Health Check is not successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - error
-                      - shutting_down
-                    example: error
-                  info:
-                    type: object
-                    example:
-                      database: &ref_1
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example:
-                      redis: &ref_2
-                        status: down
-                        message: Could not connect
-                        responseTime: 3005
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example:
-                      database: *ref_1
-                      redis: *ref_2
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-      tags:
-        - health
-      summary: Liveness and readiness check
+                $ref: '#/components/schemas/StatementDto'
+      security: &ref_0
+        - bearer: []
+      tags: &ref_1
+        - billing
+      summary: The running bill for this period
       description: >-
-        Confirms the process is running and that Postgres is reachable. Excluded
-        from the (not-yet-registered) global auth guard and from Observe's event
-        budget — a platform healthcheck should never need credentials or count
-        against a telemetry quota.
+        What this period's invoice will be if nothing changes, with the
+        line-item breakdown, the seat count and the due date. Admin only. It is
+        computed on demand by the same calculator that finalizes invoices, so
+        the two cannot disagree.
+
+
+        - **Free** has no line items.
+
+        - **Basic** has one line per employee stretch: $5 × (active days ÷ days
+        in the period), rounded half-up to the cent. An employee who joined
+        mid-period pays for the days since; a removed employee stops that day;
+        an invited employee who has not accepted yet costs nothing. Employees
+        active now are assumed to stay active to the end of the period.
+
+        - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+
+
+        All amounts are integer cents. If the daily job has not yet rolled a
+        finished period over, the period we are actually in is priced — reading
+        never changes anything. A suspended company can still read this.
+  /billing/invoices:
+    get:
+      operationId: BillingController_invoices
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoicePageDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: List invoices
+      description: >-
+        Finalized invoices, newest period first, offset-paginated (`page`,
+        `limit`). Admin only; a suspended company can still read them. There is
+        one invoice per billing period, plus one for the part-period closed when
+        the plan changed.
+  /billing/invoices/{id}:
+    get:
+      operationId: BillingController_invoice
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Get one invoice
+      description: >-
+        An invoice with its line items. Invoices are immutable: what this
+        returns is what was issued, even if the plan has changed since. Another
+        company's invoice is a 404. Admin only.
 info:
   title: Gridline API
   description: >-
@@ -186,7 +117,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_3
+          enum: &ref_2
             - company
             - restricted
           default: company
@@ -218,7 +149,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_3
+          enum: *ref_2
         uploaderId:
           type: string
         grantedUserIds:
@@ -285,7 +216,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_3
+          enum: *ref_2
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -361,7 +292,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_4
+          enum: &ref_3
             - free
             - basic
             - premium
@@ -407,7 +338,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_3
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -481,7 +412,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_3
         maxEmployees:
           type: number
           nullable: true
@@ -572,7 +503,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_3
         billingAnchorDay:
           type: number
           minimum: 1
@@ -600,7 +531,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_3
       required:
         - plan
     PlanChangeResultDto:
@@ -610,7 +541,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_3
         prorationCents:
           type: number
           description: >-
@@ -642,7 +573,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_5
+          enum: &ref_4
             - finance
             - e-commerce
             - healthcare
@@ -778,12 +709,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_6
+          enum: &ref_5
             - admin
             - employee
         status:
           type: string
-          enum: &ref_7
+          enum: &ref_6
             - invited
             - active
             - disabled
@@ -813,7 +744,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_4
         status:
           type: string
           enum:
@@ -922,7 +853,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_4
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -1036,7 +967,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_4
         billingEmail:
           type: string
           example: nino@acme.com
@@ -1069,10 +1000,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_6
+          enum: *ref_5
         status:
           type: string
-          enum: *ref_7
+          enum: *ref_6
         activatedAt:
           type: string
           format: date-time

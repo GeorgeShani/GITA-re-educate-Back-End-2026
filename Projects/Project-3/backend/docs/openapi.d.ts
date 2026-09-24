@@ -4,6 +4,200 @@
  */
 
 export interface paths {
+    "/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List files
+         * @description The files the caller may see: everything company-wide, plus restricted files they uploaded or were granted, and every file for an admin. Cursor-paginated, newest first (`sort=createdAt` reverses it); follow `meta.nextCursor` until `hasMore` is false. Filters (`mimeType`, `visibility`, `uploaderId`, `uploadedAfter`, `uploadedBefore`) only ever narrow that set. Rows never include where the bytes are stored or who a restricted file is shared with.
+         */
+        get: operations["FilesController_list"];
+        put?: never;
+        /**
+         * Upload a spreadsheet
+         * @description Multipart upload of a CSV, XLS or XLSX file up to 25 MB, with a `visibility` of `company` (the default) or `restricted` and, for a restricted file, `grantedUserIds` (repeat the field or send a JSON array; they must be active members of the company — get their ids from `GET /companies/me/members`). The type is decided from the file's **bytes**, never from its name or `Content-Type`: an executable renamed `report.csv` is refused with 400, as is a Word document renamed `.xls`. A refused, invalid or failed upload stores nothing and consumes no quota.
+         *
+         *     **Quota.** Free (10 files per billing period) and Basic (100) answer **402** once the period's quota is used, naming the plan, the count, the cap and the date the quota resets — the upload never starts. Premium (1000 included) always accepts; a file past the 1000th carries an `X-Gridline-Quota-Warning` header and a $0.50 overage charge. Deleting a file does not refund its quota.
+         *
+         *     **Idempotency.** Send an `Idempotency-Key` (a UUID) and a retry with the same key and the same file replays the first response — marked `Idempotent-Replayed: true`, warning header included — instead of uploading and counting twice. The same key with a different request is 422; while the first request is still running, 409. A request that failed is not remembered.
+         *
+         *     Each upload queues a data-quality report and is recorded in the audit log. Returns 413 above 25 MB.
+         */
+        post: operations["FilesController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a file
+         * @description A file the caller cannot see is **404**, never 403, so its existence is not disclosed. The uploader and admins also get `grantedUserIds`, the colleagues a restricted file is shared with.
+         */
+        get: operations["FilesController_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete a file
+         * @description Uploader or admin only. A soft delete: the file disappears from every listing and its stored object is removed, but the row and its history are kept and the upload still counts toward this period's quota.
+         */
+        delete: operations["FilesController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Change who can see a file
+         * @description Uploader or admin only. `visibility` switches between `company` and `restricted`; `grantedUserIds` REPLACES the set of colleagues granted access (only for a restricted file — switching to `company` clears it). A colleague who can see the file but did not upload it gets 403; someone who cannot see it gets 404. The change takes effect on the next request and is audited.
+         */
+        patch: operations["FilesController_update"];
+        trace?: never;
+    };
+    "/files/{id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a download link
+         * @description Checks the caller's access, then returns a signed link that expires in five minutes (`expiresAt`). The link needs no Authorization header; the browser saves it under the file's original name. With S3 storage it is a presigned S3 URL; with the development `local` driver it points at this API.
+         */
+        get: operations["FilesController_download"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The running bill for this period
+         * @description What this period's invoice will be if nothing changes, with the line-item breakdown, the seat count and the due date. Admin only. It is computed on demand by the same calculator that finalizes invoices, so the two cannot disagree.
+         *
+         *     - **Free** has no line items.
+         *     - **Basic** has one line per employee stretch: $5 × (active days ÷ days in the period), rounded half-up to the cent. An employee who joined mid-period pays for the days since; a removed employee stops that day; an invited employee who has not accepted yet costs nothing. Employees active now are assumed to stay active to the end of the period.
+         *     - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+         *
+         *     All amounts are integer cents. If the daily job has not yet rolled a finished period over, the period we are actually in is priced — reading never changes anything. A suspended company can still read this.
+         */
+        get: operations["BillingController_current"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List invoices
+         * @description Finalized invoices, newest period first, offset-paginated (`page`, `limit`). Admin only; a suspended company can still read them. There is one invoice per billing period, plus one for the part-period closed when the plan changed.
+         */
+        get: operations["BillingController_invoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/billing/invoices/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get one invoice
+         * @description An invoice with its line items. Invoices are immutable: what this returns is what was issued, even if the plan has changed since. Another company's invoice is a 404. Admin only.
+         */
+        get: operations["BillingController_invoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the plans
+         * @description The public plan catalog — limits and prices for Free, Basic and Premium. No account needed, so a pricing page can render it. Prices are integer cents. Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
+         */
+        get: operations["SubscriptionsController_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the company's subscription
+         * @description The current plan, its limits, usage so far this period (files, employees, seats), the period window and when it is next due. Available to admins and employees. Returns 404 until an admin has chosen a plan.
+         */
+        get: operations["SubscriptionsController_me"];
+        put?: never;
+        /**
+         * Choose the first plan
+         * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
+         */
+        post: operations["SubscriptionsController_choose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change plan
+         * @description Upgrade or downgrade. A change is a new activation: the outgoing period is closed and invoiced for the days it ran (the switch day belongs to the new plan), and a fresh period opens today, re-anchoring billing to today's day of the month. `prorationCents` is the total of that closing invoice. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows. Admin only.
+         *
+         *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
+         */
+        patch: operations["SubscriptionsController_change"];
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -464,54 +658,6 @@ export interface paths {
         patch: operations["CompaniesController_updateMine"];
         trace?: never;
     };
-    "/subscriptions/plans": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List the plans
-         * @description The public plan catalog — limits and prices for Free, Basic and Premium. No account needed, so a pricing page can render it. Prices are integer cents. Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
-         */
-        get: operations["SubscriptionsController_plans"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/subscriptions/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get the company's subscription
-         * @description The current plan, its limits, usage so far this period (files, employees, seats), the period window and when it is next due. Available to admins and employees. Returns 404 until an admin has chosen a plan.
-         */
-        get: operations["SubscriptionsController_me"];
-        put?: never;
-        /**
-         * Choose the first plan
-         * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
-         */
-        post: operations["SubscriptionsController_choose"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Change plan
-         * @description Upgrade or downgrade. A change is a new activation: the outgoing period is closed and invoiced for the days it ran (the switch day belongs to the new plan), and a fresh period opens today, re-anchoring billing to today's day of the month. `prorationCents` is the total of that closing invoice. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows. Admin only.
-         */
-        patch: operations["SubscriptionsController_change"];
-        trace?: never;
-    };
     "/employees": {
         parameters: {
             query?: never;
@@ -600,6 +746,227 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        UploadFileBodyDoc: {
+            /**
+             * @default company
+             * @enum {string}
+             */
+            visibility: "company" | "restricted";
+            /** @description With `restricted`: the colleagues who may also see the file (the uploader and admins always can). Repeat the field, or send a JSON array. Empty means the uploader and admins only. */
+            grantedUserIds?: string[];
+            /**
+             * Format: binary
+             * @description A CSV, XLS or XLSX file, up to 25 MB.
+             */
+            file: string;
+        };
+        FileDto: {
+            id: string;
+            originalName: string;
+            /** @description From the file's bytes, not from what the client claimed. */
+            mimeType: string;
+            sizeBytes: number;
+            /** @enum {string} */
+            visibility: "company" | "restricted";
+            uploaderId: string;
+            /** @description Who a restricted file is shared with. Shown only to the uploader and admins, and only on single-file responses; null everywhere else. */
+            grantedUserIds: string[] | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CursorMetaDto: {
+            /** @description Pass as `cursor` to get the next page; null on the last page. */
+            nextCursor: string | null;
+            hasMore: boolean;
+        };
+        FilePageDto: {
+            data: components["schemas"]["FileDto"][];
+            meta: components["schemas"]["CursorMetaDto"];
+        };
+        FileDownloadDto: {
+            /** @description A short-lived link. Fetch it directly; it needs no Authorization header. */
+            url: string;
+            /**
+             * Format: date-time
+             * @description The link stops working at this instant.
+             */
+            expiresAt: string;
+        };
+        UpdateFileDto: {
+            /** @enum {string} */
+            visibility?: "company" | "restricted";
+            /** @description REPLACES the set of colleagues granted access. Only meaningful for a `restricted` file; switching to `company` clears it. */
+            grantedUserIds?: string[];
+        };
+        MessageResponseDto: {
+            /** @example If that account exists, an email is on its way. */
+            message: string;
+        };
+        BillingPeriodDto: {
+            /**
+             * Format: date-time
+             * @description Inclusive, UTC midnight.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Exclusive, UTC midnight: when the next period starts.
+             */
+            end: string;
+            days: number;
+        };
+        LineItemDto: {
+            /** @enum {string} */
+            kind: "seat" | "plan_base" | "overage";
+            /** @example Employee seat */
+            description: string;
+            /** @description The full price this line is a fraction of, in cents. */
+            unitCents: number;
+            /** @description What this line costs, in integer cents. */
+            amountCents: number;
+            /** @description seat: the employee this seat is for. */
+            userId?: string;
+            /** @description seat: days the employee was active in the period. */
+            activeDays?: number;
+            /** @description plan_base: days the plan was billed. */
+            billedDays?: number;
+            /** @description seat / plan_base: days in the whole period. */
+            periodDays?: number;
+            /** @description overage: files beyond the plan’s included quota. */
+            files?: number;
+        };
+        StatementDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+            period: components["schemas"]["BillingPeriodDto"];
+            lineItems: components["schemas"]["LineItemDto"][];
+            /** @description What the invoice will be if nothing changes: employees active now are assumed to stay active to the end of the period, and files count as uploaded so far. Integer cents. */
+            totalCents: number;
+            /** @description Seats in use right now: the admin plus every active employee. */
+            seats: number;
+            /** @description Files uploaded so far this period. */
+            filesThisPeriod: number;
+            /**
+             * Format: date-time
+             * @description When the period ends and the invoice is finalized.
+             */
+            dueDate: string;
+            /**
+             * Format: date-time
+             * @description When this statement was computed.
+             */
+            asOf: string;
+        };
+        InvoiceDto: {
+            id: string;
+            /**
+             * @description The plan that was live during the billed period.
+             * @enum {string}
+             */
+            plan: "free" | "basic" | "premium";
+            /** Format: date-time */
+            periodStart: string;
+            /**
+             * Format: date-time
+             * @description Exclusive. Earlier than the period end when a plan change closed the period early.
+             */
+            periodEnd: string;
+            lineItems: components["schemas"]["LineItemDto"][];
+            /** @description Integer cents. */
+            totalCents: number;
+            /** @enum {string} */
+            status: "finalized";
+            /** Format: date-time */
+            dueDate: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OffsetMetaDto: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            limit: number;
+            /** @description Rows matching the filter across all pages. */
+            total: number;
+            totalPages: number;
+        };
+        InvoicePageDto: {
+            data: components["schemas"]["InvoiceDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
+        };
+        PlanDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+            /** @description Employees allowed; null = unlimited. */
+            maxEmployees: number | null;
+            /** @description Seats = the admin plus employees; null = unlimited. */
+            maxSeats: number | null;
+            /** @description Files per billing period before the over-quota rule applies. */
+            filesPerPeriod: number;
+            /** @description Cents per employee per full period (prorated by active days). */
+            seatPriceCents: number;
+            /** @description Flat cents per full period. */
+            basePriceCents: number;
+            /** @description Cents per file over the quota; null = uploads over the quota are refused instead. */
+            overagePerFileCents: number | null;
+        };
+        PeriodDto: {
+            /**
+             * Format: date-time
+             * @description Inclusive, UTC midnight.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Exclusive, UTC midnight.
+             */
+            end: string;
+            /**
+             * @description The period start date; the label usage is counted under.
+             * @example 2026-03-01
+             */
+            key: string;
+            /** @example 31 */
+            days: number;
+        };
+        LimitsDto: {
+            maxEmployees: number | null;
+            maxSeats: number | null;
+            filesPerPeriod: number;
+        };
+        UsageDto: {
+            /** @description Files uploaded in the current period. */
+            files: number;
+            /** @description Employees holding a seat — invited and active. */
+            employees: number;
+            /** @description Seats in use: the admin plus those employees. */
+            seats: number;
+        };
+        SubscriptionDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+            /** @description Day of the month the period rolls over on. */
+            billingAnchorDay: number;
+            period: components["schemas"]["PeriodDto"];
+            limits: components["schemas"]["LimitsDto"];
+            usage: components["schemas"]["UsageDto"];
+            /**
+             * Format: date-time
+             * @description When the current period ends and is invoiced.
+             */
+            nextDueDate: string;
+        };
+        ChoosePlanDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+        };
+        PlanChangeResultDto: {
+            subscription: components["schemas"]["SubscriptionDto"];
+            /** @enum {string} */
+            previousPlan: "free" | "basic" | "premium";
+            /** @description Total cents of the invoice that closed the outgoing plan (0 if nothing was owed yet). */
+            prorationCents: number;
+        };
         RegisterCompanyDto: {
             /** @example Acme Logistics */
             companyName: string;
@@ -620,10 +987,6 @@ export interface components {
             /** @example pending_activation */
             status: string;
             /** @example Check your inbox to activate your account. */
-            message: string;
-        };
-        MessageResponseDto: {
-            /** @example If that account exists, an email is on its way. */
             message: string;
         };
         EmailOnlyDto: {
@@ -782,79 +1145,6 @@ export interface components {
             /** @example nino@acme.com */
             billingEmail?: string;
         };
-        PlanDto: {
-            /** @enum {string} */
-            plan: "free" | "basic" | "premium";
-            /** @description Employees allowed; null = unlimited. */
-            maxEmployees: number | null;
-            /** @description Seats = the admin plus employees; null = unlimited. */
-            maxSeats: number | null;
-            /** @description Files per billing period before the over-quota rule applies. */
-            filesPerPeriod: number;
-            /** @description Cents per employee per full period (prorated by active days). */
-            seatPriceCents: number;
-            /** @description Flat cents per full period. */
-            basePriceCents: number;
-            /** @description Cents per file over the quota; null = uploads over the quota are refused instead. */
-            overagePerFileCents: number | null;
-        };
-        PeriodDto: {
-            /**
-             * Format: date-time
-             * @description Inclusive, UTC midnight.
-             */
-            start: string;
-            /**
-             * Format: date-time
-             * @description Exclusive, UTC midnight.
-             */
-            end: string;
-            /**
-             * @description The period start date; the label usage is counted under.
-             * @example 2026-03-01
-             */
-            key: string;
-            /** @example 31 */
-            days: number;
-        };
-        LimitsDto: {
-            maxEmployees: number | null;
-            maxSeats: number | null;
-            filesPerPeriod: number;
-        };
-        UsageDto: {
-            /** @description Files uploaded in the current period. */
-            files: number;
-            /** @description Employees holding a seat — invited and active. */
-            employees: number;
-            /** @description Seats in use: the admin plus those employees. */
-            seats: number;
-        };
-        SubscriptionDto: {
-            /** @enum {string} */
-            plan: "free" | "basic" | "premium";
-            /** @description Day of the month the period rolls over on. */
-            billingAnchorDay: number;
-            period: components["schemas"]["PeriodDto"];
-            limits: components["schemas"]["LimitsDto"];
-            usage: components["schemas"]["UsageDto"];
-            /**
-             * Format: date-time
-             * @description When the current period ends and is invoiced.
-             */
-            nextDueDate: string;
-        };
-        ChoosePlanDto: {
-            /** @enum {string} */
-            plan: "free" | "basic" | "premium";
-        };
-        PlanChangeResultDto: {
-            subscription: components["schemas"]["SubscriptionDto"];
-            /** @enum {string} */
-            previousPlan: "free" | "basic" | "premium";
-            /** @description Total cents of the invoice that closed the outgoing plan (0 if nothing was owed yet). */
-            prorationCents: number;
-        };
         InviteEmployeeDto: {
             /**
              * @description Where the invitation is sent. Also the address they sign in with.
@@ -880,15 +1170,6 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
-        OffsetMetaDto: {
-            /** @example 1 */
-            page: number;
-            /** @example 20 */
-            limit: number;
-            /** @description Rows matching the filter across all pages. */
-            total: number;
-            totalPages: number;
-        };
         EmployeePageDto: {
             data: components["schemas"]["EmployeeDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
@@ -902,6 +1183,301 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    FilesController_list: {
+        parameters: {
+            query?: {
+                /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
+                cursor?: string;
+                limit?: number;
+                /** @description A leading `-` is descending. */
+                sort?: "-createdAt" | "createdAt";
+                mimeType?: "text/csv" | "application/vnd.ms-excel" | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                visibility?: "company" | "restricted";
+                uploaderId?: string;
+                /** @description Uploaded at or after this instant. */
+                uploadedAfter?: string;
+                /** @description Uploaded before this instant. */
+                uploadedBefore?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FilePageDto"];
+                };
+            };
+        };
+    };
+    FilesController_upload: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A UUID. A retry with the same key and the same file replays the first response instead of uploading twice. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadFileBodyDoc"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDto"];
+                };
+            };
+        };
+    };
+    FilesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDto"];
+                };
+            };
+        };
+    };
+    FilesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    FilesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFileDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDto"];
+                };
+            };
+        };
+    };
+    FilesController_download: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDownloadDto"];
+                };
+            };
+        };
+    };
+    BillingController_current: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatementDto"];
+                };
+            };
+        };
+    };
+    BillingController_invoices: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePageDto"];
+                };
+            };
+        };
+    };
+    BillingController_invoice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_plans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDto"][];
+                };
+            };
+        };
+    };
+    SubscriptionsController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_choose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChoosePlanDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_change: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A UUID. A retry with the same key and body replays the first response instead of changing the plan (and billing the proration) twice. */
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChoosePlanDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanChangeResultDto"];
+                };
+            };
+        };
+    };
     HealthController_check: {
         parameters: {
             query?: never;
@@ -1532,90 +2108,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyDto"];
-                };
-            };
-        };
-    };
-    SubscriptionsController_plans: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanDto"][];
-                };
-            };
-        };
-    };
-    SubscriptionsController_me: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubscriptionDto"];
-                };
-            };
-        };
-    };
-    SubscriptionsController_choose: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChoosePlanDto"];
-            };
-        };
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubscriptionDto"];
-                };
-            };
-        };
-    };
-    SubscriptionsController_change: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChoosePlanDto"];
-            };
-        };
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PlanChangeResultDto"];
                 };
             };
         };

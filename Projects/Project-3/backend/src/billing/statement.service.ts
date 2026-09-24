@@ -36,20 +36,34 @@ export class StatementService {
     return rows.map((row) => ({ userId: row.userId, from: row.activeFrom, to: row.activeTo }));
   }
 
-  /** The bill for `subscription`'s current period, optionally cut short at `upTo`. */
-  async build(manager: EntityManager, subscription: Subscription, upTo?: Date): Promise<Statement> {
-    const period: Period = {
-      start: subscription.currentPeriodStart,
-      end: subscription.currentPeriodEnd,
-    };
+  /** The bill for `subscription`'s stored period, optionally cut short at `upTo`. */
+  build(manager: EntityManager, subscription: Subscription, upTo?: Date): Promise<Statement> {
+    return this.buildForPeriod(
+      manager,
+      subscription,
+      { start: subscription.currentPeriodStart, end: subscription.currentPeriodEnd },
+      upTo,
+    );
+  }
 
+  /**
+   * The bill for an explicit `period` of a company on `plan`. Separate from `build` so a
+   * read can price the period we are really in (`effectivePeriod`) without touching the
+   * stored subscription.
+   */
+  async buildForPeriod(
+    manager: EntityManager,
+    subject: { companyId: string; plan: Subscription['plan'] },
+    period: Period,
+    upTo?: Date,
+  ): Promise<Statement> {
     const [seatIntervals, filesThisPeriod] = await Promise.all([
-      this.seatIntervals(manager, subscription.companyId, period),
-      this.usage.filesInPeriod(manager, subscription.companyId, periodKey(period)),
+      this.seatIntervals(manager, subject.companyId, period),
+      this.usage.filesInPeriod(manager, subject.companyId, periodKey(period)),
     ]);
 
     return computeLineItems({
-      plan: subscription.plan,
+      plan: subject.plan,
       period,
       seatIntervals,
       filesThisPeriod,

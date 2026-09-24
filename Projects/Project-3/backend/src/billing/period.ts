@@ -56,6 +56,17 @@ export function nextPeriod(anchorDay: number, period: Period): Period {
   return periodFor(anchorDay, period.end);
 }
 
+/**
+ * The period that contains `now`, for a READ that must not write. A subscription's
+ * stored period lags reality between it ending and the daily job running; billing
+ * screens should show the period we are actually in. While the stored period is
+ * still current it is returned as-is, otherwise it is recomputed from the anchor —
+ * which is exactly what rolling forward month by month arrives at.
+ */
+export function effectivePeriod(anchorDay: number, stored: Period, now: Date): Period {
+  return now.getTime() < stored.end.getTime() ? stored : periodFor(anchorDay, now);
+}
+
 /** Whole days in the period. */
 export function daysIn(period: Period): number {
   return Math.round((period.end.getTime() - period.start.getTime()) / DAY_MS);

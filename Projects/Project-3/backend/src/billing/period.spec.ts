@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type Period,
   daysIn,
+  effectivePeriod,
   nextPeriod,
   openPeriodAt,
   periodFor,
@@ -140,5 +141,37 @@ describe('helpers', () => {
       expect(anchorDay).toBe(28);
       expect(range(period)).toEqual(['2026-02-28', '2026-03-28']);
     });
+  });
+});
+
+describe('effectivePeriod — the period we are in, for a read that must not write', () => {
+  const stored: Period = { start: d('2026-03-01'), end: d('2026-04-01') };
+
+  it('is the stored period while it is still current', () => {
+    expect(effectivePeriod(1, stored, new Date('2026-03-31T23:59:59.999Z'))).toBe(stored);
+    expect(effectivePeriod(1, stored, d('2026-03-01'))).toBe(stored);
+  });
+
+  it('moves on the instant the stored period ends (its end is exclusive)', () => {
+    expect(effectivePeriod(1, stored, d('2026-04-01'))).toEqual({ start: d('2026-04-01'), end: d('2026-05-01') });
+  });
+
+  it('skips several missed periods at once', () => {
+    expect(effectivePeriod(1, stored, new Date('2026-06-15T10:00:00Z'))).toEqual({
+      start: d('2026-06-01'),
+      end: d('2026-07-01'),
+    });
+  });
+
+  it('agrees with rolling forward month by month, for every anchor and a year of instants', () => {
+    for (let anchor = 1; anchor <= 31; anchor += 1) {
+      let rolled = periodFor(anchor, d('2026-01-31'));
+      const first = rolled;
+      for (let month = 0; month < 14; month += 1) {
+        rolled = nextPeriod(anchor, rolled);
+        const probe = new Date(rolled.start.getTime() + 3_600_000);
+        expect(effectivePeriod(anchor, first, probe), `anchor ${anchor}, ${probe.toISOString()}`).toEqual(rolled);
+      }
+    }
   });
 });

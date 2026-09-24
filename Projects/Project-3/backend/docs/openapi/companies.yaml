@@ -187,7 +187,62 @@ components:
           example: If that account exists, an email is on its way.
       required:
         - message
-    PlanDto:
+    BillingPeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: 'Exclusive, UTC midnight: when the next period starts.'
+        days:
+          type: number
+      required:
+        - start
+        - end
+        - days
+    LineItemDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - seat
+            - plan_base
+            - overage
+        description:
+          type: string
+          example: Employee seat
+        unitCents:
+          type: number
+          description: The full price this line is a fraction of, in cents.
+        amountCents:
+          type: number
+          description: What this line costs, in integer cents.
+        userId:
+          type: string
+          description: 'seat: the employee this seat is for.'
+        activeDays:
+          type: number
+          description: 'seat: days the employee was active in the period.'
+        billedDays:
+          type: number
+          description: 'plan_base: days the plan was billed.'
+        periodDays:
+          type: number
+          description: 'seat / plan_base: days in the whole period.'
+        files:
+          type: number
+          description: 'overage: files beyond the plan’s included quota.'
+      required:
+        - kind
+        - description
+        - unitCents
+        - amountCents
+    StatementDto:
       type: object
       properties:
         plan:
@@ -196,6 +251,123 @@ components:
             - free
             - basic
             - premium
+        period:
+          $ref: '#/components/schemas/BillingPeriodDto'
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemDto'
+        totalCents:
+          type: number
+          description: >-
+            What the invoice will be if nothing changes: employees active now
+            are assumed to stay active to the end of the period, and files count
+            as uploaded so far. Integer cents.
+        seats:
+          type: number
+          description: 'Seats in use right now: the admin plus every active employee.'
+        filesThisPeriod:
+          type: number
+          description: Files uploaded so far this period.
+        dueDate:
+          type: string
+          format: date-time
+          description: When the period ends and the invoice is finalized.
+        asOf:
+          type: string
+          format: date-time
+          description: When this statement was computed.
+      required:
+        - plan
+        - period
+        - lineItems
+        - totalCents
+        - seats
+        - filesThisPeriod
+        - dueDate
+        - asOf
+    InvoiceDto:
+      type: object
+      properties:
+        id:
+          type: string
+        plan:
+          type: string
+          enum: *ref_3
+          description: The plan that was live during the billed period.
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+          description: >-
+            Exclusive. Earlier than the period end when a plan change closed the
+            period early.
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemDto'
+        totalCents:
+          type: number
+          description: Integer cents.
+        status:
+          type: string
+          enum:
+            - finalized
+        dueDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - plan
+        - periodStart
+        - periodEnd
+        - lineItems
+        - totalCents
+        - status
+        - dueDate
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    InvoicePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_3
         maxEmployees:
           type: number
           nullable: true
@@ -807,25 +979,6 @@ components:
         - activatedAt
         - disabledAt
         - createdAt
-    OffsetMetaDto:
-      type: object
-      properties:
-        page:
-          type: number
-          example: 1
-        limit:
-          type: number
-          example: 20
-        total:
-          type: number
-          description: Rows matching the filter across all pages.
-        totalPages:
-          type: number
-      required:
-        - page
-        - limit
-        - total
-        - totalPages
     EmployeePageDto:
       type: object
       properties:

@@ -1,0 +1,38 @@
+# Prose for the `billing` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+BillingController_current:
+  summary: The running bill for this period
+  description: >-
+    What this period's invoice will be if nothing changes, with the line-item
+    breakdown, the seat count and the due date. Admin only. It is computed on demand by
+    the same calculator that finalizes invoices, so the two cannot disagree.
+
+
+    - **Free** has no line items.
+
+    - **Basic** has one line per employee stretch: $5 × (active days ÷ days in the
+    period), rounded half-up to the cent. An employee who joined mid-period pays for
+    the days since; a removed employee stops that day; an invited employee who has not
+    accepted yet costs nothing. Employees active now are assumed to stay active to the
+    end of the period.
+
+    - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+
+
+    All amounts are integer cents. If the daily job has not yet rolled a finished period
+    over, the period we are actually in is priced — reading never changes anything. A
+    suspended company can still read this.
+
+BillingController_invoices:
+  summary: List invoices
+  description: >-
+    Finalized invoices, newest period first, offset-paginated (`page`, `limit`). Admin
+    only; a suspended company can still read them. There is one invoice per billing
+    period, plus one for the part-period closed when the plan changed.
+
+BillingController_invoice:
+  summary: Get one invoice
+  description: >-
+    An invoice with its line items. Invoices are immutable: what this returns is what
+    was issued, even if the plan has changed since. Another company's invoice is a 404.
+    Admin only.

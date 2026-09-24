@@ -8,6 +8,7 @@ import './core/context/cls-store.js';
 import { AccessControlModule } from './access-control.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BillingModule } from './billing/billing.module.js';
+import { BillingCycleModule } from './billing/cycle/billing-cycle.module.js';
 import { CompaniesModule } from './companies/companies.module.js';
 import { AuditModule } from './core/audit/audit.module.js';
 import { CoreModule } from './core/core.module.js';
@@ -108,6 +109,7 @@ function observeImports(): DynamicModule[] {
     UsersModule,
     CompaniesModule,
     BillingModule,
+    BillingCycleModule,
     SubscriptionsModule,
     EmployeesModule,
     FilesModule,
