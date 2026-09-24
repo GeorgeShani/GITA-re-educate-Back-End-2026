@@ -290,3 +290,150 @@ components:
           type: string
           example: nino@acme.com
           maxLength: 254
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: &ref_1
+            - free
+            - basic
+            - premium
+        maxEmployees:
+          type: number
+          nullable: true
+          description: Employees allowed; null = unlimited.
+        maxSeats:
+          type: number
+          nullable: true
+          description: Seats = the admin plus employees; null = unlimited.
+        filesPerPeriod:
+          type: number
+          description: Files per billing period before the over-quota rule applies.
+        seatPriceCents:
+          type: number
+          description: Cents per employee per full period (prorated by active days).
+        basePriceCents:
+          type: number
+          description: Flat cents per full period.
+        overagePerFileCents:
+          type: number
+          nullable: true
+          description: >-
+            Cents per file over the quota; null = uploads over the quota are
+            refused instead.
+      required:
+        - plan
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+        - seatPriceCents
+        - basePriceCents
+        - overagePerFileCents
+    PeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        key:
+          type: string
+          example: '2026-03-01'
+          description: The period start date; the label usage is counted under.
+        days:
+          type: number
+          example: 31
+      required:
+        - start
+        - end
+        - key
+        - days
+    LimitsDto:
+      type: object
+      properties:
+        maxEmployees:
+          type: number
+          nullable: true
+        maxSeats:
+          type: number
+          nullable: true
+        filesPerPeriod:
+          type: number
+      required:
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+    UsageDto:
+      type: object
+      properties:
+        files:
+          type: number
+          description: Files uploaded in the current period.
+        employees:
+          type: number
+          description: Employees holding a seat — invited and active.
+        seats:
+          type: number
+          description: 'Seats in use: the admin plus those employees.'
+      required:
+        - files
+        - employees
+        - seats
+    SubscriptionDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_1
+        billingAnchorDay:
+          type: number
+          minimum: 1
+          maximum: 31
+          description: Day of the month the period rolls over on.
+        period:
+          $ref: '#/components/schemas/PeriodDto'
+        limits:
+          $ref: '#/components/schemas/LimitsDto'
+        usage:
+          $ref: '#/components/schemas/UsageDto'
+        nextDueDate:
+          type: string
+          format: date-time
+          description: When the current period ends and is invoiced.
+      required:
+        - plan
+        - billingAnchorDay
+        - period
+        - limits
+        - usage
+        - nextDueDate
+    ChoosePlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_1
+      required:
+        - plan
+    PlanChangeResultDto:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/SubscriptionDto'
+        previousPlan:
+          type: string
+          enum: *ref_1
+        prorationCents:
+          type: number
+          description: >-
+            Total cents of the invoice that closed the outgoing plan (0 if
+            nothing was owed yet).
+      required:
+        - subscription
+        - previousPlan
+        - prorationCents

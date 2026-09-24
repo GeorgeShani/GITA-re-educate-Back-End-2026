@@ -1,11 +1,13 @@
 import {
   type CanActivate,
   type ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
+import { ALLOW_WHEN_SUSPENDED_KEY } from '#/common/auth/allow-when-suspended.decorator.js';
 import { IS_PUBLIC_KEY } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuthenticationService } from './authentication.service.js';
@@ -40,7 +42,16 @@ export class AuthGuard implements CanActivate {
     const token = bearerToken(request.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
-    const user = await this.authentication.authenticate(token);
+    const { user, companyStatus } = await this.authentication.authenticate(token);
+
+    if (companyStatus === 'suspended') {
+      const allowed = this.reflector.getAllAndOverride<boolean | undefined>(
+        ALLOW_WHEN_SUSPENDED_KEY,
+        [executionContext.getHandler(), executionContext.getClass()],
+      );
+      if (!allowed) throw new ForbiddenException('This company is suspended');
+    }
+
     request.user = user;
     this.context.setAuthenticated(user);
     return true;

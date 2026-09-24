@@ -450,6 +450,99 @@ paths:
         `name`, `country`, `industry`, `billingEmail`. The company is always the
         caller's own, taken from the session — there is no way to name another
         tenant. A `billingEmail` already used by another company returns 409.
+  /subscriptions/plans:
+    get:
+      operationId: SubscriptionsController_plans
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanDto'
+      tags: &ref_4
+        - subscriptions
+      summary: List the plans
+      description: >-
+        The public plan catalog — limits and prices for Free, Basic and Premium.
+        No account needed, so a pricing page can render it. Prices are integer
+        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
+        seats.
+  /subscriptions/me:
+    get:
+      operationId: SubscriptionsController_me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_4
+      summary: Get the company's subscription
+      description: >-
+        The current plan, its limits, usage so far this period (files,
+        employees, seats), the period window and when it is next due. Available
+        to admins and employees. Returns 404 until an admin has chosen a plan.
+    post:
+      operationId: SubscriptionsController_choose
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_4
+      summary: Choose the first plan
+      description: >-
+        The mandatory step after activation: features that need a plan answer
+        402 until one is chosen. Admin only. Billing is anchored to today's day
+        of the month; the first period starts at UTC midnight today. Returns 409
+        if a plan already exists — use `PATCH /subscriptions/me` to change it.
+    patch:
+      operationId: SubscriptionsController_change
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChangeResultDto'
+      security:
+        - bearer: []
+      tags: *ref_4
+      summary: Change plan
+      description: >-
+        Upgrade or downgrade. A change is a new activation: the outgoing period
+        is closed and invoiced for the days it ran (the switch day belongs to
+        the new plan), and a fresh period opens today, re-anchoring billing to
+        today's day of the month. `prorationCents` is the total of that closing
+        invoice. Rejected with 409, naming the numbers, if the company is over
+        the target plan's employee cap or (for Free and Basic) has already
+        uploaded more files this period than it allows. Admin only.
 info:
   title: Gridline API
   description: >-
@@ -490,7 +583,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_4
+          enum: &ref_5
             - finance
             - e-commerce
             - healthcare
@@ -656,7 +749,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_4
+          enum: *ref_5
         status:
           type: string
           enum:
@@ -708,8 +801,155 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_4
+          enum: *ref_5
         billingEmail:
           type: string
           example: nino@acme.com
           maxLength: 254
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: &ref_6
+            - free
+            - basic
+            - premium
+        maxEmployees:
+          type: number
+          nullable: true
+          description: Employees allowed; null = unlimited.
+        maxSeats:
+          type: number
+          nullable: true
+          description: Seats = the admin plus employees; null = unlimited.
+        filesPerPeriod:
+          type: number
+          description: Files per billing period before the over-quota rule applies.
+        seatPriceCents:
+          type: number
+          description: Cents per employee per full period (prorated by active days).
+        basePriceCents:
+          type: number
+          description: Flat cents per full period.
+        overagePerFileCents:
+          type: number
+          nullable: true
+          description: >-
+            Cents per file over the quota; null = uploads over the quota are
+            refused instead.
+      required:
+        - plan
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+        - seatPriceCents
+        - basePriceCents
+        - overagePerFileCents
+    PeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        key:
+          type: string
+          example: '2026-03-01'
+          description: The period start date; the label usage is counted under.
+        days:
+          type: number
+          example: 31
+      required:
+        - start
+        - end
+        - key
+        - days
+    LimitsDto:
+      type: object
+      properties:
+        maxEmployees:
+          type: number
+          nullable: true
+        maxSeats:
+          type: number
+          nullable: true
+        filesPerPeriod:
+          type: number
+      required:
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+    UsageDto:
+      type: object
+      properties:
+        files:
+          type: number
+          description: Files uploaded in the current period.
+        employees:
+          type: number
+          description: Employees holding a seat — invited and active.
+        seats:
+          type: number
+          description: 'Seats in use: the admin plus those employees.'
+      required:
+        - files
+        - employees
+        - seats
+    SubscriptionDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_6
+        billingAnchorDay:
+          type: number
+          minimum: 1
+          maximum: 31
+          description: Day of the month the period rolls over on.
+        period:
+          $ref: '#/components/schemas/PeriodDto'
+        limits:
+          $ref: '#/components/schemas/LimitsDto'
+        usage:
+          $ref: '#/components/schemas/UsageDto'
+        nextDueDate:
+          type: string
+          format: date-time
+          description: When the current period ends and is invoiced.
+      required:
+        - plan
+        - billingAnchorDay
+        - period
+        - limits
+        - usage
+        - nextDueDate
+    ChoosePlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_6
+      required:
+        - plan
+    PlanChangeResultDto:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/SubscriptionDto'
+        previousPlan:
+          type: string
+          enum: *ref_6
+        prorationCents:
+          type: number
+          description: >-
+            Total cents of the invoice that closed the outgoing plan (0 if
+            nothing was owed yet).
+      required:
+        - subscription
+        - previousPlan
+        - prorationCents

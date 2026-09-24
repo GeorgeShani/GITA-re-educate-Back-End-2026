@@ -1,5 +1,10 @@
+import { Invoice } from '#/billing/invoice.entity.js';
+import { SeatInterval } from '#/billing/seat-interval.entity.js';
+import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
 import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
+import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
+import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { AuthIdentity } from './entities/auth-identity.entity.js';
 import { AuthToken } from './entities/auth-token.entity.js';
 import { Company } from './entities/company.entity.js';
@@ -29,4 +34,9 @@ export const ENTITIES: (new () => object)[] = [
   RefreshToken,
   BackgroundTask,
   AuditLogEntry,
+  Subscription,
+  SubscriptionChange,
+  Invoice,
+  UsageEvent,
+  SeatInterval,
 ];

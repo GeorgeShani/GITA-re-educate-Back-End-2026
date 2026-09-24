@@ -20,7 +20,7 @@ recorded as a trap in the implementation plan.
   `new Entity()` then owns all keys as `undefined`, so partial `save()` starts
   nulling columns. Both tsc and oxc agree, so nothing errors — you just get
   wrong writes.
-- **Imports: `#/…` for anything outside the current folder, `./…` for siblings.**
+- **Imports: `./…` for the same folder or below, `#/…` for anything above or elsewhere.**
   `#/*` is a native Node *subpath import* (package.json `"imports"`), **not** a
   `tsconfig` `paths` alias — those compile and pass in Vitest, then fail at
   `node dist/main.js` because ESM has no runtime path mapping. Write
@@ -180,6 +180,44 @@ document.
   (`registerAndActivate()`, `login()`, `seedEmployee()`, `drainTasks()`,
   `mail.latestTokenTo()`). Time-dependent behaviour (token expiry) is tested by
   advancing `h.clock`, never by sleeping.
+
+## Billing & subscriptions *(from Phase 3 of the feature plan)*
+
+- **Money is integer cents, never floats.** A prorated amount is
+  `unit × days ÷ periodDays` through `divRound` (round half-up in integer
+  arithmetic). `billing/calculator.ts` and `billing/period.ts` are pure — no Nest,
+  no database, no clock — and are the most heavily tested files in the repo.
+- **Periods are half-open `[start, end)`, both UTC midnights**, so proration is a
+  whole number of days. The anchor is a day of the month, clamped **per month**
+  (anchor 31: Jan 31 → Feb 28 → Mar 31, never drifting to the 28th). Billing is
+  at day granularity: the **switch day belongs entirely to the incoming plan**.
+- **A plan change is a new activation (D6):** close and invoice the outgoing
+  period for the days it ran, then open a fresh period anchored to the switch day.
+  Only the *outgoing* plan is ever prorated. Leaving Premium with more files than
+  the target allows is refused, so a plan-change invoice can never carry overage.
+- **Seat time comes from `seat_interval`, not `User.activatedAt/disabledAt`.**
+  Those two columns hold one interval; a disable-then-reactivate would overwrite
+  the first stretch and under-bill it. Employee lifecycle (accept invite, disable)
+  opens and closes `seat_interval` rows; an `invited` user has none (holds a seat,
+  bills $0 — D4). Phase 4 writes them; Phase 3 specs seed them directly.
+- **Every writer of subscription state takes `SubscriptionsService.lockForUpdate`
+  first** (plan change, employee invites, the rollover job), so they serialise per
+  company. The plan-change UPDATE is also guarded by `version` — defence in depth
+  behind the lock. **Call `InvoicingService.rollForward` before assuming the current
+  period is current**, or days between a period ending and the daily job running
+  are silently dropped from billing.
+- `Invoice.lineItems` is `jsonb`: read it only through `parseLineItems` (Zod).
+  `UNIQUE (companyId, periodStart)` is what makes rollover idempotent.
+- `UsageEvent.fileId` has no foreign key yet; Phase 6 adds it with `file_asset`.
+- **Global guards live in `AccessControlModule`, in order:** `AuthGuard` →
+  `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
+  produced. `@RequiresSubscription()` (402 with no plan) goes on `employees/` and
+  `files/`; `@AllowWhenSuspended()` marks the few routes (billing reads) a
+  suspended company may still reach. Nothing suspends a company yet — there is no
+  payment integration to fail — so suspension is set by an operator or a seed.
+- A shared Postgres enum used by several columns (`subscription_plan`) is emitted
+  by `migration:generate` once per column, which fails on the second `CREATE TYPE`.
+  Hand-edit the migration to create and drop it once.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -364,9 +402,13 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [ ] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
       `(companyId, createdAt) WHERE deleted_at IS NULL`
 - [ ] `file_access_grant` — UNIQUE `(fileId, userId)`
-- [ ] `usage_event` — `(companyId, periodKey)`
+- [x] `usage_event` — `(companyId, periodKey)`
 - [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`
-- [x] Deliberately **not** indexed: `invoice.lineItems` (table not built yet),
+- [x] `subscription` — UNIQUE `(companyId)`; `subscription_change` —
+      `(companyId, effectiveAt)`; `invoice` — UNIQUE `(companyId, periodStart)`
+      (also what makes the rollover idempotent); `seat_interval` —
+      `(companyId, activeFrom)` + `(userId)`
+- [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not
       tenant-scoped, and is asserted alongside.

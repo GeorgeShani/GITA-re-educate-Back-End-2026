@@ -1,0 +1,34 @@
+# Prose for the `subscriptions` tag, keyed by operationId.
+
+SubscriptionsController_plans:
+  summary: List the plans
+  description: >-
+    The public plan catalog — limits and prices for Free, Basic and Premium.
+    No account needed, so a pricing page can render it. Prices are integer cents.
+    Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
+
+SubscriptionsController_me:
+  summary: Get the company's subscription
+  description: >-
+    The current plan, its limits, usage so far this period (files, employees,
+    seats), the period window and when it is next due. Available to admins and
+    employees. Returns 404 until an admin has chosen a plan.
+
+SubscriptionsController_choose:
+  summary: Choose the first plan
+  description: >-
+    The mandatory step after activation: features that need a plan answer 402
+    until one is chosen. Admin only. Billing is anchored to today's day of the
+    month; the first period starts at UTC midnight today. Returns 409 if a plan
+    already exists — use `PATCH /subscriptions/me` to change it.
+
+SubscriptionsController_change:
+  summary: Change plan
+  description: >-
+    Upgrade or downgrade. A change is a new activation: the outgoing period is
+    closed and invoiced for the days it ran (the switch day belongs to the new
+    plan), and a fresh period opens today, re-anchoring billing to today's day of
+    the month. `prorationCents` is the total of that closing invoice. Rejected
+    with 409, naming the numbers, if the company is over the target plan's
+    employee cap or (for Free and Basic) has already uploaded more files this
+    period than it allows. Admin only.

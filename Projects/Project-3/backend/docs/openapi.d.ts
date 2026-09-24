@@ -264,6 +264,54 @@ export interface paths {
         patch: operations["CompaniesController_updateMine"];
         trace?: never;
     };
+    "/subscriptions/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the plans
+         * @description The public plan catalog — limits and prices for Free, Basic and Premium. No account needed, so a pricing page can render it. Prices are integer cents. Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
+         */
+        get: operations["SubscriptionsController_plans"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/subscriptions/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the company's subscription
+         * @description The current plan, its limits, usage so far this period (files, employees, seats), the period window and when it is next due. Available to admins and employees. Returns 404 until an admin has chosen a plan.
+         */
+        get: operations["SubscriptionsController_me"];
+        put?: never;
+        /**
+         * Choose the first plan
+         * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
+         */
+        post: operations["SubscriptionsController_choose"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change plan
+         * @description Upgrade or downgrade. A change is a new activation: the outgoing period is closed and invoiced for the days it ran (the switch day belongs to the new plan), and a fresh period opens today, re-anchoring billing to today's day of the month. `prorationCents` is the total of that closing invoice. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows. Admin only.
+         */
+        patch: operations["SubscriptionsController_change"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -373,6 +421,79 @@ export interface components {
             industry?: "finance" | "e-commerce" | "healthcare" | "education" | "logistics" | "manufacturing" | "media" | "real-estate" | "technology" | "other";
             /** @example nino@acme.com */
             billingEmail?: string;
+        };
+        PlanDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+            /** @description Employees allowed; null = unlimited. */
+            maxEmployees: number | null;
+            /** @description Seats = the admin plus employees; null = unlimited. */
+            maxSeats: number | null;
+            /** @description Files per billing period before the over-quota rule applies. */
+            filesPerPeriod: number;
+            /** @description Cents per employee per full period (prorated by active days). */
+            seatPriceCents: number;
+            /** @description Flat cents per full period. */
+            basePriceCents: number;
+            /** @description Cents per file over the quota; null = uploads over the quota are refused instead. */
+            overagePerFileCents: number | null;
+        };
+        PeriodDto: {
+            /**
+             * Format: date-time
+             * @description Inclusive, UTC midnight.
+             */
+            start: string;
+            /**
+             * Format: date-time
+             * @description Exclusive, UTC midnight.
+             */
+            end: string;
+            /**
+             * @description The period start date; the label usage is counted under.
+             * @example 2026-03-01
+             */
+            key: string;
+            /** @example 31 */
+            days: number;
+        };
+        LimitsDto: {
+            maxEmployees: number | null;
+            maxSeats: number | null;
+            filesPerPeriod: number;
+        };
+        UsageDto: {
+            /** @description Files uploaded in the current period. */
+            files: number;
+            /** @description Employees holding a seat — invited and active. */
+            employees: number;
+            /** @description Seats in use: the admin plus those employees. */
+            seats: number;
+        };
+        SubscriptionDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+            /** @description Day of the month the period rolls over on. */
+            billingAnchorDay: number;
+            period: components["schemas"]["PeriodDto"];
+            limits: components["schemas"]["LimitsDto"];
+            usage: components["schemas"]["UsageDto"];
+            /**
+             * Format: date-time
+             * @description When the current period ends and is invoiced.
+             */
+            nextDueDate: string;
+        };
+        ChoosePlanDto: {
+            /** @enum {string} */
+            plan: "free" | "basic" | "premium";
+        };
+        PlanChangeResultDto: {
+            subscription: components["schemas"]["SubscriptionDto"];
+            /** @enum {string} */
+            previousPlan: "free" | "basic" | "premium";
+            /** @description Total cents of the invoice that closed the outgoing plan (0 if nothing was owed yet). */
+            prorationCents: number;
         };
     };
     responses: never;
@@ -798,6 +919,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CompanyDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_plans: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanDto"][];
+                };
+            };
+        };
+    };
+    SubscriptionsController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_choose: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChoosePlanDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_change: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChoosePlanDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanChangeResultDto"];
                 };
             };
         };

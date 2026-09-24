@@ -10,11 +10,18 @@ import type { Repository } from 'typeorm';
 import { z } from 'zod';
 import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import type { CompanyStatus } from '#/database/entities/company.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from './auth.constants.js';
 
 /** What a verified token claims. Parsed, not trusted: `verify` returns `any`. */
 const accessTokenClaims = z.object({ sub: z.uuid() });
+
+export interface Authentication {
+  user: AuthenticatedUser;
+  /** `active`, or `suspended` — `AuthGuard` decides which routes a suspended company may still reach. */
+  companyStatus: CompanyStatus;
+}
 
 export interface SignedAccessToken {
   token: string;
@@ -51,7 +58,7 @@ export class AuthenticationService {
     return { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
   }
 
-  async authenticate(token: string): Promise<AuthenticatedUser> {
+  async authenticate(token: string): Promise<Authentication> {
     const claims = await this.verify(token);
 
     const user = await this.users.findOne({
@@ -64,13 +71,18 @@ export class AuthenticationService {
     if (!user || user.status !== 'active' || !user.company) {
       throw new UnauthorizedException('Invalid or expired access token');
     }
-    // Suspended companies are handled per-route in Phase 3 (billing stays
-    // readable); until then a company must simply be active.
-    if (user.company.status !== 'active') {
+    // An active user implies an active or suspended company (a pending one has
+    // only an `invited` admin). Anything else is refused outright; a suspended
+    // company is let through here so `AuthGuard` can allow the few routes
+    // (`@AllowWhenSuspended()`) that stay reachable.
+    if (user.company.status !== 'active' && user.company.status !== 'suspended') {
       throw new ForbiddenException('This company is not active');
     }
 
-    return { userId: user.id, companyId: user.companyId, role: user.role };
+    return {
+      user: { userId: user.id, companyId: user.companyId, role: user.role },
+      companyStatus: user.company.status,
+    };
   }
 
   private async verify(token: string): Promise<z.infer<typeof accessTokenClaims>> {

@@ -1,31 +1,98 @@
 openapi: 3.0.0
 paths:
-  /users/me:
-    patch:
-      operationId: UsersController_updateMe
+  /subscriptions/plans:
+    get:
+      operationId: SubscriptionsController_plans
       parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeDto'
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfileDto'
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanDto'
+      tags: &ref_0
+        - subscriptions
+      summary: List the plans
+      description: >-
+        The public plan catalog — limits and prices for Free, Basic and Premium.
+        No account needed, so a pricing page can render it. Prices are integer
+        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
+        seats.
+  /subscriptions/me:
+    get:
+      operationId: SubscriptionsController_me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
       security:
         - bearer: []
-      tags:
-        - users
-      summary: Update your own profile
+      tags: *ref_0
+      summary: Get the company's subscription
       description: >-
-        Changes the signed-in person's own `fullName` — the personal-data half
-        of "change password and personal data". Available to admins and
-        employees.
+        The current plan, its limits, usage so far this period (files,
+        employees, seats), the period window and when it is next due. Available
+        to admins and employees. Returns 404 until an admin has chosen a plan.
+    post:
+      operationId: SubscriptionsController_choose
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_0
+      summary: Choose the first plan
+      description: >-
+        The mandatory step after activation: features that need a plan answer
+        402 until one is chosen. Admin only. Billing is anchored to today's day
+        of the month; the first period starts at UTC midnight today. Returns 409
+        if a plan already exists — use `PATCH /subscriptions/me` to change it.
+    patch:
+      operationId: SubscriptionsController_change
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChangeResultDto'
+      security:
+        - bearer: []
+      tags: *ref_0
+      summary: Change plan
+      description: >-
+        Upgrade or downgrade. A change is a new activation: the outgoing period
+        is closed and invoiced for the days it ran (the switch day belongs to
+        the new plan), and a fresh period opens today, re-anchoring billing to
+        today's day of the month. `prorationCents` is the total of that closing
+        invoice. Rejected with 409, naming the numbers, if the company is over
+        the target plan's employee cap or (for Free and Basic) has already
+        uploaded more files this period than it allows. Admin only.
 info:
   title: Gridline API
   description: >-
@@ -66,7 +133,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_0
+          enum: &ref_1
             - finance
             - e-commerce
             - healthcare
@@ -232,7 +299,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_1
         status:
           type: string
           enum:
@@ -284,7 +351,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_1
         billingEmail:
           type: string
           example: nino@acme.com
@@ -294,7 +361,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_1
+          enum: &ref_2
             - free
             - basic
             - premium
@@ -388,7 +455,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_2
         billingAnchorDay:
           type: number
           minimum: 1
@@ -416,7 +483,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_2
       required:
         - plan
     PlanChangeResultDto:
@@ -426,7 +493,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_1
+          enum: *ref_2
         prorationCents:
           type: number
           description: >-

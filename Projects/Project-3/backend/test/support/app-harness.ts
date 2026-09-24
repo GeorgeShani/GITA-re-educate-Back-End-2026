@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { z } from 'zod';
 import { AppModule } from '#/app.module.js';
+import { SeatInterval } from '#/billing/seat-interval.entity.js';
+import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { PasswordHasher } from '#/auth/crypto/password-hasher.js';
 import { CLOCK } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
@@ -136,9 +138,15 @@ export class AppHarness {
    */
   async seedEmployee(
     companyId: string,
-    overrides: Partial<{ email: string; password: string; fullName: string }> = {},
+    overrides: Partial<{
+      email: string;
+      password: string;
+      fullName: string;
+      status: 'invited' | 'active' | 'disabled';
+    }> = {},
   ): Promise<RegisteredAccount> {
     this.counter += 1;
+    const status = overrides.status ?? 'active';
     const email =
       overrides.email ?? `employee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
     const password = overrides.password ?? DEFAULT_PASSWORD;
@@ -150,9 +158,9 @@ export class AppHarness {
         email,
         fullName: overrides.fullName ?? `Employee ${this.counter}`,
         role: 'employee',
-        status: 'active',
-        activatedAt: this.clock.now(),
-        disabledAt: null,
+        status,
+        activatedAt: status === 'invited' ? null : this.clock.now(),
+        disabledAt: status === 'disabled' ? this.clock.now() : null,
       }),
     );
 
@@ -170,6 +178,35 @@ export class AppHarness {
     );
 
     return { email, password, companyId, userId: user.id };
+  }
+
+  /** The admin's mandatory first plan choice. */
+  async subscribe(session: SessionBody, plan: 'free' | 'basic' | 'premium'): Promise<void> {
+    await this.http()
+      .post('/subscriptions/me')
+      .set(...this.bearer(session))
+      .send({ plan })
+      .expect(201);
+  }
+
+  /** `count` uploads recorded in the billing period whose start date is `periodKey`. */
+  async seedUsage(companyId: string, count: number, periodKey: string): Promise<void> {
+    if (count === 0) return;
+    await this.dataSource.getRepository(UsageEvent).insert(
+      Array.from({ length: count }, () => ({ companyId, fileId: randomUUID(), periodKey })),
+    );
+  }
+
+  /** A stretch of billable seat time for an existing employee (Phase 4 writes these for real). */
+  async seedSeatInterval(
+    companyId: string,
+    userId: string,
+    activeFrom: Date,
+    activeTo: Date | null,
+  ): Promise<void> {
+    await this.dataSource
+      .getRepository(SeatInterval)
+      .insert({ companyId, userId, activeFrom, activeTo });
   }
 
   async login(email: string, password: string = DEFAULT_PASSWORD): Promise<SessionBody> {

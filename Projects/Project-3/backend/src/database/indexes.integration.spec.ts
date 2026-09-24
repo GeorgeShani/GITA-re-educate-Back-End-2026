@@ -87,6 +87,43 @@ describe('database indexes', () => {
     expect(find('refresh_token', 'userId')).toBeDefined();
   });
 
+  it('allows one subscription per company, enforced by a unique index leading with companyId', () => {
+    const index = find('subscription', 'companyId');
+    expect(index).toBeDefined();
+    expect(index?.indexdef).toMatch(/UNIQUE/);
+  });
+
+  it('indexes subscription_change on (companyId, effectiveAt) for plan history', () => {
+    const index = indexes.find((row) => row.indexname === 'idx_subscription_change_company_effective');
+    expect(index?.indexdef).toMatch(/\("companyId", "effectiveAt"\)/);
+  });
+
+  it('makes an invoice unique per (companyId, periodStart), which is what makes rollover idempotent', () => {
+    const index = find('invoice', 'companyId', 'periodStart');
+    expect(index).toBeDefined();
+    expect(index?.indexdef).toMatch(/UNIQUE/);
+    expect(index?.indexdef.indexOf('companyId')).toBeLessThan(index?.indexdef.indexOf('periodStart') ?? 0);
+  });
+
+  it('deliberately does not index invoice.lineItems', () => {
+    const lineItemIndexes = indexes.filter(
+      (index) => index.tablename === 'invoice' && index.indexdef.includes('lineItems'),
+    );
+    expect(lineItemIndexes).toEqual([]);
+  });
+
+  it('indexes usage_event on (companyId, periodKey) — the quota check and rollup hot path', () => {
+    const index = indexes.find((row) => row.indexname === 'idx_usage_event_company_period');
+    expect(index?.tablename).toBe('usage_event');
+    expect(index?.indexdef).toMatch(/\("companyId", "periodKey"\)/);
+  });
+
+  it('indexes seat_interval on (companyId, activeFrom) and userId', () => {
+    const overlap = indexes.find((row) => row.indexname === 'idx_seat_interval_company_from');
+    expect(overlap?.indexdef).toMatch(/\("companyId", "activeFrom"\)/);
+    expect(find('seat_interval', 'userId')).toBeDefined();
+  });
+
   it('indexes audit_log_entry on (companyId, createdAt DESC, id) for keyset paging', () => {
     const index = find('audit_log_entry', 'companyId', 'createdAt', 'id');
     expect(index).toBeDefined();
