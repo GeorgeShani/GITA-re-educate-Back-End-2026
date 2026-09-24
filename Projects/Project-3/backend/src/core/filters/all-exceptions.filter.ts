@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
-import { RequestContextService } from '../context/request-context.service.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 
 /** The error contract every non-2xx response honours. */
 export interface ErrorEnvelope {

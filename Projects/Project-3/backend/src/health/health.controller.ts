@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
 import { ApiTags } from '@nestjs/swagger';
-import { Public } from '../common/auth/public.decorator.js';
+import { Public } from '#/common/auth/public.decorator.js';
 
 /**
  * `GET /health` — liveness AND readiness now that the database indicator is

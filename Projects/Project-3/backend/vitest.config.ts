@@ -4,6 +4,12 @@ import { defineConfig } from 'vitest/config';
  * Unit tests — no database, no network. Must stay fast enough to run on save.
  */
 export default defineConfig({
+  // Resolve `#/*` and `#test/*` (package.json "imports") to source, not `dist/`.
+  // Must be set for the SSR environment too: that is what Vitest runs Node code
+  // in, and without it `#/*` silently falls back to its `default` (`dist/`) —
+  // stale compiled code, and a second copy of every class.
+  resolve: { conditions: ['gridline-source'] },
+  ssr: { resolve: { conditions: ['gridline-source'] } },
   test: {
     globals: true,
     root: './',

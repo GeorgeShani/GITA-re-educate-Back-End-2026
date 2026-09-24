@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppHarness, type RegisteredAccount } from '../../test/support/app-harness.js';
-import { AuditLogEntry } from '../core/audit/audit-log-entry.entity.js';
-import { Company } from '../database/entities/company.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import { AppHarness, type RegisteredAccount } from '#test/support/app-harness.js';
+import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 
 describe('profile: GET /auth/me, PATCH /users/me, PATCH /companies/me (integration)', () => {
   let h: AppHarness;

@@ -8,9 +8,9 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
 import { z } from 'zod';
-import type { AuthenticatedUser } from '../common/auth/authenticated-user.interface.js';
-import { CLOCK, type Clock } from '../core/clock/clock.js';
-import { User } from '../database/entities/user.entity.js';
+import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
+import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { User } from '#/database/entities/user.entity.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from './auth.constants.js';
 
 /** What a verified token claims. Parsed, not trusted: `verify` returns `any`. */

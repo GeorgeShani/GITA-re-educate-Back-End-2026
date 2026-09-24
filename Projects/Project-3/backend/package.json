@@ -6,6 +6,15 @@
   "private": true,
   "license": "UNLICENSED",
   "type": "module",
+  "imports": {
+    "#/*": {
+      "gridline-source": "./src/*",
+      "default": "./dist/*"
+    },
+    "#test/*": {
+      "gridline-source": "./test/*"
+    }
+  },
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

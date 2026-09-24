@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { EntityManager, Repository } from 'typeorm';
-import { RequestContextService } from '../context/request-context.service.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuditLogEntry } from './audit-log-entry.entity.js';
 
 export interface AuditRecordInput {

@@ -1,5 +1,5 @@
 import { Column, Entity, JoinColumn, ManyToOne, type Relation, Unique } from 'typeorm';
-import { BaseEntity } from '../base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 import { Company } from './company.entity.js';
 
 export const USER_ROLES = ['admin', 'employee'] as const;

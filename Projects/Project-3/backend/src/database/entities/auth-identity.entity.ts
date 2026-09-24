@@ -1,5 +1,5 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation, Unique } from 'typeorm';
-import { BaseEntity } from '../base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 import { User } from './user.entity.js';
 
 export const AUTH_PROVIDERS = ['password', 'google'] as const;

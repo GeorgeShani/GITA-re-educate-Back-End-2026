@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FakeClock } from '../../../test/support/fake-clock.js';
+import { FakeClock } from '#test/support/fake-clock.js';
 import { MAX_TASK_ATTEMPTS, computeBackoffMs, nextRunAfter } from './backoff.js';
 
 describe('task backoff', () => {

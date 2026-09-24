@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import type { AppConfig } from '../../config/env.schema.js';
-import { APP_CONFIG } from '../../config/load-config.js';
+import type { AppConfig } from '#/config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
 import { ConsoleMailTransport } from './console-mail-transport.js';
 import { MAIL_TRANSPORT, type MailTransport } from './mail-transport.js';
 import { MailService } from './mail.service.js';

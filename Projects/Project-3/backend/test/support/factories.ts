@@ -1,6 +1,6 @@
 import type { Repository } from 'typeorm';
-import { Company } from '../../src/database/entities/company.entity.js';
-import { User } from '../../src/database/entities/user.entity.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 
 // Project-2 built test data inline per spec with no shared fixture layer.
 // This is the "genuine addition for Project-3" the exploration flagged —

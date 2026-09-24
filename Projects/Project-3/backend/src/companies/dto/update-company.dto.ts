@@ -4,8 +4,8 @@ import { IsIn, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class
 import {
   COMPANY_INDUSTRIES,
   type CompanyIndustry,
-} from '../../database/entities/company.entity.js';
-import { NormalizedEmail } from '../../common/validation/email.decorator.js';
+} from '#/database/entities/company.entity.js';
+import { NormalizedEmail } from '#/common/validation/email.decorator.js';
 
 /** Every field optional — a PATCH changes only what it names. */
 export class UpdateCompanyDto {

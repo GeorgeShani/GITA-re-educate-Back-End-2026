@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
-import { AuthIdentity } from '../database/entities/auth-identity.entity.js';
+import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 
 /**
  * Login is by *password identity email*, not `User.email`: the latter is only

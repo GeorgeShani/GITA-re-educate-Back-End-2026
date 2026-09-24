@@ -1,9 +1,9 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { AuditService } from '../core/audit/audit.service.js';
-import { RequestContextService } from '../core/context/request-context.service.js';
-import { Company } from '../database/entities/company.entity.js';
-import { isUniqueViolation } from '../database/pg-errors.js';
+import { AuditService } from '#/core/audit/audit.service.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { isUniqueViolation } from '#/database/pg-errors.js';
 import type { UpdateCompanyDto } from './dto/update-company.dto.js';
 
 @Injectable()

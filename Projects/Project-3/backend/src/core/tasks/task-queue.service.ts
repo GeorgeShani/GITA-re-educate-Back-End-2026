@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { EntityManager, Repository } from 'typeorm';
-import { CLOCK, type Clock } from '../clock/clock.js';
-import { RequestContextService } from '../context/request-context.service.js';
+import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 import { BackgroundTask, type BackgroundTaskType } from './background-task.entity.js';
 
 export interface EnqueueOptions {

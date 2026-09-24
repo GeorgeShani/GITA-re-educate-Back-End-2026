@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
-import { toDto } from '../../common/response/to-dto.js';
+import { toDto } from '#/common/response/to-dto.js';
 import {
   COMPANY_INDUSTRIES,
   COMPANY_STATUSES,
   type Company,
   type CompanyIndustry,
   type CompanyStatus,
-} from '../../database/entities/company.entity.js';
+} from '#/database/entities/company.entity.js';
 
 export class CompanyDto {
   @ApiProperty()

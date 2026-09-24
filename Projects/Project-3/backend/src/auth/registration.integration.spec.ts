@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppHarness, DEFAULT_PASSWORD } from '../../test/support/app-harness.js';
-import { AuditLogEntry } from '../core/audit/audit-log-entry.entity.js';
-import { BackgroundTask } from '../core/tasks/background-task.entity.js';
-import { AuthIdentity } from '../database/entities/auth-identity.entity.js';
-import { Company } from '../database/entities/company.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import { AppHarness, DEFAULT_PASSWORD } from '#test/support/app-harness.js';
+import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
+import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
+import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 
 const VALID = {
   companyName: 'Acme Logistics',

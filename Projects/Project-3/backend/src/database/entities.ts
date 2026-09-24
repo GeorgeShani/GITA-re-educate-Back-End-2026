@@ -1,5 +1,5 @@
-import { AuditLogEntry } from '../core/audit/audit-log-entry.entity.js';
-import { BackgroundTask } from '../core/tasks/background-task.entity.js';
+import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
+import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
 import { AuthIdentity } from './entities/auth-identity.entity.js';
 import { AuthToken } from './entities/auth-token.entity.js';
 import { Company } from './entities/company.entity.js';

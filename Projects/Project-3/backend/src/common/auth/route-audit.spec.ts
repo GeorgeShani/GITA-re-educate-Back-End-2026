@@ -17,9 +17,9 @@ vi.hoisted(() => {
   }
 });
 
-import { AppModule } from '../../app.module.js';
-import { ENTITIES } from '../../database/entities.js';
-import { HealthController } from '../../health/health.controller.js';
+import { AppModule } from '#/app.module.js';
+import { ENTITIES } from '#/database/entities.js';
+import { HealthController } from '#/health/health.controller.js';
 import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';

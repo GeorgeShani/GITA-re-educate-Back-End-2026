@@ -1,4 +1,4 @@
-import type { Clock } from '../../src/core/clock/clock.js';
+import type { Clock } from '#/core/clock/clock.js';
 
 /**
  * Deterministic `Clock` for tests. Defaults to a fixed instant rather than

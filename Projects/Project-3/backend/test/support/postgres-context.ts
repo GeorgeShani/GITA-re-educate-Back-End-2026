@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
-import { loadConfig } from '../../src/config/load-config.js';
-import { buildDataSourceOptions } from '../../src/database/data-source-options.js';
+import { loadConfig } from '#/config/load-config.js';
+import { buildDataSourceOptions } from '#/database/data-source-options.js';
 
 /**
  * One DataSource, shared across a whole integration spec file. Connects to

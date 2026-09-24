@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { PinoLogger } from 'nestjs-pino';
-import type { AppConfig } from '../../config/env.schema.js';
-import { APP_CONFIG } from '../../config/load-config.js';
+import type { AppConfig } from '#/config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
 import { TaskRunner } from './task-runner.service.js';
 
 /**

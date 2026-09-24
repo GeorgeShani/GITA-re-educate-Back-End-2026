@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, it } from 'vitest';
-import { RequestContextService } from '../context/request-context.service.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuditService } from './audit.service.js';
 
 /**

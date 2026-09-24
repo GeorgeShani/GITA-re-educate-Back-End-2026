@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PostgresTestContext } from '../../test/support/postgres-context.js';
+import { PostgresTestContext } from '#test/support/postgres-context.js';
 
 interface IndexRow {
   tablename: string;

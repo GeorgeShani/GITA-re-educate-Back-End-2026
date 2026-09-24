@@ -3,6 +3,10 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "resolvePackageJsonExports": true,
+    // Points the `#/*` subpath imports in package.json at `src/` for tsc, so the
+    // compiler and editor see source while Node runs the compiled `dist/` (the
+    // `default` condition). Vitest sets the same condition.
+    "customConditions": ["gridline-source"],
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,

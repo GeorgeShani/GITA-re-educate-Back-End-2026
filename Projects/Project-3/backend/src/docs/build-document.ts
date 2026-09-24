@@ -1,8 +1,8 @@
 import './skip-db-connect.js';
-import '../load-env.js';
+import '#/load-env.js';
 import { NestFactory } from '@nestjs/core';
 import type { OpenAPIObject } from '@nestjs/swagger';
-import { AppModule } from '../app.module.js';
+import { AppModule } from '#/app.module.js';
 import { mergeProse } from './prose.js';
 import { buildOpenApiDocument } from './swagger-document.js';
 

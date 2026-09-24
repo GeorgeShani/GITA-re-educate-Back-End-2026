@@ -1,5 +1,5 @@
-import type { RenderedEmail } from '../../src/core/mail/mail-message.js';
-import type { MailTransport } from '../../src/core/mail/mail-transport.js';
+import type { RenderedEmail } from '#/core/mail/mail-message.js';
+import type { MailTransport } from '#/core/mail/mail-transport.js';
 
 /**
  * Stands in for the real mail transport. Tests read what *would* have been

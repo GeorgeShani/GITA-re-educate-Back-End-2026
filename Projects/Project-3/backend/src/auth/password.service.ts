@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
-import type { AppConfig } from '../config/env.schema.js';
-import { APP_CONFIG } from '../config/load-config.js';
-import { AuditService } from '../core/audit/audit.service.js';
-import { TaskQueue } from '../core/tasks/task-queue.service.js';
-import { AuthIdentity } from '../database/entities/auth-identity.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import type { AppConfig } from '#/config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
+import { AuditService } from '#/core/audit/audit.service.js';
+import { TaskQueue } from '#/core/tasks/task-queue.service.js';
+import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 import { AccountLookupService } from './account-lookup.service.js';
 import { appLink } from './app-link.js';
 import { PASSWORD_RESET_TOKEN_TTL_MS } from './auth.constants.js';

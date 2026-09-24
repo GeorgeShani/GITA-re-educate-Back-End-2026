@@ -20,9 +20,21 @@ recorded as a trap in the implementation plan.
   `new Entity()` then owns all keys as `undefined`, so partial `save()` starts
   nulling columns. Both tsc and oxc agree, so nothing errors — you just get
   wrong writes.
-- **No `tsconfig` path aliases.** ESM has no runtime path mapping, so `@/foo`
-  resolves in Vitest and then fails under `node dist/main.js`. Use relative
-  imports, or package.json `"imports"` (`#core/*`) which Node resolves natively.
+- **Imports: `#/…` for anything outside the current folder, `./…` for siblings.**
+  `#/*` is a native Node *subpath import* (package.json `"imports"`), **not** a
+  `tsconfig` `paths` alias — those compile and pass in Vitest, then fail at
+  `node dist/main.js` because ESM has no runtime path mapping. Write
+  `import { X } from '#/core/clock/clock.js'` (path from `src/`, explicit `.js`);
+  never `../../core/...`. Test-only helpers use `#test/*` (→ `test/`, no
+  runtime mapping — it must never appear in `src/` non-spec code). How it
+  resolves: the `gridline-source` condition maps to `src/`/`test/` (set by
+  `customConditions` in `tsconfig.json` and by `resolve`/`ssr.resolve` in both
+  Vitest configs); the `default` condition maps `#/*` to `dist/*`, which is what
+  Node, the migration CLI and the Docker runtime image use. **Never remove
+  either Vitest setting**: without the SSR one, `#/*` silently falls back to
+  stale `dist/` and every class exists twice; `src/alias.spec.ts` guards this.
+  Requires a Node that accepts `#/`-prefixed specifiers (verified on Node 24, the
+  Docker image version).
 - **No `verbatimModuleSyntax`.** With `emitDecoratorMetadata`, a constructor
   parameter typed via `import type` emits no `design:paramtypes` entry, and DI
   then fails at runtime with "can't resolve dependency at index N".

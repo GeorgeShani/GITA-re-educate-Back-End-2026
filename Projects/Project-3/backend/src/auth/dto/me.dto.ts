@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
-import { CompanyDto } from '../../companies/dto/company.dto.js';
-import { UserProfileDto } from '../../users/dto/user-profile.dto.js';
+import { CompanyDto } from '#/companies/dto/company.dto.js';
+import { UserProfileDto } from '#/users/dto/user-profile.dto.js';
 
 export class MeDto {
   @ApiProperty({ type: () => UserProfileDto })

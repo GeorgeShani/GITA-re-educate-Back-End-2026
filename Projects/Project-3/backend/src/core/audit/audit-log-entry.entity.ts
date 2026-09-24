@@ -1,5 +1,5 @@
 import { Column, Entity, Index } from 'typeorm';
-import { BaseEntity } from '../../database/base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 
 /**
  * Immutable — no update/delete path exists in code, and the migration adds a

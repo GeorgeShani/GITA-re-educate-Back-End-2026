@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
-import { APP_CONFIG } from '../config/load-config.js';
-import type { AppConfig } from '../config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
+import type { AppConfig } from '#/config/env.schema.js';
 import './context/cls-store.js';
 import {
   REDACT_CENSOR,

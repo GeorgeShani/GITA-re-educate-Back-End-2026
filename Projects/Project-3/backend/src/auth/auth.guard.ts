@@ -5,9 +5,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { AuthenticatedUser } from '../common/auth/authenticated-user.interface.js';
-import { IS_PUBLIC_KEY } from '../common/auth/public.decorator.js';
-import { RequestContextService } from '../core/context/request-context.service.js';
+import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
+import { IS_PUBLIC_KEY } from '#/common/auth/public.decorator.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuthenticationService } from './authentication.service.js';
 
 interface AuthenticatableRequest {

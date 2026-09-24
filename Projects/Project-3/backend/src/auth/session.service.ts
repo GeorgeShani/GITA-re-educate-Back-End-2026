@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { ForbiddenException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
-import { CLOCK, type Clock } from '../core/clock/clock.js';
-import { RequestContextService } from '../core/context/request-context.service.js';
-import { AuthIdentity } from '../database/entities/auth-identity.entity.js';
-import { RefreshToken } from '../database/entities/refresh-token.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
+import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
+import { RefreshToken } from '#/database/entities/refresh-token.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 import { AccountLookupService } from './account-lookup.service.js';
 import { REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 import { AuthenticationService } from './authentication.service.js';

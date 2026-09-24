@@ -1,5 +1,5 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from 'typeorm';
-import { BaseEntity } from '../base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 import { User } from './user.entity.js';
 
 export const AUTH_TOKEN_TYPES = ['activation', 'invite', 'password_reset'] as const;

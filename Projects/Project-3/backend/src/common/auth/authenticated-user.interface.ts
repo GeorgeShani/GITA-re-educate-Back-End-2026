@@ -1,4 +1,4 @@
-import type { UserRole } from '../../database/entities/user.entity.js';
+import type { UserRole } from '#/database/entities/user.entity.js';
 
 /**
  * What `request.user` holds once `AuthGuard` has authenticated a request.

@@ -1,5 +1,5 @@
 import { Column, Entity, Index } from 'typeorm';
-import { BaseEntity } from '../../database/base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 
 /**
  * Every task type has exactly one registered handler with a Zod payload

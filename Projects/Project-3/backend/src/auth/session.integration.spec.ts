@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppHarness, DEFAULT_PASSWORD, type RegisteredAccount } from '../../test/support/app-harness.js';
-import { AuthIdentity } from '../database/entities/auth-identity.entity.js';
-import { RefreshToken } from '../database/entities/refresh-token.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import { AppHarness, DEFAULT_PASSWORD, type RegisteredAccount } from '#test/support/app-harness.js';
+import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
+import { RefreshToken } from '#/database/entities/refresh-token.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 import { ACCESS_TOKEN_TTL_SECONDS, REFRESH_TOKEN_TTL_MS } from './auth.constants.js';
 
 describe('login, refresh and logout (integration)', () => {

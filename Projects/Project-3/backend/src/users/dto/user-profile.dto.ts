@@ -6,8 +6,8 @@ import {
   type User,
   type UserRole,
   type UserStatus,
-} from '../../database/entities/user.entity.js';
-import { toDto } from '../../common/response/to-dto.js';
+} from '#/database/entities/user.entity.js';
+import { toDto } from '#/common/response/to-dto.js';
 
 /** The signed-in person's own record. Holds no credentials — see AuthIdentity. */
 export class UserProfileDto {

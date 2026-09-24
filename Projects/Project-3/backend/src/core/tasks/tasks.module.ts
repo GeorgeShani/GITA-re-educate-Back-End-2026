@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { DatabaseModule } from '../../database/database.module.js';
+import { DatabaseModule } from '#/database/database.module.js';
 import { TaskQueue } from './task-queue.service.js';
 
 /**

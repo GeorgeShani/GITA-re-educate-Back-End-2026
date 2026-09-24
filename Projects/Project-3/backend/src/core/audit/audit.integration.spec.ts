@@ -3,8 +3,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { ClsService } from 'nestjs-cls';
 import type { Repository } from 'typeorm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { PostgresTestContext } from '../../../test/support/postgres-context.js';
-import { RequestContextService } from '../context/request-context.service.js';
+import { PostgresTestContext } from '#test/support/postgres-context.js';
+import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuditLogEntry } from './audit-log-entry.entity.js';
 import { AuditService } from './audit.service.js';
 

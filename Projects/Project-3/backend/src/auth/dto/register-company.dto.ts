@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import { NormalizedEmail } from '../../common/validation/email.decorator.js';
+import { NormalizedEmail } from '#/common/validation/email.decorator.js';
 import {
   COMPANY_INDUSTRIES,
   type CompanyIndustry,
-} from '../../database/entities/company.entity.js';
-import { MIN_PASSWORD_LENGTH } from '../auth.constants.js';
-import { MAX_PASSWORD_LENGTH } from '../crypto/password-hasher.js';
+} from '#/database/entities/company.entity.js';
+import { MIN_PASSWORD_LENGTH } from '#/auth/auth.constants.js';
+import { MAX_PASSWORD_LENGTH } from '#/auth/crypto/password-hasher.js';
 
 /** Exactly the brief's five fields. */
 export class RegisterCompanyDto {

@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { DatabaseModule } from '../../database/database.module.js';
-import { MailModule } from '../mail/mail.module.js';
-import { SendEmailHandler } from '../mail/send-email.handler.js';
+import { DatabaseModule } from '#/database/database.module.js';
+import { MailModule } from '#/core/mail/mail.module.js';
+import { SendEmailHandler } from '#/core/mail/send-email.handler.js';
 import { TASK_HANDLERS, type TaskHandler } from './task-handler.js';
 import { TaskRunner } from './task-runner.service.js';
 import { TaskScheduler } from './task-scheduler.service.js';

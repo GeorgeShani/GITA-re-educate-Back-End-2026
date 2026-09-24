@@ -1,9 +1,9 @@
 import type { Repository } from 'typeorm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { Company } from '../../database/entities/company.entity.js';
-import { User } from '../../database/entities/user.entity.js';
-import { seedCompany } from '../../../test/support/factories.js';
-import { PostgresTestContext } from '../../../test/support/postgres-context.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
+import { seedCompany } from '#test/support/factories.js';
+import { PostgresTestContext } from '#test/support/postgres-context.js';
 import { decodeCursor } from './cursor.js';
 import { applyCursor, toCursorPage } from './paginate.js';
 

@@ -1,8 +1,8 @@
 import { IsNull } from 'typeorm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppHarness, DEFAULT_PASSWORD, type RegisteredAccount } from '../../test/support/app-harness.js';
-import { AuditLogEntry } from '../core/audit/audit-log-entry.entity.js';
-import { RefreshToken } from '../database/entities/refresh-token.entity.js';
+import { AppHarness, DEFAULT_PASSWORD, type RegisteredAccount } from '#test/support/app-harness.js';
+import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
+import { RefreshToken } from '#/database/entities/refresh-token.entity.js';
 import { PASSWORD_RESET_TOKEN_TTL_MS } from './auth.constants.js';
 
 const NEW_PASSWORD = 'a-brand-new-passphrase';

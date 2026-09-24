@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appLink } from '../app-link.js';
+import { appLink } from '#/auth/app-link.js';
 import { PasswordHasher } from './password-hasher.js';
 import { TokenFactory } from './token-factory.js';
 

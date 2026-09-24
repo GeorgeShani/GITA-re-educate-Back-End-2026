@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { EntityManager } from 'typeorm';
-import { CLOCK, type Clock } from '../core/clock/clock.js';
-import { AuthToken, type AuthTokenType } from '../database/entities/auth-token.entity.js';
+import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { AuthToken, type AuthTokenType } from '#/database/entities/auth-token.entity.js';
 import { TokenFactory } from './crypto/token-factory.js';
 
 /**

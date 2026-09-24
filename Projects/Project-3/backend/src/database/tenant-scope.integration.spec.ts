@@ -1,7 +1,7 @@
 import type { Repository } from 'typeorm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { seedCompany, seedUser } from '../../test/support/factories.js';
-import { PostgresTestContext } from '../../test/support/postgres-context.js';
+import { seedCompany, seedUser } from '#test/support/factories.js';
+import { PostgresTestContext } from '#test/support/postgres-context.js';
 import { Company } from './entities/company.entity.js';
 import { User } from './entities/user.entity.js';
 import { TenantScope } from './tenant-scope.js';

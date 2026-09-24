@@ -1,8 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AppHarness, type RegisteredAccount } from '../../test/support/app-harness.js';
-import { Company } from '../database/entities/company.entity.js';
-import { User } from '../database/entities/user.entity.js';
+import { AppHarness, type RegisteredAccount } from '#test/support/app-harness.js';
+import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
 
 function base64url(value: unknown): string {
   return Buffer.from(JSON.stringify(value)).toString('base64url');

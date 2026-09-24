@@ -1,5 +1,5 @@
 import { Column, Entity, Index } from 'typeorm';
-import { BaseEntity } from '../base.entity.js';
+import { BaseEntity } from '#/database/base.entity.js';
 
 export const COMPANY_STATUSES = ['pending_activation', 'active', 'suspended'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];

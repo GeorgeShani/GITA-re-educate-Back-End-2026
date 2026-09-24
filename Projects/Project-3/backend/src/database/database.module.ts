@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource, type DataSourceOptions } from 'typeorm';
-import type { AppConfig } from '../config/env.schema.js';
-import { APP_CONFIG } from '../config/load-config.js';
+import type { AppConfig } from '#/config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
 import { buildDataSourceOptions } from './data-source-options.js';
 import { ENTITIES } from './entities.js';
 import { TenantScope } from './tenant-scope.js';

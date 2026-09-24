@@ -1,7 +1,7 @@
 import 'reflect-metadata';
-import '../load-env.js'; // MUST be the first non-side-effect-free import
+import '#/load-env.js'; // MUST be the first non-side-effect-free import
 import { DataSource } from 'typeorm';
-import { loadConfig } from '../config/load-config.js';
+import { loadConfig } from '#/config/load-config.js';
 import { buildDataSourceOptions } from './data-source-options.js';
 
 /**
