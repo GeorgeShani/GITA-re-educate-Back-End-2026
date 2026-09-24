@@ -12,8 +12,21 @@ export type AuthProvider = (typeof AUTH_PROVIDERS)[number];
  * provider reports and may differ from `User.email` forever without anything
  * breaking. Sign-in looks up by `(provider, providerUserId)`, never by email.
  */
+/**
+ * `User.email` is only unique per company, so on its own it cannot identify
+ * who is logging in. A password login email must therefore be globally
+ * unambiguous: this partial unique index on `lower(email)` (password identities
+ * only — a Google identity's email is whatever Google reports) is what
+ * guarantees one login email = one account. Consequence, documented in the
+ * README: the same person needs a different login email per company.
+ *
+ * The expression is not expressible in a decorator, so the index is created by
+ * hand in the migration; `synchronize: false` tells TypeORM's schema diff to
+ * leave it alone instead of generating a DROP for an index it can't see here.
+ */
 @Entity({ name: 'auth_identity' })
 @Unique(['provider', 'providerUserId'])
+@Index('uq_auth_identity_password_email', { synchronize: false })
 export class AuthIdentity extends BaseEntity {
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })

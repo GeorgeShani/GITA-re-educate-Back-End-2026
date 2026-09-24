@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
  *
  * `fileParallelism: false` because the suites share one database and truncate
  * between tests; running files concurrently would have them wiping each other's
- * rows. Phase 2 adds the actual harness.
+ * rows.
  */
 export default defineConfig({
   test: {
@@ -14,6 +14,12 @@ export default defineConfig({
     include: ['**/*.integration.spec.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     setupFiles: ['./test/setup.ts', './test/setup-env.ts'],
+    // Forced, not read from `.env` (which says `development` for host-based dev).
+    // `test` switches off the background task scheduler so specs drain the queue
+    // explicitly and deterministically; `fatal` keeps a booted AppModule quiet.
+    // Vitest applies these before setup files run, and `loadEnvFile` never
+    // overrides a variable that is already set.
+    env: { NODE_ENV: 'test', LOG_LEVEL: 'fatal' },
     fileParallelism: false,
     // First run may create a schema and pull a container image.
     testTimeout: 30_000,

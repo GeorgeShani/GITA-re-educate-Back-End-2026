@@ -1,0 +1,7 @@
+# Prose for the `users` tag, keyed by operationId.
+
+UsersController_updateMe:
+  summary: Update your own profile
+  description: >-
+    Changes the signed-in person's own `fullName` — the personal-data half of
+    "change password and personal data". Available to admins and employees.

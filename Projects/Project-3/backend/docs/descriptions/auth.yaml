@@ -1,0 +1,74 @@
+# Prose for the `auth` tag, keyed by operationId. Hand-written — the only file
+# in docs/ a human edits directly. `npm run docs:generate` merges it and fails,
+# naming the operationId, if a route exists with no matching entry here.
+
+AuthController_registerCompany:
+  summary: Register a company
+  description: >-
+    Creates the company (`pending_activation`), its first admin (`invited`) and
+    their password identity in one transaction, then emails an activation link
+    valid for 24 hours. The admin cannot sign in until the link is used. The
+    form has no name field, so `fullName` starts as the local part of the email;
+    change it with `PATCH /users/me`. A password sign-in email identifies exactly
+    one account, so an address already registered returns 409.
+
+AuthController_activate:
+  summary: Activate a company
+  description: >-
+    Spends the single-use token from the activation email and turns the company
+    and its admin `active`. An expired, unknown or already-used token returns
+    400 — request a fresh one with `POST /auth/resend-activation`.
+
+AuthController_resendActivation:
+  summary: Resend the activation email
+  description: >-
+    Issues a fresh activation link and invalidates the previous one. Always
+    answers 200 with the same message, whether or not the address is registered,
+    so it cannot be used to discover accounts.
+
+AuthController_login:
+  summary: Sign in with email and password
+  description: >-
+    Returns a 15-minute access token and a 30-day, single-use refresh token.
+    Refused with 403 while the company or the user is not yet active, and with
+    401 for a wrong email or password (the two are indistinguishable).
+
+AuthController_refresh:
+  summary: Exchange a refresh token for a new session
+  description: >-
+    Rotates the refresh token: the one presented is spent and a new pair is
+    returned. Presenting an already-spent token means it was copied, so every
+    session descended from that login is revoked and both holders must sign in
+    again.
+
+AuthController_logout:
+  summary: Sign out
+  description: >-
+    Revokes the session the refresh token belongs to. Public, because the access
+    token has usually expired by the time someone signs out. Always answers 200.
+
+AuthController_forgotPassword:
+  summary: Request a password reset email
+  description: >-
+    Emails a reset link valid for one hour to an active account. Always answers
+    200 with the same message, whether or not the address is registered.
+
+AuthController_resetPassword:
+  summary: Reset a forgotten password
+  description: >-
+    Sets a new password using the emailed token and signs the account out of
+    every device. The token is single-use.
+
+AuthController_changePassword:
+  summary: Change your password
+  description: >-
+    Requires the current password. Signs out every session, including this one,
+    and returns a fresh session so the calling device stays signed in. A
+    confirmation email is sent.
+
+AuthController_me:
+  summary: Get the signed-in user and their company
+  description: >-
+    The caller's own user record and company. Role and status come from the
+    database on every request, not from the token, so a change of role or a
+    disabled account is reflected immediately.

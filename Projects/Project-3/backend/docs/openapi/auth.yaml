@@ -1,168 +1,5 @@
 openapi: 3.0.0
 paths:
-  /health:
-    get:
-      operationId: HealthController_check
-      parameters: []
-      responses:
-        '200':
-          description: The Health Check is successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - ok
-                      - degraded
-                    example: ok
-                  info:
-                    type: object
-                    example: &ref_0
-                      database:
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example: {}
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example: *ref_0
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-        '503':
-          description: The Health Check is not successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - error
-                      - shutting_down
-                    example: error
-                  info:
-                    type: object
-                    example:
-                      database: &ref_1
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example:
-                      redis: &ref_2
-                        status: down
-                        message: Could not connect
-                        responseTime: 3005
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example:
-                      database: *ref_1
-                      redis: *ref_2
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-      tags:
-        - health
-      summary: Liveness and readiness check
-      description: >-
-        Confirms the process is running and that Postgres is reachable. Excluded
-        from the (not-yet-registered) global auth guard and from Observe's event
-        budget — a platform healthcheck should never need credentials or count
-        against a telemetry quota.
   /auth/register-company:
     post:
       operationId: AuthController_registerCompany
@@ -180,7 +17,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegisterCompanyResponseDto'
-      tags: &ref_3
+      tags: &ref_0
         - auth
       summary: Register a company
       description: >-
@@ -208,7 +45,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Activate a company
       description: >-
         Spends the single-use token from the activation email and turns the
@@ -232,7 +69,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Resend the activation email
       description: >-
         Issues a fresh activation link and invalidates the previous one. Always
@@ -255,7 +92,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Sign in with email and password
       description: >-
         Returns a 15-minute access token and a 30-day, single-use refresh token.
@@ -278,7 +115,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Exchange a refresh token for a new session
       description: >-
         Rotates the refresh token: the one presented is spent and a new pair is
@@ -302,7 +139,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Sign out
       description: >-
         Revokes the session the refresh token belongs to. Public, because the
@@ -325,7 +162,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Request a password reset email
       description: >-
         Emails a reset link valid for one hour to an active account. Always
@@ -348,7 +185,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_0
       summary: Reset a forgotten password
       description: >-
         Sets a new password using the emailed token and signs the account out of
@@ -372,7 +209,7 @@ paths:
                 $ref: '#/components/schemas/SessionDto'
       security:
         - bearer: []
-      tags: *ref_3
+      tags: *ref_0
       summary: Change your password
       description: >-
         Requires the current password. Signs out every session, including this
@@ -391,65 +228,12 @@ paths:
                 $ref: '#/components/schemas/MeDto'
       security:
         - bearer: []
-      tags: *ref_3
+      tags: *ref_0
       summary: Get the signed-in user and their company
       description: >-
         The caller's own user record and company. Role and status come from the
         database on every request, not from the token, so a change of role or a
         disabled account is reflected immediately.
-  /users/me:
-    patch:
-      operationId: UsersController_updateMe
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserProfileDto'
-      security:
-        - bearer: []
-      tags:
-        - users
-      summary: Update your own profile
-      description: >-
-        Changes the signed-in person's own `fullName` — the personal-data half
-        of "change password and personal data". Available to admins and
-        employees.
-  /companies/me:
-    patch:
-      operationId: CompaniesController_updateMine
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCompanyDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CompanyDto'
-      security:
-        - bearer: []
-      tags:
-        - companies
-      summary: Update your company profile
-      description: >-
-        Admin only; employees receive 403. Changes only the fields named:
-        `name`, `country`, `industry`, `billingEmail`. The company is always the
-        caller's own, taken from the session — there is no way to name another
-        tenant. A `billingEmail` already used by another company returns 409.
 info:
   title: Gridline API
   description: >-
@@ -490,7 +274,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_4
+          enum: &ref_1
             - finance
             - e-commerce
             - healthcare
@@ -656,7 +440,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_4
+          enum: *ref_1
         status:
           type: string
           enum:
@@ -708,7 +492,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_4
+          enum: *ref_1
         billingEmail:
           type: string
           example: nino@acme.com

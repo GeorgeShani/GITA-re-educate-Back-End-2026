@@ -24,10 +24,357 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/register-company": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register a company
+         * @description Creates the company (`pending_activation`), its first admin (`invited`) and their password identity in one transaction, then emails an activation link valid for 24 hours. The admin cannot sign in until the link is used. The form has no name field, so `fullName` starts as the local part of the email; change it with `PATCH /users/me`. A password sign-in email identifies exactly one account, so an address already registered returns 409.
+         */
+        post: operations["AuthController_registerCompany"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activate a company
+         * @description Spends the single-use token from the activation email and turns the company and its admin `active`. An expired, unknown or already-used token returns 400 — request a fresh one with `POST /auth/resend-activation`.
+         */
+        get: operations["AuthController_activate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/resend-activation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend the activation email
+         * @description Issues a fresh activation link and invalidates the previous one. Always answers 200 with the same message, whether or not the address is registered, so it cannot be used to discover accounts.
+         */
+        post: operations["AuthController_resendActivation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in with email and password
+         * @description Returns a 15-minute access token and a 30-day, single-use refresh token. Refused with 403 while the company or the user is not yet active, and with 401 for a wrong email or password (the two are indistinguishable).
+         */
+        post: operations["AuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Exchange a refresh token for a new session
+         * @description Rotates the refresh token: the one presented is spent and a new pair is returned. Presenting an already-spent token means it was copied, so every session descended from that login is revoked and both holders must sign in again.
+         */
+        post: operations["AuthController_refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign out
+         * @description Revokes the session the refresh token belongs to. Public, because the access token has usually expired by the time someone signs out. Always answers 200.
+         */
+        post: operations["AuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a password reset email
+         * @description Emails a reset link valid for one hour to an active account. Always answers 200 with the same message, whether or not the address is registered.
+         */
+        post: operations["AuthController_forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset a forgotten password
+         * @description Sets a new password using the emailed token and signs the account out of every device. The token is single-use.
+         */
+        post: operations["AuthController_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change your password
+         * @description Requires the current password. Signs out every session, including this one, and returns a fresh session so the calling device stays signed in. A confirmation email is sent.
+         */
+        patch: operations["AuthController_changePassword"];
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the signed-in user and their company
+         * @description The caller's own user record and company. Role and status come from the database on every request, not from the token, so a change of role or a disabled account is reflected immediately.
+         */
+        get: operations["AuthController_me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update your own profile
+         * @description Changes the signed-in person's own `fullName` — the personal-data half of "change password and personal data". Available to admins and employees.
+         */
+        patch: operations["UsersController_updateMe"];
+        trace?: never;
+    };
+    "/companies/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update your company profile
+         * @description Admin only; employees receive 403. Changes only the fields named: `name`, `country`, `industry`, `billingEmail`. The company is always the caller's own, taken from the session — there is no way to name another tenant. A `billingEmail` already used by another company returns 409.
+         */
+        patch: operations["CompaniesController_updateMine"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        RegisterCompanyDto: {
+            /** @example Acme Logistics */
+            companyName: string;
+            /** @example nino@acme.com */
+            email: string;
+            password: string;
+            /**
+             * @description ISO 3166-1 alpha-2 country code
+             * @example GE
+             */
+            country: string;
+            /** @enum {string} */
+            industry: "finance" | "e-commerce" | "healthcare" | "education" | "logistics" | "manufacturing" | "media" | "real-estate" | "technology" | "other";
+        };
+        RegisterCompanyResponseDto: {
+            companyId: string;
+            userId: string;
+            /** @example pending_activation */
+            status: string;
+            /** @example Check your inbox to activate your account. */
+            message: string;
+        };
+        MessageResponseDto: {
+            /** @example If that account exists, an email is on its way. */
+            message: string;
+        };
+        EmailOnlyDto: {
+            /** @example nino@acme.com */
+            email: string;
+        };
+        LoginDto: {
+            /** @example nino@acme.com */
+            email: string;
+            password: string;
+        };
+        SessionDto: {
+            /** @description Short-lived JWT. Send as `Authorization: Bearer`. */
+            accessToken: string;
+            /** @description Opaque, single-use. Rotated on every refresh. */
+            refreshToken: string;
+            /** @example Bearer */
+            tokenType: string;
+            /**
+             * @description Seconds until the access token expires.
+             * @example 900
+             */
+            expiresIn: number;
+        };
+        RefreshTokenDto: {
+            refreshToken: string;
+        };
+        ResetPasswordDto: {
+            /** @description The single-use token from the reset email. */
+            token: string;
+            newPassword: string;
+        };
+        ChangePasswordDto: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        UserProfileDto: {
+            id: string;
+            /** @description The company contact address invites are sent to. */
+            email: string;
+            fullName: string;
+            /** @enum {string} */
+            role: "admin" | "employee";
+            /** @enum {string} */
+            status: "invited" | "active" | "disabled";
+            /** Format: date-time */
+            activatedAt: string | null;
+        };
+        CompanyDto: {
+            id: string;
+            name: string;
+            /** @description Where invoices and account notices go. */
+            billingEmail: string;
+            /** @example GE */
+            country: string;
+            /** @enum {string} */
+            industry: "finance" | "e-commerce" | "healthcare" | "education" | "logistics" | "manufacturing" | "media" | "real-estate" | "technology" | "other";
+            /** @enum {string} */
+            status: "pending_activation" | "active" | "suspended";
+            /** Format: date-time */
+            activatedAt: string | null;
+        };
+        MeDto: {
+            user: components["schemas"]["UserProfileDto"];
+            company: components["schemas"]["CompanyDto"];
+        };
+        UpdateMeDto: {
+            /** @example Nino Beridze */
+            fullName: string;
+        };
+        UpdateCompanyDto: {
+            name?: string;
+            /**
+             * @description ISO 3166-1 alpha-2 country code
+             * @example GE
+             */
+            country?: string;
+            /** @enum {string} */
+            industry?: "finance" | "e-commerce" | "healthcare" | "education" | "logistics" | "manufacturing" | "media" | "real-estate" | "technology" | "other";
+            /** @example nino@acme.com */
+            billingEmail?: string;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -180,6 +527,277 @@ export interface operations {
                             };
                         };
                     };
+                };
+            };
+        };
+    };
+    AuthController_registerCompany: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterCompanyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterCompanyResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_activate: {
+        parameters: {
+            query: {
+                /** @description The single-use token from the emailed link. */
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_resendActivation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailOnlyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+        };
+    };
+    AuthController_refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+        };
+    };
+    AuthController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshTokenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailOnlyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+        };
+    };
+    AuthController_me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeDto"];
+                };
+            };
+        };
+    };
+    UsersController_updateMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+        };
+    };
+    CompaniesController_updateMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCompanyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompanyDto"];
                 };
             };
         };

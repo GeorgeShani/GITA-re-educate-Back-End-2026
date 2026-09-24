@@ -1,6 +1,7 @@
 import type { MixedList } from 'typeorm';
 import { InitialSchema1789722852579 } from './1789722852579-InitialSchema.js';
 import { PlatformServices1790182668122 } from './1790182668122-PlatformServices.js';
+import { AuthCore1790189091689 } from './1790189091689-AuthCore.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -15,4 +16,5 @@ import { PlatformServices1790182668122 } from './1790182668122-PlatformServices.
 export const MIGRATIONS: MixedList<Function> = [
   InitialSchema1789722852579,
   PlatformServices1790182668122,
+  AuthCore1790189091689,
 ];

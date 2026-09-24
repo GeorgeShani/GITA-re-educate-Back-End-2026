@@ -1,0 +1,9 @@
+# Prose for the `companies` tag, keyed by operationId.
+
+CompaniesController_updateMine:
+  summary: Update your company profile
+  description: >-
+    Admin only; employees receive 403. Changes only the fields named: `name`,
+    `country`, `industry`, `billingEmail`. The company is always the caller's own,
+    taken from the session — there is no way to name another tenant. A
+    `billingEmail` already used by another company returns 409.

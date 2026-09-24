@@ -5,9 +5,8 @@ import type { AuthenticatedUser } from './authenticated-user.interface.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
 /**
- * Built now, registered globally in Milestone 3 alongside the auth guard it
- * depends on — `request.user` doesn't exist until then. Must run AFTER the
- * auth guard in whatever composes them, since it reads `request.user`.
+ * Registered globally in `AuthModule`, immediately after `AuthGuard`, whose
+ * `request.user` it reads — it must never run before it.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {

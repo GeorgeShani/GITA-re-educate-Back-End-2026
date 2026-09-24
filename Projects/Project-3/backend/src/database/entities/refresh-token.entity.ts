@@ -21,6 +21,15 @@ export class RefreshToken extends BaseEntity {
   @Column({ type: 'uuid' })
   userId!: string;
 
+  /**
+   * Every token descended from one login shares a family. Presenting an
+   * already-rotated token revokes the whole family with a single UPDATE — the
+   * replay defence — and logout / password change do the same.
+   */
+  @Index()
+  @Column({ type: 'uuid' })
+  familyId!: string;
+
   @Index({ unique: true })
   @Column({ type: 'text' })
   tokenHash!: string;

@@ -5,6 +5,8 @@ import { ClsModule } from 'nestjs-cls';
 import { AppConfigModule } from './config/config.module.js';
 import { loadConfig } from './config/load-config.js';
 import './core/context/cls-store.js';
+import { AuthModule } from './auth/auth.module.js';
+import { CompaniesModule } from './companies/companies.module.js';
 import { AuditModule } from './core/audit/audit.module.js';
 import { CoreModule } from './core/core.module.js';
 import { REDACT_KEYS } from './core/redaction.js';
@@ -12,6 +14,7 @@ import { TaskRunnerModule } from './core/tasks/task-runner.module.js';
 import { TasksModule } from './core/tasks/tasks.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
+import { UsersModule } from './users/users.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -92,6 +95,9 @@ function observeImports(): DynamicModule[] {
     TasksModule,
     TaskRunnerModule,
     HealthModule,
+    AuthModule,
+    UsersModule,
+    CompaniesModule,
   ],
 })
 export class AppModule {}

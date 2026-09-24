@@ -63,6 +63,24 @@ describe('database indexes', () => {
     expect(index?.indexdef).toMatch(/UNIQUE/);
   });
 
+  it('makes a password login email globally unique, case-insensitively, for password identities only', () => {
+    const index = indexes.find((row) => row.indexname === 'uq_auth_identity_password_email');
+    expect(index).toBeDefined();
+    if (!index) return;
+
+    expect(index.tablename).toBe('auth_identity');
+    expect(index.indexdef).toMatch(/UNIQUE/);
+    // The expression and the predicate are the whole point: `lower(email)` makes
+    // it case-insensitive, and `WHERE provider = 'password'` leaves Google
+    // identities (whose email is whatever Google reports) unconstrained.
+    expect(index.indexdef).toMatch(/lower\(email\)/);
+    expect(index.indexdef).toMatch(/WHERE.*provider.*password/);
+  });
+
+  it('indexes refresh_token.familyId, which family revocation updates by', () => {
+    expect(find('refresh_token', 'familyId')).toBeDefined();
+  });
+
   it('indexes userId for lookup on every child-of-User table', () => {
     expect(find('auth_identity', 'userId')).toBeDefined();
     expect(find('auth_token', 'userId')).toBeDefined();

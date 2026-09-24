@@ -43,6 +43,19 @@ export class RequestContextService {
   }
 
   /**
+   * Called once per request by the auth guard. Every tenant-scoped query, log
+   * line, audit entry and Observe span reads identity from here afterwards.
+   */
+  setAuthenticated(user: { userId: string; companyId: string; role: 'admin' | 'employee' }): void {
+    if (!this.cls.isActive()) {
+      throw new Error('Cannot set the authenticated user outside a request context.');
+    }
+    this.cls.set('userId', user.userId);
+    this.cls.set('companyId', user.companyId);
+    this.cls.set('role', user.role);
+  }
+
+  /**
    * Same as `companyId` but throws instead of returning `undefined`.
    * For code paths that are only ever reached behind the auth guard, where a
    * missing tenant is a bug and must not silently widen a query.

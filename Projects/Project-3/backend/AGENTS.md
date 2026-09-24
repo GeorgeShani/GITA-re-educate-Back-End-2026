@@ -112,30 +112,62 @@ document.
 - Add the new index to the checklist below and to the `pg_indexes` assertion
   spec in the same change.
 
-## Auth & RBAC *(from Phase 3 — built ahead of its populator)*
+## Auth & RBAC *(from Phase 2 of the feature plan)*
 
-- `@CurrentUser()` / `@CurrentUser('userId')` reads `request.user`, typed
-  `keyof AuthenticatedUser` so a typo is a compile error. Nothing populates
-  `request.user` yet — that's the auth guard, Milestone 3.
-- `@Public()` marks a route exempt from the global auth guard **before that
-  guard exists**. Auth here is opt-out, not opt-in: once the guard is
-  registered, every route needs a valid identity unless marked `@Public()`.
-  Every current route must be `@Public()` or `@Roles(...)` — never neither —
-  enforced by `src/common/auth/route-audit.spec.ts`.
-- `@Roles('admin', …)` + `RolesGuard` — built, **not yet registered globally**.
-  Absent `@Roles()` means "any authenticated user", not "admin only": the
-  guard only narrows, it never widens what the auth guard already granted.
-- `@RequireScopes(...)` is the API-key analogue of `@Roles`, for
-  `ApiKeyGuard` (Milestone 10). A key's effective permission is
-  `(creator's live role) ∩ (key's scopes)` — never wider than either.
-- `@IdempotencyKey()` reads and validates the `Idempotency-Key` header.
-  Returns `undefined` when absent; a route that requires one checks for that
-  itself.
+- **Auth is opt-out.** `AuthGuard` (global `APP_GUARD`, in `AuthModule`) requires
+  a valid access token on every route unless it is `@Public()`, then
+  `RolesGuard` narrows by `@Roles(...)`. Order matters and is the provider order
+  in `AuthModule`. A new route is secure by default.
+- **Every route is `@Public()` XOR carries `@Roles(...)`** — never neither.
+  "Any signed-in user" is spelled out as `@Roles('admin', 'employee')`, so intent
+  is explicit and `route-audit.spec.ts` can enforce it.
+- **Identity is re-read from the database on every request**
+  (`AuthenticationService.authenticate`). Role, user status and company status
+  come from that row, never from the JWT, so a disable, demotion or suspension
+  takes effect on the next request. Never put a role in the token. The JWT
+  carries only `sub`, is pinned to HS256, and its claims are Zod-parsed.
+- `@CurrentUser()` / `@CurrentUser('userId')` reads `request.user` (typed
+  `keyof AuthenticatedUser`). Tenant, actor and role are also in request context
+  (`RequestContextService`), set once by the guard; services read them there.
+- **Never take a tenant id from the URL or body.** `PATCH /companies/me` and
+  every later tenant route derive the company from context; DTOs reject an
+  unknown `companyId`/`id` field outright (`forbidNonWhitelisted`).
+- **Secrets at rest.** Passwords: scrypt (`PasswordHasher`, self-describing
+  `scrypt$N$r$p$salt$hash`, cost bounded on verify). Opaque tokens (activation,
+  invite, reset, refresh): 32 random bytes, stored as SHA-256 only
+  (`TokenFactory`). Neither the plaintext nor a reversible form is ever stored.
+- **Single-use tokens** go through `AuthTokenService.issue/consume`. `consume` is
+  one `UPDATE … WHERE consumedAt IS NULL AND expiresAt > now RETURNING`, so two
+  concurrent uses cannot both win. Issuing supersedes earlier unconsumed tokens
+  of that type, so only the newest link works.
+- **Refresh tokens rotate** and share a `familyId`. Presenting a spent token
+  revokes the whole family; the revocation must *commit*, so the transaction
+  returns an outcome and the 401 is thrown after it. Password change/reset revoke
+  every family for the user.
+- **Email-flow endpoints never reveal whether an address exists** (resend
+  activation, forgot password): same answer, same status, work only if real.
+  Login answers a wrong password and an unknown email identically and burns one
+  scrypt either way (`verifyDummy`).
+- A password login email is **globally unique** (`lower(email)` partial unique
+  index on password identities); `User.email` is only unique per company. One
+  login email = one account; the same person needs a different email per company.
+- `JWT_REFRESH_SECRET` is required by the env schema but currently unused:
+  refresh tokens are opaque and hashed, not JWTs. Kept so `.env` files stay valid.
+- `@RequireScopes(...)` is the API-key analogue of `@Roles`, for `ApiKeyGuard`
+  (Phase 10). A key's effective permission is `(creator's live role) ∩ (key's
+  scopes)` — never wider than either.
+- `@IdempotencyKey()` reads and validates the `Idempotency-Key` header. Returns
+  `undefined` when absent; a route that requires one checks for that itself.
 - **`route-audit.spec.ts` is the enforcement mechanism, not code review.**
   It discovers controllers by walking `AppModule`'s import graph, so there is
   no list to maintain: a controller in any module reachable from `AppModule`
   is audited automatically, and every route on it must satisfy the checks
   above or the build fails. A module not imported anywhere isn't a route.
+- Integration specs drive HTTP through `test/support/app-harness.ts`, which boots
+  the real `AppModule` and fakes only the clock and the mail transport
+  (`registerAndActivate()`, `login()`, `seedEmployee()`, `drainTasks()`,
+  `mail.latestTokenTo()`). Time-dependent behaviour (token expiry) is tested by
+  advancing `h.clock`, never by sleeping.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -309,7 +341,7 @@ The full index plan from SCOPE.md. Tick each off as its table lands, and extend
 `indexes.integration.spec.ts`'s `pg_indexes` assertions in the same change —
 every `[x]` below has a corresponding assertion there, not just a claim here.
 
-- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`, plus a plain
+- [x] `auth_identity` — UNIQUE `(provider, providerUserId)`, UNIQUE `lower(email)` for password identities (partial), plus a plain
       index on `userId` (not covered by the unique index, needed for "every
       identity for this user")
 - [x] `auth_token` — UNIQUE `(tokenHash)`, plus a plain index on `userId`
