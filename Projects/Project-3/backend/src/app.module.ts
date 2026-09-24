@@ -11,11 +11,14 @@ import { BillingModule } from './billing/billing.module.js';
 import { CompaniesModule } from './companies/companies.module.js';
 import { AuditModule } from './core/audit/audit.module.js';
 import { CoreModule } from './core/core.module.js';
+import { IdempotencyModule } from './core/idempotency/idempotency.module.js';
+import { StorageModule } from './core/storage/storage.module.js';
 import { REDACT_KEYS } from './core/redaction.js';
 import { TaskRunnerModule } from './core/tasks/task-runner.module.js';
 import { TasksModule } from './core/tasks/tasks.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
+import { FilesModule } from './files/files.module.js';
 import { HealthModule } from './health/health.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -96,6 +99,8 @@ function observeImports(): DynamicModule[] {
     ...observeImports(),
     DatabaseModule,
     AuditModule,
+    StorageModule,
+    IdempotencyModule,
     TasksModule,
     TaskRunnerModule,
     HealthModule,
@@ -105,6 +110,7 @@ function observeImports(): DynamicModule[] {
     BillingModule,
     SubscriptionsModule,
     EmployeesModule,
+    FilesModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,
   ],

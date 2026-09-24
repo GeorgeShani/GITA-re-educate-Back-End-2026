@@ -10,17 +10,23 @@ type KeysetEntity = ObjectLiteral & { id: string; createdAt: Date };
  * predicate — the exact query shape proven against real data (including a
  * deliberate same-millisecond collision) in
  * `src/database/keyset-pagination.integration.spec.ts`. Call this before
- * `toCursorPage`, after any `.where()`/tenant scoping the caller needs.
+ * `toCursorPage`, after any `.where()`/tenant scoping the caller needs. `direction`
+ * is the sort order (newest-first lists pass `'DESC'`); the cursor itself is
+ * direction-agnostic.
  */
 export function applyCursor<Entity extends KeysetEntity>(
   qb: SelectQueryBuilder<Entity>,
   alias: string,
   cursor: Cursor | undefined,
+  direction: 'ASC' | 'DESC' = 'ASC',
 ): SelectQueryBuilder<Entity> {
-  qb.orderBy(`${alias}.createdAt`, 'ASC').addOrderBy(`${alias}.id`, 'ASC');
+  qb.orderBy(`${alias}.createdAt`, direction).addOrderBy(`${alias}.id`, direction);
 
   if (cursor) {
-    qb.andWhere(`(${alias}.createdAt, ${alias}.id) > (:cursorCreatedAt, :cursorId)`, {
+    // The tie-break runs the same way as the sort, so one row-value comparison
+    // is the whole predicate whichever way the list is read.
+    const comparison = direction === 'ASC' ? '>' : '<';
+    qb.andWhere(`(${alias}.createdAt, ${alias}.id) ${comparison} (:cursorCreatedAt, :cursorId)`, {
       cursorCreatedAt: cursor.createdAt,
       cursorId: cursor.id,
     });

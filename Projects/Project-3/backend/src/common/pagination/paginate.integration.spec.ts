@@ -92,6 +92,54 @@ describe('applyCursor + toCursorPage (integration)', () => {
     }
   });
 
+  /**
+   * Postgres `now()` has MICROsecond precision but a JS `Date` (and so the
+   * cursor) has milliseconds. If `createdAt` kept the extra digits, the cursor's
+   * truncated value would sort BEFORE the row it names, and every page would
+   * start by repeating the previous page's last row. The two tests above only
+   * ever saw millisecond-aligned values, so they could not show it.
+   */
+  describe.each(['ASC', 'DESC'] as const)('with database-default timestamps, %s', (direction) => {
+    it('never repeats or skips a row across page boundaries', async () => {
+      const company = await seedCompany(companyRepo);
+      const seeded: User[] = [];
+      for (let i = 0; i < 30; i += 1) {
+        // No `createdAt`: the column default (`now()`) stamps it, as it does in production.
+        seeded.push(
+          await userRepo.save(
+            userRepo.create({
+              companyId: company.id,
+              email: `micro-${i}@paginate.test`,
+              fullName: `Micro ${i}`,
+              role: 'employee',
+              status: 'active',
+            }),
+          ),
+        );
+      }
+
+      const seen: string[] = [];
+      let cursor: { createdAt: Date; id: string } | undefined;
+      for (let guard = 0; guard < 30; guard += 1) {
+        const page = await toCursorPage(
+          applyCursor(
+            userRepo.createQueryBuilder('u').where('u.companyId = :companyId', { companyId: company.id }),
+            'u',
+            cursor,
+            direction,
+          ),
+          7,
+        );
+        seen.push(...page.data.map((row) => row.id));
+        if (!page.meta.hasMore || !page.meta.nextCursor) break;
+        cursor = decodeCursor(page.meta.nextCursor);
+      }
+
+      expect(new Set(seen).size, 'a row was returned twice').toBe(seen.length);
+      expect(seen).toHaveLength(seeded.length);
+    });
+  });
+
   it('reports hasMore: false and nextCursor: null on the final page', async () => {
     const company = await seedCompany(companyRepo);
     await userRepo.save(

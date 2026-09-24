@@ -32,3 +32,8 @@ SubscriptionsController_change:
     with 409, naming the numbers, if the company is over the target plan's
     employee cap or (for Free and Basic) has already uploaded more files this
     period than it allows. Admin only.
+
+
+    Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or
+    prorated and billed — twice: the same key with the same body replays the first
+    response (`Idempotent-Replayed: true`); the same key with a different body is 422.

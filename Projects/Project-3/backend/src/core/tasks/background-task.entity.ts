@@ -6,7 +6,7 @@ import { BaseEntity } from '#/database/base.entity.js';
  * schema. Adding a type means adding it here, a migration
  * (`ALTER TYPE background_task_type ADD VALUE`), and a handler.
  */
-export const BACKGROUND_TASK_TYPES = ['send_email'] as const;
+export const BACKGROUND_TASK_TYPES = ['send_email', 'build_data_quality_report'] as const;
 export type BackgroundTaskType = (typeof BACKGROUND_TASK_TYPES)[number];
 
 export const BACKGROUND_TASK_STATUSES = ['pending', 'running', 'succeeded', 'dead'] as const;

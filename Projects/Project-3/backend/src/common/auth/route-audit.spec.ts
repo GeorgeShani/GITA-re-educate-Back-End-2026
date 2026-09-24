@@ -19,6 +19,7 @@ vi.hoisted(() => {
 
 import { AppModule } from '#/app.module.js';
 import { ENTITIES } from '#/database/entities.js';
+import { LocalDownloadController } from '#/core/storage/local-download.controller.js';
 import { HealthController } from '#/health/health.controller.js';
 import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
@@ -94,12 +95,16 @@ function collectControllers(
 const AUDITED_CONTROLLERS = [...new Set(collectControllers(AppModule))];
 
 /**
+ * `LocalDownloadController` streams raw bytes (the development storage driver's
+ * stand-in for an S3 presigned URL) and is excluded from the OpenAPI document, so it
+ * has no response DTO either.
+ *
  * `HealthController`'s response is Terminus's own dynamic `HealthCheckResult`
  * — an operational detail, not a domain response worth a DTO — so it's
  * exempt from the "response type is a DTO, not an entity" check by name,
  * exactly as its own doc comment says `route-audit.spec.ts` does.
  */
-const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([HealthController.name]);
+const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([HealthController.name, LocalDownloadController.name]);
 
 interface RouteHandle {
   controller: string;

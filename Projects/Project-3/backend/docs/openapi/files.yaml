@@ -1,0 +1,1034 @@
+openapi: 3.0.0
+paths:
+  /files:
+    get:
+      operationId: FilesController_list
+      parameters:
+        - name: cursor
+          required: false
+          in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: sort
+          required: false
+          in: query
+          description: A leading `-` is descending.
+          schema:
+            default: -createdAt
+            type: string
+            enum:
+              - -createdAt
+              - createdAt
+        - name: mimeType
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - text/csv
+              - application/vnd.ms-excel
+              - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        - name: visibility
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - company
+              - restricted
+        - name: uploaderId
+          required: false
+          in: query
+          schema:
+            format: uuid
+            type: string
+        - name: uploadedAfter
+          required: false
+          in: query
+          description: Uploaded at or after this instant.
+          schema:
+            format: date-time
+            type: string
+        - name: uploadedBefore
+          required: false
+          in: query
+          description: Uploaded before this instant.
+          schema:
+            format: date-time
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilePageDto'
+      security: &ref_0
+        - bearer: []
+      tags: &ref_1
+        - files
+      summary: List files
+      description: >-
+        The files the caller may see: everything company-wide, plus restricted
+        files they uploaded or were granted, and every file for an admin.
+        Cursor-paginated, newest first (`sort=createdAt` reverses it); follow
+        `meta.nextCursor` until `hasMore` is false. Filters (`mimeType`,
+        `visibility`, `uploaderId`, `uploadedAfter`, `uploadedBefore`) only ever
+        narrow that set. Rows never include where the bytes are stored or who a
+        restricted file is shared with.
+    post:
+      operationId: FilesController_upload
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: >-
+            A UUID. A retry with the same key and the same file replays the
+            first response instead of uploading twice.
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadFileBodyDoc'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Upload a spreadsheet
+      description: >-
+        Multipart upload of a CSV, XLS or XLSX file up to 25 MB, with a
+        `visibility` of `company` (the default) or `restricted` and, for a
+        restricted file, `grantedUserIds` (repeat the field or send a JSON
+        array; they must be active members of the company — get their ids from
+        `GET /companies/me/members`). The type is decided from the file's
+        **bytes**, never from its name or `Content-Type`: an executable renamed
+        `report.csv` is refused with 400, as is a Word document renamed `.xls`.
+        A refused, invalid or failed upload stores nothing and consumes no
+        quota.
+
+
+        **Quota.** Free (10 files per billing period) and Basic (100) answer
+        **402** once the period's quota is used, naming the plan, the count, the
+        cap and the date the quota resets — the upload never starts. Premium
+        (1000 included) always accepts; a file past the 1000th carries an
+        `X-Gridline-Quota-Warning` header and a $0.50 overage charge. Deleting a
+        file does not refund its quota.
+
+
+        **Idempotency.** Send an `Idempotency-Key` (a UUID) and a retry with the
+        same key and the same file replays the first response — marked
+        `Idempotent-Replayed: true`, warning header included — instead of
+        uploading and counting twice. The same key with a different request is
+        422; while the first request is still running, 409. A request that
+        failed is not remembered.
+
+
+        Each upload queues a data-quality report and is recorded in the audit
+        log. Returns 413 above 25 MB.
+  /files/{id}:
+    get:
+      operationId: FilesController_get
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Get a file
+      description: >-
+        A file the caller cannot see is **404**, never 403, so its existence is
+        not disclosed. The uploader and admins also get `grantedUserIds`, the
+        colleagues a restricted file is shared with.
+    delete:
+      operationId: FilesController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Delete a file
+      description: >-
+        Uploader or admin only. A soft delete: the file disappears from every
+        listing and its stored object is removed, but the row and its history
+        are kept and the upload still counts toward this period's quota.
+    patch:
+      operationId: FilesController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Change who can see a file
+      description: >-
+        Uploader or admin only. `visibility` switches between `company` and
+        `restricted`; `grantedUserIds` REPLACES the set of colleagues granted
+        access (only for a restricted file — switching to `company` clears it).
+        A colleague who can see the file but did not upload it gets 403; someone
+        who cannot see it gets 404. The change takes effect on the next request
+        and is audited.
+  /files/{id}/download:
+    get:
+      operationId: FilesController_download
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDownloadDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Get a download link
+      description: >-
+        Checks the caller's access, then returns a signed link that expires in
+        five minutes (`expiresAt`). The link needs no Authorization header; the
+        browser saves it under the file's original name. With S3 storage it is a
+        presigned S3 URL; with the development `local` driver it points at this
+        API.
+info:
+  title: Gridline API
+  description: >-
+    Multi-tenant SaaS backend for spreadsheet upload, per-file permissions, and
+    seat + usage billing.
+  version: 0.1.0
+  contact: {}
+tags: []
+servers:
+  - url: /api
+  - url: http://localhost:4000
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    UploadFileBodyDoc:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: &ref_2
+            - company
+            - restricted
+          default: company
+        grantedUserIds:
+          description: >-
+            With `restricted`: the colleagues who may also see the file (the
+            uploader and admins always can). Repeat the field, or send a JSON
+            array. Empty means the uploader and admins only.
+          type: array
+          items:
+            type: string
+        file:
+          type: string
+          format: binary
+          description: A CSV, XLS or XLSX file, up to 25 MB.
+      required:
+        - file
+    FileDto:
+      type: object
+      properties:
+        id:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+          description: From the file's bytes, not from what the client claimed.
+        sizeBytes:
+          type: number
+        visibility:
+          type: string
+          enum: *ref_2
+        uploaderId:
+          type: string
+        grantedUserIds:
+          nullable: true
+          description: >-
+            Who a restricted file is shared with. Shown only to the uploader and
+            admins, and only on single-file responses; null everywhere else.
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - originalName
+        - mimeType
+        - sizeBytes
+        - visibility
+        - uploaderId
+        - grantedUserIds
+        - createdAt
+    CursorMetaDto:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` to get the next page; null on the last page.
+        hasMore:
+          type: boolean
+      required:
+        - nextCursor
+        - hasMore
+    FilePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    FileDownloadDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: >-
+            A short-lived link. Fetch it directly; it needs no Authorization
+            header.
+        expiresAt:
+          type: string
+          format: date-time
+          description: The link stops working at this instant.
+      required:
+        - url
+        - expiresAt
+    UpdateFileDto:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: *ref_2
+        grantedUserIds:
+          description: >-
+            REPLACES the set of colleagues granted access. Only meaningful for a
+            `restricted` file; switching to `company` clears it.
+          type: array
+          items:
+            type: string
+    MessageResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: If that account exists, an email is on its way.
+      required:
+        - message
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: &ref_3
+            - free
+            - basic
+            - premium
+        maxEmployees:
+          type: number
+          nullable: true
+          description: Employees allowed; null = unlimited.
+        maxSeats:
+          type: number
+          nullable: true
+          description: Seats = the admin plus employees; null = unlimited.
+        filesPerPeriod:
+          type: number
+          description: Files per billing period before the over-quota rule applies.
+        seatPriceCents:
+          type: number
+          description: Cents per employee per full period (prorated by active days).
+        basePriceCents:
+          type: number
+          description: Flat cents per full period.
+        overagePerFileCents:
+          type: number
+          nullable: true
+          description: >-
+            Cents per file over the quota; null = uploads over the quota are
+            refused instead.
+      required:
+        - plan
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+        - seatPriceCents
+        - basePriceCents
+        - overagePerFileCents
+    PeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        key:
+          type: string
+          example: '2026-03-01'
+          description: The period start date; the label usage is counted under.
+        days:
+          type: number
+          example: 31
+      required:
+        - start
+        - end
+        - key
+        - days
+    LimitsDto:
+      type: object
+      properties:
+        maxEmployees:
+          type: number
+          nullable: true
+        maxSeats:
+          type: number
+          nullable: true
+        filesPerPeriod:
+          type: number
+      required:
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+    UsageDto:
+      type: object
+      properties:
+        files:
+          type: number
+          description: Files uploaded in the current period.
+        employees:
+          type: number
+          description: Employees holding a seat — invited and active.
+        seats:
+          type: number
+          description: 'Seats in use: the admin plus those employees.'
+      required:
+        - files
+        - employees
+        - seats
+    SubscriptionDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_3
+        billingAnchorDay:
+          type: number
+          minimum: 1
+          maximum: 31
+          description: Day of the month the period rolls over on.
+        period:
+          $ref: '#/components/schemas/PeriodDto'
+        limits:
+          $ref: '#/components/schemas/LimitsDto'
+        usage:
+          $ref: '#/components/schemas/UsageDto'
+        nextDueDate:
+          type: string
+          format: date-time
+          description: When the current period ends and is invoiced.
+      required:
+        - plan
+        - billingAnchorDay
+        - period
+        - limits
+        - usage
+        - nextDueDate
+    ChoosePlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_3
+      required:
+        - plan
+    PlanChangeResultDto:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/SubscriptionDto'
+        previousPlan:
+          type: string
+          enum: *ref_3
+        prorationCents:
+          type: number
+          description: >-
+            Total cents of the invoice that closed the outgoing plan (0 if
+            nothing was owed yet).
+      required:
+        - subscription
+        - previousPlan
+        - prorationCents
+    RegisterCompanyDto:
+      type: object
+      properties:
+        companyName:
+          type: string
+          example: Acme Logistics
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: &ref_4
+            - finance
+            - e-commerce
+            - healthcare
+            - education
+            - logistics
+            - manufacturing
+            - media
+            - real-estate
+            - technology
+            - other
+      required:
+        - companyName
+        - email
+        - password
+        - country
+        - industry
+    RegisterCompanyResponseDto:
+      type: object
+      properties:
+        companyId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          example: pending_activation
+        message:
+          type: string
+          example: Check your inbox to activate your account.
+      required:
+        - companyId
+        - userId
+        - status
+        - message
+    EmailOnlyDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+      required:
+        - email
+    LoginDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+        password:
+          type: string
+          maxLength: 128
+      required:
+        - email
+        - password
+    SessionDto:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: 'Short-lived JWT. Send as `Authorization: Bearer`.'
+        refreshToken:
+          type: string
+          description: Opaque, single-use. Rotated on every refresh.
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: number
+          description: Seconds until the access token expires.
+          example: 900
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+    RefreshTokenDto:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+    ResetPasswordDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the reset email.
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
+    ChangePasswordDto:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - currentPassword
+        - newPassword
+    UserProfileDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invites are sent to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: &ref_5
+            - admin
+            - employee
+        status:
+          type: string
+          enum: &ref_6
+            - invited
+            - active
+            - disabled
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+    CompanyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        billingEmail:
+          type: string
+          description: Where invoices and account notices go.
+        country:
+          type: string
+          example: GE
+        industry:
+          type: string
+          enum: *ref_4
+        status:
+          type: string
+          enum:
+            - pending_activation
+            - active
+            - suspended
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - name
+        - billingEmail
+        - country
+        - industry
+        - status
+        - activatedAt
+    MeDto:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfileDto'
+        company:
+          $ref: '#/components/schemas/CompanyDto'
+      required:
+        - user
+        - company
+    GoogleUrlDto:
+      type: object
+      properties:
+        intent:
+          type: string
+          enum:
+            - login
+            - register
+            - invite
+          description: >-
+            `login` and `register` behave identically (a known Google account
+            signs in, an unknown one is offered company registration); the value
+            is for the frontend. `invite` binds the Google account to the
+            invited user.
+        inviteToken:
+          type: string
+          description: 'Required for `invite`: the token from the invitation email.'
+      required:
+        - intent
+    OAuthUrlDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Send the browser here. Google sends it back to the API callback.
+      required:
+        - url
+    OAuthExchangeDto:
+      type: object
+      properties:
+        code:
+          type: string
+          description: >-
+            The single-use `code` from the redirect to
+            `/session/oauth-complete`. Valid for 60 seconds.
+      required:
+        - code
+    OAuthRegistrationTokenDto:
+      type: object
+      properties:
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+      required:
+        - oauthRegistrationToken
+    OAuthRegistrationPreviewDto:
+      type: object
+      properties:
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address to prefill, or null when Google reported a relay/alias
+            address (ask the person for one).
+        emailVerified:
+          type: boolean
+          description: >-
+            True when Google vouches for `email`; registration then needs no
+            activation email.
+        name:
+          type: string
+          nullable: true
+      required:
+        - email
+        - emailVerified
+        - name
+    OAuthRegisterCompanyDto:
+      type: object
+      properties:
+        companyName:
+          type: string
+          example: Acme Logistics
+          minLength: 2
+          maxLength: 120
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: *ref_4
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+      required:
+        - companyName
+        - country
+        - industry
+        - oauthRegistrationToken
+    OAuthRegisterCompanyResponseDto:
+      type: object
+      properties:
+        companyId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending_activation
+            - active
+        message:
+          type: string
+        session:
+          nullable: true
+          description: >-
+            Present when Google vouched for the address, so the company is
+            active at once and the person is signed in.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SessionDto'
+      required:
+        - companyId
+        - userId
+        - status
+        - message
+    IdentityDto:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum:
+            - password
+            - google
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address as that provider reports it; may differ from the work
+            address.
+        emailVerified:
+          type: boolean
+        lastUsedAt:
+          format: date-time
+          type: string
+          nullable: true
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - provider
+        - email
+        - emailVerified
+        - lastUsedAt
+        - createdAt
+    IdentityListDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentityDto'
+      required:
+        - data
+    UpdateMeDto:
+      type: object
+      properties:
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
+    UpdateCompanyDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: *ref_4
+        billingEmail:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_5
+        status:
+          type: string
+          enum: *ref_6
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -6,6 +9,9 @@ import { z } from 'zod';
 import { AppModule } from '#/app.module.js';
 import { SeatInterval } from '#/billing/seat-interval.entity.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
+import { LocalStorageDriver } from '#/core/storage/local-storage.driver.js';
+import { STORAGE_DRIVER } from '#/core/storage/storage-driver.js';
+import { FileAsset } from '#/files/file-asset.entity.js';
 import { PasswordHasher } from '#/auth/crypto/password-hasher.js';
 import { GOOGLE_OAUTH, type OAuthProfile } from '#/auth/oauth/oauth-provider.js';
 import { CLOCK } from '#/core/clock/clock.js';
@@ -71,6 +77,9 @@ export class AppHarness {
     readonly clock: FakeClock,
     readonly mail: MailCapture,
     readonly google: FakeGoogleOAuthProvider,
+    /** Local-disk storage in a temp dir; spy on its methods to inject failures. */
+    readonly storage: LocalStorageDriver,
+    readonly storageDir: string,
     private readonly runner: TaskRunner,
     private readonly db: PostgresTestContext,
   ) {}
@@ -80,6 +89,13 @@ export class AppHarness {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
     const google = new FakeGoogleOAuthProvider();
+    const storageDir = await mkdtemp(join(tmpdir(), 'gridline-storage-'));
+    const storage = new LocalStorageDriver({
+      root: storageDir,
+      baseUrl: 'http://localhost:4000',
+      secret: 'harness-secret',
+      clock,
+    });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(CLOCK)
@@ -88,12 +104,23 @@ export class AppHarness {
       .useValue(mail)
       .overrideProvider(GOOGLE_OAUTH)
       .useValue(options.googleConfigured === false ? null : google)
+      .overrideProvider(STORAGE_DRIVER)
+      .useValue(storage)
       .compile();
 
     const app = moduleRef.createNestApplication();
     await app.init();
 
-    return new AppHarness(app, clock, mail, google, app.get(TaskRunner), await PostgresTestContext.start());
+    return new AppHarness(
+      app,
+      clock,
+      mail,
+      google,
+      storage,
+      storageDir,
+      app.get(TaskRunner),
+      await PostgresTestContext.start(),
+    );
   }
 
   /** Clean slate between tests: empty tables, empty outbox, clock back at the start. */
@@ -102,11 +129,14 @@ export class AppHarness {
     this.mail.clear();
     this.google.clear();
     this.clock.set(START);
+    await rm(this.storageDir, { recursive: true, force: true });
+    await mkdir(this.storageDir, { recursive: true });
   }
 
   async stop(): Promise<void> {
     await this.app.close();
     await this.db.stop();
+    await rm(this.storageDir, { recursive: true, force: true });
   }
 
   http(): ReturnType<typeof request> {
@@ -253,12 +283,35 @@ export class AppHarness {
       .expect(201);
   }
 
-  /** `count` uploads recorded in the billing period whose start date is `periodKey`. */
+  /**
+   * `count` uploads recorded in the billing period whose start date is `periodKey`.
+   * A usage event has a real foreign key to its file, so each one gets a real
+   * (bare, unstored) file row, uploaded by the company's first user.
+   */
   async seedUsage(companyId: string, count: number, periodKey: string): Promise<void> {
     if (count === 0) return;
-    await this.dataSource.getRepository(UsageEvent).insert(
-      Array.from({ length: count }, () => ({ companyId, fileId: randomUUID(), periodKey })),
-    );
+
+    const uploader = await this.dataSource
+      .getRepository(User)
+      .findOneOrFail({ where: { companyId }, order: { createdAt: 'ASC' } });
+    const files = Array.from({ length: count }, () => {
+      const id = randomUUID();
+      return {
+        id,
+        companyId,
+        uploaderId: uploader.id,
+        originalName: 'seeded.csv',
+        mimeType: 'text/csv',
+        sizeBytes: 1,
+        storageKey: `seeded/${id}`,
+        visibility: 'company' as const,
+        deletedAt: null,
+      };
+    });
+    await this.dataSource.getRepository(FileAsset).insert(files);
+    await this.dataSource
+      .getRepository(UsageEvent)
+      .insert(files.map((file) => ({ companyId, fileId: file.id, periodKey })));
   }
 
   /** A stretch of billable seat time for an existing employee (Phase 4 writes these for real). */
@@ -355,6 +408,38 @@ export class AppHarness {
   private requireSession(session: SessionBody | undefined): SessionBody {
     if (!session) throw new Error('This Google flow needs a signed-in session');
     return session;
+  }
+
+  /**
+   * `POST /files`, ready to `.expect(...)`. Defaults to a small unique CSV so two
+   * uploads are never byte-identical by accident (which idempotency would treat as a retry).
+   */
+  upload(
+    session: SessionBody,
+    options: Partial<{
+      name: string;
+      content: Buffer | string;
+      contentType: string;
+      visibility: 'company' | 'restricted';
+      grantedUserIds: string[];
+      idempotencyKey: string;
+    }> = {},
+  ) {
+    this.counter += 1;
+    const content = options.content ?? `id,value
+${this.counter},${randomUUID()}
+`;
+    const request = this.http()
+      .post('/files')
+      .set(...this.bearer(session));
+    if (options.idempotencyKey) request.set('Idempotency-Key', options.idempotencyKey);
+    request.attach('file', Buffer.from(content), {
+      filename: options.name ?? `data-${this.counter}.csv`,
+      contentType: options.contentType ?? 'text/csv',
+    });
+    if (options.visibility) request.field('visibility', options.visibility);
+    for (const userId of options.grantedUserIds ?? []) request.field('grantedUserIds', userId);
+    return request;
   }
 
   parseSession(body: unknown): SessionBody {

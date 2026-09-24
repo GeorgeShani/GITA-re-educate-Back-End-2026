@@ -1,0 +1,72 @@
+# Prose for the `files` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+FilesController_upload:
+  summary: Upload a spreadsheet
+  description: >-
+    Multipart upload of a CSV, XLS or XLSX file up to 25 MB, with a `visibility` of
+    `company` (the default) or `restricted` and, for a restricted file,
+    `grantedUserIds` (repeat the field or send a JSON array; they must be active
+    members of the company — get their ids from `GET /companies/me/members`). The
+    type is decided from the file's **bytes**, never from its name or `Content-Type`:
+    an executable renamed `report.csv` is refused with 400, as is a Word document
+    renamed `.xls`. A refused, invalid or failed upload stores nothing and consumes no
+    quota.
+
+
+    **Quota.** Free (10 files per billing period) and Basic (100) answer **402** once
+    the period's quota is used, naming the plan, the count, the cap and the date the
+    quota resets — the upload never starts. Premium (1000 included) always accepts;
+    a file past the 1000th carries an `X-Gridline-Quota-Warning` header and a $0.50
+    overage charge. Deleting a file does not refund its quota.
+
+
+    **Idempotency.** Send an `Idempotency-Key` (a UUID) and a retry with the same key
+    and the same file replays the first response — marked `Idempotent-Replayed: true`,
+    warning header included — instead of uploading and counting twice. The same key
+    with a different request is 422; while the first request is still running, 409.
+    A request that failed is not remembered.
+
+
+    Each upload queues a data-quality report and is recorded in the audit log. Returns
+    413 above 25 MB.
+
+FilesController_list:
+  summary: List files
+  description: >-
+    The files the caller may see: everything company-wide, plus restricted files they
+    uploaded or were granted, and every file for an admin. Cursor-paginated, newest
+    first (`sort=createdAt` reverses it); follow `meta.nextCursor` until `hasMore` is
+    false. Filters (`mimeType`, `visibility`, `uploaderId`, `uploadedAfter`,
+    `uploadedBefore`) only ever narrow that set. Rows never include where the bytes are
+    stored or who a restricted file is shared with.
+
+FilesController_get:
+  summary: Get a file
+  description: >-
+    A file the caller cannot see is **404**, never 403, so its existence is not
+    disclosed. The uploader and admins also get `grantedUserIds`, the colleagues a
+    restricted file is shared with.
+
+FilesController_download:
+  summary: Get a download link
+  description: >-
+    Checks the caller's access, then returns a signed link that expires in five
+    minutes (`expiresAt`). The link needs no Authorization header; the browser saves it
+    under the file's original name. With S3 storage it is a presigned S3 URL; with the
+    development `local` driver it points at this API.
+
+FilesController_update:
+  summary: Change who can see a file
+  description: >-
+    Uploader or admin only. `visibility` switches between `company` and `restricted`;
+    `grantedUserIds` REPLACES the set of colleagues granted access (only for a
+    restricted file — switching to `company` clears it). A colleague who can see the
+    file but did not upload it gets 403; someone who cannot see it gets 404. The change
+    takes effect on the next request and is audited.
+
+FilesController_remove:
+  summary: Delete a file
+  description: >-
+    Uploader or admin only. A soft delete: the file disappears from every listing and
+    its stored object is removed, but the row and its history are kept and the upload
+    still counts toward this period's quota.

@@ -14,9 +14,17 @@ export abstract class BaseEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  /**
+   * Millisecond precision, deliberately. Postgres `now()` is microsecond, but a
+   * JS `Date` — and therefore a keyset cursor — is milliseconds: with the extra
+   * digits kept, a cursor's truncated timestamp sorts BEFORE the row it names and
+   * every page repeats the previous page's last row (proven in
+   * `paginate.integration.spec.ts`). The database rounds to what the app can
+   * represent, so the two always agree.
+   */
+  @CreateDateColumn({ type: 'timestamptz', precision: 3 })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamptz', precision: 3 })
   updatedAt!: Date;
 }

@@ -23,6 +23,7 @@ import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { AuthToken } from '#/database/entities/auth-token.entity.js';
 import { Company } from '#/database/entities/company.entity.js';
+import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
@@ -159,7 +160,7 @@ export class EmployeesService {
    * relying on `status` alone means nothing that only checks a token or an
    * identity can resurrect them.
    *
-   * Later phases hook in here: file grants (Phase 6) and API keys (Phase 10).
+   * Later phases hook in here: API keys (Phase 10).
    */
   async disable(id: string): Promise<User> {
     const companyId = this.context.requireCompanyId();
@@ -188,6 +189,9 @@ export class EmployeesService {
         .execute();
 
       await manager.delete(AuthIdentity, { userId: target.id });
+      // Access they were granted to restricted files goes with them. Files they
+      // uploaded stay with the company; reactivating does not bring grants back.
+      await manager.delete(FileAccessGrant, { userId: target.id });
       await this.sessions.revokeAllForUser(manager, target.id);
       await manager
         .createQueryBuilder()

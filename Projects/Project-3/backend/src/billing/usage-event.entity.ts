@@ -1,5 +1,6 @@
-import { Column, Entity, Index } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from 'typeorm';
 import { BaseEntity } from '#/database/base.entity.js';
+import { FileAsset } from '#/files/file-asset.entity.js';
 
 /**
  * One unit of quota per successful upload. `periodKey` is the billing period's
@@ -7,14 +8,19 @@ import { BaseEntity } from '#/database/base.entity.js';
  * lookup on the index below: the hot path for both the per-upload quota check
  * and the billing rollup.
  *
- * `fileId` is a plain column for now; Phase 6 adds the foreign key once
- * `file_asset` exists, and starts writing events.
+ * `fileId` is a real foreign key. Files are only ever soft-deleted, so an event
+ * never dangles — and deleting a file deliberately does NOT refund its quota: an
+ * upload counted when it happened.
  */
 @Entity({ name: 'usage_event' })
 @Index('idx_usage_event_company_period', ['companyId', 'periodKey'])
 export class UsageEvent extends BaseEntity {
   @Column({ type: 'uuid' })
   companyId!: string;
+
+  @ManyToOne(() => FileAsset)
+  @JoinColumn({ name: 'fileId' })
+  file?: Relation<FileAsset>;
 
   @Column({ type: 'uuid' })
   fileId!: string;

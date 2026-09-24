@@ -208,7 +208,7 @@ document.
   are silently dropped from billing.
 - `Invoice.lineItems` is `jsonb`: read it only through `parseLineItems` (Zod).
   `UNIQUE (companyId, periodStart)` is what makes rollover idempotent.
-- `UsageEvent.fileId` has no foreign key yet; Phase 6 adds it with `file_asset`.
+- `UsageEvent.fileId` is a real FK to `file_asset` (Phase 6); files are only soft-deleted, so events never dangle.
 - **Global guards live in `AccessControlModule`, in order:** `AuthGuard` →
   `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
   produced. `@RequiresSubscription()` (402 with no plan) goes on `employees/` and
@@ -300,6 +300,53 @@ document.
   the row that is *not* being deleted (locking the target would block regardless).
 - `route-audit.spec.ts` lets a `@Redirect()` handler declare `@ApiResponse({ status: 302 })`
   in place of a typed body.
+
+## Files *(from Phase 6 of the feature plan)*
+
+- **Type is decided from bytes, never names** (`files/validation/sniff-spreadsheet.ts`;
+  `file-type` 22.1.1 verified: xlsx → `xlsx`, OLE → `cfb`, CSV → `undefined`, `MZ` →
+  `exe`). xlsx = ZIP with spreadsheet content types; **xls = OLE2 container that holds a
+  `Workbook`/`Book` stream** (`validation/cfb.ts` parses the directory — Word `.doc`
+  and `.msi` are OLE too); CSV = `file-type` finds *nothing* + valid UTF-8, no NUL/control
+  characters, first rows parse. Empty is rejected. The stored `mimeType` is the detected
+  one. Fixtures are built in `test/support/spreadsheet-fixtures.ts` (real ZIP/OLE
+  builders), not committed binaries.
+- **`FileVisibility`** (`files/file-visibility.ts`) is THE access rule — every read of
+  `file_asset` goes `TenantScope.forCompany` → `applyFileVisibility`. An invisible file is
+  **404, never 403**; someone who can see a file but isn't uploader/admin gets 403 on
+  PATCH/DELETE. Phase 8's report/preview routes must use it too. Grantees are
+  *only* revealed (`grantedUserIds`) to uploader/admin and only on single-file responses.
+- **Upload order** (`FilesService.upload`): validate → pre-check quota (no lock; skipped if
+  the stored period has ended) → `storage.put` → ONE transaction holding
+  `lockForUpdate` (rollForward, real quota decision, file + grants + one `UsageEvent` +
+  `build_data_quality_report` task + audit) → any failure deletes the object. A rejected
+  or failed upload consumes no quota. A crash between `put` and commit can orphan an
+  object (no sweeper yet). Deleting a file soft-deletes the row, removes the object after
+  commit, and does **not** refund quota.
+- **Storage seam** (`core/storage`): `StorageDriver` (`put/get/delete/presignedGetUrl`);
+  `S3StorageDriver` default, `LocalStorageDriver` (dev/test; signed `GET /storage/local`,
+  HMAC over key+exp+name, hidden from OpenAPI, 404 unless the local driver is active).
+  Missing AWS vars → `UnconfiguredStorageDriver` (boot succeeds, first use is a 503 naming
+  what to set). Keys are server-generated (`companies/<id>/files/<fileId>`). The harness
+  swaps in a temp-dir `LocalStorageDriver` (`h.storage` — spy on it to inject failures).
+- **Idempotency** (`core/idempotency`): `@UseInterceptors(IdempotencyInterceptor)` (list it
+  *after* `FileInterceptor`). Insert-first claim (`UNIQUE (companyId, key)`), stores status,
+  body and `X-Gridline-*` headers; same key + different route/caller/body/file bytes →
+  422; still running → 409; failed requests are forgotten; claims older than 10 min are
+  reclaimed, records older than 24 h expire. On `POST /files` and `PATCH /subscriptions/me`.
+  No janitor deletes old rows yet (Phase 14).
+- **Cursor lists**: `CursorPageOf(ItemDto)` mixin (like `OffsetPageOf`), `applyCursor(qb,
+  alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor needs an
+  ordering the index covers), default newest-first. **`createdAt`/`updatedAt` are
+  `timestamptz(3)` on `BaseEntity`**: Postgres `now()` is µs but a cursor is a JS Date, and
+  the lost digits made every page repeat the previous page's last row.
+- **Multer decodes `filename` as Latin-1**; `decodeMultipartName` repairs UTF-8 names.
+  `tsconfig` `types` includes `multer` for `Express.Multer.File` / `req.file`.
+- **Tests never rely on racing.** Quota serialisation and the 409-in-progress case hold the
+  subscription row lock in an open transaction and assert the request *waits*.
+- Adding a task type worked as documented: enum migration + handler registered in
+  `TaskRunnerModule` (which now imports `FilesModule`). `build_data_quality_report` is a
+  real, durable task whose handler is a no-op until Phase 8.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -486,9 +533,9 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `company` — UNIQUE `(billingEmail)`
 - [x] `user` — UNIQUE `(companyId, email)`, leading with `companyId` — no
       separate tenant index needed, this composite already serves it
-- [ ] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
+- [x] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
       `(companyId, createdAt) WHERE deleted_at IS NULL`
-- [ ] `file_access_grant` — UNIQUE `(fileId, userId)`
+- [x] `file_access_grant` — UNIQUE `(fileId, userId)` (+ plain `userId`); `idempotency_record` — UNIQUE `(companyId, key)`
 - [x] `usage_event` — `(companyId, periodKey)`
 - [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`
 - [x] `subscription` — UNIQUE `(companyId)`; `subscription_change` —

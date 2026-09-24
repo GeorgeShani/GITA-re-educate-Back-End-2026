@@ -3,6 +3,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from '#/database/database.module.js';
 import { MailModule } from '#/core/mail/mail.module.js';
 import { SendEmailHandler } from '#/core/mail/send-email.handler.js';
+import { BuildDataQualityReportHandler } from '#/files/build-data-quality-report.handler.js';
+import { FilesModule } from '#/files/files.module.js';
 import { TASK_HANDLERS, type TaskHandler } from './task-handler.js';
 import { TaskRunner } from './task-runner.service.js';
 import { TaskScheduler } from './task-scheduler.service.js';
@@ -15,12 +17,15 @@ import { TaskScheduler } from './task-scheduler.service.js';
  * `dead` with "No handler registered for task type …".
  */
 @Module({
-  imports: [DatabaseModule, ScheduleModule.forRoot(), MailModule],
+  imports: [DatabaseModule, ScheduleModule.forRoot(), MailModule, FilesModule],
   providers: [
     {
       provide: TASK_HANDLERS,
-      inject: [SendEmailHandler],
-      useFactory: (sendEmail: SendEmailHandler): TaskHandler[] => [sendEmail],
+      inject: [SendEmailHandler, BuildDataQualityReportHandler],
+      useFactory: (
+        sendEmail: SendEmailHandler,
+        buildReport: BuildDataQualityReportHandler,
+      ): TaskHandler[] => [sendEmail, buildReport],
     },
     TaskRunner,
     TaskScheduler,

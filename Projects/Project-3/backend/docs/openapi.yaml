@@ -1,5 +1,356 @@
 openapi: 3.0.0
 paths:
+  /files:
+    post:
+      operationId: FilesController_upload
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: >-
+            A UUID. A retry with the same key and the same file replays the
+            first response instead of uploading twice.
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadFileBodyDoc'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: &ref_0
+        - bearer: []
+      tags: &ref_1
+        - files
+      summary: Upload a spreadsheet
+      description: >-
+        Multipart upload of a CSV, XLS or XLSX file up to 25 MB, with a
+        `visibility` of `company` (the default) or `restricted` and, for a
+        restricted file, `grantedUserIds` (repeat the field or send a JSON
+        array; they must be active members of the company — get their ids from
+        `GET /companies/me/members`). The type is decided from the file's
+        **bytes**, never from its name or `Content-Type`: an executable renamed
+        `report.csv` is refused with 400, as is a Word document renamed `.xls`.
+        A refused, invalid or failed upload stores nothing and consumes no
+        quota.
+
+
+        **Quota.** Free (10 files per billing period) and Basic (100) answer
+        **402** once the period's quota is used, naming the plan, the count, the
+        cap and the date the quota resets — the upload never starts. Premium
+        (1000 included) always accepts; a file past the 1000th carries an
+        `X-Gridline-Quota-Warning` header and a $0.50 overage charge. Deleting a
+        file does not refund its quota.
+
+
+        **Idempotency.** Send an `Idempotency-Key` (a UUID) and a retry with the
+        same key and the same file replays the first response — marked
+        `Idempotent-Replayed: true`, warning header included — instead of
+        uploading and counting twice. The same key with a different request is
+        422; while the first request is still running, 409. A request that
+        failed is not remembered.
+
+
+        Each upload queues a data-quality report and is recorded in the audit
+        log. Returns 413 above 25 MB.
+    get:
+      operationId: FilesController_list
+      parameters:
+        - name: cursor
+          required: false
+          in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: sort
+          required: false
+          in: query
+          description: A leading `-` is descending.
+          schema:
+            default: -createdAt
+            type: string
+            enum:
+              - -createdAt
+              - createdAt
+        - name: mimeType
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - text/csv
+              - application/vnd.ms-excel
+              - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        - name: visibility
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - company
+              - restricted
+        - name: uploaderId
+          required: false
+          in: query
+          schema:
+            format: uuid
+            type: string
+        - name: uploadedAfter
+          required: false
+          in: query
+          description: Uploaded at or after this instant.
+          schema:
+            format: date-time
+            type: string
+        - name: uploadedBefore
+          required: false
+          in: query
+          description: Uploaded before this instant.
+          schema:
+            format: date-time
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilePageDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: List files
+      description: >-
+        The files the caller may see: everything company-wide, plus restricted
+        files they uploaded or were granted, and every file for an admin.
+        Cursor-paginated, newest first (`sort=createdAt` reverses it); follow
+        `meta.nextCursor` until `hasMore` is false. Filters (`mimeType`,
+        `visibility`, `uploaderId`, `uploadedAfter`, `uploadedBefore`) only ever
+        narrow that set. Rows never include where the bytes are stored or who a
+        restricted file is shared with.
+  /files/{id}:
+    get:
+      operationId: FilesController_get
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Get a file
+      description: >-
+        A file the caller cannot see is **404**, never 403, so its existence is
+        not disclosed. The uploader and admins also get `grantedUserIds`, the
+        colleagues a restricted file is shared with.
+    patch:
+      operationId: FilesController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFileDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Change who can see a file
+      description: >-
+        Uploader or admin only. `visibility` switches between `company` and
+        `restricted`; `grantedUserIds` REPLACES the set of colleagues granted
+        access (only for a restricted file — switching to `company` clears it).
+        A colleague who can see the file but did not upload it gets 403; someone
+        who cannot see it gets 404. The change takes effect on the next request
+        and is audited.
+    delete:
+      operationId: FilesController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Delete a file
+      description: >-
+        Uploader or admin only. A soft delete: the file disappears from every
+        listing and its stored object is removed, but the row and its history
+        are kept and the upload still counts toward this period's quota.
+  /files/{id}/download:
+    get:
+      operationId: FilesController_download
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileDownloadDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Get a download link
+      description: >-
+        Checks the caller's access, then returns a signed link that expires in
+        five minutes (`expiresAt`). The link needs no Authorization header; the
+        browser saves it under the file's original name. With S3 storage it is a
+        presigned S3 URL; with the development `local` driver it points at this
+        API.
+  /subscriptions/plans:
+    get:
+      operationId: SubscriptionsController_plans
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanDto'
+      tags: &ref_2
+        - subscriptions
+      summary: List the plans
+      description: >-
+        The public plan catalog — limits and prices for Free, Basic and Premium.
+        No account needed, so a pricing page can render it. Prices are integer
+        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
+        seats.
+  /subscriptions/me:
+    get:
+      operationId: SubscriptionsController_me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_2
+      summary: Get the company's subscription
+      description: >-
+        The current plan, its limits, usage so far this period (files,
+        employees, seats), the period window and when it is next due. Available
+        to admins and employees. Returns 404 until an admin has chosen a plan.
+    post:
+      operationId: SubscriptionsController_choose
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_2
+      summary: Choose the first plan
+      description: >-
+        The mandatory step after activation: features that need a plan answer
+        402 until one is chosen. Admin only. Billing is anchored to today's day
+        of the month; the first period starts at UTC midnight today. Returns 409
+        if a plan already exists — use `PATCH /subscriptions/me` to change it.
+    patch:
+      operationId: SubscriptionsController_change
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: >-
+            A UUID. A retry with the same key and body replays the first
+            response instead of changing the plan (and billing the proration)
+            twice.
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChangeResultDto'
+      security:
+        - bearer: []
+      tags: *ref_2
+      summary: Change plan
+      description: >-
+        Upgrade or downgrade. A change is a new activation: the outgoing period
+        is closed and invoiced for the days it ran (the switch day belongs to
+        the new plan), and a fresh period opens today, re-anchoring billing to
+        today's day of the month. `prorationCents` is the total of that closing
+        invoice. Rejected with 409, naming the numbers, if the company is over
+        the target plan's employee cap or (for Free and Basic) has already
+        uploaded more files this period than it allows. Admin only.
+
+
+        Send an `Idempotency-Key` (a UUID) so a retried request is not applied —
+        or prorated and billed — twice: the same key with the same body replays
+        the first response (`Idempotent-Replayed: true`); the same key with a
+        different body is 422.
   /health:
     get:
       operationId: HealthController_check
@@ -20,7 +371,7 @@ paths:
                     example: ok
                   info:
                     type: object
-                    example: &ref_0
+                    example: &ref_3
                       database:
                         status: up
                         responseTime: 12
@@ -61,7 +412,7 @@ paths:
                     nullable: true
                   details:
                     type: object
-                    example: *ref_0
+                    example: *ref_3
                     additionalProperties:
                       type: object
                       required:
@@ -93,7 +444,7 @@ paths:
                   info:
                     type: object
                     example:
-                      database: &ref_1
+                      database: &ref_4
                         status: up
                         responseTime: 12
                     additionalProperties:
@@ -115,7 +466,7 @@ paths:
                   error:
                     type: object
                     example:
-                      redis: &ref_2
+                      redis: &ref_5
                         status: down
                         message: Could not connect
                         responseTime: 3005
@@ -138,8 +489,8 @@ paths:
                   details:
                     type: object
                     example:
-                      database: *ref_1
-                      redis: *ref_2
+                      database: *ref_4
+                      redis: *ref_5
                     additionalProperties:
                       type: object
                       required:
@@ -180,7 +531,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegisterCompanyResponseDto'
-      tags: &ref_3
+      tags: &ref_6
         - auth
       summary: Register a company
       description: >-
@@ -208,7 +559,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Activate a company
       description: >-
         Spends the single-use token from the activation email and turns the
@@ -232,7 +583,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Resend the activation email
       description: >-
         Issues a fresh activation link and invalidates the previous one. Always
@@ -255,7 +606,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Sign in with email and password
       description: >-
         Returns a 15-minute access token and a 30-day, single-use refresh token.
@@ -278,7 +629,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Exchange a refresh token for a new session
       description: >-
         Rotates the refresh token: the one presented is spent and a new pair is
@@ -302,7 +653,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Sign out
       description: >-
         Revokes the session the refresh token belongs to. Public, because the
@@ -325,7 +676,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Request a password reset email
       description: >-
         Emails a reset link valid for one hour to an active account. Always
@@ -348,7 +699,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Reset a forgotten password
       description: >-
         Sets a new password using the emailed token and signs the account out of
@@ -370,7 +721,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_3
+      tags: *ref_6
       summary: Accept an invitation
       description: >-
         Spends the single-use token from an invitation email, sets the
@@ -398,7 +749,7 @@ paths:
                 $ref: '#/components/schemas/SessionDto'
       security:
         - bearer: []
-      tags: *ref_3
+      tags: *ref_6
       summary: Change your password
       description: >-
         Requires the current password. Signs out every session, including this
@@ -417,7 +768,7 @@ paths:
                 $ref: '#/components/schemas/MeDto'
       security:
         - bearer: []
-      tags: *ref_3
+      tags: *ref_6
       summary: Get the signed-in user and their company
       description: >-
         The caller's own user record and company. Role and status come from the
@@ -440,7 +791,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthUrlDto'
-      tags: &ref_4
+      tags: &ref_7
         - auth
       summary: Start signing in, registering or accepting an invite with Google
       description: >-
@@ -474,7 +825,7 @@ paths:
       responses:
         '302':
           description: Redirects the browser to the web app.
-      tags: *ref_4
+      tags: *ref_7
       summary: Google redirects the browser back here
       description: >-
         Not called by API clients: Google navigates the browser to it, and it
@@ -509,7 +860,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_4
+      tags: *ref_7
       summary: Trade the callback's code for a session
       description: >-
         Called by the web app's server after the redirect to
@@ -533,7 +884,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthRegistrationPreviewDto'
-      tags: *ref_4
+      tags: *ref_7
       summary: Read what a Google registration token prefills
       description: >-
         Decodes the `oauthRegistration` token from the redirect to `/register`
@@ -558,7 +909,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthRegisterCompanyResponseDto'
-      tags: *ref_4
+      tags: *ref_7
       summary: Register a company with a Google account
       description: >-
         The same form as `POST /auth/register-company` minus the password
@@ -582,7 +933,7 @@ paths:
                 $ref: '#/components/schemas/OAuthUrlDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_7
       summary: Start linking a Google account to the signed-in user
       description: >-
         "Settings → Linked accounts." Returns the Google URL and sets the same
@@ -604,7 +955,7 @@ paths:
                 $ref: '#/components/schemas/IdentityListDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_7
       summary: List your sign-in methods
       description: >-
         The caller's own identities — password and/or Google — with the address
@@ -628,7 +979,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponseDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_7
       summary: Remove a sign-in method
       description: >-
         Removes one of the caller's own identities. Returns 409 when it is the
@@ -673,9 +1024,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MemberDto'
-      security: &ref_5
+      security: &ref_8
         - bearer: []
-      tags: &ref_6
+      tags: &ref_9
         - companies
       summary: List members (names only)
       description: >-
@@ -701,107 +1052,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CompanyDto'
-      security: *ref_5
-      tags: *ref_6
+      security: *ref_8
+      tags: *ref_9
       summary: Update your company profile
       description: >-
         Admin only; employees receive 403. Changes only the fields named:
         `name`, `country`, `industry`, `billingEmail`. The company is always the
         caller's own, taken from the session — there is no way to name another
         tenant. A `billingEmail` already used by another company returns 409.
-  /subscriptions/plans:
-    get:
-      operationId: SubscriptionsController_plans
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlanDto'
-      tags: &ref_7
-        - subscriptions
-      summary: List the plans
-      description: >-
-        The public plan catalog — limits and prices for Free, Basic and Premium.
-        No account needed, so a pricing page can render it. Prices are integer
-        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
-        seats.
-  /subscriptions/me:
-    get:
-      operationId: SubscriptionsController_me
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionDto'
-      security:
-        - bearer: []
-      tags: *ref_7
-      summary: Get the company's subscription
-      description: >-
-        The current plan, its limits, usage so far this period (files,
-        employees, seats), the period window and when it is next due. Available
-        to admins and employees. Returns 404 until an admin has chosen a plan.
-    post:
-      operationId: SubscriptionsController_choose
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChoosePlanDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionDto'
-      security:
-        - bearer: []
-      tags: *ref_7
-      summary: Choose the first plan
-      description: >-
-        The mandatory step after activation: features that need a plan answer
-        402 until one is chosen. Admin only. Billing is anchored to today's day
-        of the month; the first period starts at UTC midnight today. Returns 409
-        if a plan already exists — use `PATCH /subscriptions/me` to change it.
-    patch:
-      operationId: SubscriptionsController_change
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChoosePlanDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanChangeResultDto'
-      security:
-        - bearer: []
-      tags: *ref_7
-      summary: Change plan
-      description: >-
-        Upgrade or downgrade. A change is a new activation: the outgoing period
-        is closed and invoiced for the days it ran (the switch day belongs to
-        the new plan), and a fresh period opens today, re-anchoring billing to
-        today's day of the month. `prorationCents` is the total of that closing
-        invoice. Rejected with 409, naming the numbers, if the company is over
-        the target plan's employee cap or (for Free and Basic) has already
-        uploaded more files this period than it allows. Admin only.
   /employees:
     post:
       operationId: EmployeesController_invite
@@ -819,9 +1077,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: &ref_8
+      security: &ref_10
         - bearer: []
-      tags: &ref_9
+      tags: &ref_11
         - employees
       summary: Invite an employee
       description: >-
@@ -873,8 +1131,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeePageDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_10
+      tags: *ref_11
       summary: List the company's people
       description: >-
         Full records, offset-paginated, oldest first. Filter with `status`
@@ -897,8 +1155,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_10
+      tags: *ref_11
       summary: Resend an invitation
       description: >-
         Issues a fresh link and kills the previous one. Only for someone still
@@ -919,8 +1177,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_10
+      tags: *ref_11
       summary: Remove an employee
       description: >-
         A soft-disable, not a delete. The employee is signed out everywhere,
@@ -944,8 +1202,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_10
+      tags: *ref_11
       summary: Bring a removed employee back
       description: >-
         Their login was deleted on removal, so this sends a fresh invitation:
@@ -970,6 +1228,273 @@ components:
       bearerFormat: JWT
       type: http
   schemas:
+    UploadFileBodyDoc:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: &ref_12
+            - company
+            - restricted
+          default: company
+        grantedUserIds:
+          description: >-
+            With `restricted`: the colleagues who may also see the file (the
+            uploader and admins always can). Repeat the field, or send a JSON
+            array. Empty means the uploader and admins only.
+          type: array
+          items:
+            type: string
+        file:
+          type: string
+          format: binary
+          description: A CSV, XLS or XLSX file, up to 25 MB.
+      required:
+        - file
+    FileDto:
+      type: object
+      properties:
+        id:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+          description: From the file's bytes, not from what the client claimed.
+        sizeBytes:
+          type: number
+        visibility:
+          type: string
+          enum: *ref_12
+        uploaderId:
+          type: string
+        grantedUserIds:
+          nullable: true
+          description: >-
+            Who a restricted file is shared with. Shown only to the uploader and
+            admins, and only on single-file responses; null everywhere else.
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - originalName
+        - mimeType
+        - sizeBytes
+        - visibility
+        - uploaderId
+        - grantedUserIds
+        - createdAt
+    CursorMetaDto:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` to get the next page; null on the last page.
+        hasMore:
+          type: boolean
+      required:
+        - nextCursor
+        - hasMore
+    FilePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    FileDownloadDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: >-
+            A short-lived link. Fetch it directly; it needs no Authorization
+            header.
+        expiresAt:
+          type: string
+          format: date-time
+          description: The link stops working at this instant.
+      required:
+        - url
+        - expiresAt
+    UpdateFileDto:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: *ref_12
+        grantedUserIds:
+          description: >-
+            REPLACES the set of colleagues granted access. Only meaningful for a
+            `restricted` file; switching to `company` clears it.
+          type: array
+          items:
+            type: string
+    MessageResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: If that account exists, an email is on its way.
+      required:
+        - message
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: &ref_13
+            - free
+            - basic
+            - premium
+        maxEmployees:
+          type: number
+          nullable: true
+          description: Employees allowed; null = unlimited.
+        maxSeats:
+          type: number
+          nullable: true
+          description: Seats = the admin plus employees; null = unlimited.
+        filesPerPeriod:
+          type: number
+          description: Files per billing period before the over-quota rule applies.
+        seatPriceCents:
+          type: number
+          description: Cents per employee per full period (prorated by active days).
+        basePriceCents:
+          type: number
+          description: Flat cents per full period.
+        overagePerFileCents:
+          type: number
+          nullable: true
+          description: >-
+            Cents per file over the quota; null = uploads over the quota are
+            refused instead.
+      required:
+        - plan
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+        - seatPriceCents
+        - basePriceCents
+        - overagePerFileCents
+    PeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        key:
+          type: string
+          example: '2026-03-01'
+          description: The period start date; the label usage is counted under.
+        days:
+          type: number
+          example: 31
+      required:
+        - start
+        - end
+        - key
+        - days
+    LimitsDto:
+      type: object
+      properties:
+        maxEmployees:
+          type: number
+          nullable: true
+        maxSeats:
+          type: number
+          nullable: true
+        filesPerPeriod:
+          type: number
+      required:
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+    UsageDto:
+      type: object
+      properties:
+        files:
+          type: number
+          description: Files uploaded in the current period.
+        employees:
+          type: number
+          description: Employees holding a seat — invited and active.
+        seats:
+          type: number
+          description: 'Seats in use: the admin plus those employees.'
+      required:
+        - files
+        - employees
+        - seats
+    SubscriptionDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_13
+        billingAnchorDay:
+          type: number
+          minimum: 1
+          maximum: 31
+          description: Day of the month the period rolls over on.
+        period:
+          $ref: '#/components/schemas/PeriodDto'
+        limits:
+          $ref: '#/components/schemas/LimitsDto'
+        usage:
+          $ref: '#/components/schemas/UsageDto'
+        nextDueDate:
+          type: string
+          format: date-time
+          description: When the current period ends and is invoiced.
+      required:
+        - plan
+        - billingAnchorDay
+        - period
+        - limits
+        - usage
+        - nextDueDate
+    ChoosePlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_13
+      required:
+        - plan
+    PlanChangeResultDto:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/SubscriptionDto'
+        previousPlan:
+          type: string
+          enum: *ref_13
+        prorationCents:
+          type: number
+          description: >-
+            Total cents of the invoice that closed the outgoing plan (0 if
+            nothing was owed yet).
+      required:
+        - subscription
+        - previousPlan
+        - prorationCents
     RegisterCompanyDto:
       type: object
       properties:
@@ -992,7 +1517,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_10
+          enum: &ref_14
             - finance
             - e-commerce
             - healthcare
@@ -1026,14 +1551,6 @@ components:
         - companyId
         - userId
         - status
-        - message
-    MessageResponseDto:
-      type: object
-      properties:
-        message:
-          type: string
-          example: If that account exists, an email is on its way.
-      required:
         - message
     EmailOnlyDto:
       type: object
@@ -1136,12 +1653,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_12
+          enum: &ref_15
             - admin
             - employee
         status:
           type: string
-          enum: &ref_13
+          enum: &ref_16
             - invited
             - active
             - disabled
@@ -1171,7 +1688,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_10
+          enum: *ref_14
         status:
           type: string
           enum:
@@ -1280,7 +1797,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_10
+          enum: *ref_14
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -1394,158 +1911,11 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_10
+          enum: *ref_14
         billingEmail:
           type: string
           example: nino@acme.com
           maxLength: 254
-    PlanDto:
-      type: object
-      properties:
-        plan:
-          type: string
-          enum: &ref_11
-            - free
-            - basic
-            - premium
-        maxEmployees:
-          type: number
-          nullable: true
-          description: Employees allowed; null = unlimited.
-        maxSeats:
-          type: number
-          nullable: true
-          description: Seats = the admin plus employees; null = unlimited.
-        filesPerPeriod:
-          type: number
-          description: Files per billing period before the over-quota rule applies.
-        seatPriceCents:
-          type: number
-          description: Cents per employee per full period (prorated by active days).
-        basePriceCents:
-          type: number
-          description: Flat cents per full period.
-        overagePerFileCents:
-          type: number
-          nullable: true
-          description: >-
-            Cents per file over the quota; null = uploads over the quota are
-            refused instead.
-      required:
-        - plan
-        - maxEmployees
-        - maxSeats
-        - filesPerPeriod
-        - seatPriceCents
-        - basePriceCents
-        - overagePerFileCents
-    PeriodDto:
-      type: object
-      properties:
-        start:
-          type: string
-          format: date-time
-          description: Inclusive, UTC midnight.
-        end:
-          type: string
-          format: date-time
-          description: Exclusive, UTC midnight.
-        key:
-          type: string
-          example: '2026-03-01'
-          description: The period start date; the label usage is counted under.
-        days:
-          type: number
-          example: 31
-      required:
-        - start
-        - end
-        - key
-        - days
-    LimitsDto:
-      type: object
-      properties:
-        maxEmployees:
-          type: number
-          nullable: true
-        maxSeats:
-          type: number
-          nullable: true
-        filesPerPeriod:
-          type: number
-      required:
-        - maxEmployees
-        - maxSeats
-        - filesPerPeriod
-    UsageDto:
-      type: object
-      properties:
-        files:
-          type: number
-          description: Files uploaded in the current period.
-        employees:
-          type: number
-          description: Employees holding a seat — invited and active.
-        seats:
-          type: number
-          description: 'Seats in use: the admin plus those employees.'
-      required:
-        - files
-        - employees
-        - seats
-    SubscriptionDto:
-      type: object
-      properties:
-        plan:
-          type: string
-          enum: *ref_11
-        billingAnchorDay:
-          type: number
-          minimum: 1
-          maximum: 31
-          description: Day of the month the period rolls over on.
-        period:
-          $ref: '#/components/schemas/PeriodDto'
-        limits:
-          $ref: '#/components/schemas/LimitsDto'
-        usage:
-          $ref: '#/components/schemas/UsageDto'
-        nextDueDate:
-          type: string
-          format: date-time
-          description: When the current period ends and is invoiced.
-      required:
-        - plan
-        - billingAnchorDay
-        - period
-        - limits
-        - usage
-        - nextDueDate
-    ChoosePlanDto:
-      type: object
-      properties:
-        plan:
-          type: string
-          enum: *ref_11
-      required:
-        - plan
-    PlanChangeResultDto:
-      type: object
-      properties:
-        subscription:
-          $ref: '#/components/schemas/SubscriptionDto'
-        previousPlan:
-          type: string
-          enum: *ref_11
-        prorationCents:
-          type: number
-          description: >-
-            Total cents of the invoice that closed the outgoing plan (0 if
-            nothing was owed yet).
-      required:
-        - subscription
-        - previousPlan
-        - prorationCents
     InviteEmployeeDto:
       type: object
       properties:
@@ -1574,10 +1944,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_12
+          enum: *ref_15
         status:
           type: string
-          enum: *ref_13
+          enum: *ref_16
         activatedAt:
           type: string
           format: date-time

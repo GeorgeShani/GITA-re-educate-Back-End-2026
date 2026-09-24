@@ -1,0 +1,129 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseFilePipeBuilder,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Res,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiHeader,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import type { Response } from 'express';
+import { Roles } from '#/common/auth/roles.decorator.js';
+import { mapPageData } from '#/common/pagination/paginate.js';
+import { MessageResponseDto } from '#/common/response/message-response.dto.js';
+import { toDto } from '#/common/response/to-dto.js';
+import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
+import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
+import { FileDownloadDto, FileDto, FilePageDto } from './dto/file.dto.js';
+import { FilesQueryDto } from './dto/files-query.dto.js';
+import { UpdateFileDto } from './dto/update-file.dto.js';
+import { UploadFileBodyDoc, UploadFileDto } from './dto/upload-file.dto.js';
+import { FilesService } from './files.service.js';
+import { MAX_UPLOAD_BYTES } from './spreadsheet-types.js';
+import { SpreadsheetFileValidator } from './validation/spreadsheet-file.validator.js';
+
+/** The header a Premium upload past its included quota carries. */
+const QUOTA_WARNING_HEADER = 'X-Gridline-Quota-Warning';
+
+/**
+ * Every route needs a plan (402 otherwise) and a signed-in user; WHICH files a user
+ * can reach is decided by the one visibility rule in the service, not here. A file
+ * the caller cannot see is a 404 everywhere below.
+ */
+@ApiTags('files')
+@ApiBearerAuth()
+@RequiresSubscription()
+@Roles('admin', 'employee')
+@Controller('files')
+export class FilesController {
+  constructor(private readonly files: FilesService) {}
+
+  /**
+   * `FileInterceptor` runs first (it parses the multipart body), then
+   * `IdempotencyInterceptor`, which needs the parsed file to tell a retry from a
+   * different upload that reused a key.
+   */
+  @Post()
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }),
+    IdempotencyInterceptor,
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UploadFileBodyDoc })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description:
+      'A UUID. A retry with the same key and the same file replays the first response instead of uploading twice.',
+  })
+  @ApiCreatedResponse({ type: FileDto })
+  async upload(
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addValidator(new SpreadsheetFileValidator())
+        .build({ fileIsRequired: true, errorHttpStatusCode: 400 }),
+    )
+    file: Express.Multer.File,
+    @Body() dto: UploadFileDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<FileDto> {
+    const uploaded = await this.files.upload(file, dto);
+    if (uploaded.quotaWarning) res.setHeader(QUOTA_WARNING_HEADER, uploaded.quotaWarning);
+    return FileDto.from(uploaded.file, uploaded.grantedUserIds);
+  }
+
+  @Get()
+  @ApiOkResponse({ type: FilePageDto })
+  async list(@Query() query: FilesQueryDto): Promise<FilePageDto> {
+    const page = await this.files.list(query);
+    return toDto(FilePageDto, mapPageData(page, (file) => FileDto.from(file)));
+  }
+
+  @Get(':id')
+  @ApiOkResponse({ type: FileDto })
+  async get(@Param('id', ParseUUIDPipe) id: string): Promise<FileDto> {
+    const { file, grantedUserIds } = await this.files.get(id);
+    return FileDto.from(file, grantedUserIds);
+  }
+
+  @Get(':id/download')
+  @ApiOkResponse({ type: FileDownloadDto })
+  async download(@Param('id', ParseUUIDPipe) id: string): Promise<FileDownloadDto> {
+    return toDto(FileDownloadDto, await this.files.downloadLink(id));
+  }
+
+  @Patch(':id')
+  @ApiOkResponse({ type: FileDto })
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateFileDto,
+  ): Promise<FileDto> {
+    const { file, grantedUserIds } = await this.files.update(id, dto);
+    return FileDto.from(file, grantedUserIds);
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @ApiOkResponse({ type: MessageResponseDto })
+  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<MessageResponseDto> {
+    await this.files.remove(id);
+    return toDto(MessageResponseDto, { message: 'File deleted.' });
+  }
+}

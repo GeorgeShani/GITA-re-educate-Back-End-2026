@@ -84,6 +84,32 @@ describe('database indexes', () => {
     expect(index?.indexdef).toMatch(/\("userId", provider\)/);
   });
 
+  it('indexes file_asset on (companyId, deletedAt, createdAt), the keyset index for GET /files', () => {
+    const index = indexes.find((row) => row.indexname === 'idx_file_asset_company');
+    expect(index?.tablename).toBe('file_asset');
+    expect(index?.indexdef).toMatch(/\("companyId", "deletedAt", "createdAt"\)/);
+  });
+
+  it('keeps a PARTIAL index over live files only, so deleted rows never bloat the hot path', () => {
+    const index = indexes.find((row) => row.indexname === 'idx_file_asset_company_live');
+    expect(index?.tablename).toBe('file_asset');
+    expect(index?.indexdef).toMatch(/\("companyId", "createdAt"\)/);
+    expect(index?.indexdef).toMatch(/WHERE.*"deletedAt" IS NULL/);
+  });
+
+  it('allows one grant per (file, person), and indexes grants by person', () => {
+    const unique = find('file_access_grant', 'fileId', 'userId');
+    expect(unique?.indexdef).toMatch(/UNIQUE/);
+    expect(indexes.some((row) => row.tablename === 'file_access_grant' && /\("userId"\)/.test(row.indexdef))).toBe(true);
+  });
+
+  it('allows one idempotency record per (company, key), leading with companyId', () => {
+    const index = find('idempotency_record', 'companyId', 'key');
+    expect(index?.indexdef).toMatch(/UNIQUE/);
+    // Column order matters: leading with companyId is what makes it the tenant index too.
+    expect(index?.indexdef).toMatch(/\("companyId", key\)/);
+  });
+
   it('indexes refresh_token.familyId, which family revocation updates by', () => {
     expect(find('refresh_token', 'familyId')).toBeDefined();
   });

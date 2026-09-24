@@ -1,5 +1,6 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 /**
  * `cursor`/`limit` — used by append-only, potentially large, time-ordered
@@ -9,10 +10,15 @@ import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
  * where the actual encoding format lives.
  */
 export class CursorQueryDto {
+  @ApiPropertyOptional({
+    description: 'Opaque; take it from `meta.nextCursor` of the previous page.',
+  })
   @IsOptional()
   @IsString()
+  @MaxLength(200)
   cursor?: string;
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
