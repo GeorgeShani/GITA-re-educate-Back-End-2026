@@ -184,6 +184,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/accept-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invitation
+         * @description Spends the single-use token from an invitation email, sets the employee's password, activates them and signs them in — returning the same session as login. The link itself proves who they are, so nothing compares email addresses. Billing for their seat starts now, not when they were invited. An unknown, expired, used or superseded link returns 400.
+         */
+        post: operations["AuthController_acceptInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/password": {
         parameters: {
             query?: never;
@@ -242,6 +262,26 @@ export interface paths {
          * @description Changes the signed-in person's own `fullName` — the personal-data half of "change password and personal data". Available to admins and employees.
          */
         patch: operations["UsersController_updateMe"];
+        trace?: never;
+    };
+    "/companies/me/members": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List members (names only)
+         * @description Any signed-in user. Returns `{ id, fullName }` for each active person in the company and nothing else — no email, role or status — so an employee can name grantees for a restricted file without being able to list or profile colleagues. People who are invited-but-not-yet-joined or removed are left out.
+         */
+        get: operations["CompaniesController_members"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/companies/me": {
@@ -312,6 +352,90 @@ export interface paths {
         patch: operations["SubscriptionsController_change"];
         trace?: never;
     };
+    "/employees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the company's people
+         * @description Full records, offset-paginated, oldest first. Filter with `status` (`invited`, `active`, `disabled`) and `role`. Removed employees are included so they can be reactivated. Employees cannot call this — they get the names-only `GET /companies/me/members` instead.
+         */
+        get: operations["EmployeesController_list"];
+        put?: never;
+        /**
+         * Invite an employee
+         * @description Creates an `invited` employee and emails them a link valid for 7 days. An invitation holds a seat immediately but bills nothing until they accept, so the seat cap counts `invited` and `active` people together: Free allows none, Basic 10, Premium is unlimited. Over the cap returns 409 with the numbers. The address must not already belong to a Gridline account (409).
+         */
+        post: operations["EmployeesController_invite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/employees/{id}/resend-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend an invitation
+         * @description Issues a fresh link and kills the previous one. Only for someone still `invited`; anyone else returns 409.
+         */
+        post: operations["EmployeesController_resendInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/employees/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove an employee
+         * @description A soft-disable, not a delete. The employee is signed out everywhere, their login is removed, any pending link is spent, their seat is freed and billing for it stops today. The files they uploaded stay with the company. You cannot remove yourself or an admin. Removing someone twice returns 409.
+         */
+        delete: operations["EmployeesController_disable"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/employees/{id}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bring a removed employee back
+         * @description Their login was deleted on removal, so this sends a fresh invitation: they become `invited`, hold a seat again (the plan's cap is re-checked, 409 if full) and set a password when they accept. Only for a removed employee.
+         */
+        post: operations["EmployeesController_reactivate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -372,6 +496,11 @@ export interface components {
             token: string;
             newPassword: string;
         };
+        AcceptInviteDto: {
+            /** @description The single-use token from the invitation email. */
+            token: string;
+            password: string;
+        };
         ChangePasswordDto: {
             currentPassword: string;
             newPassword: string;
@@ -408,6 +537,10 @@ export interface components {
         };
         UpdateMeDto: {
             /** @example Nino Beridze */
+            fullName: string;
+        };
+        MemberDto: {
+            id: string;
             fullName: string;
         };
         UpdateCompanyDto: {
@@ -494,6 +627,44 @@ export interface components {
             previousPlan: "free" | "basic" | "premium";
             /** @description Total cents of the invoice that closed the outgoing plan (0 if nothing was owed yet). */
             prorationCents: number;
+        };
+        InviteEmployeeDto: {
+            /**
+             * @description Where the invitation is sent. Also the address they sign in with.
+             * @example nino@acme.com
+             */
+            email: string;
+            /** @example Nino Beridze */
+            fullName: string;
+        };
+        EmployeeDto: {
+            id: string;
+            /** @description The company contact address invitations go to. */
+            email: string;
+            fullName: string;
+            /** @enum {string} */
+            role: "admin" | "employee";
+            /** @enum {string} */
+            status: "invited" | "active" | "disabled";
+            /** Format: date-time */
+            activatedAt: string | null;
+            /** Format: date-time */
+            disabledAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OffsetMetaDto: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            limit: number;
+            /** @description Rows matching the filter across all pages. */
+            total: number;
+            totalPages: number;
+        };
+        EmployeePageDto: {
+            data: components["schemas"]["EmployeeDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
         };
     };
     responses: never;
@@ -835,6 +1006,29 @@ export interface operations {
             };
         };
     };
+    AuthController_acceptInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInviteDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
+                };
+            };
+        };
+    };
     AuthController_changePassword: {
         parameters: {
             query?: never;
@@ -896,6 +1090,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserProfileDto"];
+                };
+            };
+        };
+    };
+    CompaniesController_members: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemberDto"][];
                 };
             };
         };
@@ -1003,6 +1216,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanChangeResultDto"];
+                };
+            };
+        };
+    };
+    EmployeesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+                status?: "invited" | "active" | "disabled";
+                role?: "admin" | "employee";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeePageDto"];
+                };
+            };
+        };
+    };
+    EmployeesController_invite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InviteEmployeeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeDto"];
+                };
+            };
+        };
+    };
+    EmployeesController_resendInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeDto"];
+                };
+            };
+        };
+    };
+    EmployeesController_disable: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeDto"];
+                };
+            };
+        };
+    };
+    EmployeesController_reactivate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EmployeeDto"];
                 };
             };
         };

@@ -1,31 +1,155 @@
 openapi: 3.0.0
 paths:
-  /users/me:
-    patch:
-      operationId: UsersController_updateMe
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeDto'
+  /employees:
+    get:
+      operationId: EmployeesController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - invited
+              - active
+              - disabled
+        - name: role
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - admin
+              - employee
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfileDto'
-      security:
+                $ref: '#/components/schemas/EmployeePageDto'
+      security: &ref_0
         - bearer: []
-      tags:
-        - users
-      summary: Update your own profile
+      tags: &ref_1
+        - employees
+      summary: List the company's people
       description: >-
-        Changes the signed-in person's own `fullName` — the personal-data half
-        of "change password and personal data". Available to admins and
-        employees.
+        Full records, offset-paginated, oldest first. Filter with `status`
+        (`invited`, `active`, `disabled`) and `role`. Removed employees are
+        included so they can be reactivated. Employees cannot call this — they
+        get the names-only `GET /companies/me/members` instead.
+    post:
+      operationId: EmployeesController_invite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteEmployeeDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Invite an employee
+      description: >-
+        Creates an `invited` employee and emails them a link valid for 7 days.
+        An invitation holds a seat immediately but bills nothing until they
+        accept, so the seat cap counts `invited` and `active` people together:
+        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
+        409 with the numbers. The address must not already belong to a Gridline
+        account (409).
+  /employees/{id}/resend-invite:
+    post:
+      operationId: EmployeesController_resendInvite
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Resend an invitation
+      description: >-
+        Issues a fresh link and kills the previous one. Only for someone still
+        `invited`; anyone else returns 409.
+  /employees/{id}:
+    delete:
+      operationId: EmployeesController_disable
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Remove an employee
+      description: >-
+        A soft-disable, not a delete. The employee is signed out everywhere,
+        their login is removed, any pending link is spent, their seat is freed
+        and billing for it stops today. The files they uploaded stay with the
+        company. You cannot remove yourself or an admin. Removing someone twice
+        returns 409.
+  /employees/{id}/reactivate:
+    post:
+      operationId: EmployeesController_reactivate
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Bring a removed employee back
+      description: >-
+        Their login was deleted on removal, so this sends a fresh invitation:
+        they become `invited`, hold a seat again (the plan's cap is re-checked,
+        409 if full) and set a password when they accept. Only for a removed
+        employee.
 info:
   title: Gridline API
   description: >-
@@ -66,7 +190,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_0
+          enum: &ref_2
             - finance
             - e-commerce
             - healthcare
@@ -210,12 +334,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_2
+          enum: &ref_4
             - admin
             - employee
         status:
           type: string
-          enum: &ref_3
+          enum: &ref_5
             - invited
             - active
             - disabled
@@ -245,7 +369,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         status:
           type: string
           enum:
@@ -307,7 +431,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         billingEmail:
           type: string
           example: nino@acme.com
@@ -317,7 +441,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_1
+          enum: &ref_3
             - free
             - basic
             - premium
@@ -411,7 +535,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
         billingAnchorDay:
           type: number
           minimum: 1
@@ -439,7 +563,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
       required:
         - plan
     PlanChangeResultDto:
@@ -449,7 +573,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
         prorationCents:
           type: number
           description: >-
@@ -487,10 +611,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         status:
           type: string
-          enum: *ref_3
+          enum: *ref_5
         activatedAt:
           type: string
           format: date-time

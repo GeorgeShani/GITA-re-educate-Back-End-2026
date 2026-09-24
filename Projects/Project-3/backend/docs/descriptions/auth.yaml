@@ -72,3 +72,12 @@ AuthController_me:
     The caller's own user record and company. Role and status come from the
     database on every request, not from the token, so a change of role or a
     disabled account is reflected immediately.
+
+AuthController_acceptInvite:
+  summary: Accept an invitation
+  description: >-
+    Spends the single-use token from an invitation email, sets the employee's
+    password, activates them and signs them in — returning the same session as
+    login. The link itself proves who they are, so nothing compares email
+    addresses. Billing for their seat starts now, not when they were invited.
+    An unknown, expired, used or superseded link returns 400.

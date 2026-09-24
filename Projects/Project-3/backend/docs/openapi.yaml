@@ -353,6 +353,32 @@ paths:
       description: >-
         Sets a new password using the emailed token and signs the account out of
         every device. The token is single-use.
+  /auth/accept-invite:
+    post:
+      operationId: AuthController_acceptInvite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_3
+      summary: Accept an invitation
+      description: >-
+        Spends the single-use token from an invitation email, sets the
+        employee's password, activates them and signs them in — returning the
+        same session as login. The link itself proves who they are, so nothing
+        compares email addresses. Billing for their seat starts now, not when
+        they were invited. An unknown, expired, used or superseded link returns
+        400.
   /auth/password:
     patch:
       operationId: AuthController_changePassword
@@ -423,6 +449,30 @@ paths:
         Changes the signed-in person's own `fullName` — the personal-data half
         of "change password and personal data". Available to admins and
         employees.
+  /companies/me/members:
+    get:
+      operationId: CompaniesController_members
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberDto'
+      security: &ref_4
+        - bearer: []
+      tags: &ref_5
+        - companies
+      summary: List members (names only)
+      description: >-
+        Any signed-in user. Returns `{ id, fullName }` for each active person in
+        the company and nothing else — no email, role or status — so an employee
+        can name grantees for a restricted file without being able to list or
+        profile colleagues. People who are invited-but-not-yet-joined or removed
+        are left out.
   /companies/me:
     patch:
       operationId: CompaniesController_updateMine
@@ -440,10 +490,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CompanyDto'
-      security:
-        - bearer: []
-      tags:
-        - companies
+      security: *ref_4
+      tags: *ref_5
       summary: Update your company profile
       description: >-
         Admin only; employees receive 403. Changes only the fields named:
@@ -463,7 +511,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PlanDto'
-      tags: &ref_4
+      tags: &ref_6
         - subscriptions
       summary: List the plans
       description: >-
@@ -484,7 +532,7 @@ paths:
                 $ref: '#/components/schemas/SubscriptionDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_6
       summary: Get the company's subscription
       description: >-
         The current plan, its limits, usage so far this period (files,
@@ -508,7 +556,7 @@ paths:
                 $ref: '#/components/schemas/SubscriptionDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_6
       summary: Choose the first plan
       description: >-
         The mandatory step after activation: features that need a plan answer
@@ -533,7 +581,7 @@ paths:
                 $ref: '#/components/schemas/PlanChangeResultDto'
       security:
         - bearer: []
-      tags: *ref_4
+      tags: *ref_6
       summary: Change plan
       description: >-
         Upgrade or downgrade. A change is a new activation: the outgoing period
@@ -543,6 +591,156 @@ paths:
         invoice. Rejected with 409, naming the numbers, if the company is over
         the target plan's employee cap or (for Free and Basic) has already
         uploaded more files this period than it allows. Admin only.
+  /employees:
+    post:
+      operationId: EmployeesController_invite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteEmployeeDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: &ref_7
+        - bearer: []
+      tags: &ref_8
+        - employees
+      summary: Invite an employee
+      description: >-
+        Creates an `invited` employee and emails them a link valid for 7 days.
+        An invitation holds a seat immediately but bills nothing until they
+        accept, so the seat cap counts `invited` and `active` people together:
+        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
+        409 with the numbers. The address must not already belong to a Gridline
+        account (409).
+    get:
+      operationId: EmployeesController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - invited
+              - active
+              - disabled
+        - name: role
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - admin
+              - employee
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePageDto'
+      security: *ref_7
+      tags: *ref_8
+      summary: List the company's people
+      description: >-
+        Full records, offset-paginated, oldest first. Filter with `status`
+        (`invited`, `active`, `disabled`) and `role`. Removed employees are
+        included so they can be reactivated. Employees cannot call this — they
+        get the names-only `GET /companies/me/members` instead.
+  /employees/{id}/resend-invite:
+    post:
+      operationId: EmployeesController_resendInvite
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_7
+      tags: *ref_8
+      summary: Resend an invitation
+      description: >-
+        Issues a fresh link and kills the previous one. Only for someone still
+        `invited`; anyone else returns 409.
+  /employees/{id}:
+    delete:
+      operationId: EmployeesController_disable
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_7
+      tags: *ref_8
+      summary: Remove an employee
+      description: >-
+        A soft-disable, not a delete. The employee is signed out everywhere,
+        their login is removed, any pending link is spent, their seat is freed
+        and billing for it stops today. The files they uploaded stay with the
+        company. You cannot remove yourself or an admin. Removing someone twice
+        returns 409.
+  /employees/{id}/reactivate:
+    post:
+      operationId: EmployeesController_reactivate
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_7
+      tags: *ref_8
+      summary: Bring a removed employee back
+      description: >-
+        Their login was deleted on removal, so this sends a fresh invitation:
+        they become `invited`, hold a seat again (the plan's cap is re-checked,
+        409 if full) and set a password when they accept. Only for a removed
+        employee.
 info:
   title: Gridline API
   description: >-
@@ -583,7 +781,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_5
+          enum: &ref_9
             - finance
             - e-commerce
             - healthcare
@@ -689,6 +887,19 @@ components:
       required:
         - token
         - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
     ChangePasswordDto:
       type: object
       properties:
@@ -714,12 +925,12 @@ components:
           type: string
         role:
           type: string
-          enum:
+          enum: &ref_11
             - admin
             - employee
         status:
           type: string
-          enum:
+          enum: &ref_12
             - invited
             - active
             - disabled
@@ -749,7 +960,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_9
         status:
           type: string
           enum:
@@ -788,6 +999,16 @@ components:
           maxLength: 120
       required:
         - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
     UpdateCompanyDto:
       type: object
       properties:
@@ -801,7 +1022,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_9
         billingEmail:
           type: string
           example: nino@acme.com
@@ -811,7 +1032,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_6
+          enum: &ref_10
             - free
             - basic
             - premium
@@ -905,7 +1126,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_10
         billingAnchorDay:
           type: number
           minimum: 1
@@ -933,7 +1154,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_10
       required:
         - plan
     PlanChangeResultDto:
@@ -943,7 +1164,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_6
+          enum: *ref_10
         prorationCents:
           type: number
           description: >-
@@ -953,3 +1174,86 @@ components:
         - subscription
         - previousPlan
         - prorationCents
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_11
+        status:
+          type: string
+          enum: *ref_12
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

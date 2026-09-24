@@ -15,6 +15,7 @@ import { REDACT_KEYS } from './core/redaction.js';
 import { TaskRunnerModule } from './core/tasks/task-runner.module.js';
 import { TasksModule } from './core/tasks/tasks.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { EmployeesModule } from './employees/employees.module.js';
 import { HealthModule } from './health/health.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -103,6 +104,7 @@ function observeImports(): DynamicModule[] {
     CompaniesModule,
     BillingModule,
     SubscriptionsModule,
+    EmployeesModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,
   ],

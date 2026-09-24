@@ -10,6 +10,7 @@ import { AuthTokenService } from './auth-token.service.js';
 import { AuthenticationService } from './authentication.service.js';
 import { PasswordHasher } from './crypto/password-hasher.js';
 import { TokenFactory } from './crypto/token-factory.js';
+import { InviteAcceptanceService } from './invite-acceptance.service.js';
 import { PasswordService } from './password.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
@@ -36,9 +37,11 @@ import { SessionService } from './session.service.js';
     RegistrationService,
     SessionService,
     PasswordService,
+    InviteAcceptanceService,
   ],
   // The guards are registered in `AccessControlModule`, where their order is
-  // visible in one place.
-  exports: [AuthenticationService],
+  // visible in one place. The token/session/lookup services are what the
+  // employees module needs to invite, disable and re-invite people.
+  exports: [AuthenticationService, AuthTokenService, SessionService, AccountLookupService],
 })
 export class AuthModule {}

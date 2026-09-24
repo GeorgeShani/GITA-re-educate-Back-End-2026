@@ -1,5 +1,29 @@
 openapi: 3.0.0
 paths:
+  /companies/me/members:
+    get:
+      operationId: CompaniesController_members
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberDto'
+      security: &ref_0
+        - bearer: []
+      tags: &ref_1
+        - companies
+      summary: List members (names only)
+      description: >-
+        Any signed-in user. Returns `{ id, fullName }` for each active person in
+        the company and nothing else — no email, role or status — so an employee
+        can name grantees for a restricted file without being able to list or
+        profile colleagues. People who are invited-but-not-yet-joined or removed
+        are left out.
   /companies/me:
     patch:
       operationId: CompaniesController_updateMine
@@ -17,10 +41,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CompanyDto'
-      security:
-        - bearer: []
-      tags:
-        - companies
+      security: *ref_0
+      tags: *ref_1
       summary: Update your company profile
       description: >-
         Admin only; employees receive 403. Changes only the fields named:
@@ -67,7 +89,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_0
+          enum: &ref_2
             - finance
             - e-commerce
             - healthcare
@@ -173,6 +195,19 @@ components:
       required:
         - token
         - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
     ChangePasswordDto:
       type: object
       properties:
@@ -198,12 +233,12 @@ components:
           type: string
         role:
           type: string
-          enum:
+          enum: &ref_4
             - admin
             - employee
         status:
           type: string
-          enum:
+          enum: &ref_5
             - invited
             - active
             - disabled
@@ -233,7 +268,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         status:
           type: string
           enum:
@@ -272,6 +307,16 @@ components:
           maxLength: 120
       required:
         - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
     UpdateCompanyDto:
       type: object
       properties:
@@ -285,7 +330,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         billingEmail:
           type: string
           example: nino@acme.com
@@ -295,7 +340,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_1
+          enum: &ref_3
             - free
             - basic
             - premium
@@ -389,7 +434,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
         billingAnchorDay:
           type: number
           minimum: 1
@@ -417,7 +462,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
       required:
         - plan
     PlanChangeResultDto:
@@ -427,7 +472,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_1
+          enum: *ref_3
         prorationCents:
           type: number
           description: >-
@@ -437,3 +482,86 @@ components:
         - subscription
         - previousPlan
         - prorationCents
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_4
+        status:
+          type: string
+          enum: *ref_5
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

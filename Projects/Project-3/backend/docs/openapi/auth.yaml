@@ -190,6 +190,32 @@ paths:
       description: >-
         Sets a new password using the emailed token and signs the account out of
         every device. The token is single-use.
+  /auth/accept-invite:
+    post:
+      operationId: AuthController_acceptInvite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_0
+      summary: Accept an invitation
+      description: >-
+        Spends the single-use token from an invitation email, sets the
+        employee's password, activates them and signs them in — returning the
+        same session as login. The link itself proves who they are, so nothing
+        compares email addresses. Billing for their seat starts now, not when
+        they were invited. An unknown, expired, used or superseded link returns
+        400.
   /auth/password:
     patch:
       operationId: AuthController_changePassword
@@ -380,6 +406,19 @@ components:
       required:
         - token
         - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
     ChangePasswordDto:
       type: object
       properties:
@@ -405,12 +444,12 @@ components:
           type: string
         role:
           type: string
-          enum:
+          enum: &ref_3
             - admin
             - employee
         status:
           type: string
-          enum:
+          enum: &ref_4
             - invited
             - active
             - disabled
@@ -478,6 +517,16 @@ components:
           minLength: 1
           maxLength: 120
       required:
+        - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
         - fullName
     UpdateCompanyDto:
       type: object
@@ -644,3 +693,86 @@ components:
         - subscription
         - previousPlan
         - prorationCents
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_3
+        status:
+          type: string
+          enum: *ref_4
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

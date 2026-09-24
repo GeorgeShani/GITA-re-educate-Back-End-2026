@@ -219,6 +219,37 @@ document.
   by `migration:generate` once per column, which fails on the second `CREATE TYPE`.
   Hand-edit the migration to create and drop it once.
 
+## Employees *(from Phase 4 of the feature plan)*
+
+- **Seat cap = `invited` + `active` employees** (an invitation holds a seat, D4).
+  Every operation that adds one — invite, reactivate — runs inside a transaction
+  that first takes `SubscriptionsService.lockForUpdate`, counts with
+  `employeeSeatsHeld`, and asks `seatCapProblem`. The lock is what stops two admins
+  taking the last seat; `employees.integration.spec.ts` proves it by holding the
+  row lock in an open transaction and asserting the invite *blocks* (racing two
+  HTTP requests rarely overlaps enough to prove anything).
+- **Employee lifecycle owns `seat_interval`.** Accepting an invite (any path —
+  Phase 5's Google flow too) opens a row at that instant; disabling closes the open
+  row. That is the only source of billable seat time. Anything that turns an
+  employee `active` or `disabled` must open/close it.
+- **"Delete" is a soft-disable (D7)** and does five things in one transaction: status
+  `disabled`, close the seat interval, delete the login identities, revoke every
+  refresh family, spend outstanding auth tokens. Later phases add file grants (6) and
+  API keys (10) to that list. Their uploads stay with the company.
+- **Reactivate = a fresh invitation.** Identities were deleted on removal, so the
+  person becomes `invited`, holds a seat again (cap re-checked) and sets a password
+  on accept. `disabledAt` clears on accept.
+- **The invite token is the proof of identity.** `accept-invite` compares no emails;
+  it creates the password identity with `emailVerified: true`. Because a password
+  login email is globally unique, inviting an address that already has a password
+  account is refused up front (409) rather than dead-ending at accept.
+- **`GET /companies/me/members` returns `{ id, fullName }` and nothing else**, for any
+  signed-in user, active people only (D1). `MemberDto` is the projection; the spec
+  asserts the exact key set — adding a field widens what every employee can learn.
+- A person in another company is a **404**, never a 403 — existence is not disclosed.
+- Class-level `@Roles(...)`/`@Public()` count for `route-audit.spec.ts` exactly as
+  they do for the guards (route value wins, else the controller's).
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -243,13 +274,18 @@ document.
   access to the controller class or method, so it structurally cannot read
   metadata a decorator set on the route handler. Never make the whitelist
   wider than the entity's actual indexed columns.
-- **Filter-DTO convention** (pattern, not yet built — no resource needs it
-  before Milestone 5): one typed filter DTO per resource
-  (`FilesFilterDto { mimeType?, uploaderId?, … }`), validated by the global
-  `ValidationPipe`, translated into conditional `QueryBuilder.andWhere()`
-  calls built up one at a time. Never string-concatenated SQL. On a
-  tenant-scoped resource, `TenantScope`'s predicate always applies **first**;
-  a filter narrows what a caller sees, never widens it.
+- **Filter-DTO convention** (first built for `GET /employees`, see
+  `EmployeesQueryDto extends OffsetQueryDto`): one typed filter DTO per resource,
+  validated by the global `ValidationPipe`, translated into conditional
+  `QueryBuilder.andWhere()` calls built up one at a time. Never string-concatenated
+  SQL. On a tenant-scoped resource, `TenantScope`'s predicate always applies
+  **first**; a filter narrows what a caller sees, never widens it. An unknown
+  query parameter is a 400 (`forbidNonWhitelisted`), not silently ignored.
+- **A paginated response is a named class**, built with the `OffsetPageOf(ItemDto)`
+  mixin: `export class EmployeePageDto extends OffsetPageOf(EmployeeDto) {}`. The
+  subclass gives the OpenAPI schema a unique name showing the real item type, and
+  gives `route-audit.spec.ts` a `type` to check (a bare `@ApiOkResponse({ schema })`
+  would carry none). Map with `toDto(PageDto, mapPageData(page, ItemDto.from))`.
 
 ## File-type validation *(deferred to Milestone 7 — do not build early)*
 

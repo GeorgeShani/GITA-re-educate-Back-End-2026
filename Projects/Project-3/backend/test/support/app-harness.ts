@@ -180,6 +180,48 @@ export class AppHarness {
     return { email, password, companyId, userId: user.id };
   }
 
+  /** An admin invites someone; the queued email is sent. Returns the invited user's id and email. */
+  async inviteEmployee(
+    adminSession: SessionBody,
+    overrides: Partial<{ email: string; fullName: string }> = {},
+  ): Promise<{ email: string; fullName: string; userId: string }> {
+    this.counter += 1;
+    const email = overrides.email ?? `invitee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
+    const fullName = overrides.fullName ?? `Invitee ${this.counter}`;
+
+    const response = await this.http()
+      .post('/employees')
+      .set(...this.bearer(adminSession))
+      .send({ email, fullName })
+      .expect(201);
+    await this.drainTasks();
+
+    return { email, fullName, userId: z.object({ id: z.uuid() }).parse(response.body).id };
+  }
+
+  /** The whole invite flow: invite, read the emailed link, accept with a password. */
+  async inviteAndAccept(
+    adminSession: SessionBody,
+    companyId: string,
+    overrides: Partial<{ email: string; fullName: string; password: string }> = {},
+  ): Promise<RegisteredAccount & { session: SessionBody }> {
+    const invited = await this.inviteEmployee(adminSession, overrides);
+    const password = overrides.password ?? DEFAULT_PASSWORD;
+
+    const response = await this.http()
+      .post('/auth/accept-invite')
+      .send({ token: this.mail.latestTokenTo(invited.email), password })
+      .expect(200);
+
+    return {
+      email: invited.email,
+      password,
+      companyId,
+      userId: invited.userId,
+      session: sessionSchema.parse(response.body),
+    };
+  }
+
   /** The admin's mandatory first plan choice. */
   async subscribe(session: SessionBody, plan: 'free' | 'basic' | 'premium'): Promise<void> {
     await this.http()

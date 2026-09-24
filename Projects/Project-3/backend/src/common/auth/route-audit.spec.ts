@@ -103,8 +103,19 @@ const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([HealthController.name])
 
 interface RouteHandle {
   controller: string;
+  controllerClass: ControllerClass;
   method: string;
   handler: () => unknown;
+}
+
+/**
+ * Metadata as the guards resolve it: the route's own value wins, else the
+ * controller's (`Reflector.getAllAndOverride`). Reading the handler alone would
+ * mis-flag a controller that puts `@Roles('admin')` on the class.
+ */
+function metadataOf(key: string, route: RouteHandle): unknown {
+  const onHandler: unknown = Reflect.getMetadata(key, route.handler);
+  return onHandler !== undefined ? onHandler : Reflect.getMetadata(key, route.controllerClass);
 }
 
 function routesOf(ControllerClass: new (...args: never[]) => unknown): RouteHandle[] {
@@ -122,7 +133,12 @@ function routesOf(ControllerClass: new (...args: never[]) => unknown): RouteHand
   for (const name of propertyNames) {
     const value: unknown = Reflect.get(ControllerClass.prototype, name);
     if (isRouteHandler(value)) {
-      handlers.push({ controller: ControllerClass.name, method: name, handler: value });
+      handlers.push({
+        controller: ControllerClass.name,
+        controllerClass: ControllerClass,
+        method: name,
+        handler: value,
+      });
     }
   }
   return handlers;
@@ -168,8 +184,8 @@ describe('route audit', () => {
   it.each(routes.map((route) => [`${route.controller}.${route.method}`, route] as const))(
     '%s is @Public() XOR carries @Roles()',
     (_label, route) => {
-      const isPublic: boolean = Reflect.getMetadata(IS_PUBLIC_KEY, route.handler) === true;
-      const roles: unknown = Reflect.getMetadata(ROLES_KEY, route.handler);
+      const isPublic: boolean = metadataOf(IS_PUBLIC_KEY, route) === true;
+      const roles: unknown = metadataOf(ROLES_KEY, route);
       const hasRoles = roles !== undefined;
 
       // Neither -> silently un-annotated, the exact bug this spec exists to
@@ -195,7 +211,7 @@ describe('route audit', () => {
 
   it('every @Roles() array actually used anywhere is non-empty', () => {
     for (const route of routes) {
-      const roles: unknown = Reflect.getMetadata(ROLES_KEY, route.handler);
+      const roles: unknown = metadataOf(ROLES_KEY, route);
       if (roles === undefined) continue;
 
       expect(isArray(roles)).toBe(true);
@@ -212,7 +228,7 @@ describe('route audit', () => {
     const validScopes: ApiScope[] = ['files:read', 'files:write', 'billing:read'];
 
     for (const route of routes) {
-      const scopes: unknown = Reflect.getMetadata(REQUIRED_SCOPES_KEY, route.handler);
+      const scopes: unknown = metadataOf(REQUIRED_SCOPES_KEY, route);
       if (scopes === undefined) continue;
 
       expect(isArray(scopes)).toBe(true);

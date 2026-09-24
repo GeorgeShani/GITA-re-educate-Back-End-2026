@@ -7,3 +7,11 @@ CompaniesController_updateMine:
     `country`, `industry`, `billingEmail`. The company is always the caller's own,
     taken from the session — there is no way to name another tenant. A
     `billingEmail` already used by another company returns 409.
+
+CompaniesController_members:
+  summary: List members (names only)
+  description: >-
+    Any signed-in user. Returns `{ id, fullName }` for each active person in the
+    company and nothing else — no email, role or status — so an employee can name
+    grantees for a restricted file without being able to list or profile
+    colleagues. People who are invited-but-not-yet-joined or removed are left out.

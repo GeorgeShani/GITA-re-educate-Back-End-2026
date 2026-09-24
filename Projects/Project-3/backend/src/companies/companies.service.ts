@@ -3,6 +3,8 @@ import { DataSource } from 'typeorm';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { Company } from '#/database/entities/company.entity.js';
+import { User } from '#/database/entities/user.entity.js';
+import { TenantScope } from '#/database/tenant-scope.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import type { UpdateCompanyDto } from './dto/update-company.dto.js';
 
@@ -12,7 +14,22 @@ export class CompaniesService {
     private readonly dataSource: DataSource,
     private readonly context: RequestContextService,
     private readonly audit: AuditService,
+    private readonly tenantScope: TenantScope,
   ) {}
+
+  /**
+   * People in the caller's company who are active — for naming grantees. The
+   * projection lives in `MemberDto` (id and fullName only); the filter here keeps
+   * out anyone invited-but-not-yet-joined and anyone removed.
+   */
+  members(): Promise<User[]> {
+    return this.tenantScope
+      .forCompany(this.dataSource.getRepository(User), this.context.requireCompanyId(), 'u')
+      .andWhere("u.status = 'active'")
+      .orderBy('u.fullName', 'ASC')
+      .addOrderBy('u.id', 'ASC')
+      .getMany();
+  }
 
   /**
    * Updates the caller's own company — the id comes from request context, never

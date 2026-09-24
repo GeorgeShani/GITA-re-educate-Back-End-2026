@@ -309,6 +309,19 @@ components:
       required:
         - token
         - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
     ChangePasswordDto:
       type: object
       properties:
@@ -334,12 +347,12 @@ components:
           type: string
         role:
           type: string
-          enum:
+          enum: &ref_5
             - admin
             - employee
         status:
           type: string
-          enum:
+          enum: &ref_6
             - invited
             - active
             - disabled
@@ -407,6 +420,16 @@ components:
           minLength: 1
           maxLength: 120
       required:
+        - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
         - fullName
     UpdateCompanyDto:
       type: object
@@ -573,3 +596,86 @@ components:
         - subscription
         - previousPlan
         - prorationCents
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_5
+        status:
+          type: string
+          enum: *ref_6
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

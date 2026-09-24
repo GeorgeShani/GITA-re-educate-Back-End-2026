@@ -8,6 +8,7 @@ import { toDto } from '#/common/response/to-dto.js';
 import { CompanyDto } from '#/companies/dto/company.dto.js';
 import { UserProfileDto } from '#/users/dto/user-profile.dto.js';
 import { UsersService } from '#/users/users.service.js';
+import { AcceptInviteDto } from './dto/accept-invite.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { EmailOnlyDto } from './dto/email-only.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -18,6 +19,7 @@ import { RegisterCompanyDto } from './dto/register-company.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { SessionDto } from './dto/session.dto.js';
 import { TokenQueryDto } from './dto/token-query.dto.js';
+import { InviteAcceptanceService } from './invite-acceptance.service.js';
 import { PasswordService } from './password.service.js';
 import { RegistrationService } from './registration.service.js';
 import { SessionService } from './session.service.js';
@@ -36,6 +38,7 @@ export class AuthController {
     private readonly sessions: SessionService,
     private readonly passwords: PasswordService,
     private readonly users: UsersService,
+    private readonly invites: InviteAcceptanceService,
   ) {}
 
   @Public()
@@ -118,6 +121,17 @@ export class AuthController {
     return toDto(MessageResponseDto, {
       message: 'Your password has been reset. Sign in with the new one.',
     });
+  }
+
+  @Public()
+  @Post('accept-invite')
+  @HttpCode(200)
+  @ApiOkResponse({ type: SessionDto })
+  async acceptInvite(
+    @Body() dto: AcceptInviteDto,
+    @Headers('user-agent') userAgent: string | undefined,
+  ): Promise<SessionDto> {
+    return toDto(SessionDto, await this.invites.accept(dto, { userAgent }));
   }
 
   @Roles('admin', 'employee')
