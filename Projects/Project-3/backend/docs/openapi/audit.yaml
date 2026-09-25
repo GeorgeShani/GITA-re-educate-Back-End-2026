@@ -1,16 +1,15 @@
 openapi: 3.0.0
 paths:
-  /employees:
+  /audit:
     get:
-      operationId: EmployeesController_list
+      operationId: AuditLogController_list
       parameters:
-        - name: page
+        - name: cursor
           required: false
           in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
           schema:
-            minimum: 1
-            default: 1
-            type: number
+            type: string
         - name: limit
           required: false
           in: query
@@ -19,69 +18,92 @@ paths:
             maximum: 100
             default: 20
             type: number
-        - name: status
+        - name: action
           required: false
           in: query
           schema:
             type: string
             enum:
-              - invited
-              - active
-              - disabled
-        - name: role
+              - company.registered
+              - company.activated
+              - company.activation_resent
+              - company.updated
+              - user.profile_updated
+              - auth.password_reset_requested
+              - auth.password_reset
+              - auth.password_changed
+              - auth.identity_linked
+              - auth.identity_unlinked
+              - employee.invited
+              - employee.invite_resent
+              - employee.accepted_invite
+              - employee.disabled
+              - employee.reactivated
+              - subscription.created
+              - subscription.changed
+              - billing.invoice_finalized
+              - file.uploaded
+              - file.access_changed
+              - file.deleted
+        - name: actorUserId
           required: false
           in: query
+          description: Only what this person did.
           schema:
+            format: uuid
             type: string
-            enum:
-              - admin
-              - employee
+        - name: targetType
+          required: false
+          in: query
+          description: The kind of thing acted on.
+          schema:
+            example: file
+            type: string
+        - name: from
+          required: false
+          in: query
+          description: At or after this instant.
+          schema:
+            format: date-time
+            type: string
+        - name: to
+          required: false
+          in: query
+          description: Before this instant.
+          schema:
+            format: date-time
+            type: string
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmployeePageDto'
+                $ref: '#/components/schemas/AuditPageDto'
       security: &ref_0
         - bearer: []
       tags: &ref_1
-        - employees
-      summary: List the company's people
+        - audit
+      summary: List audit entries
       description: >-
-        Full records, offset-paginated, oldest first. Filter with `status`
-        (`invited`, `active`, `disabled`) and `role`. Removed employees are
-        included so they can be reactivated. Employees cannot call this — they
-        get the names-only `GET /companies/me/members` instead.
-    post:
-      operationId: EmployeesController_invite
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InviteEmployeeDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Invite an employee
-      description: >-
-        Creates an `invited` employee and emails them a link valid for 7 days.
-        An invitation holds a seat immediately but bills nothing until they
-        accept, so the seat cap counts `invited` and `active` people together:
-        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
-        409 with the numbers. The address must not already belong to a Gridline
-        account (409).
-  /employees/{id}/resend-invite:
-    post:
-      operationId: EmployeesController_resendInvite
+        The company's audit log, newest first, cursor-paginated (`limit`, and
+        `cursor` from `meta.nextCursor` until `hasMore` is false). Admin only.
+        Every state-changing action in the app writes an entry in the same
+        transaction as the change: who did it (`actorUserId`, null for the
+        system — the billing cycle — or someone since removed), what (`action`,
+        from a closed list), what it acted on (`targetType` / `targetId`), from
+        where (`ip`), and a `correlationId` that ties together everything one
+        request wrote and matches that request's logs.
+
+
+        Filters narrow the result: `action`, `actorUserId`, `targetType`, and
+        `from` (inclusive) / `to` (exclusive) timestamps. The list omits each
+        entry's `metadata`; read a single entry for that. The log is append-only
+        — nothing can edit or delete an entry, and the database itself refuses
+        to.
+  /audit/{id}:
+    get:
+      operationId: AuditLogController_get
       parameters:
         - name: id
           required: true
@@ -94,62 +116,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmployeeDto'
+                $ref: '#/components/schemas/AuditEntryDetailDto'
       security: *ref_0
       tags: *ref_1
-      summary: Resend an invitation
+      summary: Get one audit entry
       description: >-
-        Issues a fresh link and kills the previous one. Only for someone still
-        `invited`; anyone else returns 409.
-  /employees/{id}:
-    delete:
-      operationId: EmployeesController_disable
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Remove an employee
-      description: >-
-        A soft-disable, not a delete. The employee is signed out everywhere,
-        their login is removed, any pending link is spent, their seat is freed
-        and billing for it stops today. The files they uploaded stay with the
-        company. You cannot remove yourself or an admin. Removing someone twice
-        returns 409.
-  /employees/{id}/reactivate:
-    post:
-      operationId: EmployeesController_reactivate
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Bring a removed employee back
-      description: >-
-        Their login was deleted on removal, so this sends a fresh invitation:
-        they become `invited`, hold a seat again (the plan's cap is re-checked,
-        409 if full) and set a password when they accept. Only for a removed
-        employee.
+        One entry with its `metadata`: the details specific to the action, such
+        as the plan changed to, or a file's name and type. Another company's
+        entry is a 404. Admin only.
 info:
   title: Gridline API
   description: >-

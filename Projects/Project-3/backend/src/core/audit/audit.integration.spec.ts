@@ -38,7 +38,7 @@ describe('audit log (integration)', () => {
       cls.set('companyId', companyId);
       cls.set('ip', '203.0.113.9');
       return audit.record({
-        action: 'user.invited',
+        action: 'company.updated',
         target: { type: 'user', id: targetId },
         metadata: { role: 'employee' },
       });
@@ -48,7 +48,7 @@ describe('audit log (integration)', () => {
     expect(stored).toMatchObject({
       companyId,
       actorUserId,
-      action: 'user.invited',
+      action: 'company.updated',
       targetType: 'user',
       targetId,
       metadata: { role: 'employee' },
@@ -85,24 +85,24 @@ describe('audit log (integration)', () => {
 
   describe('immutability, enforced by the database', () => {
     it('rejects UPDATE', async () => {
-      const entry = await audit.record({ action: 'user.invited', companyId });
+      const entry = await audit.record({ action: 'company.updated', companyId });
 
       await expect(
         repository.update(entry.id, { action: 'tampered' }),
       ).rejects.toThrow(/immutable/);
 
-      expect((await repository.findOneByOrFail({ id: entry.id })).action).toBe('user.invited');
+      expect((await repository.findOneByOrFail({ id: entry.id })).action).toBe('company.updated');
     });
 
     it('rejects DELETE', async () => {
-      const entry = await audit.record({ action: 'user.invited', companyId });
+      const entry = await audit.record({ action: 'company.updated', companyId });
 
       await expect(repository.delete(entry.id)).rejects.toThrow(/immutable/);
       expect(await repository.count()).toBe(1);
     });
 
     it('still allows TRUNCATE, which is how test resets work', async () => {
-      await audit.record({ action: 'user.invited', companyId });
+      await audit.record({ action: 'company.updated', companyId });
 
       await ctx.reset();
 

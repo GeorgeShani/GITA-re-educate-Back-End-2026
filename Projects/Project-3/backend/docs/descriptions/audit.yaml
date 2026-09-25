@@ -1,0 +1,24 @@
+# Prose for the `audit` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+AuditLogController_list:
+  summary: List audit entries
+  description: >-
+    The company's audit log, newest first, cursor-paginated (`limit`, and `cursor` from
+    `meta.nextCursor` until `hasMore` is false). Admin only. Every state-changing action
+    in the app writes an entry in the same transaction as the change: who did it
+    (`actorUserId`, null for the system — the billing cycle — or someone since removed),
+    what (`action`, from a closed list), what it acted on (`targetType` / `targetId`),
+    from where (`ip`), and a `correlationId` that ties together everything one request
+    wrote and matches that request's logs.
+
+
+    Filters narrow the result: `action`, `actorUserId`, `targetType`, and `from` (inclusive)
+    / `to` (exclusive) timestamps. The list omits each entry's `metadata`; read a single
+    entry for that. The log is append-only — nothing can edit or delete an entry, and the
+    database itself refuses to.
+
+AuditLogController_get:
+  summary: Get one audit entry
+  description: >-
+    One entry with its `metadata`: the details specific to the action, such as the plan
+    changed to, or a file's name and type. Another company's entry is a 404. Admin only.

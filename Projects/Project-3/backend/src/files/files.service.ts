@@ -186,7 +186,8 @@ export class FilesService {
             grants.map((userId) => ({ fileId, userId })),
           );
         }
-        await manager.insert(UsageEvent, { companyId, fileId, periodKey: key });
+        // Stamped from the injected clock: analytics buckets uploads by this instant.
+        await manager.insert(UsageEvent, { companyId, fileId, periodKey: key, createdAt: now });
         // The report exists from the moment the file does, so `GET /files/:id/report` is
         // never a 404 for a real file; the queued task fills it in.
         await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });

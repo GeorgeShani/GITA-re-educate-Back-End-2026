@@ -1475,3 +1475,317 @@ components:
       required:
         - data
         - meta
+    AuditEntryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: &ref_8
+            - company.registered
+            - company.activated
+            - company.activation_resent
+            - company.updated
+            - user.profile_updated
+            - auth.password_reset_requested
+            - auth.password_reset
+            - auth.password_changed
+            - auth.identity_linked
+            - auth.identity_unlinked
+            - employee.invited
+            - employee.invite_resent
+            - employee.accepted_invite
+            - employee.disabled
+            - employee.reactivated
+            - subscription.created
+            - subscription.changed
+            - billing.invoice_finalized
+            - file.uploaded
+            - file.access_changed
+            - file.deleted
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+    AuditPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntryDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    AuditEntryDetailDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: *ref_8
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >-
+            Details specific to the action (for example the plan changed to, or
+            the name of a file).
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+        - metadata
+    DayRangeDto:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        to:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        days:
+          type: number
+      required:
+        - from
+        - to
+        - days
+    FilesPerDayDto:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-03-05'
+        files:
+          type: number
+          description: >-
+            Files uploaded that UTC day; 0 for a quiet day, so every day has a
+            point.
+      required:
+        - date
+        - files
+    EmployeeActivityDto:
+      type: object
+      properties:
+        userId:
+          type: string
+        fullName:
+          type: string
+        files:
+          type: number
+        bytes:
+          type: number
+          description: Total size of what they uploaded in the range.
+        lastUploadAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - fullName
+        - files
+        - bytes
+        - lastUploadAt
+    StorageUsageDto:
+      type: object
+      properties:
+        liveFiles:
+          type: number
+          description: >-
+            Files that exist right now (deleted ones excluded), regardless of
+            the range.
+        liveBytes:
+          type: number
+          description: Bytes those files occupy.
+        uploadedBytesInRange:
+          type: number
+          description: Bytes uploaded within the range, including files deleted since.
+      required:
+        - liveFiles
+        - liveBytes
+        - uploadedBytesInRange
+    BurnDownPointDto:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-03-05'
+        used:
+          type: number
+          description: >-
+            Files uploaded this period so far, cumulative, at the end of that
+            day.
+        pace:
+          type: number
+          description: >-
+            Where an even pace would be: included files × days elapsed ÷ days in
+            the period.
+      required:
+        - date
+        - used
+        - pace
+    QuotaBurnDownDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_4
+        limit:
+          type: number
+          description: Files included per billing period on this plan.
+        used:
+          type: number
+          description: Files uploaded so far this period.
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+          description: 'Exclusive: when the quota resets.'
+        points:
+          description: One point per day from the period start through today.
+          type: array
+          items:
+            $ref: '#/components/schemas/BurnDownPointDto'
+      required:
+        - plan
+        - limit
+        - used
+        - periodStart
+        - periodEnd
+        - points
+    PlanChangeDto:
+      type: object
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+        fromPlan:
+          type: string
+          enum: *ref_4
+          nullable: true
+          description: Null for the first plan chosen.
+        toPlan:
+          type: string
+          enum: *ref_4
+        prorationCents:
+          type: number
+          description: Integer cents billed for the outgoing plan’s part-period.
+        invoiceId:
+          type: string
+          nullable: true
+          description: The invoice that closed the outgoing period.
+        invoiceTotalCents:
+          type: number
+          nullable: true
+      required:
+        - effectiveAt
+        - fromPlan
+        - toPlan
+        - prorationCents
+        - invoiceId
+        - invoiceTotalCents
+    UsageAnalyticsDto:
+      type: object
+      properties:
+        range:
+          $ref: '#/components/schemas/DayRangeDto'
+        filesPerDay:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilesPerDayDto'
+        byEmployee:
+          description: Most active first. Includes people since removed.
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeActivityDto'
+        storage:
+          $ref: '#/components/schemas/StorageUsageDto'
+        quota:
+          description: Always the CURRENT billing period, whatever the range.
+          allOf:
+            - $ref: '#/components/schemas/QuotaBurnDownDto'
+        planHistory:
+          description: Newest change first, up to 50.
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanChangeDto'
+      required:
+        - range
+        - filesPerDay
+        - byEmployee
+        - storage
+        - quota
+        - planHistory

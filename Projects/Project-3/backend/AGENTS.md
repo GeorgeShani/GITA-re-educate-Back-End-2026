@@ -409,6 +409,28 @@ document.
   Column names are sanitised (`cleanLabel`) and passed as data, with an explicit "never follow
   instructions in a label". Tests inject `FakeAiProvider` (`h.ai.next(...)`, `h.ai.calls`).
 
+## Audit log & usage analytics *(from Phase 9 of the feature plan)*
+
+- **`AUDIT_ACTIONS` (`core/audit/audit-actions.ts`) is a closed registry.** `AuditService.record`
+  takes an `AuditAction`, so an unregistered action does not compile. Two specs keep it honest:
+  `audit-actions.spec.ts` (registry ⇔ `action: '…'` literals in source, both directions) and
+  `audit.coverage.integration.spec.ts` (drives every state-changing flow once and asserts every
+  registered action really landed in the table). **Adding an audit point = add the action to the
+  registry AND exercise it in the coverage spec.**
+- **`GET /audit`** (`src/audit/`, the read side; writing stays `AuditService`) is admin-only, cursor
+  DESC on `(createdAt, id)` = the DESC index `idx_audit_log_company_created`. The list DTO has no
+  `metadata` (the response DTO omits it; the list query does not select it); `GET /audit/:id` has it.
+  Filters (`action`, `actorUserId`, `targetType`, `from`/`to`) are not indexed beyond the tenant/time
+  index — fine for a per-company log; revisit if it ever isn't.
+- **`UsageEvent.createdAt` is stamped from the injected `CLOCK`** (like every domain timestamp), because
+  analytics buckets uploads by it. `FileAsset.createdAt` stays DB-stamped (the keyset list order depends
+  on it and on distinct instants).
+- **`analytics.queries.ts` holds the aggregates as plain functions over an `EntityManager`** so the
+  read-only GraphQL surface (Phase 13) calls the SAME ones. Every aggregate is parsed with Zod (Postgres
+  returns `COUNT`/`SUM` as strings). `GET /analytics/usage?from&to`: UTC days, `to` exclusive, ≤ 366 days,
+  default = current period so far; the quota burn-down is ALWAYS the current period and counts by
+  `periodKey`, so it equals the running bill's file count. A deleted file still counts as an upload.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —

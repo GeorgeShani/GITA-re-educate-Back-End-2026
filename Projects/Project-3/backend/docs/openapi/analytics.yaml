@@ -1,155 +1,75 @@
 openapi: 3.0.0
 paths:
-  /employees:
+  /analytics/usage:
     get:
-      operationId: EmployeesController_list
+      operationId: AnalyticsController_usage
       parameters:
-        - name: page
+        - name: from
           required: false
           in: query
+          description: >-
+            First day, inclusive. Default: the first day of the current billing
+            period.
           schema:
-            minimum: 1
-            default: 1
-            type: number
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-        - name: status
-          required: false
-          in: query
-          schema:
+            format: date
+            example: '2026-03-01'
             type: string
-            enum:
-              - invited
-              - active
-              - disabled
-        - name: role
+        - name: to
           required: false
           in: query
+          description: >-
+            Last day, exclusive. Default: through today. At most 366 days after
+            `from`.
           schema:
+            format: date
+            example: '2026-04-01'
             type: string
-            enum:
-              - admin
-              - employee
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmployeePageDto'
-      security: &ref_0
+                $ref: '#/components/schemas/UsageAnalyticsDto'
+      security:
         - bearer: []
-      tags: &ref_1
-        - employees
-      summary: List the company's people
+      tags:
+        - analytics
+      summary: Usage analytics
       description: >-
-        Full records, offset-paginated, oldest first. Filter with `status`
-        (`invited`, `active`, `disabled`) and `role`. Removed employees are
-        included so they can be reactivated. Employees cannot call this — they
-        get the names-only `GET /companies/me/members` instead.
-    post:
-      operationId: EmployeesController_invite
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InviteEmployeeDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Invite an employee
-      description: >-
-        Creates an `invited` employee and emails them a link valid for 7 days.
-        An invitation holds a seat immediately but bills nothing until they
-        accept, so the seat cap counts `invited` and `active` people together:
-        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
-        409 with the numbers. The address must not already belong to a Gridline
-        account (409).
-  /employees/{id}/resend-invite:
-    post:
-      operationId: EmployeesController_resendInvite
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Resend an invitation
-      description: >-
-        Issues a fresh link and kills the previous one. Only for someone still
-        `invited`; anyone else returns 409.
-  /employees/{id}:
-    delete:
-      operationId: EmployeesController_disable
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Remove an employee
-      description: >-
-        A soft-disable, not a delete. The employee is signed out everywhere,
-        their login is removed, any pending link is spent, their seat is freed
-        and billing for it stops today. The files they uploaded stay with the
-        company. You cannot remove yourself or an admin. Removing someone twice
-        returns 409.
-  /employees/{id}/reactivate:
-    post:
-      operationId: EmployeesController_reactivate
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Bring a removed employee back
-      description: >-
-        Their login was deleted on removal, so this sends a fresh invitation:
-        they become `invited`, hold a seat again (the plan's cap is re-checked,
-        409 if full) and set a password when they accept. Only for a removed
-        employee.
+        Admin only. One request returns everything a usage dashboard draws.
+
+
+        `from` and `to` are read as UTC days (any time of day is dropped) and
+        `to` is exclusive; with neither the range is the current billing period
+        so far, and it can be at most 366 days. Within the range:
+
+
+        - `filesPerDay`: uploads per day, with a zero for every quiet day so a
+        chart has a point for each.
+
+        - `byEmployee`: each uploader's files, bytes and last upload, most
+        active first — including people since removed, whose history stays.
+
+        - `storage`: live files and bytes right now (deleted files excluded,
+        whatever the range), and the bytes uploaded in the range (deleted files
+        included).
+
+
+        Always for the CURRENT billing period, regardless of the range:
+
+
+        - `quota`: cumulative uploads per day against the plan's included quota,
+        with the even-pace line to compare it to. It counts exactly what the
+        running bill counts.
+
+
+        And the whole `planHistory`, newest change first: each change joined to
+        the invoice that closed the outgoing period.
+
+
+        A deleted file still counts as an upload: deleting does not undo that it
+        happened.
 info:
   title: Gridline API
   description: >-
@@ -173,7 +93,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_2
+          enum: &ref_0
             - company
             - restricted
           default: company
@@ -205,7 +125,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_0
         uploaderId:
           type: string
         grantedUserIds:
@@ -314,7 +234,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: &ref_3
+          enum: &ref_1
             - integer
             - number
             - boolean
@@ -454,7 +374,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_3
+          enum: *ref_1
       required:
         - name
         - inferredType
@@ -494,7 +414,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_0
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -570,7 +490,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_4
+          enum: &ref_2
             - free
             - basic
             - premium
@@ -616,7 +536,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -690,7 +610,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
         maxEmployees:
           type: number
           nullable: true
@@ -781,7 +701,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
         billingAnchorDay:
           type: number
           minimum: 1
@@ -809,7 +729,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
       required:
         - plan
     PlanChangeResultDto:
@@ -819,7 +739,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
         prorationCents:
           type: number
           description: >-
@@ -851,7 +771,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_5
+          enum: &ref_3
             - finance
             - e-commerce
             - healthcare
@@ -987,12 +907,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_6
+          enum: &ref_4
             - admin
             - employee
         status:
           type: string
-          enum: &ref_7
+          enum: &ref_5
             - invited
             - active
             - disabled
@@ -1022,7 +942,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_3
         status:
           type: string
           enum:
@@ -1131,7 +1051,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_3
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -1245,7 +1165,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_3
         billingEmail:
           type: string
           example: nino@acme.com
@@ -1278,10 +1198,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_6
+          enum: *ref_4
         status:
           type: string
-          enum: *ref_7
+          enum: *ref_5
         activatedAt:
           type: string
           format: date-time
@@ -1321,7 +1241,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_8
+          enum: &ref_6
             - company.registered
             - company.activated
             - company.activation_resent
@@ -1399,7 +1319,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_8
+          enum: *ref_6
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -1539,7 +1459,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -1573,12 +1493,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_2
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.

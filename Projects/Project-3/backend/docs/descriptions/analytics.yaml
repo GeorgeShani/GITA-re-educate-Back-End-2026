@@ -1,0 +1,35 @@
+# Prose for the `analytics` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+AnalyticsController_usage:
+  summary: Usage analytics
+  description: >-
+    Admin only. One request returns everything a usage dashboard draws.
+
+
+    `from` and `to` are read as UTC days (any time of day is dropped) and `to` is
+    exclusive; with neither the range is the current billing period so far, and it can be
+    at most 366 days. Within the range:
+
+
+    - `filesPerDay`: uploads per day, with a zero for every quiet day so a chart has a
+    point for each.
+
+    - `byEmployee`: each uploader's files, bytes and last upload, most active first —
+    including people since removed, whose history stays.
+
+    - `storage`: live files and bytes right now (deleted files excluded, whatever the
+    range), and the bytes uploaded in the range (deleted files included).
+
+
+    Always for the CURRENT billing period, regardless of the range:
+
+
+    - `quota`: cumulative uploads per day against the plan's included quota, with the
+    even-pace line to compare it to. It counts exactly what the running bill counts.
+
+
+    And the whole `planHistory`, newest change first: each change joined to the invoice
+    that closed the outgoing period.
+
+
+    A deleted file still counts as an upload: deleting does not undo that it happened.

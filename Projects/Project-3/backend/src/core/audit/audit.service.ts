@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { EntityManager, Repository } from 'typeorm';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { type AuditAction } from './audit-actions.js';
 import { AuditLogEntry } from './audit-log-entry.entity.js';
 
 export interface AuditRecordInput {
-  /** Dotted, past-tense, e.g. `user.invited`. */
-  action: string;
+  /** From the closed registry in `audit-actions.ts`. */
+  action: AuditAction;
   target?: { type: string; id: string };
   metadata?: Record<string, unknown>;
   /**

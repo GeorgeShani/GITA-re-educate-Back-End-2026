@@ -297,30 +297,45 @@ export class AppHarness {
    * A usage event has a real foreign key to its file, so each one gets a real
    * (bare, unstored) file row, uploaded by the company's first user.
    */
-  async seedUsage(companyId: string, count: number, periodKey: string): Promise<void> {
-    if (count === 0) return;
+  async seedUsage(
+    companyId: string,
+    count: number,
+    periodKey: string,
+    options: Partial<{ createdAt: Date; uploaderId: string; sizeBytes: number; deletedAt: Date }> = {},
+  ): Promise<string[]> {
+    if (count === 0) return [];
 
-    const uploader = await this.dataSource
-      .getRepository(User)
-      .findOneOrFail({ where: { companyId }, order: { createdAt: 'ASC' } });
+    const uploaderId =
+      options.uploaderId ??
+      (
+        await this.dataSource
+          .getRepository(User)
+          .findOneOrFail({ where: { companyId }, order: { createdAt: 'ASC' } })
+      ).id;
     const files = Array.from({ length: count }, () => {
       const id = randomUUID();
       return {
         id,
         companyId,
-        uploaderId: uploader.id,
+        uploaderId,
         originalName: 'seeded.csv',
         mimeType: 'text/csv',
-        sizeBytes: 1,
+        sizeBytes: options.sizeBytes ?? 1,
         storageKey: `seeded/${id}`,
         visibility: 'company' as const,
-        deletedAt: null,
+        deletedAt: options.deletedAt ?? null,
       };
     });
     await this.dataSource.getRepository(FileAsset).insert(files);
-    await this.dataSource
-      .getRepository(UsageEvent)
-      .insert(files.map((file) => ({ companyId, fileId: file.id, periodKey })));
+    await this.dataSource.getRepository(UsageEvent).insert(
+      files.map((file) => ({
+        companyId,
+        fileId: file.id,
+        periodKey,
+        ...(options.createdAt ? { createdAt: options.createdAt } : {}),
+      })),
+    );
+    return files.map((file) => file.id);
   }
 
   /** A stretch of billable seat time for an existing employee (Phase 4 writes these for real). */

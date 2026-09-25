@@ -6,6 +6,8 @@ import { AppConfigModule } from './config/config.module.js';
 import { loadConfig } from './config/load-config.js';
 import './core/context/cls-store.js';
 import { AccessControlModule } from './access-control.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
+import { AuditLogModule } from './audit/audit-log.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BillingModule } from './billing/billing.module.js';
 import { BillingCycleModule } from './billing/cycle/billing-cycle.module.js';
@@ -115,6 +117,8 @@ function observeImports(): DynamicModule[] {
     SubscriptionsModule,
     EmployeesModule,
     FilesModule,
+    AuditLogModule,
+    AnalyticsModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,
   ],
