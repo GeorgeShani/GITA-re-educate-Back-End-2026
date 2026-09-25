@@ -6,6 +6,7 @@ import { UsageService } from '#/billing/usage.service.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
@@ -33,6 +34,7 @@ export class SubscriptionsService {
     private readonly invoicing: InvoicingService,
     private readonly usage: UsageService,
     private readonly audit: AuditService,
+    private readonly metrics: BusinessMetrics,
     private readonly context: RequestContextService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
@@ -82,7 +84,7 @@ export class SubscriptionsService {
     const { period, anchorDay } = openPeriodAt(now);
 
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      const view = await this.dataSource.transaction(async (manager) => {
         const subscription = await manager.save(
           manager.create(Subscription, {
             companyId,
@@ -109,6 +111,8 @@ export class SubscriptionsService {
         );
         return this.describe(manager, subscription);
       });
+      this.metrics.subscriptionChanged(plan);
+      return view;
     } catch (error) {
       // `companyId` is unique: the constraint, not a pre-check, settles a race.
       if (isUniqueViolation(error)) {
@@ -133,7 +137,7 @@ export class SubscriptionsService {
   ): Promise<{ view: SubscriptionView; previousPlan: Plan; prorationCents: number }> {
     const companyId = this.context.requireCompanyId();
 
-    return this.dataSource.transaction(async (manager) => {
+    const changed = await this.dataSource.transaction(async (manager) => {
       const subscription = await this.lockForUpdate(manager, companyId);
       if (!subscription) throw new NotFoundException(NO_PLAN);
       if (subscription.plan === target) {
@@ -205,6 +209,8 @@ export class SubscriptionsService {
       const fresh = await manager.findOneOrFail(Subscription, { where: { id: subscription.id } });
       return { view: await this.describe(manager, fresh), previousPlan, prorationCents };
     });
+    this.metrics.subscriptionChanged(target);
+    return changed;
   }
 
   private async describe(

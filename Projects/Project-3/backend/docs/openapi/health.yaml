@@ -1052,6 +1052,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        isDemo:
+          type: boolean
+          description: >-
+            True for the seeded read-only demo company, where every write is
+            refused. A client can use it to show a demo banner.
       required:
         - id
         - name
@@ -1060,6 +1065,7 @@ components:
         - industry
         - status
         - activatedAt
+        - isDemo
     MeDto:
       type: object
       properties:

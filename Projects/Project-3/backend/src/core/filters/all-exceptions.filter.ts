@@ -4,6 +4,7 @@ import {
   type ExceptionFilter,
   HttpException,
   HttpStatus,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
@@ -68,8 +69,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     // GraphQL has no `Response` to write: hand the error back and Apollo formats it as a GraphQL
-    // error (the message and status survive; the REST envelope does not apply).
-    if (host.getType<string>() === 'graphql') return exception;
+    // error (the message and status survive; the REST envelope does not apply). An unexpected error
+    // is replaced, exactly as REST does above: its own message could be a database or library detail.
+    if (host.getType<string>() === 'graphql') {
+      return isHttpException ? exception : new InternalServerErrorException('Internal server error');
+    }
 
     const response = host.switchToHttp().getResponse<Response>();
     const envelope: ErrorEnvelope = {

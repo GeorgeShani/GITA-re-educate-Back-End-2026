@@ -566,6 +566,44 @@ document.
   while `@nestjs/graphql` (run by Node) gets `index.js`, and graphql refuses a schema built by the other copy
   ("Cannot use GraphQLScalarType from another module or realm"). Never remove the alias.
 
+## Hardening *(from Phase 14 of the feature plan)*
+
+- **Telemetry is a seam** (`core/telemetry/`). `TelemetrySink` has two verbs (`tag`, `count`); `ObserveTelemetrySink`
+  adapts Observe's `TracerService` (looked up once in `onApplicationBootstrap`; a silent no-op when the module is not
+  registered, i.e. without credentials), and the test harness replaces it with `RecordingTelemetry` (`h.telemetry`,
+  cleared by `reset()`). **Nothing else imports `@nestjs/observe`.** `BusinessMetrics` names the events:
+  `gridline.files.uploaded`, `gridline.quota.exceeded` (`outcome`: blocked | overage), `gridline.subscription.changed`,
+  `gridline.billing.invoice_finalized` — labels are the PLAN only, never a company or user id (Observe caps a metric
+  at 1000 series; per-tenant questions use the `companyId` span tag `AuthGuard` sets via `tagCompany`). Emit after
+  commit where the code is outside the transaction (upload, subscription); the invoice counter sits in
+  `InvoicingService.announce` (inside the caller's transaction — a rollback there over-counts by one, documented).
+- **`REDACT_KEYS`** also scrubs one-time links/tokens (`inviteUrl`, `resetUrl`, `activationUrl`, `*Token`, `exchangeCode`),
+  because the email task payload carries them. Deliberately NOT `code`: error codes are what a log reader needs.
+- **`IdempotencyJanitor`** (`core/idempotency/`, hourly `@Cron`, off under test) deletes records past the replay window
+  and abandoned `in_progress` claims — exactly the two conditions the interceptor already treats as gone, so it changes
+  no behaviour. `purge(now)` is what specs call. It scans by `createdAt` (not covered by the `(companyId, key)` index);
+  fine for a table that holds a day of records. Records are stamped by the DATABASE clock, so in specs use real
+  `Date.now()`-relative times, not the fake clock's start.
+- **Seeds:** `npm run seed:demo` (read-only demo) and `npm run seed:all` (demo + `FixtureSeedService`: a plain WRITABLE
+  company, admin `admin@fixture.gridline.test`, employees `ada@…`/`grace@…`, password `Fixture-Password-1!`). The fixture
+  refuses to run in production (public password). Both idempotent, both standalone application contexts.
+- **Query-plan proof** (`files/query-plan.integration.spec.ts`, SCOPE step 16): 30k rows across 12 companies, `ANALYZE`,
+  nothing forced off. The admin's first page and a keyset page use `idx_file_asset_company_live` (the PARTIAL index built
+  for exactly `deletedAt IS NULL`); queries that include deleted rows use `idx_file_asset_company`; a control query
+  proves a real Seq Scan is detectable. Point `DATABASE_URL` at a Neon branch to run the same assertion there.
+- **`scope-verification.integration.spec.ts`** executes SCOPE's *Verification* steps 1-11, 14 and 15 (+ 8, 9, 10) as one
+  ordered story against the real app. Steps 12 (Observe dashboard) and 13 (live status; `realtime.integration.spec.ts`)
+  and 16 (Neon) are covered elsewhere or by hand.
+- **No CI workflow for now** (deliberately removed). The gate is run by hand: `npm run build && npm run lint && npm test &&
+  npm run test:int && npm run docs:check`. When CI is wanted, it needs a Postgres service, dummy JWT secrets and
+  `RATE_LIMIT_ENABLED=false` is already forced by the integration config.
+- **CLI job contexts** (`billing:run-cycle`, `seed:demo`, `seed:all`) boot a SMALL module set. Anything they reach must be
+  provided by `CoreModule` (which is why `TelemetryModule` lives there) or imported by the job; `standalone-jobs.integration.spec.ts`
+  builds those module sets, because no other spec boots anything but `AppModule` and would not notice a missing provider.
+- **Docker:** `backend/.env` is host-oriented (`localhost`). `docker-compose.yml` loads an optional `backend/.env.docker`
+  AFTER it (gitignored; template `.env.docker.example`) so `migrate`/`api` get container-side database URLs.
+- **Docs:** `docs/ENV_SECRETS_GUIDE.md` lists every variable; `CompanyDto.isDemo` lets a client show a demo banner.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —

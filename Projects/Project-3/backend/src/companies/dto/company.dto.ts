@@ -38,6 +38,13 @@ export class CompanyDto {
   @Expose()
   activatedAt!: Date | null;
 
+  @ApiProperty({
+    description:
+      'True for the seeded read-only demo company, where every write is refused. A client can use it to show a demo banner.',
+  })
+  @Expose()
+  isDemo!: boolean;
+
   static from(company: Company): CompanyDto {
     return toDto(CompanyDto, company);
   }

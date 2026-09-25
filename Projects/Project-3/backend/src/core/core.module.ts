@@ -4,6 +4,7 @@ import { CLOCK, SystemClock } from './clock/clock.js';
 import { RequestContextService } from './context/request-context.service.js';
 import { AllExceptionsFilter } from './filters/all-exceptions.filter.js';
 import { LoggingModule } from './logging.module.js';
+import { TelemetryModule } from './telemetry/telemetry.module.js';
 
 /**
  * Cross-cutting infrastructure every module gets for free.
@@ -15,7 +16,9 @@ import { LoggingModule } from './logging.module.js';
  */
 @Global()
 @Module({
-  imports: [LoggingModule],
+  // Telemetry lives here, not in AppModule, because billing (invoicing) reports through it and the
+  // standalone jobs (billing cycle, seeds) boot `CoreModule` without the rest of the app.
+  imports: [LoggingModule, TelemetryModule],
   providers: [
     RequestContextService,
     { provide: CLOCK, useClass: SystemClock },

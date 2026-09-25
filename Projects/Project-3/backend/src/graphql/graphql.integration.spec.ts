@@ -5,6 +5,7 @@ import { lexicographicSortSchema, printSchema } from 'graphql';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { AppHarness, type SessionBody } from '#test/support/app-harness.js';
+import { AnalyticsService } from '#/analytics/analytics.service.js';
 import { DemoSeedService } from '#/demo/demo-seed.service.js';
 import { MAX_QUERY_COMPLEXITY, MAX_QUERY_DEPTH } from './query-limits.js';
 import { SCHEMA_FILE } from './schema-sdl.js';
@@ -161,6 +162,24 @@ describe('GraphQL analytics (integration)', () => {
       const response = await gql(demo.accessToken, '{ usage { storage { liveFiles } } }');
       expect(response.errors).toBeUndefined();
       expect(response.data).toEqual({ usage: { storage: { liveFiles: 6 } } });
+    });
+  });
+
+  describe('errors', () => {
+    it('an unexpected failure is reported as a generic error — never its own message (which could be a database detail)', async () => {
+      const { session } = await march();
+      const analytics = h.app.get(AnalyticsService);
+      const original = analytics.usage.bind(analytics);
+      analytics.usage = async () => {
+        throw new Error('relation "usage_event" does not exist (password=hunter2)');
+      };
+      try {
+        const response = await gql(session.accessToken, '{ usage { storage { liveFiles } } }');
+        expect(response.errors?.[0]?.message).toBe('Internal server error');
+        expect(JSON.stringify(response)).not.toContain('hunter2');
+      } finally {
+        analytics.usage = original;
+      }
     });
   });
 

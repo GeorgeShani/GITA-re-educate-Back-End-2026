@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { AllowWhenSuspended } from '#/common/auth/allow-when-suspended.decorator.js';
 import { Public } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { AuthGuard } from './auth.guard.js';
 import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { AuthenticationService } from './authentication.service.js';
@@ -39,6 +40,7 @@ function requestWith(authorization: string | undefined) {
 
 async function setup(companyStatus: 'active' | 'suspended') {
   const authenticated: unknown[] = [];
+  const tagged: string[] = [];
   const moduleRef = await Test.createTestingModule({
     providers: [
       AuthGuard,
@@ -55,6 +57,7 @@ async function setup(companyStatus: 'active' | 'suspended') {
         provide: RequestContextService,
         useValue: { setAuthenticated: (user: unknown) => authenticated.push(user) },
       },
+      { provide: BusinessMetrics, useValue: { tagCompany: (companyId: string) => tagged.push(companyId) } },
     ],
   }).compile();
 
@@ -63,7 +66,7 @@ async function setup(companyStatus: 'active' | 'suspended') {
     const context = new ExecutionContextHost([request], Routes, Reflect.get(Routes.prototype, method));
     return { result: moduleRef.get(AuthGuard).canActivate(context), request };
   };
-  return { run, authenticated };
+  return { run, authenticated, tagged };
 }
 
 describe('AuthGuard', () => {
@@ -88,6 +91,17 @@ describe('AuthGuard', () => {
     expect(await result).toBe(true);
     expect(request.user).toEqual(USER);
     expect(authenticated).toEqual([USER]);
+  });
+
+  it('tags the request’s trace with the tenant once authenticated — and never for a refused or public request', async () => {
+    const { run, tagged } = await setup('active');
+
+    await run('open', undefined).result;
+    await expect(run('normal', undefined).result).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(tagged).toEqual([]);
+
+    await run('normal', 'Bearer abc').result;
+    expect(tagged).toEqual(['c1']);
   });
 
   describe('API keys', () => {

@@ -3,6 +3,7 @@ import type { EntityManager } from 'typeorm';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
+import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
 import type { Subscription } from '#/subscriptions/subscription.entity.js';
@@ -29,6 +30,7 @@ export class InvoicingService {
     private readonly statements: StatementService,
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
+    private readonly metrics: BusinessMetrics,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -92,6 +94,10 @@ export class InvoicingService {
       },
       manager,
     );
+    // Counted where invoices are made, so the rollover, a plan change and an upload that rolls the
+    // period forward all show up. (It happens inside the caller's transaction; a rollback after this
+    // point would over-count by one, which a counter can tolerate and a later invoice corrects.)
+    this.metrics.invoiceFinalized(invoice.plan);
     if (invoice.totalCents <= 0) return;
 
     const company = await manager.findOneOrFail(Company, { where: { id: invoice.companyId } });

@@ -11,6 +11,7 @@ import { ALLOW_WHEN_SUSPENDED_KEY } from '#/common/auth/allow-when-suspended.dec
 import { requestOf } from '#/common/http/request-of.js';
 import { IS_PUBLIC_KEY } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { looksLikeApiKey } from '#/api-keys/api-key-token.js';
 import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { AuthenticationService } from './authentication.service.js';
@@ -32,6 +33,7 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly authentication: AuthenticationService,
     private readonly apiKeys: ApiKeyAuthenticationService,
+    private readonly metrics: BusinessMetrics,
     private readonly context: RequestContextService,
   ) {}
 
@@ -61,6 +63,8 @@ export class AuthGuard implements CanActivate {
 
     request.user = user;
     this.context.setAuthenticated(user);
+    // So a trace in Observe can be filtered by tenant. A no-op when Observe is not registered.
+    this.metrics.tagCompany(user.companyId);
     return true;
   }
 }

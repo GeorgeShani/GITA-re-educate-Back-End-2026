@@ -30,7 +30,12 @@ services:
     build:
       context: ./backend
       target: build
-    env_file: ./backend/.env
+    env_file:
+      - ./backend/.env
+      # Container-only overrides (the database URLs: `.env` says `localhost`, meaning the host).
+      # Optional and loaded last, so it wins. See backend/.env.docker.example.
+      - path: ./backend/.env.docker
+        required: false
     # Overrides whatever NODE_ENV backend/.env carries. That file is shared
     # with host-based `npm run start:dev`, where "development" is correct and
     # devDependencies (pino-pretty) are actually installed; this container
@@ -49,7 +54,12 @@ services:
     build:
       context: ./backend
       target: runtime
-    env_file: ./backend/.env
+    env_file:
+      - ./backend/.env
+      # Container-only overrides (the database URLs: `.env` says `localhost`, meaning the host).
+      # Optional and loaded last, so it wins. See backend/.env.docker.example.
+      - path: ./backend/.env.docker
+        required: false
     # See the identical override on `migrate` above — backend/.env's NODE_ENV
     # is for host-based dev; this container's runtime image never has
     # pino-pretty installed (an `npm ci --omit=dev` stage), so LoggingModule

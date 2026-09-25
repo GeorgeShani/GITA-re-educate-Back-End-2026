@@ -27,6 +27,17 @@ export const REDACT_KEYS = [
   'clientSecret',
   'authorization',
   'cookie',
+  // One-time links and codes. The email task payload carries these URLs (the token is in the query),
+  // and both pino and Observe see task payloads, so they are scrubbed whole, wherever they appear.
+  'activationUrl',
+  'inviteUrl',
+  'resetUrl',
+  'inviteToken',
+  'resetToken',
+  'activationToken',
+  'oauthRegistration',
+  'oauthRegistrationToken',
+  'exchangeCode',
 ] as const;
 
 /**

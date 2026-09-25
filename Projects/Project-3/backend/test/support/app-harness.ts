@@ -19,7 +19,9 @@ import { CLOCK } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { MAIL_TRANSPORT } from '#/core/mail/mail-transport.js';
+import { TELEMETRY_SINK } from '#/core/telemetry/telemetry-sink.js';
 import { TaskRunner } from '#/core/tasks/task-runner.service.js';
+import { RecordingTelemetry } from './recording-telemetry.js';
 import { FakeAiProvider } from './fake-ai.js';
 import { FakeClock } from './fake-clock.js';
 import { FakeGoogleOAuthProvider } from './fake-oauth.js';
@@ -86,6 +88,8 @@ export class AppHarness {
     readonly storageDir: string,
     private readonly runner: TaskRunner,
     private readonly db: PostgresTestContext,
+    /** Stands in for Observe: what the app reported (counters, span tags). Cleared by `reset()`. */
+    readonly telemetry: RecordingTelemetry,
   ) {}
 
   /**
@@ -98,6 +102,7 @@ export class AppHarness {
     const mail = new MailCapture();
     const google = new FakeGoogleOAuthProvider();
     const ai = new FakeAiProvider();
+    const telemetry = new RecordingTelemetry();
     const storageDir = await mkdtemp(join(tmpdir(), 'gridline-storage-'));
     const storage = new LocalStorageDriver({
       root: storageDir,
@@ -120,6 +125,8 @@ export class AppHarness {
       .useValue(storage)
       .overrideProvider(AI_PROVIDER)
       .useValue(ai)
+      .overrideProvider(TELEMETRY_SINK)
+      .useValue(telemetry)
       .compile();
     if (previousRateLimit === undefined) delete process.env.RATE_LIMIT_ENABLED;
     else process.env.RATE_LIMIT_ENABLED = previousRateLimit;
@@ -137,6 +144,7 @@ export class AppHarness {
       storageDir,
       app.get(TaskRunner),
       await PostgresTestContext.start(),
+      telemetry,
     );
   }
 
@@ -146,6 +154,7 @@ export class AppHarness {
     this.mail.clear();
     this.google.clear();
     this.ai.reset();
+    this.telemetry.clear();
     this.clock.set(START);
     await rm(this.storageDir, { recursive: true, force: true });
     await mkdir(this.storageDir, { recursive: true });

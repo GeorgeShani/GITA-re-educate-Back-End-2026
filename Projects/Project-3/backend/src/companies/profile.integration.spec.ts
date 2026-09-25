@@ -40,9 +40,11 @@ describe('profile: GET /auth/me, PATCH /users/me, PATCH /companies/me (integrati
         'country',
         'id',
         'industry',
+        'isDemo',
         'name',
         'status',
       ]);
+      expect(response.body.company.isDemo).toBe(false);
       expect(JSON.stringify(response.body)).not.toMatch(/passwordHash|tokenHash|scrypt/);
     });
 

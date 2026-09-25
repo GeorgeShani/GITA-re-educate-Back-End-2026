@@ -3,6 +3,7 @@
 Multi-tenant SaaS backend — NestJS 12 (ESM), TypeORM 1.x, Neon Postgres. See
 [`../SCOPE.md`](../SCOPE.md) for the full design and grading rubric, and
 [`AGENTS.md`](./AGENTS.md) for the coding conventions this codebase follows.
+**New here? Start with [`docs/OVERVIEW.md`](./docs/OVERVIEW.md)** — what the app is, every feature and why it exists.
 
 ## Setup
 
@@ -96,6 +97,48 @@ npm run docs:generate   # regenerates docs/openapi.yaml + per-tag split; fails n
 npm run docs:check      # diffs a fresh regeneration against the committed docs/openapi.yaml
 npm run docs:types      # docs/openapi.yaml -> docs/openapi.d.ts, for a typed frontend API client
 ```
+
+## Configuration
+
+Every environment variable, where it comes from and what breaks without it:
+[`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md). Inside Docker the database URLs need a container-side
+override (`.env` says `localhost`): see [`.env.docker.example`](./.env.docker.example).
+
+## Seed data
+
+```bash
+npm run build
+npm run seed:demo     # the read-only demo company (idempotent) — needs the same STORAGE_* settings as the API
+npm run seed:all      # demo + a plain fixture company you can sign in to (refuses to run in production)
+```
+
+The fixture company signs in with `admin@fixture.gridline.test` / `Fixture-Password-1!` (and two employees,
+`ada@…` / `grace@…`, same password). **Demo mode:** `POST /auth/demo` signs anyone in as the demo company's admin without a
+password; every write by that company is refused with a 403 that explains why (`DemoReadOnlyGuard`). The demo admin has no
+password at all, so there is nothing to guess.
+
+## How the pieces behave (the parts that are easy to get wrong)
+
+- **A durable task queue, not an event bus.** Email and report-building are rows in `background_task`, enqueued inside the
+  same transaction as the change that caused them (so a rolled-back change never sends anything), claimed with
+  `FOR UPDATE SKIP LOCKED`, retried with backoff and marked `dead` after five attempts. There is no message broker and no
+  in-process event emitter: a handful of jobs that must survive a restart is what this is for.
+- **Plans are code, in one place.** `src/subscriptions/plan-catalog.ts` (`PLAN_CATALOG`) holds every number the brief
+  specifies: seat caps, file quotas, prices, overage, request budgets. **Decision D2** ("Basic: 0 to 10 users") is read as
+  *10 employees plus the admin* (max $50/month). The other reading — 10 seats *including* the admin (max $45) — is the
+  one-line change `basic.maxEmployees: 9`; nothing else needs touching, and `plan-catalog.spec.ts` will tell you which
+  assertions encode the current reading.
+- **Rate limits follow the plan.** 30 / 120 / 600 requests a minute per *company* (Free / Basic / Premium), shared by its
+  users and API keys, with `X-RateLimit-*` headers and a 429 that names the plan and the way up. Sign-in and email-sending
+  routes have tighter per-address limits. Counters are in memory: correct for one API instance.
+- **API keys** (`gl_live_…`) are personal, shown once and stored hashed. A key acts as its creator *as they are now* (role
+  and status re-read every request), narrowed to its scopes (`files:read`, `files:write`, `billing:read`). A route with no
+  `@RequireScopes` is closed to keys, so identity, employees, plans, audit, analytics, GraphQL and `/api-keys` itself can
+  never be reached with one — a leaked key cannot create more access. Disabling a person revokes their keys.
+- **Realtime** (Socket.IO, `io(url, { auth: { token } })`, same access token as REST): `file.status`, `quota.updated` and
+  `audit.appended`, emitted only after the change commits. Restricted-file events reach only the people who may see the file.
+- **GraphQL** (`POST /graphql`) is a read-only twin of `GET /analytics/usage` — admins only, no mutations, depth and cost
+  limits, and a committed schema (`src/graphql/schema.gql`, regenerate with `npm run graphql:schema`).
 
 ## Testing
 

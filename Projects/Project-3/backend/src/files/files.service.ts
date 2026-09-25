@@ -21,6 +21,7 @@ import type { CursorPage } from '#/common/pagination/paginated-result.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { type DownloadLink, StorageService } from '#/core/storage/storage.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { User } from '#/database/entities/user.entity.js';
@@ -106,6 +107,7 @@ export class FilesService {
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeEmitter,
+    private readonly metrics: BusinessMetrics,
     private readonly context: RequestContextService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -164,6 +166,7 @@ export class FilesService {
         const filesBefore = await this.usage.filesInPeriod(manager, companyId, key);
         const decision = quotaDecision(subscription.plan, filesBefore, subscription.currentPeriodEnd);
         if (decision.kind === 'blocked') {
+          this.metrics.quotaExceeded(subscription.plan, 'blocked');
           throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
         }
 
@@ -233,7 +236,9 @@ export class FilesService {
       throw error;
     }
 
-    // Only now that the upload has committed: tell the company's screens.
+    // Only now that the upload has committed: count it, and tell the company's screens.
+    this.metrics.fileUploaded(committed.quota.plan);
+    if (committed.result.quotaWarning) this.metrics.quotaExceeded(committed.quota.plan, 'overage');
     await this.realtime.fileStatus(fileId);
     await this.realtime.quotaUpdated(companyId, committed.quota);
     return committed.result;
@@ -488,6 +493,7 @@ export class FilesService {
       subscription.currentPeriodEnd,
     );
     if (decision.kind === 'blocked') {
+      this.metrics.quotaExceeded(subscription.plan, 'blocked');
       throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
     }
   }
