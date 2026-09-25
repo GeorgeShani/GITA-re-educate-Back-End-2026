@@ -1384,6 +1384,76 @@ paths:
         they become `invited`, hold a seat again (the plan's cap is re-checked,
         409 if full) and set a password when they accept. Only for a removed
         employee.
+  /analytics/usage:
+    get:
+      operationId: AnalyticsController_usage
+      parameters:
+        - name: from
+          required: false
+          in: query
+          description: >-
+            First day, inclusive. Default: the first day of the current billing
+            period.
+          schema:
+            format: date
+            example: '2026-03-01'
+            type: string
+        - name: to
+          required: false
+          in: query
+          description: >-
+            Last day, exclusive. Default: through today. At most 366 days after
+            `from`.
+          schema:
+            format: date
+            example: '2026-04-01'
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAnalyticsDto'
+      security:
+        - bearer: []
+      tags:
+        - analytics
+      summary: Usage analytics
+      description: >-
+        Admin only. One request returns everything a usage dashboard draws.
+
+
+        `from` and `to` are read as UTC days (any time of day is dropped) and
+        `to` is exclusive; with neither the range is the current billing period
+        so far, and it can be at most 366 days. Within the range:
+
+
+        - `filesPerDay`: uploads per day, with a zero for every quiet day so a
+        chart has a point for each.
+
+        - `byEmployee`: each uploader's files, bytes and last upload, most
+        active first — including people since removed, whose history stays.
+
+        - `storage`: live files and bytes right now (deleted files excluded,
+        whatever the range), and the bytes uploaded in the range (deleted files
+        included).
+
+
+        Always for the CURRENT billing period, regardless of the range:
+
+
+        - `quota`: cumulative uploads per day against the plan's included quota,
+        with the even-pace line to compare it to. It counts exactly what the
+        running bill counts.
+
+
+        And the whole `planHistory`, newest change first: each change joined to
+        the invoice that closed the outgoing period.
+
+
+        A deleted file still counts as an upload: deleting does not undo that it
+        happened.
   /audit:
     get:
       operationId: AuditLogController_list
@@ -1510,76 +1580,6 @@ paths:
         One entry with its `metadata`: the details specific to the action, such
         as the plan changed to, or a file's name and type. Another company's
         entry is a 404. Admin only.
-  /analytics/usage:
-    get:
-      operationId: AnalyticsController_usage
-      parameters:
-        - name: from
-          required: false
-          in: query
-          description: >-
-            First day, inclusive. Default: the first day of the current billing
-            period.
-          schema:
-            format: date
-            example: '2026-03-01'
-            type: string
-        - name: to
-          required: false
-          in: query
-          description: >-
-            Last day, exclusive. Default: through today. At most 366 days after
-            `from`.
-          schema:
-            format: date
-            example: '2026-04-01'
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UsageAnalyticsDto'
-      security:
-        - bearer: []
-      tags:
-        - analytics
-      summary: Usage analytics
-      description: >-
-        Admin only. One request returns everything a usage dashboard draws.
-
-
-        `from` and `to` are read as UTC days (any time of day is dropped) and
-        `to` is exclusive; with neither the range is the current billing period
-        so far, and it can be at most 366 days. Within the range:
-
-
-        - `filesPerDay`: uploads per day, with a zero for every quiet day so a
-        chart has a point for each.
-
-        - `byEmployee`: each uploader's files, bytes and last upload, most
-        active first — including people since removed, whose history stays.
-
-        - `storage`: live files and bytes right now (deleted files excluded,
-        whatever the range), and the bytes uploaded in the range (deleted files
-        included).
-
-
-        Always for the CURRENT billing period, regardless of the range:
-
-
-        - `quota`: cumulative uploads per day against the plan's included quota,
-        with the even-pace line to compare it to. It counts exactly what the
-        running bill counts.
-
-
-        And the whole `planHistory`, newest change first: each change joined to
-        the invoice that closed the outgoing period.
-
-
-        A deleted file still counts as an upload: deleting does not undo that it
-        happened.
   /api-keys:
     post:
       operationId: ApiKeysController_create
@@ -2889,138 +2889,6 @@ components:
       required:
         - data
         - meta
-    AuditEntryDto:
-      type: object
-      properties:
-        id:
-          type: string
-        action:
-          type: string
-          enum: &ref_24
-            - company.registered
-            - company.activated
-            - company.activation_resent
-            - company.updated
-            - user.profile_updated
-            - auth.password_reset_requested
-            - auth.password_reset
-            - auth.password_changed
-            - auth.identity_linked
-            - auth.identity_unlinked
-            - employee.invited
-            - employee.invite_resent
-            - employee.accepted_invite
-            - employee.disabled
-            - employee.reactivated
-            - subscription.created
-            - subscription.changed
-            - billing.invoice_finalized
-            - api_key.created
-            - api_key.revoked
-            - file.uploaded
-            - file.access_changed
-            - file.deleted
-          description: What happened, `<area>.<what_happened>`.
-        actorUserId:
-          type: string
-          nullable: true
-          description: >-
-            Who did it. Null for the system (the billing cycle) or a person
-            since removed.
-        targetType:
-          type: string
-          nullable: true
-          example: file
-        targetId:
-          type: string
-          nullable: true
-          description: The id of what it happened to.
-        ip:
-          type: string
-          nullable: true
-          description: The caller’s IP address, when it came over HTTP.
-        correlationId:
-          type: string
-          nullable: true
-          description: >-
-            Ties entries written by one request together, and to that request’s
-            logs.
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - action
-        - actorUserId
-        - targetType
-        - targetId
-        - ip
-        - correlationId
-        - createdAt
-    AuditPageDto:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AuditEntryDto'
-        meta:
-          $ref: '#/components/schemas/CursorMetaDto'
-      required:
-        - data
-        - meta
-    AuditEntryDetailDto:
-      type: object
-      properties:
-        id:
-          type: string
-        action:
-          type: string
-          enum: *ref_24
-          description: What happened, `<area>.<what_happened>`.
-        actorUserId:
-          type: string
-          nullable: true
-          description: >-
-            Who did it. Null for the system (the billing cycle) or a person
-            since removed.
-        targetType:
-          type: string
-          nullable: true
-          example: file
-        targetId:
-          type: string
-          nullable: true
-          description: The id of what it happened to.
-        ip:
-          type: string
-          nullable: true
-          description: The caller’s IP address, when it came over HTTP.
-        correlationId:
-          type: string
-          nullable: true
-          description: >-
-            Ties entries written by one request together, and to that request’s
-            logs.
-        createdAt:
-          type: string
-          format: date-time
-        metadata:
-          type: object
-          additionalProperties: true
-          description: >-
-            Details specific to the action (for example the plan changed to, or
-            the name of a file).
-      required:
-        - id
-        - action
-        - actorUserId
-        - targetType
-        - targetId
-        - ip
-        - correlationId
-        - createdAt
-        - metadata
     DayRangeDto:
       type: object
       properties:
@@ -3205,6 +3073,138 @@ components:
         - storage
         - quota
         - planHistory
+    AuditEntryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: &ref_24
+            - company.registered
+            - company.activated
+            - company.activation_resent
+            - company.updated
+            - user.profile_updated
+            - auth.password_reset_requested
+            - auth.password_reset
+            - auth.password_changed
+            - auth.identity_linked
+            - auth.identity_unlinked
+            - employee.invited
+            - employee.invite_resent
+            - employee.accepted_invite
+            - employee.disabled
+            - employee.reactivated
+            - subscription.created
+            - subscription.changed
+            - billing.invoice_finalized
+            - api_key.created
+            - api_key.revoked
+            - file.uploaded
+            - file.access_changed
+            - file.deleted
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+    AuditPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntryDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    AuditEntryDetailDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: *ref_24
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >-
+            Details specific to the action (for example the plan changed to, or
+            the name of a file).
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+        - metadata
     CreateApiKeyDto:
       type: object
       properties:

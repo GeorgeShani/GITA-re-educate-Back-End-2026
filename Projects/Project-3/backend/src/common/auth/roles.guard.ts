@@ -1,5 +1,6 @@
 import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { requestOf } from '#/common/http/request-of.js';
 import type { UserRole } from '#/database/entities/user.entity.js';
 import type { AuthenticatedUser } from './authenticated-user.interface.js';
 import { ROLES_KEY } from './roles.decorator.js';
@@ -22,7 +23,7 @@ export class RolesGuard implements CanActivate {
     // narrows further, it never grants access the auth guard didn't already.
     if (!requiredRoles || requiredRoles.length === 0) return true;
 
-    const request = context.switchToHttp().getRequest<{ user?: AuthenticatedUser }>();
+    const request = requestOf<{ user?: AuthenticatedUser }>(context);
     const user = request.user;
     return user !== undefined && requiredRoles.includes(user.role);
   }

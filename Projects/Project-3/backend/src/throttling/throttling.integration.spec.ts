@@ -151,6 +151,19 @@ describe('plan-tiered rate limiting (integration)', () => {
       expect(general.headers['x-ratelimit-remaining']).toBe(String(PLAN_CATALOG.free.rateLimitPerMinute - 1));
     });
 
+    it('GraphQL spends the same company budget as REST', async () => {
+      const { session } = await company('basic');
+      await hit(session, PLAN_CATALOG.basic.rateLimitPerMinute);
+
+      const response = await h
+        .http()
+        .post('/graphql')
+        .set(...h.bearer(session))
+        .send({ query: '{ usage { storage { liveFiles } } }' });
+      expect(response.body.errors?.[0]?.message).toContain(`basic plan allows ${PLAN_CATALOG.basic.rateLimitPerMinute} requests per minute`);
+      expect(response.body.data ?? null).toBeNull();
+    });
+
     it('does not limit the health probe', async () => {
       const statuses: number[] = [];
       for (let index = 0; index < 130; index += 1) {

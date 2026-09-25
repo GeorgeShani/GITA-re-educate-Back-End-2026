@@ -13,6 +13,7 @@ import {
 } from '@nestjs/throttler';
 import { InjectRepository } from '@nestjs/typeorm';
 import type { Repository } from 'typeorm';
+import { requestOf, responseOf } from '#/common/http/request-of.js';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { PLAN_CATALOG, type Plan } from '#/subscriptions/plan-catalog.js';
@@ -62,6 +63,14 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     @InjectRepository(Subscription) private readonly subscriptions: Repository<Subscription>,
   ) {
     super(options, storageService, reflector);
+  }
+
+  /** GraphQL puts the request in its own context, not where `switchToHttp` looks. */
+  protected override getRequestResponse(context: ExecutionContext): {
+    req: Record<string, unknown>;
+    res: Record<string, unknown>;
+  } {
+    return { req: requestOf(context), res: responseOf(context) };
   }
 
   protected override async shouldSkip(_context: ExecutionContext): Promise<boolean> {

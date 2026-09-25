@@ -1,4 +1,5 @@
 import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { isGraphql, requestOf } from '#/common/http/request-of.js';
 import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -19,7 +20,10 @@ export const DEMO_READ_ONLY_MESSAGE =
 @Injectable()
 export class DemoReadOnlyGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest<{ method: string; user?: AuthenticatedUser }>();
+    // GraphQL here is read-only by construction (the schema has no mutations), though its transport
+    // is a POST — so the method says nothing about it.
+    if (isGraphql(context)) return true;
+    const request = requestOf<{ method: string; user?: AuthenticatedUser }>(context);
     if (!request.user?.isDemo) return true;
     if (SAFE_METHODS.has(request.method.toUpperCase())) return true;
     throw new ForbiddenException(DEMO_READ_ONLY_MESSAGE);

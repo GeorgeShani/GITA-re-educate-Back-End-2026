@@ -788,6 +788,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analytics/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Usage analytics
+         * @description Admin only. One request returns everything a usage dashboard draws.
+         *
+         *     `from` and `to` are read as UTC days (any time of day is dropped) and `to` is exclusive; with neither the range is the current billing period so far, and it can be at most 366 days. Within the range:
+         *
+         *     - `filesPerDay`: uploads per day, with a zero for every quiet day so a chart has a point for each.
+         *     - `byEmployee`: each uploader's files, bytes and last upload, most active first — including people since removed, whose history stays.
+         *     - `storage`: live files and bytes right now (deleted files excluded, whatever the range), and the bytes uploaded in the range (deleted files included).
+         *
+         *     Always for the CURRENT billing period, regardless of the range:
+         *
+         *     - `quota`: cumulative uploads per day against the plan's included quota, with the even-pace line to compare it to. It counts exactly what the running bill counts.
+         *
+         *     And the whole `planHistory`, newest change first: each change joined to the invoice that closed the outgoing period.
+         *
+         *     A deleted file still counts as an upload: deleting does not undo that it happened.
+         */
+        get: operations["AnalyticsController_usage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/audit": {
         parameters: {
             query?: never;
@@ -822,40 +856,6 @@ export interface paths {
          * @description One entry with its `metadata`: the details specific to the action, such as the plan changed to, or a file's name and type. Another company's entry is a 404. Admin only.
          */
         get: operations["AuditLogController_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/analytics/usage": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Usage analytics
-         * @description Admin only. One request returns everything a usage dashboard draws.
-         *
-         *     `from` and `to` are read as UTC days (any time of day is dropped) and `to` is exclusive; with neither the range is the current billing period so far, and it can be at most 366 days. Within the range:
-         *
-         *     - `filesPerDay`: uploads per day, with a zero for every quiet day so a chart has a point for each.
-         *     - `byEmployee`: each uploader's files, bytes and last upload, most active first — including people since removed, whose history stays.
-         *     - `storage`: live files and bytes right now (deleted files excluded, whatever the range), and the bytes uploaded in the range (deleted files included).
-         *
-         *     Always for the CURRENT billing period, regardless of the range:
-         *
-         *     - `quota`: cumulative uploads per day against the plan's included quota, with the even-pace line to compare it to. It counts exactly what the running bill counts.
-         *
-         *     And the whole `planHistory`, newest change first: each change joined to the invoice that closed the outgoing period.
-         *
-         *     A deleted file still counts as an upload: deleting does not undo that it happened.
-         */
-        get: operations["AnalyticsController_usage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1455,54 +1455,6 @@ export interface components {
             data: components["schemas"]["EmployeeDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
         };
-        AuditEntryDto: {
-            id: string;
-            /**
-             * @description What happened, `<area>.<what_happened>`.
-             * @enum {string}
-             */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
-            /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
-            actorUserId: string | null;
-            /** @example file */
-            targetType: string | null;
-            /** @description The id of what it happened to. */
-            targetId: string | null;
-            /** @description The caller’s IP address, when it came over HTTP. */
-            ip: string | null;
-            /** @description Ties entries written by one request together, and to that request’s logs. */
-            correlationId: string | null;
-            /** Format: date-time */
-            createdAt: string;
-        };
-        AuditPageDto: {
-            data: components["schemas"]["AuditEntryDto"][];
-            meta: components["schemas"]["CursorMetaDto"];
-        };
-        AuditEntryDetailDto: {
-            id: string;
-            /**
-             * @description What happened, `<area>.<what_happened>`.
-             * @enum {string}
-             */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
-            /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
-            actorUserId: string | null;
-            /** @example file */
-            targetType: string | null;
-            /** @description The id of what it happened to. */
-            targetId: string | null;
-            /** @description The caller’s IP address, when it came over HTTP. */
-            ip: string | null;
-            /** @description Ties entries written by one request together, and to that request’s logs. */
-            correlationId: string | null;
-            /** Format: date-time */
-            createdAt: string;
-            /** @description Details specific to the action (for example the plan changed to, or the name of a file). */
-            metadata: {
-                [key: string]: unknown;
-            };
-        };
         DayRangeDto: {
             /**
              * Format: date-time
@@ -1590,6 +1542,54 @@ export interface components {
             quota: components["schemas"]["QuotaBurnDownDto"];
             /** @description Newest change first, up to 50. */
             planHistory: components["schemas"]["PlanChangeDto"][];
+        };
+        AuditEntryDto: {
+            id: string;
+            /**
+             * @description What happened, `<area>.<what_happened>`.
+             * @enum {string}
+             */
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
+            actorUserId: string | null;
+            /** @example file */
+            targetType: string | null;
+            /** @description The id of what it happened to. */
+            targetId: string | null;
+            /** @description The caller’s IP address, when it came over HTTP. */
+            ip: string | null;
+            /** @description Ties entries written by one request together, and to that request’s logs. */
+            correlationId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AuditPageDto: {
+            data: components["schemas"]["AuditEntryDto"][];
+            meta: components["schemas"]["CursorMetaDto"];
+        };
+        AuditEntryDetailDto: {
+            id: string;
+            /**
+             * @description What happened, `<area>.<what_happened>`.
+             * @enum {string}
+             */
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
+            actorUserId: string | null;
+            /** @example file */
+            targetType: string | null;
+            /** @description The id of what it happened to. */
+            targetId: string | null;
+            /** @description The caller’s IP address, when it came over HTTP. */
+            ip: string | null;
+            /** @description Ties entries written by one request together, and to that request’s logs. */
+            correlationId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Details specific to the action (for example the plan changed to, or the name of a file). */
+            metadata: {
+                [key: string]: unknown;
+            };
         };
         CreateApiKeyDto: {
             /**
@@ -2752,6 +2752,30 @@ export interface operations {
             };
         };
     };
+    AnalyticsController_usage: {
+        parameters: {
+            query?: {
+                /** @description First day, inclusive. Default: the first day of the current billing period. */
+                from?: string;
+                /** @description Last day, exclusive. Default: through today. At most 366 days after `from`. */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAnalyticsDto"];
+                };
+            };
+        };
+    };
     AuditLogController_list: {
         parameters: {
             query?: {
@@ -2801,30 +2825,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditEntryDetailDto"];
-                };
-            };
-        };
-    };
-    AnalyticsController_usage: {
-        parameters: {
-            query?: {
-                /** @description First day, inclusive. Default: the first day of the current billing period. */
-                from?: string;
-                /** @description Last day, exclusive. Default: through today. At most 366 days after `from`. */
-                to?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UsageAnalyticsDto"];
                 };
             };
         };

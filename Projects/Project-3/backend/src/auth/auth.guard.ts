@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
 import { ALLOW_WHEN_SUSPENDED_KEY } from '#/common/auth/allow-when-suspended.decorator.js';
+import { requestOf } from '#/common/http/request-of.js';
 import { IS_PUBLIC_KEY } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { looksLikeApiKey } from '#/api-keys/api-key-token.js';
@@ -41,7 +42,7 @@ export class AuthGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const request = executionContext.switchToHttp().getRequest<AuthenticatableRequest>();
+    const request = requestOf<AuthenticatableRequest>(executionContext);
     const token = bearerToken(request.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 

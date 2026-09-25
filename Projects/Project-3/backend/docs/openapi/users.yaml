@@ -1196,138 +1196,6 @@ components:
       required:
         - data
         - meta
-    AuditEntryDto:
-      type: object
-      properties:
-        id:
-          type: string
-        action:
-          type: string
-          enum: &ref_6
-            - company.registered
-            - company.activated
-            - company.activation_resent
-            - company.updated
-            - user.profile_updated
-            - auth.password_reset_requested
-            - auth.password_reset
-            - auth.password_changed
-            - auth.identity_linked
-            - auth.identity_unlinked
-            - employee.invited
-            - employee.invite_resent
-            - employee.accepted_invite
-            - employee.disabled
-            - employee.reactivated
-            - subscription.created
-            - subscription.changed
-            - billing.invoice_finalized
-            - api_key.created
-            - api_key.revoked
-            - file.uploaded
-            - file.access_changed
-            - file.deleted
-          description: What happened, `<area>.<what_happened>`.
-        actorUserId:
-          type: string
-          nullable: true
-          description: >-
-            Who did it. Null for the system (the billing cycle) or a person
-            since removed.
-        targetType:
-          type: string
-          nullable: true
-          example: file
-        targetId:
-          type: string
-          nullable: true
-          description: The id of what it happened to.
-        ip:
-          type: string
-          nullable: true
-          description: The caller’s IP address, when it came over HTTP.
-        correlationId:
-          type: string
-          nullable: true
-          description: >-
-            Ties entries written by one request together, and to that request’s
-            logs.
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - action
-        - actorUserId
-        - targetType
-        - targetId
-        - ip
-        - correlationId
-        - createdAt
-    AuditPageDto:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AuditEntryDto'
-        meta:
-          $ref: '#/components/schemas/CursorMetaDto'
-      required:
-        - data
-        - meta
-    AuditEntryDetailDto:
-      type: object
-      properties:
-        id:
-          type: string
-        action:
-          type: string
-          enum: *ref_6
-          description: What happened, `<area>.<what_happened>`.
-        actorUserId:
-          type: string
-          nullable: true
-          description: >-
-            Who did it. Null for the system (the billing cycle) or a person
-            since removed.
-        targetType:
-          type: string
-          nullable: true
-          example: file
-        targetId:
-          type: string
-          nullable: true
-          description: The id of what it happened to.
-        ip:
-          type: string
-          nullable: true
-          description: The caller’s IP address, when it came over HTTP.
-        correlationId:
-          type: string
-          nullable: true
-          description: >-
-            Ties entries written by one request together, and to that request’s
-            logs.
-        createdAt:
-          type: string
-          format: date-time
-        metadata:
-          type: object
-          additionalProperties: true
-          description: >-
-            Details specific to the action (for example the plan changed to, or
-            the name of a file).
-      required:
-        - id
-        - action
-        - actorUserId
-        - targetType
-        - targetId
-        - ip
-        - correlationId
-        - createdAt
-        - metadata
     DayRangeDto:
       type: object
       properties:
@@ -1512,6 +1380,138 @@ components:
         - storage
         - quota
         - planHistory
+    AuditEntryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: &ref_6
+            - company.registered
+            - company.activated
+            - company.activation_resent
+            - company.updated
+            - user.profile_updated
+            - auth.password_reset_requested
+            - auth.password_reset
+            - auth.password_changed
+            - auth.identity_linked
+            - auth.identity_unlinked
+            - employee.invited
+            - employee.invite_resent
+            - employee.accepted_invite
+            - employee.disabled
+            - employee.reactivated
+            - subscription.created
+            - subscription.changed
+            - billing.invoice_finalized
+            - api_key.created
+            - api_key.revoked
+            - file.uploaded
+            - file.access_changed
+            - file.deleted
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+    AuditPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntryDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    AuditEntryDetailDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: *ref_6
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >-
+            Details specific to the action (for example the plan changed to, or
+            the name of a file).
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+        - metadata
     CreateApiKeyDto:
       type: object
       properties:

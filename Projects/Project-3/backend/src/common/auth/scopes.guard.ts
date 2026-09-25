@@ -5,6 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { requestOf } from '#/common/http/request-of.js';
 import type { AuthenticatedUser } from './authenticated-user.interface.js';
 import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
 
@@ -22,7 +23,7 @@ export class ScopesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const user = context.switchToHttp().getRequest<{ user?: AuthenticatedUser }>().user;
+    const user = requestOf<{ user?: AuthenticatedUser }>(context).user;
     // No user (a @Public() route) or a session: nothing for this guard to narrow.
     if (!user || user.authMethod !== 'api_key') return true;
 

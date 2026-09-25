@@ -39,8 +39,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     this.logger.setContext(AllExceptionsFilter.name);
   }
 
-  catch(exception: unknown, host: ArgumentsHost): void {
-    const response = host.switchToHttp().getResponse<Response>();
+  catch(exception: unknown, host: ArgumentsHost): unknown {
     const isHttpException = exception instanceof HttpException;
 
     const statusCode = isHttpException
@@ -68,6 +67,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn({ statusCode, message }, 'Request rejected');
     }
 
+    // GraphQL has no `Response` to write: hand the error back and Apollo formats it as a GraphQL
+    // error (the message and status survive; the REST envelope does not apply).
+    if (host.getType<string>() === 'graphql') return exception;
+
+    const response = host.switchToHttp().getResponse<Response>();
     const envelope: ErrorEnvelope = {
       statusCode,
       message,

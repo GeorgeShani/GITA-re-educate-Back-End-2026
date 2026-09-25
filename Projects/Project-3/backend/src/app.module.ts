@@ -26,6 +26,7 @@ import { DemoModule } from './demo/demo.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { FilesModule } from './files/files.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
+import { GraphqlApiModule } from './graphql/graphql-api.module.js';
 import { HealthModule } from './health/health.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -121,6 +122,7 @@ function observeImports(): DynamicModule[] {
     EmployeesModule,
     FilesModule,
     RealtimeModule,
+    GraphqlApiModule,
     AuditLogModule,
     AnalyticsModule,
     ApiKeysModule,

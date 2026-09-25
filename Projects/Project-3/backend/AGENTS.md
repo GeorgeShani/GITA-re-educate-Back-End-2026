@@ -532,6 +532,40 @@ document.
 - Tests: `app.listen(0)` + `socket.io-client` (`test/support/socket-client.ts`: `connect`, `Listener.waitFor`,
   `settle`). Negative assertions ("the third employee got nothing") wait `settle()` first.
 
+## GraphQL analytics *(from Phase 13 of the feature plan)*
+
+- **`/graphql` is READ-ONLY** (`src/graphql/`, `@nestjs/graphql` 14 + `@nestjs/apollo` 14 + Apollo Server 5 on Express 5
+  via `@as-integrations/express5`). Code-first, `Query` only: the schema has no `Mutation` or `Subscription` type.
+  **`graphql` stays on 16** (`@apollo/server` 5 peers `^16.11`; 17 would break it). It is NOT in the OpenAPI
+  document; the committed `src/graphql/schema.gql` is its contract.
+- **Same numbers as REST, by construction.** `AnalyticsResolver.usage(from,to)` calls the SAME `AnalyticsService.usage`
+  that `GET /analytics/usage` does (→ `analytics.queries.ts`). The types in `analytics.types.ts` mirror the REST DTO
+  field for field, and the integration spec asserts `data.usage` `toEqual` the REST body for every field.
+- **`common/http/request-of.ts` — every guard reads the request through `requestOf(context)`.** Over GraphQL,
+  `switchToHttp().getRequest()` returns the resolver's ROOT OBJECT, so a guard using it would see "no user" and — being a
+  guard that skips when there is nothing to check — quietly let the request through. `AuthGuard`, `RolesGuard`,
+  `ScopesGuard`, `DemoReadOnlyGuard` and `PlanThrottlerGuard.getRequestResponse` all use it; **a new guard must too**
+  (`request-of.spec.ts` pins the behaviour). The Apollo context is `{ req, res }` (`GraphqlApiModule`).
+- **Access:** `@Roles('admin')` + `@RequiresSubscription()` on the resolver, NO `@RequireScopes`, so an API key is refused
+  by `ScopesGuard`'s default deny. `resolver-audit.spec.ts` (the resolver twin of `route-audit.spec.ts`) discovers
+  `*.resolver.ts` files on disk and asserts each is `@Roles`, not `@Public`, has no scopes, and is a provider of
+  `GraphqlApiModule`. Tenant scoping comes from the CLS context the guards fill (the Cls middleware covers `/graphql`).
+  The demo user may query (`DemoReadOnlyGuard` skips GraphQL: a POST that can only read).
+- **Limits run at validation time, before any resolver** (`query-limits.ts`): depth ≤ `MAX_QUERY_DEPTH` (6; real queries
+  are 4, introspection walks deeper; fragments followed, cycles safe) and cost ≤ `MAX_QUERY_COMPLEXITY` (1000) using
+  `graphql-query-complexity` with per-field `complexity` (lists cost ×10, the root `usage` costs 50 + its children), so
+  aliasing the field six times to multiply the work is priced out. Errors say what was exceeded and the maximum
+  (Apollo overwrites `extensions.code` with `GRAPHQL_VALIDATION_FAILED`; our numbers survive in `extensions`).
+- **Errors:** `AllExceptionsFilter` returns the exception for GraphQL contexts (Apollo formats it) instead of writing the
+  REST envelope — a GraphQL response is HTTP 200 with `errors[]`. Introspection is on outside production (Apollo default);
+  the landing page is off.
+- **Schema file:** `npm run graphql:schema` regenerates `src/graphql/schema.gql` (sorted SDL, built from decorators without
+  booting the app); `graphql.integration.spec.ts` fails if it differs from the running schema. Regenerate after touching
+  `analytics.types.ts` / the resolver.
+- **Vitest resolves `graphql` to its CommonJS build** (alias in both vitest configs). Vite would otherwise pick `index.mjs`
+  while `@nestjs/graphql` (run by Node) gets `index.js`, and graphql refuses a schema built by the other copy
+  ("Cannot use GraphQLScalarType from another module or realm"). Never remove the alias.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —

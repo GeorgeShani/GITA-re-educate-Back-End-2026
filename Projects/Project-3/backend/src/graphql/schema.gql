@@ -1,0 +1,98 @@
+type BurnDownPoint {
+  date: String!
+
+  """Where an even pace would be."""
+  pace: Float!
+
+  """Files uploaded this period so far, cumulative, at the end of that day."""
+  used: Int!
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type DayRange {
+  days: Int!
+
+  """Inclusive, UTC midnight."""
+  from: DateTime!
+
+  """Exclusive, UTC midnight."""
+  to: DateTime!
+}
+
+type EmployeeActivity {
+  """Total size of what they uploaded in the range."""
+  bytes: Float!
+  files: Int!
+  fullName: String!
+  lastUploadAt: DateTime!
+  userId: String!
+}
+
+type FilesPerDayPoint {
+  """UTC day, `YYYY-MM-DD`."""
+  date: String!
+
+  """Files uploaded that day; 0 for a quiet day."""
+  files: Int!
+}
+
+"""One of free, basic, premium."""
+enum Plan {
+  basic
+  free
+  premium
+}
+
+type PlanChange {
+  effectiveAt: DateTime!
+  fromPlan: Plan
+  invoiceId: String
+  invoiceTotalCents: Int
+
+  """Integer cents billed for the outgoing plan’s part-period."""
+  prorationCents: Int!
+  toPlan: Plan!
+}
+
+type Query {
+  """
+  Usage analytics for the current company: uploads per day, per employee, storage, the quota burn-down and plan history. `from` (inclusive) and `to` (exclusive) are read as UTC days; with neither it is the current billing period so far.
+  """
+  usage(from: DateTime, to: DateTime): UsageAnalytics!
+}
+
+type QuotaBurnDown {
+  limit: Int!
+
+  """Exclusive: when the quota resets."""
+  periodEnd: DateTime!
+  periodStart: DateTime!
+  plan: Plan!
+  points: [BurnDownPoint!]!
+  used: Int!
+}
+
+type StorageUsage {
+  liveBytes: Float!
+
+  """Files that exist right now, whatever the range."""
+  liveFiles: Int!
+
+  """Bytes uploaded in the range, including files deleted since."""
+  uploadedBytesInRange: Float!
+}
+
+type UsageAnalytics {
+  byEmployee: [EmployeeActivity!]!
+  filesPerDay: [FilesPerDayPoint!]!
+  planHistory: [PlanChange!]!
+
+  """Always the CURRENT billing period, whatever the range."""
+  quota: QuotaBurnDown!
+  range: DayRange!
+  storage: StorageUsage!
+}
