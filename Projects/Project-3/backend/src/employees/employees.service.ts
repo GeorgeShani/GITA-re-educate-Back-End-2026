@@ -30,6 +30,7 @@ import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
 import { type OffsetPage } from '#/common/pagination/paginated-result.js';
 import { toOffsetPage } from '#/common/pagination/paginate.js';
+import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { EmployeesQueryDto } from './dto/employees-query.dto.js';
 import type { InviteEmployeeDto } from './dto/invite-employee.dto.js';
@@ -48,6 +49,7 @@ export class EmployeesService {
     private readonly lookup: AccountLookupService,
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeEmitter,
     private readonly context: RequestContextService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -168,7 +170,7 @@ export class EmployeesService {
   async disable(id: string): Promise<User> {
     const companyId = this.context.requireCompanyId();
 
-    return this.dataSource.transaction(async (manager) => {
+    const disabled = await this.dataSource.transaction(async (manager) => {
       const target = await this.findInCompany(manager, companyId, id);
       if (target.id === this.context.userId) {
         throw new BadRequestException('You cannot remove yourself.');
@@ -219,6 +221,10 @@ export class EmployeesService {
       );
       return manager.findOneOrFail(User, { where: { id: target.id } });
     });
+
+    // Committed: whatever they still have open (a live-updates socket) is closed too.
+    await this.realtime.disconnectUser(disabled.id);
+    return disabled;
   }
 
   /**

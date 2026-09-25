@@ -25,6 +25,9 @@ import { type DownloadLink, StorageService } from '#/core/storage/storage.servic
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { User } from '#/database/entities/user.entity.js';
 import { TenantScope } from '#/database/tenant-scope.js';
+import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
+import type { QuotaUpdatedEvent } from '#/realtime/realtime-events.js';
+import { PLAN_CATALOG } from '#/subscriptions/plan-catalog.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { FilesQueryDto } from './dto/files-query.dto.js';
@@ -102,6 +105,7 @@ export class FilesService {
     private readonly storage: StorageService,
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeEmitter,
     private readonly context: RequestContextService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -143,8 +147,9 @@ export class FilesService {
     const storageKey = `companies/${companyId}/files/${fileId}`;
     await this.storage.put(storageKey, file.buffer, mimeType);
 
+    let committed: { result: UploadResult; quota: QuotaUpdatedEvent };
     try {
-      return await this.dataSource.transaction(async (manager) => {
+      committed = await this.dataSource.transaction(async (manager) => {
         const subscription = await this.subscriptions.lockForUpdate(manager, companyId);
         if (!subscription) throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
 
@@ -156,11 +161,8 @@ export class FilesService {
           end: subscription.currentPeriodEnd,
         });
 
-        const decision = quotaDecision(
-          subscription.plan,
-          await this.usage.filesInPeriod(manager, companyId, key),
-          subscription.currentPeriodEnd,
-        );
+        const filesBefore = await this.usage.filesInPeriod(manager, companyId, key);
+        const decision = quotaDecision(subscription.plan, filesBefore, subscription.currentPeriodEnd);
         if (decision.kind === 'blocked') {
           throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
         }
@@ -213,15 +215,28 @@ export class FilesService {
         );
 
         return {
-          file: saved,
-          grantedUserIds: grants,
-          quotaWarning: decision.kind === 'overage' ? overageWarning(decision) : null,
+          result: {
+            file: saved,
+            grantedUserIds: grants,
+            quotaWarning: decision.kind === 'overage' ? overageWarning(decision) : null,
+          },
+          quota: {
+            plan: subscription.plan,
+            periodKey: key,
+            filesUsed: filesBefore + 1,
+            filesLimit: PLAN_CATALOG[subscription.plan].filesPerPeriod,
+          },
         };
       });
     } catch (error) {
       await this.discardObject(storageKey);
       throw error;
     }
+
+    // Only now that the upload has committed: tell the company's screens.
+    await this.realtime.fileStatus(fileId);
+    await this.realtime.quotaUpdated(companyId, committed.quota);
+    return committed.result;
   }
 
   /** Newest first by default, keyset-paginated; the visibility predicate always applies first. */

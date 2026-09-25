@@ -6,6 +6,7 @@ import { AI_PROVIDER, type AiProvider } from '#/core/ai/ai-provider.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { StorageService } from '#/core/storage/storage.service.js';
 import type { TaskHandler } from '#/core/tasks/task-handler.js';
+import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAsset } from './file-asset.entity.js';
 import {
@@ -52,6 +53,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     private readonly storage: StorageService,
     @Inject(AI_PROVIDER) private readonly ai: AiProvider,
     private readonly logger: PinoLogger,
+    private readonly realtime: RealtimeEmitter,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     this.logger.setContext(BuildDataQualityReportHandler.name);
@@ -72,6 +74,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     const reportId = existing?.id ?? (await reports.save(reports.create({ fileId, companyId, status: 'queued' }))).id;
 
     await reports.update({ id: reportId }, { status: 'profiling', errorMessage: null });
+    await this.realtime.fileStatus(fileId);
 
     try {
       await this.profile(reportId, file);
@@ -80,8 +83,11 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         { id: reportId },
         { status: 'failed', errorMessage: 'Profiling hit a temporary problem and will be retried.' },
       );
+      await this.realtime.fileStatus(fileId);
       throw error;
     }
+    // Every outcome of `profile` (ready, unsupported, failed) is committed by now: announce it.
+    await this.realtime.fileStatus(fileId);
   }
 
   private async profile(reportId: string, file: FileAsset): Promise<void> {

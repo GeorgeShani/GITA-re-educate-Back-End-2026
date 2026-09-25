@@ -505,6 +505,33 @@ document.
   Reads are safe to leave open because every read route is a pure read.
 - Global guard order is now Auth → Throttler → DemoReadOnly → Scopes → Roles → RequireSubscription.
 
+## Realtime *(from Phase 12 of the feature plan)*
+
+- **Socket.IO, push-only** (`src/realtime/`, `@nestjs/websockets` + `platform-socket.io`). Not part of the OpenAPI
+  document (documented here and in the README). Caddy already forwards `/socket.io/*` to the API. Clients connect
+  with `io(url, { auth: { token } })` using the same access token the REST API takes.
+- **Auth is a handshake middleware** (`RealtimeGateway.afterInit` → `server.use`), before a connection exists, using
+  the SAME `AuthenticationService` as the REST guard (user row re-read: disabled person / non-active company =
+  refused, one `Unauthorized` message). API keys are refused (an HTTP integration, not a live screen). A socket is
+  validated at connect only; an employee's REMOVAL closes their sockets (`EmployeesService.disable` →
+  `RealtimeEmitter.disconnectUser`). An expired 15-minute token does not close an open socket — the client reconnects
+  with a fresh one; nothing is ever emitted to a room its holder no longer belongs to.
+- **Rooms:** `company:<id>`, `user:<id>`, `admins:<companyId>` (admins only) — helpers in `realtime-events.ts`.
+- **Events** (`ServerToClientEvents`): `file.status {fileId,status,error}` (report `queued → profiling → ready |
+  failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`).
+- **The audience is decided at EMIT time from the database** (`RealtimeEmitter.audience`): a company-visible file
+  goes to the company room; a restricted one ONLY to `admins`, the uploader's and each grantee's user room — the
+  visibility rule applied to rooms. So a file whose access changed is announced to who may see it now.
+- **Emit only after commit, never inside a transaction.** `FilesService.upload` emits after its transaction returns;
+  the report handler after each status write. Audit entries are written INSIDE transactions, so `AuditBroadcaster`
+  (a TypeORM subscriber, registered at runtime by `RealtimeModule.onModuleInit` since a subscriber has no DI) parks
+  each insert against its query runner and releases it in `afterTransactionCommit` (drops it on rollback).
+- **Best effort, never fatal:** every `RealtimeEmitter` method swallows and logs its own error; a realtime outage
+  must not fail an upload or a report job (clients recover by reading REST, the source of truth). The module is
+  `@Global` and only registered in the full app, so CLI contexts (billing cycle, demo seed) broadcast nothing.
+- Tests: `app.listen(0)` + `socket.io-client` (`test/support/socket-client.ts`: `connect`, `Listener.waitFor`,
+  `settle`). Negative assertions ("the third employee got nothing") wait `settle()` first.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
