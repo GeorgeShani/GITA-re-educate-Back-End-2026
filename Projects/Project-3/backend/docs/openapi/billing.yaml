@@ -349,6 +349,59 @@ components:
         - summary
         - recommendations
         - model
+    RuleResultDto:
+      type: object
+      properties:
+        ruleId:
+          type: string
+          description: >-
+            The rule this result is for (it may have been edited or deleted
+            since).
+        name:
+          type: string
+        kind:
+          type: string
+          enum: &ref_8
+            - required_column
+            - max_null_percent
+            - type_is
+            - min_value
+            - max_value
+            - unique
+            - max_duplicate_rows
+        columnName:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          enum: &ref_9
+            - error
+            - warning
+        status:
+          type: string
+          enum:
+            - passed
+            - failed
+            - skipped
+          description: >-
+            `skipped`: the rule does not apply to this file (its column is not
+            in it, or holds no numbers).
+        message:
+          type: string
+          description: What was found and what was required, in words.
+        params:
+          type: object
+          additionalProperties: true
+          description: What the rule required when this report was built.
+      required:
+        - ruleId
+        - name
+        - kind
+        - columnName
+        - severity
+        - status
+        - message
+        - params
     ReportDto:
       type: object
       properties:
@@ -384,6 +437,23 @@ components:
           type: string
           format: date-time
           nullable: true
+        qualityScore:
+          type: number
+          nullable: true
+          description: >-
+            How the file did against the company’s quality rules, 0–100: the
+            share of applicable rules it passed, an `error` rule counting double
+            a `warning`. Null when no rule applied (or none is defined).
+        ruleResults:
+          nullable: true
+          description: >-
+            One result per rule the company had when this report was built, each
+            carrying the rule as it was then (rules can be edited later). Null
+            when the company had no rules. Rebuild the report to check against
+            today’s rules.
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleResultDto'
       required:
         - fileId
         - status
@@ -391,6 +461,8 @@ components:
         - narrative
         - errorMessage
         - profiledAt
+        - qualityScore
+        - ruleResults
     PreviewColumnDto:
       type: object
       properties:
@@ -640,6 +712,7 @@ components:
             - quota.threshold
             - report.ready
             - report.failed
+            - rules.failed
             - file.shared
             - invoice.finalized
           description: What happened. Decides the shape of `payload`.
@@ -729,6 +802,12 @@ components:
           description: >-
             Requests per minute the whole company may make, shared by its users
             and API keys.
+        maxQualityRules:
+          type: number
+          nullable: true
+          description: >-
+            Data-quality rules the company may keep, enabled or not; null =
+            unlimited.
       required:
         - plan
         - maxEmployees
@@ -738,6 +817,7 @@ components:
         - basePriceCents
         - overagePerFileCents
         - rateLimitPerMinute
+        - maxQualityRules
     PeriodDto:
       type: object
       properties:
@@ -1336,6 +1416,136 @@ components:
       required:
         - data
         - meta
+    QualityRuleDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: *ref_8
+        columnName:
+          type: string
+          nullable: true
+          description: Null for a rule about the whole file.
+        params:
+          type: object
+          additionalProperties: true
+        severity:
+          type: string
+          enum: *ref_9
+        enabled:
+          type: boolean
+        createdByUserId:
+          type: string
+          description: The admin who created it.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - kind
+        - columnName
+        - params
+        - severity
+        - enabled
+        - createdByUserId
+        - createdAt
+        - updatedAt
+    QualityRulePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityRuleDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    CreateQualityRuleDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Emails are filled in
+          minLength: 1
+          maxLength: 80
+        kind:
+          type: string
+          enum: *ref_8
+          description: >-
+            `required_column` the column must exist; `max_null_percent` at most
+            that share empty; `type_is` the column is that type; `min_value` /
+            `max_value` numeric bounds; `unique` no value repeats;
+            `max_duplicate_rows` (whole file, no column) at most that many
+            repeated rows.
+        columnName:
+          type: string
+          example: email
+          description: >-
+            The column it applies to, matched to a file’s header
+            case-insensitively. Required for every kind but
+            `max_duplicate_rows`, which takes none. A file without that column
+            skips the rule (use `required_column` to demand one).
+        params:
+          type: object
+          additionalProperties: true
+          description: >-
+            The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`;
+            `type_is` `{ type: integer | number | boolean | date | string,
+            maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min
+            }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`.
+            `required_column` and `unique` take `{}`.
+        severity:
+          type: string
+          enum: *ref_9
+          default: error
+          description: >-
+            An `error` counts double in the quality score, and a failing one
+            notifies the uploader and the admins.
+        enabled:
+          type: boolean
+          default: true
+          description: >-
+            A disabled rule is kept, and counts toward the plan’s limit, but is
+            not checked.
+      required:
+        - name
+        - kind
+    UpdateQualityRuleDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        columnName:
+          type: string
+          maxLength: 200
+          description: Only for a rule that is about a column.
+        params:
+          type: object
+          additionalProperties: true
+          description: >-
+            REPLACES the rule’s numbers. The rule’s numbers, by `kind`:
+            `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer |
+            number | boolean | date | string, maxInconsistentPercent?: 0–100
+            (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`;
+            `max_duplicate_rows` `{ max }`. `required_column` and `unique` take
+            `{}`.
+        severity:
+          type: string
+          enum: *ref_9
+        enabled:
+          type: boolean
     DayRangeDto:
       type: object
       properties:
@@ -1527,7 +1737,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_8
+          enum: &ref_10
             - company.registered
             - company.activated
             - company.activation_resent
@@ -1551,6 +1761,10 @@ components:
             - file.uploaded
             - file.access_changed
             - file.deleted
+            - quality_rule.created
+            - quality_rule.updated
+            - quality_rule.deleted
+            - report.rebuild_requested
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -1607,7 +1821,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_8
+          enum: *ref_10
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -1672,7 +1886,7 @@ components:
             allows: an employee cannot grant `billing:read`.
           items:
             type: string
-            enum: &ref_9
+            enum: &ref_11
               - files:read
               - files:write
               - billing:read
@@ -1692,9 +1906,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_10
+          items: &ref_12
             type: string
-            enum: *ref_9
+            enum: *ref_11
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -1740,7 +1954,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_10
+          items: *ref_12
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.

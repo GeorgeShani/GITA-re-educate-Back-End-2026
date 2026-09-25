@@ -92,6 +92,17 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 - Transient failures (storage, database) are retried by the queue; permanent ones (a corrupt file) end as `failed` with a reason.
   *Why:* users get useful output even without an AI account, and one bad file never blocks the queue.
 
+### 5a. Data-quality rules
+- A company writes **rules** once — "the `email` column is at most 5% empty", "`amount` is never negative", "no value in `id` repeats",
+  "the file has no duplicate rows", "a `phone` column exists" — and **every upload is checked against them**. The report shows a
+  result per rule (passed / failed / skipped) and a **quality score** from 0 to 100 (an *error* rule counts double a *warning*).
+  A file that fails an *error* rule notifies the uploader and the admins.
+- Rules look at a file's statistics, never its rows, and a rule about a column a file does not have is **skipped**, not failed, so
+  one company-wide rule set can cover very different files. Each report keeps the rules **as they were** when it was built;
+  after changing a rule, an uploader or admin rebuilds a report to check the file against today's rules.
+- Limits follow the plan (Free 3 rules, Basic 25, Premium unlimited; at most 10 "unique" rules). *Why:* the reports stop being
+  just descriptive — a company can say what "good data" means for it and be told, on upload, when a file is not.
+
 ### 6. Audit log and usage analytics
 - **Every state-changing action writes an audit entry in the same transaction as the change**, from a closed list of actions
   (a test proves each is really written). The table is append-only — the database itself refuses updates and deletes.

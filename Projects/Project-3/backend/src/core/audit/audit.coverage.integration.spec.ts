@@ -81,6 +81,19 @@ describe('audit coverage (integration)', () => {
     // Files: upload, change who sees it, delete.
     const uploaded = await h.upload(session).expect(201);
     await h.http().patch(`/files/${uploaded.body.id}`).set(...h.bearer(session)).send({ visibility: 'restricted' }).expect(200);
+
+    // Data-quality rules (create, edit, delete) and a report rebuild once its first build has finished.
+    const rule = await h
+      .http()
+      .post('/quality-rules')
+      .set(...h.bearer(session))
+      .send({ name: 'coverage', kind: 'unique', columnName: 'id' })
+      .expect(201);
+    await h.http().patch(`/quality-rules/${rule.body.id}`).set(...h.bearer(session)).send({ enabled: false }).expect(200);
+    await h.http().delete(`/quality-rules/${rule.body.id}`).set(...h.bearer(session)).expect(200);
+    await h.drainTasks();
+    await h.http().post(`/files/${uploaded.body.id}/report/rebuild`).set(...h.bearer(session)).expect(200);
+
     await h.http().delete(`/files/${uploaded.body.id}`).set(...h.bearer(session)).expect(200);
 
     // Linked sign-in methods.

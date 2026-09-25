@@ -187,6 +187,47 @@ describe('MetricsAccumulator', () => {
     });
   });
 
+  describe('uniqueness tracking (for a unique rule)', () => {
+    const track = (header: CellValue[], rows: CellValue[][], columns: string[]) => {
+      const accumulator = new MetricsAccumulator(header, { uniqueColumns: new Set(columns) });
+      for (const row of rows) accumulator.addRow(row);
+      return accumulator.uniqueness();
+    };
+
+    it('counts each repeat of a value in a tracked column, and none for unique values', () => {
+      expect(track(['id'], [['a'], ['b'], ['c']], ['id'])).toEqual({ id: 0 });
+      expect(track(['id'], [['a'], ['b'], ['a'], ['a']], ['id'])).toEqual({ id: 2 });
+    });
+
+    it('never counts a blank as a repeat: a column may have many empty cells and still be unique', () => {
+      expect(track(['id'], [['a'], [null], [''], ['  '], ['b']], ['id'])).toEqual({ id: 0 });
+    });
+
+    it('matches the column case-insensitively, and reports it under the lower-cased key', () => {
+      expect(track(['Email'], [['x'], ['x']], ['email'])).toEqual({ email: 1 });
+    });
+
+    it('compares values as text, trimmed, case-sensitively', () => {
+      expect(track(['v'], [['A'], ['a'], [' A ']], ['v'])).toEqual({ v: 1 });
+    });
+
+    it('tracks only the columns asked for', () => {
+      expect(track(['a', 'b'], [['x', '1'], ['x', '1']], ['b'])).toEqual({ b: 1 });
+      expect(track(['a'], [['x'], ['x']], [])).toEqual({});
+    });
+
+    it('does not change the metrics themselves', () => {
+      const rows: CellValue[][] = [['a', 1], ['a', 2]];
+      const plain = new MetricsAccumulator(['k', 'n']);
+      const tracked = new MetricsAccumulator(['k', 'n'], { uniqueColumns: new Set(['k']) });
+      for (const row of rows) {
+        plain.addRow(row);
+        tracked.addRow(row);
+      }
+      expect(tracked.finish()).toEqual(plain.finish());
+    });
+  });
+
   describe('the row budget', () => {
     it('stops at the budget, says so, and reports what it analysed', () => {
       const accumulator = new MetricsAccumulator(['a']);

@@ -106,6 +106,18 @@ interface ColumnState {
   sum: number;
 }
 
+/** How a column is looked up by a rule: case-insensitive and trimmed, like a person naming it. */
+export const columnKey = (name: string): string => name.trim().toLowerCase();
+
+export interface AccumulatorOptions {
+  /**
+   * `columnKey`s whose values are tracked for repeats (a `unique` rule). Each one keeps a set of
+   * value fingerprints, bounded by the row budget, so the number of such rules a company may define
+   * is capped (`MAX_UNIQUE_RULES`).
+   */
+  uniqueColumns?: ReadonlySet<string>;
+}
+
 /** `name` cleaned up: blanks and duplicates get stable, distinct names, and each fix is reported. */
 export function normaliseHeader(raw: readonly CellValue[]): { names: string[]; issues: string[] } {
   const issues: string[] = [];
@@ -143,8 +155,11 @@ export class MetricsAccumulator {
   private duplicateRows = 0;
   private raggedRows = 0;
   private truncated = false;
+  /** Per tracked column (by index): the fingerprints seen so far. */
+  private readonly seenValues = new Map<number, Set<string>>();
+  private readonly repeatedValues = new Map<number, number>();
 
-  constructor(header: readonly CellValue[]) {
+  constructor(header: readonly CellValue[], options: AccumulatorOptions = {}) {
     const limited = header.slice(0, PROFILE_LIMITS.maxColumns);
     const { names, issues } = normaliseHeader(limited);
     this.headerIssues = issues;
@@ -162,6 +177,12 @@ export class MetricsAccumulator {
       max: Number.NEGATIVE_INFINITY,
       sum: 0,
     }));
+    this.columns.forEach((column, index) => {
+      if (options.uniqueColumns?.has(columnKey(column.name))) {
+        this.seenValues.set(index, new Set());
+        this.repeatedValues.set(index, 0);
+      }
+    });
   }
 
   /** Returns false once the row budget is spent (and marks the profile truncated). */
@@ -188,6 +209,14 @@ export class MetricsAccumulator {
       anyValue = true;
       column.counts[kind] += 1;
 
+      const seen = this.seenValues.get(index);
+      if (seen) {
+        // A blank is not a value, so it is never a repeat; only what is actually there is compared.
+        const fingerprint = createHash('sha1').update(text).digest('base64').slice(0, 16);
+        if (seen.has(fingerprint)) this.repeatedValues.set(index, (this.repeatedValues.get(index) ?? 0) + 1);
+        else seen.add(fingerprint);
+      }
+
       const value = numericValue(cell, kind);
       if (value !== null) {
         column.numericCount += 1;
@@ -205,6 +234,16 @@ export class MetricsAccumulator {
     if (this.fingerprints.has(fingerprint)) this.duplicateRows += 1;
     else this.fingerprints.add(fingerprint);
     return true;
+  }
+
+  /** For each tracked column (by `columnKey`): how many values appeared more than once. */
+  uniqueness(): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const [index, repeated] of this.repeatedValues) {
+      const column = this.columns[index];
+      if (column) result[columnKey(column.name)] = repeated;
+    }
+    return result;
   }
 
   finish(): DataQualityMetrics {

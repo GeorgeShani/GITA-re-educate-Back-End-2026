@@ -5,6 +5,8 @@ export interface CompanyUsage {
   employees: number;
   /** Files uploaded so far in the current billing period. */
   files: number;
+  /** Data-quality rules the company has defined, enabled or not. */
+  qualityRules: number;
 }
 
 function plural(count: number, noun: string): string {
@@ -38,6 +40,13 @@ export function planChangeProblems(target: Plan, usage: CompanyUsage): string[] 
   if (rules.overagePerFileCents === null && usage.files > rules.filesPerPeriod) {
     problems.push(
       `${LABEL[target]} allows ${plural(rules.filesPerPeriod, 'file')} per period, but ${usage.files} have already been uploaded in this one.`,
+    );
+  }
+
+  if (rules.maxQualityRules !== null && usage.qualityRules > rules.maxQualityRules) {
+    const excess = usage.qualityRules - rules.maxQualityRules;
+    problems.push(
+      `${LABEL[target]} allows ${plural(rules.maxQualityRules, 'quality rule')}, but the company has ${usage.qualityRules} — delete ${excess} first.`,
     );
   }
 

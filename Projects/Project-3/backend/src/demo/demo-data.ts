@@ -15,6 +15,13 @@ export const DEMO_EMPLOYEES = [
   { email: 'mariam@demo.gridline.test', fullName: 'Mariam Kapanadze' },
 ] as const;
 
+/** Data-quality rules the demo company has, so its reports show a quality score and a failure or two. */
+export const DEMO_RULES = [
+  { name: 'Emails are filled in', columnName: 'email', severity: 'error', kind: 'max_null_percent', params: { max: 5 } },
+  { name: 'Order amounts are positive', columnName: 'amount', severity: 'warning', kind: 'min_value', params: { min: 0 } },
+  { name: 'No repeated rows', columnName: null, severity: 'error', kind: 'max_duplicate_rows', params: { max: 0 } },
+] as const;
+
 export interface DemoFile {
   name: string;
   csv: string;

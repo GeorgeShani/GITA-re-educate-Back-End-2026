@@ -24,6 +24,8 @@ export interface PlanRules {
    * more of it, rather than a generic throttle being bolted on beside the plans.
    */
   rateLimitPerMinute: number;
+  /** Data-quality rules a company may keep (enabled or not). `null` = unlimited. */
+  maxQualityRules: number | null;
 }
 
 /**
@@ -40,6 +42,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     basePriceCents: 0,
     overagePerFileCents: null,
     rateLimitPerMinute: 30,
+    maxQualityRules: 3,
   },
   basic: {
     maxEmployees: 10,
@@ -48,6 +51,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     basePriceCents: 0,
     overagePerFileCents: null,
     rateLimitPerMinute: 120,
+    maxQualityRules: 25,
   },
   premium: {
     maxEmployees: null,
@@ -56,6 +60,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     basePriceCents: 30_000,
     overagePerFileCents: 50,
     rateLimitPerMinute: 600,
+    maxQualityRules: null,
   },
 };
 

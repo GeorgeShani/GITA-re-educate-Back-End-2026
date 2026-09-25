@@ -13,6 +13,8 @@ export interface FileStatusEvent {
   fileId: string;
   status: ReportStatus;
   error: string | null;
+  /** How the file did against the company's quality rules; null until `ready`, or when none applied. */
+  qualityScore: number | null;
 }
 
 /** An upload was counted: where the company now stands against its plan's file quota. */

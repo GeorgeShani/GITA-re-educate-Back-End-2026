@@ -95,6 +95,27 @@ FilesController_report:
     briefly while a temporary problem is retried automatically. Visible exactly when the
     file is: a file you cannot see is a 404.
 
+
+    **Quality rules.** When the company has data-quality rules (`/quality-rules`), `ruleResults`
+    holds one result per enabled rule — `passed`, `failed`, or `skipped` when the rule does not
+    apply to this file (its column is not in it, or holds no numbers) — each with the rule as it was
+    when the report was built, and `qualityScore` (0–100) is the share of applicable rules passed,
+    an `error` rule counting double a `warning`. Both are `null` when the company had no rules, and the
+    score is also `null` when none of them applied. Editing or deleting a rule later does not change
+    an existing report: rebuild it (`POST /files/{id}/report/rebuild`) to check it against the rules
+    as they are now.
+
+FilesController_rebuildReport:
+  summary: Rebuild a file's report against today's rules
+  description: >-
+    Builds the report again from the same stored file, checking it against the company's quality
+    rules as they are **now** — how an old file is re-checked after its rules changed. The uploader
+    or an admin only (someone who can see the file but did not upload it gets 403; a file you cannot
+    see is a 404). The report goes back to `queued` at once and the new result arrives as before
+    (`file.status` over the realtime connection, or read the report again). Answers 409 while a
+    build is already queued or running, so it cannot be requested twice. Needs the `files:write`
+    scope for an API key.
+
 FilesController_preview:
   summary: Preview a file's first rows
   description: >-

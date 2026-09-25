@@ -1,15 +1,16 @@
 openapi: 3.0.0
 paths:
-  /notifications:
+  /quality-rules:
     get:
-      operationId: NotificationsController_list
+      operationId: QualityRulesController_list
       parameters:
-        - name: cursor
+        - name: page
           required: false
           in: query
-          description: Opaque; take it from `meta.nextCursor` of the previous page.
           schema:
-            type: string
+            minimum: 1
+            default: 1
+            type: number
         - name: limit
           required: false
           in: query
@@ -18,90 +19,85 @@ paths:
             maximum: 100
             default: 20
             type: number
-        - name: unread
-          required: false
-          in: query
-          description: Only notifications you have not read yet.
-          schema:
-            type: boolean
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotificationPageDto'
+                $ref: '#/components/schemas/QualityRulePageDto'
       security: &ref_0
         - bearer: []
       tags: &ref_1
-        - notifications
-      summary: List your notifications
+        - quality-rules
+      summary: List the company's quality rules
       description: >-
-        Your own inbox, newest first, cursor-paginated (`limit`, and `cursor`
-        from `meta.nextCursor` until `hasMore` is false). `unread=true` narrows
-        it to what you have not read. Nobody sees anyone else's inbox, admins
-        included.
-
-
-        What lands here, and who it goes to:
-
-        - `quota.threshold` — every admin, once per billing period each time the
-        company passes 80% and 100% of its file quota. The payload says the
-        plan, the count and the plan that would raise the limit. (The billing
-        address gets the same news by email.)
-
-        - `report.ready` / `report.failed` — the person who uploaded the file,
-        when its data-quality report finishes or fails for good. A failure that
-        will be retried says nothing until the retry settles.
-
-        - `file.shared` — a person a file was shared with (on upload, or when an
-        uploader or admin adds them). Not the person who did the sharing.
-
-        - `invoice.finalized` — every admin, when an invoice with something to
-        pay is issued.
-
-
-        New entries also arrive live on the realtime connection as
-        `notification.created`, and only once the change that caused them has
-        committed. Read notifications are removed after 90 days; unread ones
-        stay. Signed-in sessions only: an API key cannot read the inbox.
-  /notifications/unread-count:
-    get:
-      operationId: NotificationsController_unreadCount
+        The data-quality rules every upload is checked against, oldest first,
+        offset-paginated. Anyone in the company can read them (an employee wants
+        to know what an upload is held to), and so can an API key with
+        `files:read`. A rule is a small check on a file's statistics — never on
+        its rows.
+    post:
+      operationId: QualityRulesController_create
       parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQualityRuleDto'
       responses:
-        '200':
+        '201':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnreadCountDto'
+                $ref: '#/components/schemas/QualityRuleDto'
       security: *ref_0
       tags: *ref_1
-      summary: Count your unread notifications
+      summary: Create a quality rule
       description: >-
-        How many of your notifications you have not read yet — the number for a
-        badge. Cheap enough to call on every page load.
-  /notifications/read-all:
-    post:
-      operationId: NotificationsController_readAll
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MarkedReadDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Mark all your notifications as read
-      description: >-
-        Marks every unread notification of yours as read and says how many that
-        was. Calling it again changes nothing (`updated: 0`).
-  /notifications/{id}/read:
-    post:
-      operationId: NotificationsController_read
+        Adds a rule that every later upload is checked against (an existing file
+        is re-checked when its report is rebuilt). Admin only, with a session.
+
+
+        The `kind` decides what is checked and which `params` it takes:
+
+        - `required_column` — the column must exist. `{}`.
+
+        - `max_null_percent` — at most that share of the column may be empty. `{
+        max: 0–100 }`.
+
+        - `type_is` — the column is that type (`integer`, `number`, `boolean`,
+        `date`, `string`), with `maxInconsistentPercent` (default 0) of values
+        allowed to disagree.
+
+        - `min_value` / `max_value` — the smallest / largest number in the
+        column. `{ min }` / `{ max }`.
+
+        - `unique` — no value repeats (blank cells are not values). `{}`. At
+        most 10 per company, because each is checked by remembering the values
+        of its column while the file is read.
+
+        - `max_duplicate_rows` — about the whole file, so it takes **no**
+        `columnName`. `{ max }`.
+
+
+        `columnName` is matched to the file's header ignoring case. A rule about
+        a column a file does not have is **skipped** for that file rather than
+        failed (rules cover every upload; use `required_column` to demand a
+        column). `severity` is `error` (the default) or `warning`: an error
+        counts double in the quality score, and a file that fails one notifies
+        the uploader and the admins.
+
+
+        Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited;
+        a disabled rule still counts). Beyond it the answer is 409 naming the
+        plan and the number; leaving for a plan that allows fewer than the
+        company has is refused the same way.
+  /quality-rules/{id}:
+    delete:
+      operationId: QualityRulesController_remove
       parameters:
         - name: id
           required: true
@@ -114,15 +110,43 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NotificationDto'
+                $ref: '#/components/schemas/QualityRuleDto'
       security: *ref_0
       tags: *ref_1
-      summary: Mark one notification as read
+      summary: Delete a quality rule
       description: >-
-        Marks one of your notifications as read and returns it. Idempotent:
-        reading one that is already read changes nothing and keeps its first
-        `readAt`. A notification that is not yours — or does not exist — is a
-        404.
+        Removes the rule and returns it. Reports that already used it keep their
+        result for it. Admin only, with a session.
+    patch:
+      operationId: QualityRulesController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQualityRuleDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRuleDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Change a quality rule
+      description: >-
+        Changes a rule's name, column, `params` (which REPLACE the old ones and
+        are checked against the rule's kind), severity or whether it is enabled.
+        The kind cannot change — that is a different rule. Admin only, with a
+        session. Reports that were already built keep the rule as it was;
+        rebuild a file's report to check it against the change.
 info:
   title: Gridline API
   description: >-

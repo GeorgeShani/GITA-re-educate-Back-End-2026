@@ -1,0 +1,56 @@
+# Prose for the `quality-rules` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+QualityRulesController_list:
+  summary: List the company's quality rules
+  description: >-
+    The data-quality rules every upload is checked against, oldest first, offset-paginated. Anyone
+    in the company can read them (an employee wants to know what an upload is held to), and so can an
+    API key with `files:read`. A rule is a small check on a file's statistics — never on its rows.
+
+QualityRulesController_create:
+  summary: Create a quality rule
+  description: >-
+    Adds a rule that every later upload is checked against (an existing file is re-checked when its
+    report is rebuilt). Admin only, with a session.
+
+
+    The `kind` decides what is checked and which `params` it takes:
+
+    - `required_column` — the column must exist. `{}`.
+
+    - `max_null_percent` — at most that share of the column may be empty. `{ max: 0–100 }`.
+
+    - `type_is` — the column is that type (`integer`, `number`, `boolean`, `date`, `string`), with
+    `maxInconsistentPercent` (default 0) of values allowed to disagree.
+
+    - `min_value` / `max_value` — the smallest / largest number in the column. `{ min }` / `{ max }`.
+
+    - `unique` — no value repeats (blank cells are not values). `{}`. At most 10 per company, because
+    each is checked by remembering the values of its column while the file is read.
+
+    - `max_duplicate_rows` — about the whole file, so it takes **no** `columnName`. `{ max }`.
+
+
+    `columnName` is matched to the file's header ignoring case. A rule about a column a file does not
+    have is **skipped** for that file rather than failed (rules cover every upload; use
+    `required_column` to demand a column). `severity` is `error` (the default) or `warning`: an error
+    counts double in the quality score, and a file that fails one notifies the uploader and the admins.
+
+
+    Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited; a disabled rule still
+    counts). Beyond it the answer is 409 naming the plan and the number; leaving for a plan that allows
+    fewer than the company has is refused the same way.
+
+QualityRulesController_update:
+  summary: Change a quality rule
+  description: >-
+    Changes a rule's name, column, `params` (which REPLACE the old ones and are checked against the
+    rule's kind), severity or whether it is enabled. The kind cannot change — that is a different rule.
+    Admin only, with a session. Reports that were already built keep the rule as it was; rebuild a
+    file's report to check it against the change.
+
+QualityRulesController_remove:
+  summary: Delete a quality rule
+  description: >-
+    Removes the rule and returns it. Reports that already used it keep their result for it. Admin only,
+    with a session.

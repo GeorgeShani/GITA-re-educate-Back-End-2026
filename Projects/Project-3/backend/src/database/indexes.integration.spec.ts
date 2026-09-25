@@ -122,6 +122,12 @@ describe('database indexes', () => {
     expect(unique?.indexdef).toMatch(/UNIQUE/);
   });
 
+  it('indexes quality rules by (companyId, createdAt)', () => {
+    expect(indexes.find((row) => row.indexname === 'idx_quality_rule_company')?.indexdef).toMatch(
+      /\("companyId", "createdAt"\)/,
+    );
+  });
+
   it('allows one idempotency record per (company, key), leading with companyId', () => {
     const index = find('idempotency_record', 'companyId', 'key');
     expect(index?.indexdef).toMatch(/UNIQUE/);

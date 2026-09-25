@@ -142,6 +142,11 @@ password at all, so there is nothing to guess.
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after
   the commit. **Quota alerts** fire at 80% and 100% of the file quota, once per billing period each (a unique
   `(company, period, threshold)` row decides), to every admin and by email to the billing address.
+- **Quality rules** (`/quality-rules`, admin writes, anyone reads) are checked against every upload's statistics when its report is
+  built: `ruleResults` (passed / failed / skipped, each with a snapshot of the rule) and a 0–100 `qualityScore` on the report and on
+  the `file.status` event. A rule about a column a file lacks is skipped, not failed. Editing a rule never rewrites an old report;
+  `POST /files/:id/report/rebuild` (uploader or admin) re-checks against today's rules. Limits: Free 3, Basic 25, Premium unlimited
+  rules, at most 10 `unique` rules; a downgrade over the target's limit is refused.
 - **GraphQL** (`POST /graphql`) is a read-only twin of `GET /analytics/usage` — admins only, no mutations, depth and cost
   limits, and a committed schema (`src/graphql/schema.gql`, regenerate with `npm run graphql:schema`).
 

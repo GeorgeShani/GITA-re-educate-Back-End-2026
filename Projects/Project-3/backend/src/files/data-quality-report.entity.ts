@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, type Relation } from 'typ
 import { BaseEntity } from '#/database/base.entity.js';
 import { Company } from '#/database/entities/company.entity.js';
 import { FileAsset } from './file-asset.entity.js';
+import type { RuleResult } from './quality/rules.js';
 
 /**
  * `queued`      the upload committed; the task has not started (the row exists from the upload)
@@ -67,6 +68,17 @@ export class DataQualityReport extends BaseEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   previewRows!: unknown;
+
+  /**
+   * How the file did against the company's rules, each result carrying a snapshot of its rule
+   * (`ruleResultSchema`). Null until profiled, and after a profile with no rules to apply.
+   */
+  @Column({ type: 'jsonb', nullable: true })
+  ruleResults!: RuleResult[] | null;
+
+  /** Share of applicable rules passed, 0–100 (an error counts double); null when none applied. */
+  @Column({ type: 'int', nullable: true })
+  qualityScore!: number | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   profiledAt!: Date | null;

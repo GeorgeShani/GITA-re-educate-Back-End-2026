@@ -32,6 +32,16 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
     payload: z.object({ fileId: z.uuid(), fileName: z.string(), reason: z.string() }),
   }),
   z.object({
+    type: z.literal('rules.failed'),
+    payload: z.object({
+      fileId: z.uuid(),
+      fileName: z.string(),
+      /** Names of the error-severity rules the file failed; never the values that broke them. */
+      failedRules: z.array(z.string()),
+      qualityScore: z.number().int().nullable(),
+    }),
+  }),
+  z.object({
     type: z.literal('file.shared'),
     payload: z.object({ fileId: z.uuid(), fileName: z.string(), sharedByUserId: z.uuid() }),
   }),

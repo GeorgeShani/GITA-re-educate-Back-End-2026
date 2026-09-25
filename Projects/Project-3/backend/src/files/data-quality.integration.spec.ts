@@ -43,6 +43,8 @@ const reportSchema = z
     narrative: z.object({ summary: z.string(), recommendations: z.array(z.string()), model: z.string() }).strict().nullable(),
     errorMessage: z.string().nullable(),
     profiledAt: z.string().nullable(),
+    qualityScore: z.number().nullable(),
+    ruleResults: z.array(z.unknown()).nullable(),
   })
   .strict();
 const previewSchema = z
@@ -119,6 +121,8 @@ describe('data-quality reports and preview (integration)', () => {
         narrative: null,
         errorMessage: null,
         profiledAt: null,
+        qualityScore: null,
+        ruleResults: null,
       });
     });
 

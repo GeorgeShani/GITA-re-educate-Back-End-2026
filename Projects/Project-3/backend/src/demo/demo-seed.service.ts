@@ -19,9 +19,11 @@ import { FileAsset } from '#/files/file-asset.entity.js';
 import { readSpreadsheet } from '#/files/parsing/spreadsheet-reader.js';
 import { PROFILE_LIMITS } from '#/files/quality/metrics.js';
 import { narrativeInputFrom, profileSheet } from '#/files/quality/profile.js';
+import { type RuleDefinition, evaluateRules, ruleSpecSchema, uniqueColumnKeys } from '#/files/quality/rules.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
-import { DEMO_ADMIN, DEMO_COMPANY, DEMO_EMPLOYEES, DEMO_FILES } from './demo-data.js';
+import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
+import { DEMO_ADMIN, DEMO_COMPANY, DEMO_EMPLOYEES, DEMO_FILES, DEMO_RULES } from './demo-data.js';
 
 const DAY_MS = 86_400_000;
 const CSV = 'text/csv';
@@ -77,20 +79,37 @@ export class DemoSeedService {
 
   /** Profiles every file up front (parsing and the AI call must not hold a transaction open). */
   private async prepareFiles() {
-    return Promise.all(
+    const rules: RuleDefinition[] = DEMO_RULES.map((rule) => ({
+      ...ruleSpecSchema.parse({ kind: rule.kind, params: rule.params }),
+      id: randomUUID(),
+      name: rule.name,
+      columnName: rule.columnName,
+      severity: rule.severity,
+    }));
+    const files = await Promise.all(
       DEMO_FILES.map(async (file) => {
         const bytes = Buffer.from(file.csv, 'utf8');
-        const profile = profileSheet(await readSpreadsheet(bytes, CSV, PROFILE_LIMITS));
-        const narrative = await this.ai.generateNarrative(narrativeInputFrom(profile.metrics));
-        return { file, bytes, profile, narrative, id: randomUUID() };
+        const profile = profileSheet(await readSpreadsheet(bytes, CSV, PROFILE_LIMITS), {
+          uniqueColumns: uniqueColumnKeys(rules),
+        });
+        const evaluation = evaluateRules(profile.metrics, rules, profile.uniqueness);
+        const failed = evaluation.results.filter((result) => result.status === 'failed');
+        const narrative = await this.ai.generateNarrative(
+          narrativeInputFrom(
+            profile.metrics,
+            failed.map((result) => ({ name: result.name, severity: result.severity })),
+          ),
+        );
+        return { file, bytes, profile, evaluation, narrative, id: randomUUID() };
       }),
     );
+    return { rules, files };
   }
 
   private async write(
     manager: EntityManager,
     now: Date,
-    prepared: Awaited<ReturnType<DemoSeedService['prepareFiles']>>,
+    { rules, files: prepared }: Awaited<ReturnType<DemoSeedService['prepareFiles']>>,
   ): Promise<string> {
     // The previous billing period ended a few days ago, so a real invoice exists to show.
     const firstDay = new Date(now.getTime() - 40 * DAY_MS);
@@ -151,9 +170,23 @@ export class DemoSeedService {
       );
     }
 
+    for (const rule of rules) {
+      await manager.insert(QualityRule, {
+        id: rule.id,
+        companyId,
+        name: rule.name,
+        columnName: rule.columnName,
+        kind: rule.kind,
+        params: rule.params,
+        severity: rule.severity,
+        enabled: true,
+        createdByUserId: admin.id,
+      });
+    }
+
     const priorKey = periodKey(period);
     const currentKey = periodKey(nextPeriod(anchorDay, period));
-    for (const { file, bytes, profile, narrative, id } of prepared) {
+    for (const { file, bytes, profile, evaluation, narrative, id } of prepared) {
       const uploader = file.uploader === 'admin' ? admin : employees[file.uploader];
       if (!uploader) throw new Error(`Demo file ${file.name} names an employee that does not exist`);
       const uploadedAt = new Date(now.getTime() - file.daysAgo * DAY_MS);
@@ -189,6 +222,8 @@ export class DemoSeedService {
         companyId,
         status: 'ready',
         metrics: profile.metrics,
+        ruleResults: evaluation.results,
+        qualityScore: evaluation.score,
         previewRows: profile.previewRows,
         summaryText: narrative?.summary ?? null,
         recommendations: narrative?.recommendations ?? null,

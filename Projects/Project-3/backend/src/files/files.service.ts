@@ -291,6 +291,14 @@ export class FilesService {
     return this.findVisible(this.dataSource.manager, id, viewer);
   }
 
+  /** The file, if the caller may see it AND change it (uploader or admin): 404 if unseen, 403 if seen but not theirs. */
+  async requireManageable(id: string): Promise<FileAsset> {
+    const { viewer } = this.caller();
+    const file = await this.findVisible(this.dataSource.manager, id, viewer);
+    this.assertCanManage(file, viewer);
+    return file;
+  }
+
   /** A short-lived link, minted only after the caller's access has been checked. */
   async downloadLink(id: string): Promise<DownloadLink> {
     const { viewer } = this.caller();

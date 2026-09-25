@@ -41,6 +41,11 @@ export const AUDIT_ACTIONS = [
   'file.uploaded',
   'file.access_changed',
   'file.deleted',
+  // Data-quality rules and reports
+  'quality_rule.created',
+  'quality_rule.updated',
+  'quality_rule.deleted',
+  'report.rebuild_requested',
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

@@ -41,6 +41,14 @@ export class PlanDto {
   @Expose()
   rateLimitPerMinute!: number;
 
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Data-quality rules the company may keep, enabled or not; null = unlimited.',
+  })
+  @Expose()
+  maxQualityRules!: number | null;
+
   static from(plan: Plan): PlanDto {
     return toDto(PlanDto, { plan, maxSeats: maxSeats(plan), ...PLAN_CATALOG[plan] });
   }

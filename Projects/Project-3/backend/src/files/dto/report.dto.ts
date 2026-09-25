@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { COLUMN_TYPES, type ColumnType } from '../quality/metrics.js';
 import { REPORT_STATUSES, type ReportStatus } from '../data-quality-report.entity.js';
+import { RULE_KINDS, RULE_SEVERITIES } from '../quality/rules.js';
 
 class TypeCountsDto {
   @ApiProperty() @Expose() integer!: number;
@@ -70,6 +71,33 @@ export class NarrativeDto {
   @ApiProperty({ description: 'The model that wrote it.' }) @Expose() model!: string;
 }
 
+export class RuleResultDto {
+  @ApiProperty({ description: 'The rule this result is for (it may have been edited or deleted since).' })
+  @Expose()
+  ruleId!: string;
+
+  @ApiProperty() @Expose() name!: string;
+
+  @ApiProperty({ enum: RULE_KINDS }) @Expose() kind!: string;
+
+  @ApiProperty({ type: String, nullable: true }) @Expose() columnName!: string | null;
+
+  @ApiProperty({ enum: RULE_SEVERITIES }) @Expose() severity!: string;
+
+  @ApiProperty({
+    enum: ['passed', 'failed', 'skipped'],
+    description: '`skipped`: the rule does not apply to this file (its column is not in it, or holds no numbers).',
+  })
+  @Expose()
+  status!: string;
+
+  @ApiProperty({ description: 'What was found and what was required, in words.' }) @Expose() message!: string;
+
+  @ApiProperty({ type: 'object', additionalProperties: true, description: 'What the rule required when this report was built.' })
+  @Expose()
+  params!: Record<string, unknown>;
+}
+
 export class ReportDto {
   @ApiProperty() @Expose() fileId!: string;
 
@@ -98,6 +126,27 @@ export class ReportDto {
   @ApiProperty({ type: String, format: 'date-time', nullable: true })
   @Expose()
   profiledAt!: Date | null;
+
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description:
+      'How the file did against the company’s quality rules, 0–100: the share of applicable rules it passed, an ' +
+      '`error` rule counting double a `warning`. Null when no rule applied (or none is defined).',
+  })
+  @Expose()
+  qualityScore!: number | null;
+
+  @ApiProperty({
+    type: () => [RuleResultDto],
+    nullable: true,
+    description:
+      'One result per rule the company had when this report was built, each carrying the rule as it was then (rules ' +
+      'can be edited later). Null when the company had no rules. Rebuild the report to check against today’s rules.',
+  })
+  @Expose()
+  @Type(() => RuleResultDto)
+  ruleResults!: RuleResultDto[] | null;
 }
 
 export class PreviewColumnDto {

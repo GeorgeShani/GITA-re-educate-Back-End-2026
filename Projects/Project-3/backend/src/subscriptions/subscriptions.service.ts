@@ -10,6 +10,7 @@ import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
+import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
 import { PLAN_CATALOG, type Plan, maxSeats } from './plan-catalog.js';
 import { planChangeProblems } from './plan-change.js';
 import { SubscriptionChange } from './subscription-change.entity.js';
@@ -150,6 +151,9 @@ export class SubscriptionsService {
       await this.invoicing.rollForward(manager, subscription, now);
 
       const problems = planChangeProblems(target, {
+        qualityRules: await this.tenantScope
+          .forCompany(manager.getRepository(QualityRule), companyId, 'r')
+          .getCount(),
         employees: await this.employeeSeatsHeld(manager, companyId),
         files: await this.usage.filesInPeriod(
           manager,

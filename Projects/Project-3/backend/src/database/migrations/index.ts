@@ -9,6 +9,7 @@ import { DataQualityReports1790284381430 } from './1790284381430-DataQualityRepo
 import { ApiKeys1790315301576 } from './1790315301576-ApiKeys.js';
 import { DemoCompany1790318572253 } from './1790318572253-DemoCompany.js';
 import { Notifications1790345728059 } from './1790345728059-Notifications.js';
+import { QualityRules1790348327803 } from './1790348327803-QualityRules.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -31,4 +32,5 @@ export const MIGRATIONS: MixedList<Function> = [
   ApiKeys1790315301576,
   DemoCompany1790318572253,
   Notifications1790345728059,
+  QualityRules1790348327803,
 ];

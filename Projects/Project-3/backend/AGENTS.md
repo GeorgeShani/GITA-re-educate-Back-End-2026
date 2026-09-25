@@ -642,6 +642,40 @@ document.
   90 days (`READ_NOTIFICATION_RETENTION_MS`); an unread one is never purged.
 - Index: `idx_notification_company_user_created (companyId, userId, createdAt, id)` (a DESC list is a backward scan of it).
 
+## Data-quality rules *(from Phase 16 of the product plan)*
+
+- **A rule is a check on a file's STATISTICS, never its rows.** `files/quality/rules.ts` is pure: `evaluateRules(metrics, rules,
+  uniqueness)` → results + score. `ruleSpecSchema` (a Zod discriminated union of `{ kind, params }`) is the closed vocabulary:
+  `required_column`, `max_null_percent`, `type_is`, `min_value`, `max_value`, `unique`, `max_duplicate_rows` (the only one about the
+  whole file: it takes no column). The stored row (`quality_rule`, `src/quality-rules/`) keeps `kind`/`severity` as text and `params`
+  as `jsonb`, read back through `toDefinition` — a row that no longer parses is dropped with a warning, never fatal.
+- **A rule about a column the file lacks is `skipped`, not `failed`.** Rules cover EVERY upload of the company, so a file with no
+  `amount` column is not wrong for an `amount` rule; `required_column` is how to demand one. Skipped rules count for nothing.
+  Columns are matched case-insensitively (`columnKey`).
+- **Score** = share of applicable rules passed × 100, an `error` counting 2 and a `warning` 1 (`qualityScore`); `null` when nothing
+  applied. **Each result carries a snapshot of its rule** (`ruleResultSchema`: name, kind, params, severity), so editing or deleting
+  a rule never rewrites an old report; `POST /files/:id/report/rebuild` re-checks against today's rules.
+- **`unique` is the one rule that needs data the metrics do not hold.** The handler loads the company's enabled rules BEFORE parsing
+  and hands `uniqueColumnKeys(rules)` to `MetricsAccumulator` (`AccumulatorOptions.uniqueColumns`), which keeps a set of value
+  fingerprints per tracked column (bounded by the row budget; blanks are never repeats) and reports `uniqueness()`. Each tracked
+  column costs memory, so a company may have at most `MAX_UNIQUE_RULES` (10) `unique` rules, on every plan.
+- **Limits** are `PLAN_CATALOG[plan].maxQualityRules` (Free 3, Basic 25, Premium unlimited), counted over ALL rules (a disabled one
+  counts) and checked under `SubscriptionsService.lockForUpdate` so two admins cannot take the last slot. `planChangeProblems` also
+  refuses a downgrade that leaves more rules than the target allows (`qualityRules` in `CompanyUsage`).
+- **Routes** (`/quality-rules`, `@RequiresSubscription`): `GET` is `@Roles('admin','employee')` + `@RequireScopes('files:read')`;
+  `POST`/`PATCH`/`DELETE` are admin-only with NO scope, so an API key cannot change what every upload is held to. The kind never
+  changes (`forbidNonWhitelisted` rejects it); `params` are Zod-checked against the kind (400 naming what is wrong).
+  Audit: `quality_rule.created|updated|deleted`, `report.rebuild_requested`.
+- **Rebuild** (`ReportsService.rebuild`, `POST /files/:id/report/rebuild`, `files:write`): uploader or admin (`FilesService.requireManageable`:
+  404 unseen, 403 seen-but-not-yours). ONE transaction flips the report to `queued` with a conditional `UPDATE … WHERE status IN
+  (ready, failed, unsupported)` and enqueues the task; `affected = 0` means a build is already queued/running (409), so it cannot be
+  queued twice. The handler needs no `force`: a `queued` report is simply rebuilt.
+- **Notifications and the AI:** a failing `error`-severity rule sends `rules.failed` (rule NAMES only, plus the score) to the uploader
+  and every active admin, alongside `report.ready`; a failing warning only lowers the score. The narrative prompt is given the failed
+  rules' names and severities (`NarrativeInput.failedRules`, sanitised like column names) and never a rule's numbers or the value that
+  broke it. `file.status` carries `qualityScore`.
+- The demo company has three rules (`DEMO_RULES`), so its reports show a score and a failure.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -840,6 +874,7 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `api_key` — UNIQUE `(keyHash)`, `(companyId, createdAt)`, `(companyId, createdByUserId)`
 - [x] `notification` — `(companyId, userId, createdAt, id)`; `quota_alert` — UNIQUE `(companyId, periodKey, threshold)`
       (what makes each alert fire once per period, and its tenant index)
+- [x] `quality_rule` — `(companyId, createdAt)`
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

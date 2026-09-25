@@ -96,10 +96,32 @@ export interface paths {
          *     `narrative` is a plain-language summary and recommendations written by an AI model from those statistics alone — it is never shown a row or a cell value. It is `null` when no AI provider is configured, or it timed out or answered unusably; the metrics are unaffected either way.
          *
          *     `unsupported` means the file is stored but not profiled (legacy `.xls`: save it as `.xlsx` or `.csv`). `failed` means it could not be read (corrupt, malformed, or too large to open safely) — `errorMessage` says why; a report can also show `failed` briefly while a temporary problem is retried automatically. Visible exactly when the file is: a file you cannot see is a 404.
+         *
+         *     **Quality rules.** When the company has data-quality rules (`/quality-rules`), `ruleResults` holds one result per enabled rule — `passed`, `failed`, or `skipped` when the rule does not apply to this file (its column is not in it, or holds no numbers) — each with the rule as it was when the report was built, and `qualityScore` (0–100) is the share of applicable rules passed, an `error` rule counting double a `warning`. Both are `null` when the company had no rules, and the score is also `null` when none of them applied. Editing or deleting a rule later does not change an existing report: rebuild it (`POST /files/{id}/report/rebuild`) to check it against the rules as they are now.
          */
         get: operations["FilesController_report"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{id}/report/rebuild": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rebuild a file's report against today's rules
+         * @description Builds the report again from the same stored file, checking it against the company's quality rules as they are **now** — how an old file is re-checked after its rules changed. The uploader or an admin only (someone who can see the file but did not upload it gets 403; a file you cannot see is a 404). The report goes back to `queued` at once and the new result arrives as before (`file.status` over the realtime connection, or read the report again). Answers 409 while a build is already queued or running, so it cannot be requested twice. Needs the `files:write` scope for an API key.
+         */
+        post: operations["FilesController_rebuildReport"];
         delete?: never;
         options?: never;
         head?: never;
@@ -876,6 +898,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/quality-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the company's quality rules
+         * @description The data-quality rules every upload is checked against, oldest first, offset-paginated. Anyone in the company can read them (an employee wants to know what an upload is held to), and so can an API key with `files:read`. A rule is a small check on a file's statistics — never on its rows.
+         */
+        get: operations["QualityRulesController_list"];
+        put?: never;
+        /**
+         * Create a quality rule
+         * @description Adds a rule that every later upload is checked against (an existing file is re-checked when its report is rebuilt). Admin only, with a session.
+         *
+         *     The `kind` decides what is checked and which `params` it takes:
+         *     - `required_column` — the column must exist. `{}`.
+         *     - `max_null_percent` — at most that share of the column may be empty. `{ max: 0–100 }`.
+         *     - `type_is` — the column is that type (`integer`, `number`, `boolean`, `date`, `string`), with `maxInconsistentPercent` (default 0) of values allowed to disagree.
+         *     - `min_value` / `max_value` — the smallest / largest number in the column. `{ min }` / `{ max }`.
+         *     - `unique` — no value repeats (blank cells are not values). `{}`. At most 10 per company, because each is checked by remembering the values of its column while the file is read.
+         *     - `max_duplicate_rows` — about the whole file, so it takes **no** `columnName`. `{ max }`.
+         *
+         *     `columnName` is matched to the file's header ignoring case. A rule about a column a file does not have is **skipped** for that file rather than failed (rules cover every upload; use `required_column` to demand a column). `severity` is `error` (the default) or `warning`: an error counts double in the quality score, and a file that fails one notifies the uploader and the admins.
+         *
+         *     Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited; a disabled rule still counts). Beyond it the answer is 409 naming the plan and the number; leaving for a plan that allows fewer than the company has is refused the same way.
+         */
+        post: operations["QualityRulesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/quality-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a quality rule
+         * @description Removes the rule and returns it. Reports that already used it keep their result for it. Admin only, with a session.
+         */
+        delete: operations["QualityRulesController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a quality rule
+         * @description Changes a rule's name, column, `params` (which REPLACE the old ones and are checked against the rule's kind), severity or whether it is enabled. The kind cannot change — that is a different rule. Admin only, with a session. Reports that were already built keep the rule as it was; rebuild a file's report to check it against the change.
+         */
+        patch: operations["QualityRulesController_update"];
+        trace?: never;
+    };
     "/analytics/usage": {
         parameters: {
             query?: never;
@@ -1132,6 +1214,27 @@ export interface components {
             /** @description The model that wrote it. */
             model: string;
         };
+        RuleResultDto: {
+            /** @description The rule this result is for (it may have been edited or deleted since). */
+            ruleId: string;
+            name: string;
+            /** @enum {string} */
+            kind: "required_column" | "max_null_percent" | "type_is" | "min_value" | "max_value" | "unique" | "max_duplicate_rows";
+            columnName: string | null;
+            /** @enum {string} */
+            severity: "error" | "warning";
+            /**
+             * @description `skipped`: the rule does not apply to this file (its column is not in it, or holds no numbers).
+             * @enum {string}
+             */
+            status: "passed" | "failed" | "skipped";
+            /** @description What was found and what was required, in words. */
+            message: string;
+            /** @description What the rule required when this report was built. */
+            params: {
+                [key: string]: unknown;
+            };
+        };
         ReportDto: {
             fileId: string;
             /** @enum {string} */
@@ -1144,6 +1247,10 @@ export interface components {
             errorMessage: string | null;
             /** Format: date-time */
             profiledAt: string | null;
+            /** @description How the file did against the company’s quality rules, 0–100: the share of applicable rules it passed, an `error` rule counting double a `warning`. Null when no rule applied (or none is defined). */
+            qualityScore: number | null;
+            /** @description One result per rule the company had when this report was built, each carrying the rule as it was then (rules can be edited later). Null when the company had no rules. Rebuild the report to check against today’s rules. */
+            ruleResults: components["schemas"]["RuleResultDto"][] | null;
         };
         PreviewColumnDto: {
             name: string;
@@ -1267,7 +1374,7 @@ export interface components {
              * @description What happened. Decides the shape of `payload`.
              * @enum {string}
              */
-            type: "quota.threshold" | "report.ready" | "report.failed" | "file.shared" | "invoice.finalized";
+            type: "quota.threshold" | "report.ready" | "report.failed" | "rules.failed" | "file.shared" | "invoice.finalized";
             /** @description Ids, counts and names for this `type` — never cell values. For `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`, `upgradeTo`. For `report.ready`/`report.failed`: `fileId`, `fileName`. For `file.shared`: `fileId`, `fileName`, `sharedByUserId`. For `invoice.finalized`: `invoiceId`, `totalCents`. */
             payload: {
                 [key: string]: unknown;
@@ -1309,6 +1416,8 @@ export interface components {
             overagePerFileCents: number | null;
             /** @description Requests per minute the whole company may make, shared by its users and API keys. */
             rateLimitPerMinute: number;
+            /** @description Data-quality rules the company may keep, enabled or not; null = unlimited. */
+            maxQualityRules: number | null;
         };
         PeriodDto: {
             /**
@@ -1576,6 +1685,71 @@ export interface components {
             data: components["schemas"]["EmployeeDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
         };
+        QualityRuleDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "required_column" | "max_null_percent" | "type_is" | "min_value" | "max_value" | "unique" | "max_duplicate_rows";
+            /** @description Null for a rule about the whole file. */
+            columnName: string | null;
+            params: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            severity: "error" | "warning";
+            enabled: boolean;
+            /** @description The admin who created it. */
+            createdByUserId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        QualityRulePageDto: {
+            data: components["schemas"]["QualityRuleDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
+        };
+        CreateQualityRuleDto: {
+            /** @example Emails are filled in */
+            name: string;
+            /**
+             * @description `required_column` the column must exist; `max_null_percent` at most that share empty; `type_is` the column is that type; `min_value` / `max_value` numeric bounds; `unique` no value repeats; `max_duplicate_rows` (whole file, no column) at most that many repeated rows.
+             * @enum {string}
+             */
+            kind: "required_column" | "max_null_percent" | "type_is" | "min_value" | "max_value" | "unique" | "max_duplicate_rows";
+            /**
+             * @description The column it applies to, matched to a file’s header case-insensitively. Required for every kind but `max_duplicate_rows`, which takes none. A file without that column skips the rule (use `required_column` to demand one).
+             * @example email
+             */
+            columnName?: string;
+            /** @description The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`. `required_column` and `unique` take `{}`. */
+            params?: {
+                [key: string]: unknown;
+            };
+            /**
+             * @description An `error` counts double in the quality score, and a failing one notifies the uploader and the admins.
+             * @default error
+             * @enum {string}
+             */
+            severity: "error" | "warning";
+            /**
+             * @description A disabled rule is kept, and counts toward the plan’s limit, but is not checked.
+             * @default true
+             */
+            enabled: boolean;
+        };
+        UpdateQualityRuleDto: {
+            name?: string;
+            /** @description Only for a rule that is about a column. */
+            columnName?: string;
+            /** @description REPLACES the rule’s numbers. The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`. `required_column` and `unique` take `{}`. */
+            params?: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            severity?: "error" | "warning";
+            enabled?: boolean;
+        };
         DayRangeDto: {
             /**
              * Format: date-time
@@ -1670,7 +1844,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -1694,7 +1868,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -1939,6 +2113,27 @@ export interface operations {
         };
     };
     FilesController_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDto"];
+                };
+            };
+        };
+    };
+    FilesController_rebuildReport: {
         parameters: {
             query?: never;
             header?: never;
@@ -2957,6 +3152,97 @@ export interface operations {
             };
         };
     };
+    QualityRulesController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityRulePageDto"];
+                };
+            };
+        };
+    };
+    QualityRulesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQualityRuleDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityRuleDto"];
+                };
+            };
+        };
+    };
+    QualityRulesController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityRuleDto"];
+                };
+            };
+        };
+    };
+    QualityRulesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQualityRuleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QualityRuleDto"];
+                };
+            };
+        };
+    };
     AnalyticsController_usage: {
         parameters: {
             query?: {
@@ -2987,7 +3273,7 @@ export interface operations {
                 /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
                 cursor?: string;
                 limit?: number;
-                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
+                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
                 /** @description Only what this person did. */
                 actorUserId?: string;
                 /** @description The kind of thing acted on. */

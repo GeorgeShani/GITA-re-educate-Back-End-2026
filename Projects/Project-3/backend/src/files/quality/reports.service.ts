@@ -1,12 +1,17 @@
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { z } from 'zod';
+import { AuditService } from '#/core/audit/audit.service.js';
+import { TaskQueue } from '#/core/tasks/task-queue.service.js';
+import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import { DataQualityReport } from '../data-quality-report.entity.js';
 import { FilesService } from '../files.service.js';
 import { type DataQualityMetrics, metricsSchema } from './metrics.js';
 import type { PreviewCell } from './profile.js';
+import { type RuleResult, ruleResultSchema } from './rules.js';
 
 const recommendationsSchema = z.array(z.string());
+const ruleResultsSchema = z.array(ruleResultSchema);
 const previewSchema = z.array(z.array(z.union([z.string(), z.number(), z.boolean(), z.null()])));
 
 export interface ReportView {
@@ -16,6 +21,10 @@ export interface ReportView {
   narrative: { summary: string; recommendations: string[]; model: string } | null;
   errorMessage: string | null;
   profiledAt: Date | null;
+  /** 0–100, an error counting double; null when no rule applied (or none is defined). */
+  qualityScore: number | null;
+  /** One result per rule the company had when the report was built; null when it had none. */
+  ruleResults: RuleResult[] | null;
 }
 
 export interface PreviewView {
@@ -35,6 +44,9 @@ export class ReportsService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly files: FilesService,
+    private readonly queue: TaskQueue,
+    private readonly audit: AuditService,
+    private readonly realtime: RealtimeEmitter,
   ) {}
 
   async report(fileId: string): Promise<ReportView> {
@@ -42,6 +54,7 @@ export class ReportsService {
 
     const metrics = row.metrics === null ? null : metricsSchema.parse(row.metrics);
     const recommendations = recommendationsSchema.safeParse(row.recommendations ?? []);
+    const ruleResults = ruleResultsSchema.safeParse(row.ruleResults ?? []);
     return {
       fileId,
       status: row.status,
@@ -55,7 +68,41 @@ export class ReportsService {
         : null,
       errorMessage: row.errorMessage,
       profiledAt: row.profiledAt,
+      qualityScore: row.qualityScore,
+      ruleResults: ruleResults.success && row.ruleResults !== null ? ruleResults.data : null,
     };
+  }
+
+  /**
+   * Builds the report again, from the same file, against the rules as they are NOW — how a company
+   * gets an old file re-checked after changing its rules. Uploader or admin only. Refused (409) while a
+   * build is already queued or running; the flip to `queued` and the task are one transaction, so two
+   * requests cannot queue it twice.
+   */
+  async rebuild(fileId: string): Promise<ReportView> {
+    const file = await this.files.requireManageable(fileId);
+
+    await this.dataSource.transaction(async (manager) => {
+      const flipped = await manager
+        .createQueryBuilder()
+        .update(DataQualityReport)
+        .set({ status: 'queued', errorMessage: null, ruleResults: null, qualityScore: null })
+        .where(`"fileId" = :fileId AND "companyId" = :companyId AND "status" IN ('ready', 'failed', 'unsupported')`, {
+          fileId: file.id,
+          companyId: file.companyId,
+        })
+        .execute();
+      if (!flipped.affected) {
+        throw new ConflictException('This report is already being built. Try again when it has finished.');
+      }
+      await this.queue.enqueue('build_data_quality_report', { fileId: file.id, companyId: file.companyId }, { manager });
+      await this.audit.record(
+        { action: 'report.rebuild_requested', target: { type: 'file', id: file.id }, metadata: { originalName: file.originalName } },
+        manager,
+      );
+    });
+    await this.realtime.fileStatus(file.id);
+    return this.report(file.id);
   }
 
   /**

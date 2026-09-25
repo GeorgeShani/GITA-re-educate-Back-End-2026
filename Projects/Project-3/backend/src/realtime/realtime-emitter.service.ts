@@ -49,7 +49,12 @@ export class RealtimeEmitter {
       const report = await this.dataSource.getRepository(DataQualityReport).findOne({ where: { fileId } });
       if (!file || file.deletedAt || !report) return;
 
-      const event: FileStatusEvent = { fileId, status: report.status, error: report.errorMessage };
+      const event: FileStatusEvent = {
+        fileId,
+        status: report.status,
+        error: report.errorMessage,
+        qualityScore: report.qualityScore,
+      };
       const rooms = await this.audience(file);
       this.gateway.server.to(rooms).emit('file.status', event);
     });

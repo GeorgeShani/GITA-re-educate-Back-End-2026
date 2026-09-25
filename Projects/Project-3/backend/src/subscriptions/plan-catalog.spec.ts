@@ -11,6 +11,7 @@ describe('PLAN_CATALOG', () => {
       basePriceCents: 0,
       overagePerFileCents: null,
       rateLimitPerMinute: 30,
+      maxQualityRules: 3,
     });
   });
 
@@ -36,6 +37,11 @@ describe('PLAN_CATALOG', () => {
     const limits = PLANS.map((plan) => PLAN_CATALOG[plan].rateLimitPerMinute);
     expect(limits).toEqual([...limits].sort((a, b) => a - b));
     expect(new Set(limits).size).toBe(PLANS.length);
+  });
+
+  it('a higher plan never allows fewer quality rules, and Premium has no limit', () => {
+    const limits = PLANS.map((plan) => PLAN_CATALOG[plan].maxQualityRules);
+    expect(limits).toEqual([3, 25, null]);
   });
 
   it('describes every plan', () => {

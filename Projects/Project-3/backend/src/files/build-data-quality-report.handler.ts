@@ -7,6 +7,7 @@ import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { StorageService } from '#/core/storage/storage.service.js';
 import type { TaskHandler } from '#/core/tasks/task-handler.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
+import { loadEnabledRules } from '#/quality-rules/rule-definitions.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAsset } from './file-asset.entity.js';
@@ -17,13 +18,14 @@ import {
 } from './parsing/spreadsheet-reader.js';
 import { PROFILE_LIMITS } from './quality/metrics.js';
 import { narrativeInputFrom, profileSheet } from './quality/profile.js';
+import { evaluateRules, uniqueColumnKeys } from './quality/rules.js';
 import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from './spreadsheet-types.js';
 
 const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid() });
 export type BuildDataQualityReportPayload = z.infer<typeof payloadSchema>;
 
 type ProfileOutcome =
-  | { status: 'ready' }
+  | { status: 'ready'; failedErrorRules: string[]; qualityScore: number | null }
   | { status: 'unsupported' }
   | { status: 'failed'; reason: string };
 
@@ -105,9 +107,10 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
    */
   private async notifyUploader(file: FileAsset, outcome: ProfileOutcome): Promise<void> {
     if (outcome.status === 'unsupported') return;
+    const manager = this.dataSource.manager;
     try {
       await this.notifications.notify(
-        this.dataSource.manager,
+        manager,
         file.companyId,
         [file.uploaderId],
         outcome.status === 'ready'
@@ -117,6 +120,19 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
               payload: { fileId: file.id, fileName: file.originalName, reason: outcome.reason },
             },
       );
+      // A file that breaks an error-level rule is everyone's business: the uploader and the admins.
+      if (outcome.status === 'ready' && outcome.failedErrorRules.length > 0) {
+        const admins = await this.notifications.activeAdminIds(manager, file.companyId);
+        await this.notifications.notify(manager, file.companyId, [file.uploaderId, ...admins], {
+          type: 'rules.failed',
+          payload: {
+            fileId: file.id,
+            fileName: file.originalName,
+            failedRules: outcome.failedErrorRules,
+            qualityScore: outcome.qualityScore,
+          },
+        });
+      }
     } catch (error) {
       // The report is done and committed; an inbox that cannot be written must not fail (and so
       // retry) the whole task.
@@ -133,9 +149,16 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
       return { status: 'failed', reason: 'Unrecognised file type.' };
     }
 
+    // The company's rules are read first: a `unique` rule needs its column's values remembered WHILE
+    // the file is read, which cannot be done afterwards from aggregates.
+    const { rules, unreadable } = await loadEnabledRules(this.dataSource, file.companyId);
+    if (unreadable > 0) this.logger.warn({ companyId: file.companyId, unreadable }, 'Ignoring quality rules that no longer parse');
+
     let profile: ReturnType<typeof profileSheet>;
     try {
-      profile = profileSheet(await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS));
+      profile = profileSheet(await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS), {
+        uniqueColumns: uniqueColumnKeys(rules),
+      });
     } catch (error) {
       if (error instanceof UnsupportedFormatError) {
         await reports.update({ id: reportId }, { status: 'unsupported', errorMessage: error.message, profiledAt: this.clock.now() });
@@ -148,12 +171,23 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
       throw error;
     }
 
-    const narrative = await this.ai.generateNarrative(narrativeInputFrom(profile.metrics));
+    const evaluation = evaluateRules(profile.metrics, rules, profile.uniqueness);
+    const failed = evaluation.results.filter((result) => result.status === 'failed');
+
+    // The model is told WHICH rules failed (by name), never the numbers or values behind them.
+    const narrative = await this.ai.generateNarrative(
+      narrativeInputFrom(
+        profile.metrics,
+        failed.map((result) => ({ name: result.name, severity: result.severity })),
+      ),
+    );
     await reports.update(
       { id: reportId },
       {
         status: 'ready',
         metrics: profile.metrics,
+        ruleResults: rules.length > 0 ? evaluation.results : null,
+        qualityScore: evaluation.score,
         previewRows: profile.previewRows,
         summaryText: narrative?.summary ?? null,
         recommendations: narrative?.recommendations ?? null,
@@ -162,6 +196,10 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         profiledAt: this.clock.now(),
       },
     );
-    return { status: 'ready' };
+    return {
+      status: 'ready',
+      failedErrorRules: failed.filter((result) => result.severity === 'error').map((result) => result.name),
+      qualityScore: evaluation.score,
+    };
   }
 }

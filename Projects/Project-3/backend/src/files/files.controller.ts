@@ -124,6 +124,14 @@ export class FilesController {
     return toDto(ReportDto, await this.reports.report(id));
   }
 
+  @Post(':id/report/rebuild')
+  @HttpCode(200)
+  @RequireScopes('files:write')
+  @ApiOkResponse({ type: ReportDto })
+  async rebuildReport(@Param('id', ParseUUIDPipe) id: string): Promise<ReportDto> {
+    return toDto(ReportDto, await this.reports.rebuild(id));
+  }
+
   @Get(':id/preview')
   @ApiOkResponse({ type: PreviewDto })
   async preview(@Param('id', ParseUUIDPipe) id: string): Promise<PreviewDto> {
