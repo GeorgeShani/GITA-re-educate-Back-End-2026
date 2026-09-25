@@ -12,7 +12,7 @@ export interface Listener {
   close(): void;
 }
 
-const OBSERVED = ['file.status', 'quota.updated', 'audit.appended'] as const;
+const OBSERVED = ['file.status', 'quota.updated', 'audit.appended', 'notification.created'] as const;
 
 /**
  * Connects to the running app the way a browser would: `io(url, { auth: { token } })`, WebSocket

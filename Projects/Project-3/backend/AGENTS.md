@@ -518,7 +518,8 @@ document.
   with a fresh one; nothing is ever emitted to a room its holder no longer belongs to.
 - **Rooms:** `company:<id>`, `user:<id>`, `admins:<companyId>` (admins only) — helpers in `realtime-events.ts`.
 - **Events** (`ServerToClientEvents`): `file.status {fileId,status,error}` (report `queued → profiling → ready |
-  failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`).
+  failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`),
+  `notification.created` (Phase 15: one inbox entry, to its owner's `user:<id>` room only).
 - **The audience is decided at EMIT time from the database** (`RealtimeEmitter.audience`): a company-visible file
   goes to the company room; a restricted one ONLY to `admins`, the uploader's and each grantee's user room — the
   visibility rule applied to rooms. So a file whose access changed is announced to who may see it now.
@@ -603,6 +604,43 @@ document.
 - **Docker:** `backend/.env` is host-oriented (`localhost`). `docker-compose.yml` loads an optional `backend/.env.docker`
   AFTER it (gitignored; template `.env.docker.example`) so `migrate`/`api` get container-side database URLs.
 - **Docs:** `docs/ENV_SECRETS_GUIDE.md` lists every variable; `CompanyDto.isDemo` lets a client show a demo banner.
+
+## Notifications & quota alerts *(from Phase 15 of the product plan)*
+
+- **A notification is an inbox row written inside the transaction that caused it** (`NotificationsService.notify(manager,
+  companyId, userIds, content)` / `notifyAdmins`). It exists only if the change committed. Recipients are re-checked against the
+  company and must be `active`, so a caller can neither notify another tenant nor write into a removed person's inbox. Producers:
+  the upload (`quota.threshold`, `file.shared`), `FilesService.update` (`file.shared`, newly added people only, never the sharer),
+  the report handler (`report.ready`/`report.failed` to the uploader; `unsupported` says nothing, a retried failure says nothing
+  until it settles) and `InvoicingService.announce` (`invoice.finalized` to admins, only when there is something to pay — the same
+  rule as the email).
+- **`notification-content.ts` is the closed vocabulary**: a Zod discriminated union of `{ type, payload }`. `type` is stored as
+  text (like an audit action), `payload` as `jsonb`, and a row read back goes through `viewOf` — one that no longer parses is
+  skipped with a warning, never a 500 for the whole inbox. A later feature adds a member to the union; there is no enum migration.
+  Payloads hold ids, counts and names, never cell values. (A file name stays in an old `file.shared` entry after a grant is
+  removed: it is a name the person was allowed to see when it was written.)
+- **Quota alerts** (`QuotaAlertsService.check`, called inside `FilesService.upload` right after the `UsageEvent`): 80% and 100% of
+  `filesPerPeriod` (integer maths, `thresholdsReached`). Every upload at or past a threshold tries `INSERT … ON CONFLICT DO NOTHING
+  RETURNING id` into `quota_alert` (UNIQUE `(companyId, periodKey, threshold)`), and only the insert that is not a conflict notifies
+  every active admin and queues a `quota_threshold` email to `billingEmail`. It deliberately does NOT compare "before" and "after":
+  the unique row is the decision, so a Premium jump from 999 to 1000 raises both alerts, and a new period (new `periodKey`) starts
+  fresh. The subscription row lock already serialises uploads; the constraint keeps it true without the lock. The 100% text depends
+  on the plan (Free/Basic: uploads stop, name the plan up; Premium: uploads continue, overage price) — `describeQuotaAlert`.
+- **The realtime push is a TypeORM subscriber, not a call.** `NotificationBroadcaster` (registered by `RealtimeModule` like
+  `AuditBroadcaster`, both built on `AfterCommitQueue`) parks each inserted `Notification` against its query runner and emits
+  `notification.created` to `user:<id>` only in `afterTransactionCommit`; a rollback drops it. So `NotificationsService` and
+  `NotificationsModule` depend on nothing but the database, and the CLI jobs write inbox rows and push nothing. **Notifications
+  are written with `manager.save`, never `insert`**: only `save` opens (and commits) a transaction of its own outside one, which is
+  what releases the push.
+- **`NotificationsModule` is `@Global` and imported by `BillingModule` as well**, because the billing-cycle CLI boots `BillingModule`
+  without `AppModule` (`standalone-jobs.integration.spec.ts` guards it).
+- **Routes** (`GET /notifications`, `/unread-count`, `POST /read-all`, `POST /:id/read`): any signed-in person, session only (no
+  `@RequireScopes`, so a key gets 403), only ever the caller's own rows (`mine()` = tenant scope + user), someone else's is a 404.
+  `read-all` is declared before `:id/read`. **Marking read is not audited**: it is personal inbox state, not a company action, and
+  the audit log would drown in it — the one deliberate exception to "every state change writes an entry".
+- **Retention:** `NotificationsJanitor` (daily `@Cron`, off under test, `purge(now)` for specs) deletes READ notifications older than
+  90 days (`READ_NOTIFICATION_RETENTION_MS`); an unread one is never purged.
+- Index: `idx_notification_company_user_created (companyId, userId, createdAt, id)` (a DESC list is a backward scan of it).
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -800,6 +838,8 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
       `(companyId, activeFrom)` + `(userId)`
 - [x] `data_quality_report` — UNIQUE `(fileId)`, `(companyId, status)`
 - [x] `api_key` — UNIQUE `(keyHash)`, `(companyId, createdAt)`, `(companyId, createdByUserId)`
+- [x] `notification` — `(companyId, userId, createdAt, id)`; `quota_alert` — UNIQUE `(companyId, periodKey, threshold)`
+      (what makes each alert fire once per period, and its tenant index)
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

@@ -1,0 +1,47 @@
+# Prose for the `notifications` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+NotificationsController_list:
+  summary: List your notifications
+  description: >-
+    Your own inbox, newest first, cursor-paginated (`limit`, and `cursor` from `meta.nextCursor`
+    until `hasMore` is false). `unread=true` narrows it to what you have not read. Nobody sees
+    anyone else's inbox, admins included.
+
+
+    What lands here, and who it goes to:
+
+    - `quota.threshold` — every admin, once per billing period each time the company passes 80% and
+    100% of its file quota. The payload says the plan, the count and the plan that would raise the
+    limit. (The billing address gets the same news by email.)
+
+    - `report.ready` / `report.failed` — the person who uploaded the file, when its data-quality report
+    finishes or fails for good. A failure that will be retried says nothing until the retry settles.
+
+    - `file.shared` — a person a file was shared with (on upload, or when an uploader or admin adds
+    them). Not the person who did the sharing.
+
+    - `invoice.finalized` — every admin, when an invoice with something to pay is issued.
+
+
+    New entries also arrive live on the realtime connection as `notification.created`, and only once
+    the change that caused them has committed. Read notifications are removed after 90 days; unread
+    ones stay. Signed-in sessions only: an API key cannot read the inbox.
+
+NotificationsController_unreadCount:
+  summary: Count your unread notifications
+  description: >-
+    How many of your notifications you have not read yet — the number for a badge. Cheap enough to
+    call on every page load.
+
+NotificationsController_readAll:
+  summary: Mark all your notifications as read
+  description: >-
+    Marks every unread notification of yours as read and says how many that was. Calling it again
+    changes nothing (`updated: 0`).
+
+NotificationsController_read:
+  summary: Mark one notification as read
+  description: >-
+    Marks one of your notifications as read and returns it. Idempotent: reading one that is already
+    read changes nothing and keeps its first `readAt`. A notification that is not yours — or does not
+    exist — is a 404.

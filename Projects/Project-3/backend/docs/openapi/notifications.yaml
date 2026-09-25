@@ -1,31 +1,128 @@
 openapi: 3.0.0
 paths:
-  /users/me:
-    patch:
-      operationId: UsersController_updateMe
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeDto'
+  /notifications:
+    get:
+      operationId: NotificationsController_list
+      parameters:
+        - name: cursor
+          required: false
+          in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: unread
+          required: false
+          in: query
+          description: Only notifications you have not read yet.
+          schema:
+            type: boolean
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserProfileDto'
-      security:
+                $ref: '#/components/schemas/NotificationPageDto'
+      security: &ref_0
         - bearer: []
-      tags:
-        - users
-      summary: Update your own profile
+      tags: &ref_1
+        - notifications
+      summary: List your notifications
       description: >-
-        Changes the signed-in person's own `fullName` — the personal-data half
-        of "change password and personal data". Available to admins and
-        employees.
+        Your own inbox, newest first, cursor-paginated (`limit`, and `cursor`
+        from `meta.nextCursor` until `hasMore` is false). `unread=true` narrows
+        it to what you have not read. Nobody sees anyone else's inbox, admins
+        included.
+
+
+        What lands here, and who it goes to:
+
+        - `quota.threshold` — every admin, once per billing period each time the
+        company passes 80% and 100% of its file quota. The payload says the
+        plan, the count and the plan that would raise the limit. (The billing
+        address gets the same news by email.)
+
+        - `report.ready` / `report.failed` — the person who uploaded the file,
+        when its data-quality report finishes or fails for good. A failure that
+        will be retried says nothing until the retry settles.
+
+        - `file.shared` — a person a file was shared with (on upload, or when an
+        uploader or admin adds them). Not the person who did the sharing.
+
+        - `invoice.finalized` — every admin, when an invoice with something to
+        pay is issued.
+
+
+        New entries also arrive live on the realtime connection as
+        `notification.created`, and only once the change that caused them has
+        committed. Read notifications are removed after 90 days; unread ones
+        stay. Signed-in sessions only: an API key cannot read the inbox.
+  /notifications/unread-count:
+    get:
+      operationId: NotificationsController_unreadCount
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnreadCountDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Count your unread notifications
+      description: >-
+        How many of your notifications you have not read yet — the number for a
+        badge. Cheap enough to call on every page load.
+  /notifications/read-all:
+    post:
+      operationId: NotificationsController_readAll
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkedReadDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Mark all your notifications as read
+      description: >-
+        Marks every unread notification of yours as read and says how many that
+        was. Calling it again changes nothing (`updated: 0`).
+  /notifications/{id}/read:
+    post:
+      operationId: NotificationsController_read
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Mark one notification as read
+      description: >-
+        Marks one of your notifications as read and returns it. Idempotent:
+        reading one that is already read changes nothing and keeps its first
+        `readAt`. A notification that is not yours — or does not exist — is a
+        404.
 info:
   title: Gridline API
   description: >-
@@ -49,7 +146,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_0
+          enum: &ref_2
             - company
             - restricted
           default: company
@@ -81,7 +178,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         uploaderId:
           type: string
         grantedUserIds:
@@ -190,7 +287,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: &ref_1
+          enum: &ref_3
             - integer
             - number
             - boolean
@@ -330,7 +427,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_1
+          enum: *ref_3
       required:
         - name
         - inferredType
@@ -370,7 +467,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_0
+          enum: *ref_2
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -446,7 +543,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_2
+          enum: &ref_4
             - free
             - basic
             - premium
@@ -492,7 +589,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -632,7 +729,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         maxEmployees:
           type: number
           nullable: true
@@ -729,7 +826,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         billingAnchorDay:
           type: number
           minimum: 1
@@ -757,7 +854,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
       required:
         - plan
     PlanChangeResultDto:
@@ -767,7 +864,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         prorationCents:
           type: number
           description: >-
@@ -799,7 +896,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_3
+          enum: &ref_5
             - finance
             - e-commerce
             - healthcare
@@ -935,12 +1032,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_4
+          enum: &ref_6
             - admin
             - employee
         status:
           type: string
-          enum: &ref_5
+          enum: &ref_7
             - invited
             - active
             - disabled
@@ -970,7 +1067,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_5
         status:
           type: string
           enum:
@@ -1085,7 +1182,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_5
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -1199,7 +1296,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_5
         billingEmail:
           type: string
           example: nino@acme.com
@@ -1232,10 +1329,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         status:
           type: string
-          enum: *ref_5
+          enum: *ref_7
         activatedAt:
           type: string
           format: date-time
@@ -1363,7 +1460,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -1397,12 +1494,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -1459,7 +1556,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_6
+          enum: &ref_8
             - company.registered
             - company.activated
             - company.activation_resent
@@ -1539,7 +1636,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_6
+          enum: *ref_8
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -1604,7 +1701,7 @@ components:
             allows: an employee cannot grant `billing:read`.
           items:
             type: string
-            enum: &ref_7
+            enum: &ref_9
               - files:read
               - files:write
               - billing:read
@@ -1624,9 +1721,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_8
+          items: &ref_10
             type: string
-            enum: *ref_7
+            enum: *ref_9
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -1672,7 +1769,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_8
+          items: *ref_10
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.

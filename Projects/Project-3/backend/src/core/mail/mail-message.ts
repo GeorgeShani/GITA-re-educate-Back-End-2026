@@ -45,6 +45,17 @@ export const mailMessageSchema = z.discriminatedUnion('template', [
       invoiceUrl: httpUrl,
     }),
   }),
+  z.object({
+    template: z.literal('quota_threshold'),
+    to: z.string().email(),
+    vars: z.object({
+      companyName: z.string(),
+      threshold: z.number().int(),
+      headline: z.string(),
+      detail: z.string(),
+      billingUrl: httpUrl,
+    }),
+  }),
 ]);
 
 export type MailMessage = z.infer<typeof mailMessageSchema>;

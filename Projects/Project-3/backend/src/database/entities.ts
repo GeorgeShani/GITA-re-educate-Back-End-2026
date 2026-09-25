@@ -8,6 +8,8 @@ import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
 import { DataQualityReport } from '#/files/data-quality-report.entity.js';
 import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
+import { Notification } from '#/notifications/notification.entity.js';
+import { QuotaAlert } from '#/notifications/quota-alert.entity.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { AuthIdentity } from './entities/auth-identity.entity.js';
@@ -49,4 +51,6 @@ export const ENTITIES: (new () => object)[] = [
   IdempotencyRecord,
   DataQualityReport,
   ApiKey,
+  Notification,
+  QuotaAlert,
 ];

@@ -5,12 +5,15 @@ import type { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
 import { DataQualityReport } from '#/files/data-quality-report.entity.js';
 import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
+import type { Notification } from '#/notifications/notification.entity.js';
+import { viewOf } from '#/notifications/notification-view.js';
 import { RealtimeGateway } from './realtime.gateway.js';
 import {
   adminRoom,
   type AuditAppendedEvent,
   companyRoom,
   type FileStatusEvent,
+  type NotificationCreatedEvent,
   type QuotaUpdatedEvent,
   userRoom,
 } from './realtime-events.js';
@@ -71,6 +74,22 @@ export class RealtimeEmitter {
         createdAt: entry.createdAt.toISOString(),
       };
       this.gateway.server.to(adminRoom(entry.companyId)).emit('audit.appended', event);
+    });
+  }
+
+  /** A notification was committed: its owner's screens (every tab, every device) show it at once. */
+  async notificationCreated(row: Notification): Promise<void> {
+    await this.safely('notification.created', async () => {
+      const view = viewOf(row);
+      if (!view) return;
+      const event: NotificationCreatedEvent = {
+        id: view.id,
+        type: view.type,
+        payload: view.payload,
+        readAt: null,
+        createdAt: view.createdAt.toISOString(),
+      };
+      this.gateway.server.to(userRoom(row.userId)).emit('notification.created', event);
     });
   }
 

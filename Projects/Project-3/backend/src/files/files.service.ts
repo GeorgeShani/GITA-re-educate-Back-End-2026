@@ -26,6 +26,8 @@ import { type DownloadLink, StorageService } from '#/core/storage/storage.servic
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { User } from '#/database/entities/user.entity.js';
 import { TenantScope } from '#/database/tenant-scope.js';
+import { NotificationsService } from '#/notifications/notifications.service.js';
+import { QuotaAlertsService } from '#/notifications/quota-alerts.service.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import type { QuotaUpdatedEvent } from '#/realtime/realtime-events.js';
 import { PLAN_CATALOG } from '#/subscriptions/plan-catalog.js';
@@ -108,6 +110,8 @@ export class FilesService {
     private readonly audit: AuditService,
     private readonly realtime: RealtimeEmitter,
     private readonly metrics: BusinessMetrics,
+    private readonly notifications: NotificationsService,
+    private readonly quotaAlerts: QuotaAlertsService,
     private readonly context: RequestContextService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -193,6 +197,17 @@ export class FilesService {
         }
         // Stamped from the injected clock: analytics buckets uploads by this instant.
         await manager.insert(UsageEvent, { companyId, fileId, periodKey: key, createdAt: now });
+        // 80% and 100% of the period's quota: told once each, in this transaction, so a rolled-back
+        // upload announces nothing.
+        await this.quotaAlerts.check(manager, {
+          companyId,
+          plan: subscription.plan,
+          periodKey: key,
+          periodEnd: subscription.currentPeriodEnd,
+          filesUsed: filesBefore + 1,
+          filesLimit: PLAN_CATALOG[subscription.plan].filesPerPeriod,
+        });
+        await this.notifyShared(manager, saved, grants, viewer.userId);
         // The report exists from the moment the file does, so `GET /files/:id/report` is
         // never a 404 for a real file; the queued task fills it in.
         await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });
@@ -331,6 +346,7 @@ export class FilesService {
       if (next !== file.visibility) {
         await manager.update(FileAsset, { id: file.id }, { visibility: next });
       }
+      await this.notifyShared(manager, file, added, viewer.userId);
 
       await this.audit.record(
         {
@@ -381,6 +397,24 @@ export class FilesService {
   }
 
   // ---- internals ----------------------------------------------------------
+
+  /** Tells people a file was shared with them. Never the person who did the sharing. */
+  private async notifyShared(
+    manager: EntityManager,
+    file: FileAsset,
+    userIds: string[],
+    sharedByUserId: string,
+  ): Promise<void> {
+    await this.notifications.notify(
+      manager,
+      file.companyId,
+      userIds.filter((userId) => userId !== sharedByUserId),
+      {
+        type: 'file.shared',
+        payload: { fileId: file.id, fileName: file.originalName, sharedByUserId },
+      },
+    );
+  }
 
   private caller(): { companyId: string; viewer: FileViewer } {
     const companyId = this.context.requireCompanyId();

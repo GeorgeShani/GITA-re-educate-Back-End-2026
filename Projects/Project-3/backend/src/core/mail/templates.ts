@@ -102,4 +102,14 @@ export const TEMPLATES: Record<MailTemplateName, TemplateDefinition> = {
         <mj-text>Period: {{periodStart}} – {{periodEnd}}<br />Total: <strong>{{totalFormatted}}</strong></mj-text>
         ${button('View invoice', '{{invoiceUrl}}')}`),
   },
+
+  quota_threshold: {
+    subject: '{{companyName}}: you have used {{threshold}}% of your file quota',
+    text: '{{companyName}}\n\n{{headline}}\n{{detail}}\n\nPlans and usage:\n{{billingUrl}}',
+    mjml: layout(`
+        <mj-text><strong>{{companyName}}</strong></mj-text>
+        <mj-text>{{headline}}</mj-text>
+        <mj-text>{{detail}}</mj-text>
+        ${button('See your plan', '{{billingUrl}}')}`),
+  },
 };

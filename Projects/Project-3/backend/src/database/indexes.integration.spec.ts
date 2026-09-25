@@ -114,6 +114,14 @@ describe('database indexes', () => {
     );
   });
 
+  it('indexes notifications by (companyId, userId, createdAt, id), and allows one quota alert per (company, period, threshold)', () => {
+    expect(indexes.find((row) => row.indexname === 'idx_notification_company_user_created')?.indexdef).toMatch(
+      /\("companyId", "userId", "createdAt", id\)/,
+    );
+    const unique = find('quota_alert', 'companyId', 'periodKey', 'threshold');
+    expect(unique?.indexdef).toMatch(/UNIQUE/);
+  });
+
   it('allows one idempotency record per (company, key), leading with companyId', () => {
     const index = find('idempotency_record', 'companyId', 'key');
     expect(index?.indexdef).toMatch(/UNIQUE/);

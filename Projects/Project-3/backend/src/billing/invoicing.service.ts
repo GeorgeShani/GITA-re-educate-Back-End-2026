@@ -4,6 +4,7 @@ import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
+import { NotificationsService } from '#/notifications/notifications.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
 import type { Subscription } from '#/subscriptions/subscription.entity.js';
@@ -31,6 +32,7 @@ export class InvoicingService {
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
     private readonly metrics: BusinessMetrics,
+    private readonly notifications: NotificationsService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -77,8 +79,8 @@ export class InvoicingService {
    * rollover, a plan change and an upload that rolls the period forward all behave
    * the same: an audit entry, and — when there is something to pay — an email to the
    * company's billing address. Both commit or roll back with the invoice itself.
-   * A $0 invoice (Free, or an idle Premium-less period) is audited but not emailed:
-   * nobody wants a monthly "your invoice is $0.00".
+   * A $0 invoice (Free, or an idle Premium-less period) is audited but neither emailed nor
+   * put in an inbox: nobody wants a monthly "your invoice is $0.00".
    */
   private async announce(manager: EntityManager, invoice: Invoice): Promise<void> {
     await this.audit.record(
@@ -99,6 +101,16 @@ export class InvoicingService {
     // point would over-count by one, which a counter can tolerate and a later invoice corrects.)
     this.metrics.invoiceFinalized(invoice.plan);
     if (invoice.totalCents <= 0) return;
+
+    await this.notifications.notifyAdmins(manager, invoice.companyId, {
+      type: 'invoice.finalized',
+      payload: {
+        invoiceId: invoice.id,
+        totalCents: invoice.totalCents,
+        periodStart: invoice.periodStart.toISOString().slice(0, 10),
+        periodEnd: invoice.periodEnd.toISOString().slice(0, 10),
+      },
+    });
 
     const company = await manager.findOneOrFail(Company, { where: { id: invoice.companyId } });
     await this.queue.enqueue(

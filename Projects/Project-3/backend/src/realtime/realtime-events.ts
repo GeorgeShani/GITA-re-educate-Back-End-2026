@@ -1,4 +1,5 @@
 import type { ReportStatus } from '#/files/data-quality-report.entity.js';
+import type { NotificationType } from '#/notifications/notification-content.js';
 import type { Plan } from '#/subscriptions/plan-catalog.js';
 
 /** Socket.IO rooms. A socket joins these on connect; emits address rooms, never sockets. */
@@ -32,11 +33,21 @@ export interface AuditAppendedEvent {
   createdAt: string;
 }
 
+/** A new inbox entry for this person (the same shape `GET /notifications` returns). */
+export interface NotificationCreatedEvent {
+  id: string;
+  type: NotificationType;
+  payload: unknown;
+  readAt: null;
+  createdAt: string;
+}
+
 /** What the server pushes. The client sends nothing but its handshake. */
 export interface ServerToClientEvents {
   'file.status': (event: FileStatusEvent) => void;
   'quota.updated': (event: QuotaUpdatedEvent) => void;
   'audit.appended': (event: AuditAppendedEvent) => void;
+  'notification.created': (event: NotificationCreatedEvent) => void;
 }
 
 export type ClientToServerEvents = Record<string, never>;

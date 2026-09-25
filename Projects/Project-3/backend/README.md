@@ -137,6 +137,11 @@ password at all, so there is nothing to guess.
   never be reached with one — a leaked key cannot create more access. Disabling a person revokes their keys.
 - **Realtime** (Socket.IO, `io(url, { auth: { token } })`, same access token as REST): `file.status`, `quota.updated` and
   `audit.appended`, emitted only after the change commits. Restricted-file events reach only the people who may see the file.
+- **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
+  /notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
+  transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after
+  the commit. **Quota alerts** fire at 80% and 100% of the file quota, once per billing period each (a unique
+  `(company, period, threshold)` row decides), to every admin and by email to the billing address.
 - **GraphQL** (`POST /graphql`) is a read-only twin of `GET /analytics/usage` — admins only, no mutations, depth and cost
   limits, and a committed schema (`src/graphql/schema.gql`, regenerate with `npm run graphql:schema`).
 

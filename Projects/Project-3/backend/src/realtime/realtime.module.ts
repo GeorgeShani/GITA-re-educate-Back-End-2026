@@ -2,6 +2,7 @@ import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuthModule } from '#/auth/auth.module.js';
 import { AuditBroadcaster } from './audit-broadcaster.js';
+import { NotificationBroadcaster } from './notification-broadcaster.js';
 import { RealtimeEmitter } from './realtime-emitter.service.js';
 import { RealtimeGateway } from './realtime.gateway.js';
 
@@ -23,6 +24,9 @@ export class RealtimeModule implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.dataSource.subscribers.push(new AuditBroadcaster(this.emitter));
+    this.dataSource.subscribers.push(
+      new AuditBroadcaster(this.emitter),
+      new NotificationBroadcaster(this.emitter),
+    );
   }
 }

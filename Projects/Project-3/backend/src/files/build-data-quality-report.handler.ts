@@ -6,6 +6,7 @@ import { AI_PROVIDER, type AiProvider } from '#/core/ai/ai-provider.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { StorageService } from '#/core/storage/storage.service.js';
 import type { TaskHandler } from '#/core/tasks/task-handler.js';
+import { NotificationsService } from '#/notifications/notifications.service.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAsset } from './file-asset.entity.js';
@@ -20,6 +21,11 @@ import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from './spreadsheet-type
 
 const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid() });
 export type BuildDataQualityReportPayload = z.infer<typeof payloadSchema>;
+
+type ProfileOutcome =
+  | { status: 'ready' }
+  | { status: 'unsupported' }
+  | { status: 'failed'; reason: string };
 
 function isSpreadsheetMime(value: string): value is SpreadsheetMime {
   return SPREADSHEET_MIME_TYPES.some((mime) => mime === value);
@@ -54,6 +60,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     @Inject(AI_PROVIDER) private readonly ai: AiProvider,
     private readonly logger: PinoLogger,
     private readonly realtime: RealtimeEmitter,
+    private readonly notifications: NotificationsService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     this.logger.setContext(BuildDataQualityReportHandler.name);
@@ -76,8 +83,9 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     await reports.update({ id: reportId }, { status: 'profiling', errorMessage: null });
     await this.realtime.fileStatus(fileId);
 
+    let outcome: ProfileOutcome;
     try {
-      await this.profile(reportId, file);
+      outcome = await this.profile(reportId, file);
     } catch (error) {
       await reports.update(
         { id: reportId },
@@ -88,15 +96,41 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     }
     // Every outcome of `profile` (ready, unsupported, failed) is committed by now: announce it.
     await this.realtime.fileStatus(fileId);
+    await this.notifyUploader(file, outcome);
   }
 
-  private async profile(reportId: string, file: FileAsset): Promise<void> {
+  /**
+   * The uploader hears when the report is ready or has failed for good. A transient failure is
+   * retried and says nothing (the retry will); `unsupported` (a legacy .xls) is not a failure of theirs.
+   */
+  private async notifyUploader(file: FileAsset, outcome: ProfileOutcome): Promise<void> {
+    if (outcome.status === 'unsupported') return;
+    try {
+      await this.notifications.notify(
+        this.dataSource.manager,
+        file.companyId,
+        [file.uploaderId],
+        outcome.status === 'ready'
+          ? { type: 'report.ready', payload: { fileId: file.id, fileName: file.originalName } }
+          : {
+              type: 'report.failed',
+              payload: { fileId: file.id, fileName: file.originalName, reason: outcome.reason },
+            },
+      );
+    } catch (error) {
+      // The report is done and committed; an inbox that cannot be written must not fail (and so
+      // retry) the whole task.
+      this.logger.warn({ err: error, fileId: file.id }, 'Could not write the report notification');
+    }
+  }
+
+  private async profile(reportId: string, file: FileAsset): Promise<ProfileOutcome> {
     const reports = this.dataSource.getRepository(DataQualityReport);
     const bytes = await this.storage.get(file.storageKey);
 
     if (!isSpreadsheetMime(file.mimeType)) {
       await reports.update({ id: reportId }, { status: 'failed', errorMessage: 'Unrecognised file type.' });
-      return;
+      return { status: 'failed', reason: 'Unrecognised file type.' };
     }
 
     let profile: ReturnType<typeof profileSheet>;
@@ -105,11 +139,11 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     } catch (error) {
       if (error instanceof UnsupportedFormatError) {
         await reports.update({ id: reportId }, { status: 'unsupported', errorMessage: error.message, profiledAt: this.clock.now() });
-        return;
+        return { status: 'unsupported' };
       }
       if (error instanceof UnreadableFileError) {
         await reports.update({ id: reportId }, { status: 'failed', errorMessage: error.message, profiledAt: this.clock.now() });
-        return;
+        return { status: 'failed', reason: error.message };
       }
       throw error;
     }
@@ -128,5 +162,6 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         profiledAt: this.clock.now(),
       },
     );
+    return { status: 'ready' };
   }
 }

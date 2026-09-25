@@ -192,6 +192,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List your notifications
+         * @description Your own inbox, newest first, cursor-paginated (`limit`, and `cursor` from `meta.nextCursor` until `hasMore` is false). `unread=true` narrows it to what you have not read. Nobody sees anyone else's inbox, admins included.
+         *
+         *     What lands here, and who it goes to:
+         *     - `quota.threshold` — every admin, once per billing period each time the company passes 80% and 100% of its file quota. The payload says the plan, the count and the plan that would raise the limit. (The billing address gets the same news by email.)
+         *     - `report.ready` / `report.failed` — the person who uploaded the file, when its data-quality report finishes or fails for good. A failure that will be retried says nothing until the retry settles.
+         *     - `file.shared` — a person a file was shared with (on upload, or when an uploader or admin adds them). Not the person who did the sharing.
+         *     - `invoice.finalized` — every admin, when an invoice with something to pay is issued.
+         *
+         *     New entries also arrive live on the realtime connection as `notification.created`, and only once the change that caused them has committed. Read notifications are removed after 90 days; unread ones stay. Signed-in sessions only: an API key cannot read the inbox.
+         */
+        get: operations["NotificationsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/unread-count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count your unread notifications
+         * @description How many of your notifications you have not read yet — the number for a badge. Cheap enough to call on every page load.
+         */
+        get: operations["NotificationsController_unreadCount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark all your notifications as read
+         * @description Marks every unread notification of yours as read and says how many that was. Calling it again changes nothing (`updated: 0`).
+         */
+        post: operations["NotificationsController_readAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark one notification as read
+         * @description Marks one of your notifications as read and returns it. Idempotent: reading one that is already read changes nothing and keeps its first `readAt`. A notification that is not yours — or does not exist — is a 404.
+         */
+        post: operations["NotificationsController_read"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/subscriptions/plans": {
         parameters: {
             query?: never;
@@ -1173,6 +1261,37 @@ export interface components {
             data: components["schemas"]["InvoiceDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
         };
+        NotificationDto: {
+            id: string;
+            /**
+             * @description What happened. Decides the shape of `payload`.
+             * @enum {string}
+             */
+            type: "quota.threshold" | "report.ready" | "report.failed" | "file.shared" | "invoice.finalized";
+            /** @description Ids, counts and names for this `type` — never cell values. For `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`, `upgradeTo`. For `report.ready`/`report.failed`: `fileId`, `fileName`. For `file.shared`: `fileId`, `fileName`, `sharedByUserId`. For `invoice.finalized`: `invoiceId`, `totalCents`. */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Format: date-time
+             * @description Null while unread.
+             */
+            readAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NotificationPageDto: {
+            data: components["schemas"]["NotificationDto"][];
+            meta: components["schemas"]["CursorMetaDto"];
+        };
+        UnreadCountDto: {
+            /** @description How many of your notifications are unread. */
+            count: number;
+        };
+        MarkedReadDto: {
+            /** @description How many notifications this call marked as read. */
+            updated: number;
+        };
         PlanDto: {
             /** @enum {string} */
             plan: "free" | "basic" | "premium";
@@ -1919,6 +2038,90 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_list: {
+        parameters: {
+            query?: {
+                /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
+                cursor?: string;
+                limit?: number;
+                /** @description Only notifications you have not read yet. */
+                unread?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationPageDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_unreadCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UnreadCountDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_readAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkedReadDto"];
+                };
+            };
+        };
+    };
+    NotificationsController_read: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationDto"];
                 };
             };
         };

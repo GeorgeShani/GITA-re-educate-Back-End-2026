@@ -117,8 +117,19 @@ not "forbidden", it is **404**: nothing discloses that it exists.
   message that explains why. *Why:* a reviewer can explore the product without registering.
 
 ### 10. Realtime
-- Socket.IO pushes `file.status` (queued → profiling → ready), `quota.updated` and `audit.appended`. Events go out **only after
-  the change commits**, and a restricted file's events reach only the people who may see it — decided at emit time.
+- Socket.IO pushes `file.status` (queued → profiling → ready), `quota.updated`, `audit.appended` and `notification.created`.
+  Events go out **only after the change commits**, and a restricted file's events reach only the people who may see it —
+  decided at emit time.
+
+### 10a. Notifications and quota alerts
+- Every person has an **inbox** (`GET /notifications`, unread count, mark one or all as read). It fills with: a report that is
+  ready or failed for good (to the uploader), a file shared with you, an invoice to pay (to admins), and **quota alerts**.
+- **Quota alerts:** when a company passes 80% and again at 100% of its file quota, every admin gets an inbox entry and the billing
+  address gets an email — once per billing period each. At 100% the message says what happens next: Free and Basic stop accepting
+  uploads (and it names the plan that raises the limit), Premium keeps going and bills overage. *Why:* the company hears about
+  the wall before it hits it, and the message doubles as the upgrade prompt.
+- A notification is written **in the same transaction as the thing that caused it**, so a rolled-back upload announces nothing,
+  and it is pushed live only after that commit. Read entries are removed after 90 days.
 
 ### 11. GraphQL (read-only)
 - `POST /graphql` returns the same analytics as REST, from the same service; admins only, no mutations, depth and cost limits,
