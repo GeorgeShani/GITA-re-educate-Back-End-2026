@@ -41,9 +41,9 @@ describe('plans and subscriptions (integration)', () => {
       const response = await h.http().get('/subscriptions/plans').expect(200);
 
       expect(response.body).toEqual([
-        { plan: 'free', maxEmployees: 0, maxSeats: 1, filesPerPeriod: 10, seatPriceCents: 0, basePriceCents: 0, overagePerFileCents: null },
-        { plan: 'basic', maxEmployees: 10, maxSeats: 11, filesPerPeriod: 100, seatPriceCents: 500, basePriceCents: 0, overagePerFileCents: null },
-        { plan: 'premium', maxEmployees: null, maxSeats: null, filesPerPeriod: 1000, seatPriceCents: 0, basePriceCents: 30_000, overagePerFileCents: 50 },
+        { plan: 'free', maxEmployees: 0, maxSeats: 1, filesPerPeriod: 10, seatPriceCents: 0, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 30 },
+        { plan: 'basic', maxEmployees: 10, maxSeats: 11, filesPerPeriod: 100, seatPriceCents: 500, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 120 },
+        { plan: 'premium', maxEmployees: null, maxSeats: null, filesPerPeriod: 1000, seatPriceCents: 0, basePriceCents: 30_000, overagePerFileCents: 50, rateLimitPerMinute: 600 },
       ]);
     });
   });

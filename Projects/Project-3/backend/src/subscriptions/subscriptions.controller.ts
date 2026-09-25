@@ -9,6 +9,7 @@ import {
 import { Public } from '#/common/auth/public.decorator.js';
 import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
+import { StrictThrottle } from '#/throttling/strict-throttle.decorator.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
 import { ChoosePlanDto } from './dto/choose-plan.dto.js';
@@ -41,6 +42,9 @@ export class SubscriptionsController {
 
   @Roles('admin')
   @ApiBearerAuth()
+  // Its own small bucket: a company that has used up its plan's request budget must still
+  // be able to move to a bigger plan, which is exactly what the 429 message tells it to do.
+  @StrictThrottle(10)
   @Post('me')
   @ApiCreatedResponse({ type: SubscriptionDto })
   async choose(@Body() dto: ChoosePlanDto): Promise<SubscriptionDto> {
@@ -49,6 +53,7 @@ export class SubscriptionsController {
 
   @Roles('admin')
   @ApiBearerAuth()
+  @StrictThrottle(10)
   @Patch('me')
   @HttpCode(200)
   @UseInterceptors(IdempotencyInterceptor)

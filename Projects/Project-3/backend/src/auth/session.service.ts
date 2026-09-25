@@ -20,7 +20,7 @@ export interface Session {
   expiresIn: number;
 }
 
-interface ClientMeta {
+export interface ClientMeta {
   userAgent: string | undefined;
 }
 

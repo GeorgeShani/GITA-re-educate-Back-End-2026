@@ -10,6 +10,7 @@ describe('PLAN_CATALOG', () => {
       seatPriceCents: 0,
       basePriceCents: 0,
       overagePerFileCents: null,
+      rateLimitPerMinute: 30,
     });
   });
 
@@ -29,6 +30,12 @@ describe('PLAN_CATALOG', () => {
       basePriceCents: 30_000,
       overagePerFileCents: 50,
     });
+  });
+
+  it('a higher plan never gets a lower rate limit', () => {
+    const limits = PLANS.map((plan) => PLAN_CATALOG[plan].rateLimitPerMinute);
+    expect(limits).toEqual([...limits].sort((a, b) => a - b));
+    expect(new Set(limits).size).toBe(PLANS.length);
   });
 
   it('describes every plan', () => {

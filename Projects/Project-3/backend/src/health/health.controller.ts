@@ -1,6 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
 import { ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '#/common/auth/public.decorator.js';
 
 /**
@@ -23,6 +24,8 @@ import { Public } from '#/common/auth/public.decorator.js';
  * DTO. `route-audit.spec.ts`'s response-type check exempts it by name.
  */
 @ApiTags('health')
+// Probes must never be told to back off.
+@SkipThrottle()
 @Controller('health')
 export class HealthController {
   constructor(

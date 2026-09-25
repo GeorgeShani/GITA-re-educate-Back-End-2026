@@ -58,4 +58,12 @@ export class Company extends BaseEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   activatedAt!: Date | null;
+
+  /**
+   * The seeded, read-only showcase company (`npm run seed:demo`). Every write by its users
+   * is refused by `DemoReadOnlyGuard`; nothing else about it is special, so what a visitor
+   * sees is the real product on real rows.
+   */
+  @Column({ type: 'boolean', default: false })
+  isDemo!: boolean;
 }

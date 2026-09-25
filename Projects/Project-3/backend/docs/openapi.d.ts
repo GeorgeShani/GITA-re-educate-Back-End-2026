@@ -238,6 +238,8 @@ export interface paths {
          * @description Upgrade or downgrade. A change is a new activation: the outgoing period is closed and invoiced for the days it ran (the switch day belongs to the new plan), and a fresh period opens today, re-anchoring billing to today's day of the month. `prorationCents` is the total of that closing invoice. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows. Admin only.
          *
          *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
+         *
+         *     **Rate limits.** Every plan has a request budget shared by the whole company (its users and its API keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan catalog). The current budget is on every response in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan change applies from the very next request, and this route (and choosing a first plan) keeps a small budget of its own, so a company that has used up its requests can still upgrade.
          */
         patch: operations["SubscriptionsController_change"];
         trace?: never;
@@ -915,6 +917,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/demo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Explore the read-only demo
+         * @description Signs in as the admin of the seeded demo company — no email or password — so anyone can look around a populated account: a Basic plan, four people, six files (one restricted) with data-quality reports, a finalized invoice and an audit trail. Returns the same session as `POST /auth/login`.
+         *
+         *     The demo is strictly **look, don't touch**: every request that would change anything (any method other than GET) is refused with 403 and an explanation, so visitors cannot alter it or each other's view of it. Answers 404 if the demo has not been seeded on this server (`npm run seed:demo`). Limited to 20 requests per minute per address.
+         */
+        post: operations["DemoController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1164,6 +1188,8 @@ export interface components {
             basePriceCents: number;
             /** @description Cents per file over the quota; null = uploads over the quota are refused instead. */
             overagePerFileCents: number | null;
+            /** @description Requests per minute the whole company may make, shared by its users and API keys. */
+            rateLimitPerMinute: number;
         };
         PeriodDto: {
             /**
@@ -2865,6 +2891,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiKeyDto"];
+                };
+            };
+        };
+    };
+    DemoController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionDto"];
                 };
             };
         };

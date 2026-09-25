@@ -727,6 +727,11 @@ components:
           description: >-
             Cents per file over the quota; null = uploads over the quota are
             refused instead.
+        rateLimitPerMinute:
+          type: number
+          description: >-
+            Requests per minute the whole company may make, shared by its users
+            and API keys.
       required:
         - plan
         - maxEmployees
@@ -735,6 +740,7 @@ components:
         - seatPriceCents
         - basePriceCents
         - overagePerFileCents
+        - rateLimitPerMinute
     PeriodDto:
       type: object
       properties:

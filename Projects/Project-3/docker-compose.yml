@@ -59,6 +59,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4000"
+      # One proxy (Caddy) sits in front: trust exactly one X-Forwarded-For hop, so audit
+      # `ip` and per-address rate limits see the real client, not Caddy.
+      TRUST_PROXY: "1"
     depends_on:
       migrate:
         condition: service_completed_successfully

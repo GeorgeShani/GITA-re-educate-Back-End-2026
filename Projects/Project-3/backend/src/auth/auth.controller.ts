@@ -7,6 +7,7 @@ import { MessageResponseDto } from '#/common/response/message-response.dto.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { CompanyDto } from '#/companies/dto/company.dto.js';
 import { UserProfileDto } from '#/users/dto/user-profile.dto.js';
+import { StrictThrottle } from '#/throttling/strict-throttle.decorator.js';
 import { UsersService } from '#/users/users.service.js';
 import { AcceptInviteDto } from './dto/accept-invite.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -42,6 +43,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @StrictThrottle(10)
   @Post('register-company')
   @ApiCreatedResponse({ type: RegisterCompanyResponseDto })
   async registerCompany(@Body() dto: RegisterCompanyDto): Promise<RegisterCompanyResponseDto> {
@@ -63,6 +65,7 @@ export class AuthController {
   }
 
   @Public()
+  @StrictThrottle(5)
   @Post('resend-activation')
   @HttpCode(200)
   @ApiOkResponse({ type: MessageResponseDto })
@@ -72,6 +75,7 @@ export class AuthController {
   }
 
   @Public()
+  @StrictThrottle(10)
   @Post('login')
   @HttpCode(200)
   @ApiOkResponse({ type: SessionDto })
@@ -104,6 +108,7 @@ export class AuthController {
   }
 
   @Public()
+  @StrictThrottle(5)
   @Post('password/forgot')
   @HttpCode(200)
   @ApiOkResponse({ type: MessageResponseDto })
@@ -113,6 +118,7 @@ export class AuthController {
   }
 
   @Public()
+  @StrictThrottle(10)
   @Post('password/reset')
   @HttpCode(200)
   @ApiOkResponse({ type: MessageResponseDto })
@@ -124,6 +130,7 @@ export class AuthController {
   }
 
   @Public()
+  @StrictThrottle(10)
   @Post('accept-invite')
   @HttpCode(200)
   @ApiOkResponse({ type: SessionDto })

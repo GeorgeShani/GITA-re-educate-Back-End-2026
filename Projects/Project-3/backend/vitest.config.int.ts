@@ -25,7 +25,7 @@ export default defineConfig({
     // explicitly and deterministically; `fatal` keeps a booted AppModule quiet.
     // Vitest applies these before setup files run, and `loadEnvFile` never
     // overrides a variable that is already set.
-    env: { NODE_ENV: 'test', LOG_LEVEL: 'fatal' },
+    env: { NODE_ENV: 'test', LOG_LEVEL: 'fatal', RATE_LIMIT_ENABLED: 'false' },
     fileParallelism: false,
     // First run may create a schema and pull a container image.
     testTimeout: 30_000,

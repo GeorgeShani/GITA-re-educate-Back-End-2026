@@ -5,7 +5,11 @@ import { AuthModule } from './auth/auth.module.js';
 import { RolesGuard } from './common/auth/roles.guard.js';
 import { ScopesGuard } from './common/auth/scopes.guard.js';
 import { RequireSubscriptionGuard } from './subscriptions/require-subscription.guard.js';
+import { DemoModule } from './demo/demo.module.js';
+import { DemoReadOnlyGuard } from './demo/demo-read-only.guard.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
+import { PlanThrottlerGuard } from './throttling/plan-throttler.guard.js';
+import { ThrottlingModule } from './throttling/throttling.module.js';
 
 /**
  * Every global guard, in the ONE place their order can be read. Nest runs
@@ -13,11 +17,16 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
  *
  *  1. `AuthGuard` — who is this? Fills `request.user` and the request context
  *     (tenant, role). Skips `@Public()` routes.
- *  2. `ScopesGuard` — for an API-key request: does the route declare a scope, and does
+ *  2. `PlanThrottlerGuard` — is this company (or address) within its rate limit? Needs the
+ *     tenant `AuthGuard` just set, so the limit can come from the plan; a rejected sign-in
+ *     never reaches it, a request that is later refused for scope or role still counts.
+ *  3. `DemoReadOnlyGuard` — a demo company's user may only read (says so before any
+ *     role or scope message, so the demo explains itself).
+ *  4. `ScopesGuard` — for an API-key request: does the route declare a scope, and does
  *     the key hold it? (Default deny; a session passes straight through.)
- *  3. `RolesGuard` — may their role do this? Reads `request.user`. For a key that is its
+ *  5. `RolesGuard` — may their role do this? Reads `request.user`. For a key that is its
  *     creator's LIVE role, so a key is never more than (role ∩ scopes).
- *  4. `RequireSubscriptionGuard` — does their company have a plan? Reads the
+ *  6. `RequireSubscriptionGuard` — does their company have a plan? Reads the
  *     tenant from request context. Acts only on `@RequiresSubscription()` routes.
  *
  * Swapping any two would not fail loudly: a guard that runs before its input
@@ -27,9 +36,11 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
  * and a wrong-role call 403 — never 402 — on a company with no plan.
  */
 @Module({
-  imports: [AuthModule, SubscriptionsModule],
+  imports: [AuthModule, SubscriptionsModule, ThrottlingModule, DemoModule],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useExisting: PlanThrottlerGuard },
+    { provide: APP_GUARD, useExisting: DemoReadOnlyGuard },
     { provide: APP_GUARD, useClass: ScopesGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: RequireSubscriptionGuard },

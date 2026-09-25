@@ -81,6 +81,22 @@ describe('loadConfig', () => {
     expect(config.corsOrigins).toEqual(['http://a.test', 'http://b.test']);
   });
 
+  it('rate limiting is ON unless explicitly switched off', () => {
+    expect(loadConfig(validEnv()).RATE_LIMIT_ENABLED).toBe(true);
+    expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: '' })).RATE_LIMIT_ENABLED).toBe(true);
+    expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: 'true' })).RATE_LIMIT_ENABLED).toBe(true);
+    for (const off of ['false', '0', 'off', 'FALSE']) {
+      expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: off })).RATE_LIMIT_ENABLED).toBe(false);
+    }
+  });
+
+  it('trusts no proxy by default, and a bounded number of hops when told to', () => {
+    expect(loadConfig(validEnv()).TRUST_PROXY).toBe(0);
+    expect(loadConfig(validEnv({ TRUST_PROXY: '1' })).TRUST_PROXY).toBe(1);
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: '-1' }))).toThrowError(/TRUST_PROXY/);
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: 'yes' }))).toThrowError(/TRUST_PROXY/);
+  });
+
   it('returns a frozen object so nothing can mutate config at runtime', () => {
     expect(Object.isFrozen(loadConfig(validEnv()))).toBe(true);
   });

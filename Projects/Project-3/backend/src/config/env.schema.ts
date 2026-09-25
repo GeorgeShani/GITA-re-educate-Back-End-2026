@@ -129,6 +129,23 @@ export const envSchema = z
     GOOGLE_CALLBACK_URL: optionalUrl(),
 
     /**
+     * Plan-tiered request throttling (Phase 11). On by default; the test config switches
+     * it off (specs make hundreds of requests per company) and the throttling specs turn it on.
+     */
+    RATE_LIMIT_ENABLED: z
+      .string()
+      .optional()
+      .transform((value) => value === undefined || value === '' || !['false', '0', 'off'].includes(value.toLowerCase())),
+
+    /**
+     * How many reverse proxies sit in front of the API (Express `trust proxy`). 0 = none, so
+     * `req.ip` is the socket peer; 1 = Caddy in Docker, so `req.ip` is the real client from
+     * `X-Forwarded-For`. Too high lets a client spoof its address (and dodge IP throttling);
+     * too low makes every request look like it came from the proxy.
+     */
+    TRUST_PROXY: z.coerce.number().int().min(0).max(10).default(0),
+
+    /**
      * Set by `docs:generate` so the DataSource is constructed but never
      * connected — rendering documentation should not require a live database.
      */

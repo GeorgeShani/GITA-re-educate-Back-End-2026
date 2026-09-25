@@ -513,6 +513,18 @@ paths:
         or prorated and billed — twice: the same key with the same body replays
         the first response (`Idempotent-Replayed: true`); the same key with a
         different body is 422.
+
+
+        **Rate limits.** Every plan has a request budget shared by the whole
+        company (its users and its API keys together): 30 requests per minute on
+        Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan
+        catalog). The current budget is on every response in
+        `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset`
+        (seconds), and an over-limit request gets 429 with `Retry-After`, naming
+        the plan and the way up. A plan change applies from the very next
+        request, and this route (and choosing a first plan) keeps a small budget
+        of its own, so a company that has used up its requests can still
+        upgrade.
   /health:
     get:
       operationId: HealthController_check
@@ -1680,6 +1692,33 @@ paths:
         own (someone else's key is a 404, as if it did not exist). Revoking a
         key that is already revoked succeeds and changes nothing. Removing an
         employee revokes all of their keys.
+  /auth/demo:
+    post:
+      operationId: DemoController_login
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags:
+        - auth
+      summary: Explore the read-only demo
+      description: >-
+        Signs in as the admin of the seeded demo company — no email or password
+        — so anyone can look around a populated account: a Basic plan, four
+        people, six files (one restricted) with data-quality reports, a
+        finalized invoice and an audit trail. Returns the same session as `POST
+        /auth/login`.
+
+
+        The demo is strictly **look, don't touch**: every request that would
+        change anything (any method other than GET) is refused with 403 and an
+        explanation, so visitors cannot alter it or each other's view of it.
+        Answers 404 if the demo has not been seeded on this server (`npm run
+        seed:demo`). Limited to 20 requests per minute per address.
 info:
   title: Gridline API
   description: >-
@@ -2244,6 +2283,11 @@ components:
           description: >-
             Cents per file over the quota; null = uploads over the quota are
             refused instead.
+        rateLimitPerMinute:
+          type: number
+          description: >-
+            Requests per minute the whole company may make, shared by its users
+            and API keys.
       required:
         - plan
         - maxEmployees
@@ -2252,6 +2296,7 @@ components:
         - seatPriceCents
         - basePriceCents
         - overagePerFileCents
+        - rateLimitPerMinute
     PeriodDto:
       type: object
       properties:

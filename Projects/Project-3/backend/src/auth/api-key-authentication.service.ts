@@ -58,6 +58,7 @@ export class ApiKeyAuthenticationService {
         companyId: creator.companyId,
         role: creator.role,
         authMethod: 'api_key',
+        isDemo: creator.company.isDemo,
         scopes: effectiveScopes(creator.role, key.scopes),
         apiKeyId: key.id,
       },

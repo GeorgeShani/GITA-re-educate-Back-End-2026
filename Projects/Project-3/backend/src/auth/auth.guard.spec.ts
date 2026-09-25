@@ -21,12 +21,13 @@ class Routes {
   open(): void {}
 }
 
-const USER = { userId: 'u1', companyId: 'c1', role: 'admin', authMethod: 'jwt' } as const;
+const USER = { userId: 'u1', companyId: 'c1', role: 'admin', authMethod: 'jwt', isDemo: false } as const;
 const KEY_USER = {
   userId: 'u2',
   companyId: 'c1',
   role: 'employee',
   authMethod: 'api_key',
+  isDemo: false,
   scopes: ['files:read'],
   apiKeyId: 'k1',
 } as const;

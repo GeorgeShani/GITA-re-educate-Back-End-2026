@@ -22,6 +22,7 @@ import { REDACT_KEYS } from './core/redaction.js';
 import { TaskRunnerModule } from './core/tasks/task-runner.module.js';
 import { TasksModule } from './core/tasks/tasks.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { DemoModule } from './demo/demo.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { FilesModule } from './files/files.module.js';
 import { HealthModule } from './health/health.module.js';
@@ -121,6 +122,7 @@ function observeImports(): DynamicModule[] {
     AuditLogModule,
     AnalyticsModule,
     ApiKeysModule,
+    DemoModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,
   ],

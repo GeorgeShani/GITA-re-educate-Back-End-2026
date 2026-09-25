@@ -471,6 +471,33 @@ paths:
         Removes one of the caller's own identities. Returns 409 when it is the
         only one left — a user with no way to sign in cannot be helped by anyone
         but a DBA. Someone else's identity is a 404.
+  /auth/demo:
+    post:
+      operationId: DemoController_login
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags:
+        - auth
+      summary: Explore the read-only demo
+      description: >-
+        Signs in as the admin of the seeded demo company — no email or password
+        — so anyone can look around a populated account: a Basic plan, four
+        people, six files (one restricted) with data-quality reports, a
+        finalized invoice and an audit trail. Returns the same session as `POST
+        /auth/login`.
+
+
+        The demo is strictly **look, don't touch**: every request that would
+        change anything (any method other than GET) is refused with 403 and an
+        explanation, so visitors cannot alter it or each other's view of it.
+        Answers 404 if the demo has not been seeded on this server (`npm run
+        seed:demo`). Limited to 20 requests per minute per address.
 info:
   title: Gridline API
   description: >-
@@ -1035,6 +1062,11 @@ components:
           description: >-
             Cents per file over the quota; null = uploads over the quota are
             refused instead.
+        rateLimitPerMinute:
+          type: number
+          description: >-
+            Requests per minute the whole company may make, shared by its users
+            and API keys.
       required:
         - plan
         - maxEmployees
@@ -1043,6 +1075,7 @@ components:
         - seatPriceCents
         - basePriceCents
         - overagePerFileCents
+        - rateLimitPerMinute
     PeriodDto:
       type: object
       properties:

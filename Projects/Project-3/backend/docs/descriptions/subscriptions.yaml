@@ -37,3 +37,12 @@ SubscriptionsController_change:
     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or
     prorated and billed — twice: the same key with the same body replays the first
     response (`Idempotent-Replayed: true`); the same key with a different body is 422.
+
+
+    **Rate limits.** Every plan has a request budget shared by the whole company (its users
+    and its API keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium
+    (`rateLimitPerMinute` in the plan catalog). The current budget is on every response
+    in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an
+    over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan
+    change applies from the very next request, and this route (and choosing a first plan) keeps
+    a small budget of its own, so a company that has used up its requests can still upgrade.

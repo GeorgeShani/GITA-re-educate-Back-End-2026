@@ -88,8 +88,12 @@ export class AppHarness {
     private readonly db: PostgresTestContext,
   ) {}
 
-  /** `googleConfigured: false` boots as if the `GOOGLE_*` variables were unset (the routes then answer 503). */
-  static async start(options: { googleConfigured?: boolean } = {}): Promise<AppHarness> {
+  /**
+   * `googleConfigured: false` boots as if the `GOOGLE_*` variables were unset (the routes then answer 503).
+   * `rateLimit: true` switches the plan throttler ON — the integration config turns it off,
+   * because the other specs make far more requests per company than a Free plan allows.
+   */
+  static async start(options: { googleConfigured?: boolean; rateLimit?: boolean } = {}): Promise<AppHarness> {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
     const google = new FakeGoogleOAuthProvider();
@@ -101,6 +105,9 @@ export class AppHarness {
       secret: 'harness-secret',
       clock,
     });
+
+    const previousRateLimit = process.env.RATE_LIMIT_ENABLED;
+    if (options.rateLimit) process.env.RATE_LIMIT_ENABLED = 'true';
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(CLOCK)
@@ -114,6 +121,8 @@ export class AppHarness {
       .overrideProvider(AI_PROVIDER)
       .useValue(ai)
       .compile();
+    if (previousRateLimit === undefined) delete process.env.RATE_LIMIT_ENABLED;
+    else process.env.RATE_LIMIT_ENABLED = previousRateLimit;
 
     const app = moduleRef.createNestApplication();
     await app.init();
@@ -148,8 +157,16 @@ export class AppHarness {
     await rm(this.storageDir, { recursive: true, force: true });
   }
 
+  /**
+   * When set (and `trust proxy` is on), every request from `http()` claims to come from this
+   * address, so a spec that exercises per-address throttling gets its own address for its
+   * setup calls instead of sharing 127.0.0.1's budget with every other test.
+   */
+  clientAddress: string | undefined;
+
   http(): ReturnType<typeof request> {
-    return request(this.app.getHttpServer());
+    const server = this.app.getHttpServer();
+    return this.clientAddress ? request.agent(server).set('X-Forwarded-For', this.clientAddress) : request(server);
   }
 
   get dataSource(): PostgresTestContext['dataSource'] {

@@ -25,12 +25,13 @@ class ClassLevel {
   overrides(): void {}
 }
 
-const SESSION: AuthenticatedUser = { userId: 'u', companyId: 'c', role: 'admin', authMethod: 'jwt' };
+const SESSION: AuthenticatedUser = { userId: 'u', companyId: 'c', role: 'admin', authMethod: 'jwt', isDemo: false };
 const key = (...scopes: ApiScope[]): AuthenticatedUser => ({
   userId: 'u',
   companyId: 'c',
   role: 'employee',
   authMethod: 'api_key',
+  isDemo: false,
   scopes,
   apiKeyId: 'k',
 });

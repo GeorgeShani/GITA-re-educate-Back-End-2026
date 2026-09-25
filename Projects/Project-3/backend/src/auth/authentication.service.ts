@@ -80,7 +80,13 @@ export class AuthenticationService {
     }
 
     return {
-      user: { userId: user.id, companyId: user.companyId, role: user.role, authMethod: 'jwt' },
+      user: {
+        userId: user.id,
+        companyId: user.companyId,
+        role: user.role,
+        authMethod: 'jwt',
+        isDemo: user.company.isDemo,
+      },
       companyStatus: user.company.status,
     };
   }

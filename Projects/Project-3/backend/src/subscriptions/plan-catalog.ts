@@ -18,6 +18,12 @@ export interface PlanRules {
    * charging (Free and Basic answer 402; only Premium accepts and bills).
    */
   overagePerFileCents: number | null;
+  /**
+   * Requests per minute the whole company may make (all its users and API keys share
+   * the one budget). The infrastructure limit IS the product limit: a higher plan buys
+   * more of it, rather than a generic throttle being bolted on beside the plans.
+   */
+  rateLimitPerMinute: number;
 }
 
 /**
@@ -33,6 +39,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     seatPriceCents: 0,
     basePriceCents: 0,
     overagePerFileCents: null,
+    rateLimitPerMinute: 30,
   },
   basic: {
     maxEmployees: 10,
@@ -40,6 +47,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     seatPriceCents: 500,
     basePriceCents: 0,
     overagePerFileCents: null,
+    rateLimitPerMinute: 120,
   },
   premium: {
     maxEmployees: null,
@@ -47,6 +55,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     seatPriceCents: 0,
     basePriceCents: 30_000,
     overagePerFileCents: 50,
+    rateLimitPerMinute: 600,
   },
 };
 

@@ -2,6 +2,7 @@ import './load-env.js'; // MUST be the first import — see load-env.ts
 import { randomBytes } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { AppModule, ObserveInstrument } from './app.module.js';
@@ -29,7 +30,7 @@ function scriptSrcNonce(_req: IncomingMessage, res: ServerResponse): string {
 }
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     instrument: ObserveInstrument,
     // Hold framework logs until pino is available, then replay them through it,
     // so there is ONE log format end to end rather than Nest's plain format for
@@ -43,6 +44,11 @@ async function bootstrap(): Promise<void> {
   app.flushLogs();
 
   const config = app.get<AppConfig>(APP_CONFIG);
+
+  // The real client address (for audit `ip` and IP throttling) sits in X-Forwarded-For when a
+  // proxy fronts the API. Trust exactly as many hops as there are proxies, never more: an
+  // untrusted hop would let a client choose its own address.
+  if (config.TRUST_PROXY > 0) app.set('trust proxy', config.TRUST_PROXY);
 
   // Mints one nonce per request, before helmet computes that request's CSP
   // header — `scriptSrcNonce` below reads it back into `script-src`, and

@@ -37,6 +37,10 @@ export class PlanDto {
   @Expose()
   overagePerFileCents!: number | null;
 
+  @ApiProperty({ description: 'Requests per minute the whole company may make, shared by its users and API keys.' })
+  @Expose()
+  rateLimitPerMinute!: number;
+
   static from(plan: Plan): PlanDto {
     return toDto(PlanDto, { plan, maxSeats: maxSeats(plan), ...PLAN_CATALOG[plan] });
   }

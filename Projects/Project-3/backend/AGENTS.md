@@ -209,8 +209,8 @@ document.
 - `Invoice.lineItems` is `jsonb`: read it only through `parseLineItems` (Zod).
   `UNIQUE (companyId, periodStart)` is what makes rollover idempotent.
 - `UsageEvent.fileId` is a real FK to `file_asset` (Phase 6); files are only soft-deleted, so events never dangle.
-- **Global guards live in `AccessControlModule`, in order:** `AuthGuard` → `ScopesGuard` →
-  `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
+- **Global guards live in `AccessControlModule`, in order:** `AuthGuard` → `PlanThrottlerGuard` →
+  `DemoReadOnlyGuard` → `ScopesGuard` → `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
   produced. `@RequiresSubscription()` (402 with no plan) goes on `employees/` and
   `files/`; `@AllowWhenSuspended()` marks the few routes (billing reads) a
   suspended company may still reach. Nothing suspends a company yet — there is no
@@ -467,6 +467,43 @@ document.
   does not bring them back.
 - `ApiKey` indexes: UNIQUE `keyHash`, `(companyId, createdAt)`, `(companyId, createdByUserId)`.
 - Tests: `h.createApiKey(session, { name, scopes })` and `h.upload(session, { bearer: key })` in the harness.
+
+## Rate limiting & demo mode *(from Phase 11 of the feature plan)*
+
+- **The infrastructure limit IS the product limit.** `PLAN_CATALOG[plan].rateLimitPerMinute` (Free 30 / Basic 120 /
+  Premium 600) is the budget of the WHOLE company per minute — every user and every API key of one company share it.
+  `throttling/PlanThrottlerGuard` extends `@nestjs/throttler`'s `ThrottlerGuard`; it is a global guard right after
+  `AuthGuard` (it needs the tenant). Authenticated requests are counted per company at the plan's limit (no
+  subscription = Free); unauthenticated ones per client address at a general 120/min. Counts are **in process
+  memory** (single instance; `ThrottlerStorage` is the seam if that ever changes).
+- **The plan is part of the counter's key.** A throttler counter that has been exceeded stays blocked for the rest
+  of its window whatever the limit later becomes, so upgrading would not end a 429. Keying by `company:<id>:<plan>`
+  gives an upgrading company a fresh counter at once (proved in the spec).
+- **`@StrictThrottle(limit)`** (`throttling/strict-throttle.decorator.ts`) gives a route a small bucket of its own,
+  per address (public routes) or company (signed-in): login 10, register/reset/accept-invite 10, forgot-password and
+  resend-activation 5, `POST /auth/demo` 20 — and `POST`/`PATCH /subscriptions/me` 10, so a company that ran out of
+  requests can still upgrade. Strict buckets neither spend nor share the general budget. `@SkipThrottle()` on `/health`.
+- **Headers:** `X-RateLimit-Limit/Remaining/Reset` on every throttled response, `Retry-After` and a 429 body that
+  names the plan, its limit, the retry time and the next plan up (`throttleMessage`, unit-tested).
+- **`RATE_LIMIT_ENABLED`** (default on) — the integration config turns it OFF (specs make hundreds of requests per
+  company); `AppHarness.start({ rateLimit: true })` turns it on for the throttling spec, and `h.clientAddress` gives a
+  spec its own address (`X-Forwarded-For`) so per-address tests do not share 127.0.0.1's budget.
+- **`TRUST_PROXY`** (hops; default 0; docker-compose sets 1) is applied in `main.ts` (`app.set('trust proxy', n)`).
+  It decides what `req.ip` is, so it decides audit `ip` and every per-address limit. Too high lets a client choose
+  its own address. The harness never runs `main.ts`; the throttling spec sets it on the Express instance itself.
+- **Demo mode.** `Company.isDemo` (migration `DemoCompany`). `npm run seed:demo` (`dist/demo/seed-demo.js`, a
+  standalone app context) runs `DemoSeedService`: Basic plan, an admin + three employees, six CSVs (one restricted)
+  stored through the real storage driver with real data-quality reports (profiled by the real engine, narrative from
+  the configured AI provider), an audit trail, and a finalized invoice from the REAL `InvoicingService.rollForward`
+  over a period that has already closed. Idempotent (an existing `isDemo` company means "done"; the unique billing
+  address settles a race). It deletes the invoice email the rollover queues — the demo company must never email anyone.
+  The demo admin has **no password identity**: `POST /auth/demo` (public, in `demo/`, tagged `auth`) starts a session
+  for it directly, which is safe only because of the next rule.
+- **`DemoReadOnlyGuard`** (global, right after the throttler): any request by a user whose company is a demo and
+  whose method is not GET/HEAD/OPTIONS gets 403 with `DEMO_READ_ONLY_MESSAGE` — sessions and API keys alike, every
+  route including ones added later. `AuthenticatedUser.isDemo` comes from the company row in both authenticators.
+  Reads are safe to leave open because every read route is a pure read.
+- Global guard order is now Auth → Throttler → DemoReadOnly → Scopes → Roles → RequireSubscription.
 
 ## Pagination & sorting *(from Phase 3)*
 
