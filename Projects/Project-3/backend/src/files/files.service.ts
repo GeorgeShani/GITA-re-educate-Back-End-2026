@@ -30,6 +30,7 @@ import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { FilesQueryDto } from './dto/files-query.dto.js';
 import type { UpdateFileDto } from './dto/update-file.dto.js';
 import type { UploadFileDto } from './dto/upload-file.dto.js';
+import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAccessGrant } from './file-access-grant.entity.js';
 import { FileAsset, type FileVisibility } from './file-asset.entity.js';
 import { type FileViewer, applyFileVisibility } from './file-visibility.js';
@@ -186,6 +187,9 @@ export class FilesService {
           );
         }
         await manager.insert(UsageEvent, { companyId, fileId, periodKey: key });
+        // The report exists from the moment the file does, so `GET /files/:id/report` is
+        // never a 404 for a real file; the queued task fills it in.
+        await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });
         await this.queue.enqueue(
           'build_data_quality_report',
           { fileId, companyId },
@@ -243,6 +247,12 @@ export class FilesService {
     const { viewer } = this.caller();
     const file = await this.findVisible(this.dataSource.manager, id, viewer);
     return { file, grantedUserIds: await this.grantsIfManager(this.dataSource.manager, file, viewer) };
+  }
+
+  /** The file, if the caller may see it (404 otherwise): the gate for everything hanging off a file. */
+  requireVisible(id: string): Promise<FileAsset> {
+    const { viewer } = this.caller();
+    return this.findVisible(this.dataSource.manager, id, viewer);
   }
 
   /** A short-lived link, minted only after the caller's access has been checked. */

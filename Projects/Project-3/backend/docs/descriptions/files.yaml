@@ -70,3 +70,36 @@ FilesController_remove:
     Uploader or admin only. A soft delete: the file disappears from every listing and
     its stored object is removed, but the row and its history are kept and the upload
     still counts toward this period's quota.
+
+FilesController_report:
+  summary: Get a file's data-quality report
+  description: >-
+    Every upload queues a report, so this is never a 404 for a file you can see. `status`
+    moves `queued` → `profiling` → `ready`. When `ready`, `metrics` holds the row and
+    column counts and, per column: the share of empty cells, the inferred type
+    (`integer`, `number`, `boolean`, `date`, `string`), whether the column mixes kinds of
+    value and by how much, and numeric min / max / mean; plus duplicate and empty rows,
+    ragged rows and header problems. Only the first 100,000 rows are profiled;
+    `metrics.truncated` says when the file was longer.
+
+
+    `narrative` is a plain-language summary and recommendations written by an AI model
+    from those statistics alone — it is never shown a row or a cell value. It is `null`
+    when no AI provider is configured, or it timed out or answered unusably; the metrics
+    are unaffected either way.
+
+
+    `unsupported` means the file is stored but not profiled (legacy `.xls`: save it as
+    `.xlsx` or `.csv`). `failed` means it could not be read (corrupt, malformed, or too
+    large to open safely) — `errorMessage` says why; a report can also show `failed`
+    briefly while a temporary problem is retried automatically. Visible exactly when the
+    file is: a file you cannot see is a 404.
+
+FilesController_preview:
+  summary: Preview a file's first rows
+  description: >-
+    The first 50 rows of the file and the inferred type of each column, for rendering a
+    table without downloading anything. Served from what profiling stored, so it costs no
+    file read. Dates are ISO strings and long cells are cut to 200 characters. Returns
+    409 while the report is still being prepared, and 422 with the reason when no preview
+    can be made (`unsupported` or `failed`). Visible exactly when the file is.

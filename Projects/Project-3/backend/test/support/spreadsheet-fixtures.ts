@@ -154,3 +154,16 @@ export function pngBytes(): Buffer {
     Buffer.alloc(64, 0),
   ]);
 }
+
+/** A REAL .xlsx written by exceljs (dates, numbers, booleans, formulas, rich text all as a workbook stores them). */
+export async function realXlsxBytes(
+  rows: unknown[][],
+  options: { sheetName?: string; extraSheets?: boolean } = {},
+): Promise<Buffer> {
+  const { default: ExcelJS } = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(options.sheetName ?? 'Data');
+  for (const row of rows) sheet.addRow(row);
+  if (options.extraSheets) workbook.addWorksheet('Second').addRow(['not this one']);
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}

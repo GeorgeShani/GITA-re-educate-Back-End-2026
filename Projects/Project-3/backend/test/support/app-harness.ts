@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { AppModule } from '#/app.module.js';
 import { SeatInterval } from '#/billing/seat-interval.entity.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
+import { AI_PROVIDER } from '#/core/ai/ai-provider.js';
 import { LocalStorageDriver } from '#/core/storage/local-storage.driver.js';
 import { STORAGE_DRIVER } from '#/core/storage/storage-driver.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
@@ -19,6 +20,7 @@ import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { MAIL_TRANSPORT } from '#/core/mail/mail-transport.js';
 import { TaskRunner } from '#/core/tasks/task-runner.service.js';
+import { FakeAiProvider } from './fake-ai.js';
 import { FakeClock } from './fake-clock.js';
 import { FakeGoogleOAuthProvider } from './fake-oauth.js';
 import { MailCapture } from './mail-capture.js';
@@ -77,6 +79,8 @@ export class AppHarness {
     readonly clock: FakeClock,
     readonly mail: MailCapture,
     readonly google: FakeGoogleOAuthProvider,
+    /** Stands in for Gemini; script its answer with `h.ai.next(...)`. */
+    readonly ai: FakeAiProvider,
     /** Local-disk storage in a temp dir; spy on its methods to inject failures. */
     readonly storage: LocalStorageDriver,
     readonly storageDir: string,
@@ -89,6 +93,7 @@ export class AppHarness {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
     const google = new FakeGoogleOAuthProvider();
+    const ai = new FakeAiProvider();
     const storageDir = await mkdtemp(join(tmpdir(), 'gridline-storage-'));
     const storage = new LocalStorageDriver({
       root: storageDir,
@@ -106,6 +111,8 @@ export class AppHarness {
       .useValue(options.googleConfigured === false ? null : google)
       .overrideProvider(STORAGE_DRIVER)
       .useValue(storage)
+      .overrideProvider(AI_PROVIDER)
+      .useValue(ai)
       .compile();
 
     const app = moduleRef.createNestApplication();
@@ -116,6 +123,7 @@ export class AppHarness {
       clock,
       mail,
       google,
+      ai,
       storage,
       storageDir,
       app.get(TaskRunner),
@@ -128,6 +136,7 @@ export class AppHarness {
     await this.db.reset();
     this.mail.clear();
     this.google.clear();
+    this.ai.reset();
     this.clock.set(START);
     await rm(this.storageDir, { recursive: true, force: true });
     await mkdir(this.storageDir, { recursive: true });

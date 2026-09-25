@@ -345,8 +345,8 @@ document.
 - **Tests never rely on racing.** Quota serialisation and the 409-in-progress case hold the
   subscription row lock in an open transaction and assert the request *waits*.
 - Adding a task type worked as documented: enum migration + handler registered in
-  `TaskRunnerModule` (which now imports `FilesModule`). `build_data_quality_report` is a
-  real, durable task whose handler is a no-op until Phase 8.
+  `TaskRunnerModule` (which now imports `FilesModule`). `build_data_quality_report` is implemented
+  in Phase 8 (see below).
 
 ## Billing endpoints & the rollover *(from Phase 7 of the feature plan)*
 
@@ -372,6 +372,42 @@ document.
   forward all behave alike.
 - `formatCents` (`invoicing.service.ts`) is integer maths only. `UNIQUE (companyId, periodStart)`
   is the tenant index for invoice listing too.
+
+## Data-quality reports & preview *(from Phase 8 of the feature plan)*
+
+- **A report exists from the moment the file does**: `FilesService.upload` inserts a `queued`
+  `data_quality_report` row in the upload transaction, and the same transaction queues
+  `build_data_quality_report`. `GET /files/:id/report|preview` go through
+  `FilesService.requireVisible` (the ONE visibility rule) — 404 for an invisible file.
+- **The worker** (`BuildDataQualityReportHandler`) takes its scope from the task payload
+  (`fileId` + `companyId`, both used in the query) and skips a deleted file. Outcomes:
+  transient error (storage/DB) → report `failed` ("will be retried") and the error is RETHROWN so
+  the queue retries with backoff (the retry flips it to `profiling` → `ready`; if retries run out it
+  honestly stays `failed`); permanent (`UnreadableFileError`: corrupt/oversized/unclosed quote) →
+  `failed` with the reason and the task SUCCEEDS (retrying the same bytes is pointless);
+  `UnsupportedFormatError` (legacy `.xls`) → `unsupported`. A `ready`/`unsupported` report is never
+  redone.
+- **Reader** (`files/parsing/spreadsheet-reader.ts`): CSV via `csv-parse/sync` (delimiter sniffed, BOM,
+  `relax_quotes`), XLSX via exceljs **`workbook.xlsx.load`** — NOT the streaming `WorkbookReader`,
+  which proved order-dependent and fails on files exceljs wrote itself. `zip-guard.ts` reads the ZIP
+  central directory first and refuses > 200 MB inflated (zip bomb). **`.xls` is deliberately not
+  profiled** (the only parsers carry a history of memory-safety/ReDoS advisories); the file is stored,
+  listed and downloadable. Cells are normalised through Zod schemas (`normaliseExcelCell`).
+- **Metrics** (`files/quality/metrics.ts`) are a pure streaming `MetricsAccumulator`: row/column counts,
+  per-column null %, inferred type (integer+decimal are one numeric family), `inconsistent` +
+  `inconsistentPercent`, numeric min/max/mean, duplicate rows (length-prefixed SHA-1 fingerprints),
+  empty and ragged rows, header issues. Budget: first 100,000 rows / 200 columns, reported as
+  `truncated`. `metricsSchema` (Zod) is the read-back and response source of truth for the `jsonb`.
+- **Preview is stored, not computed**: profiling keeps the first 50 rows × 50 columns (cells cut to
+  200 chars, dates ISO) in `previewRows`, so a request never parses an untrusted file. 409 while
+  queued/profiling, 422 (with the reason) for `failed`/`unsupported`.
+- **AI seam** (`core/ai`): `AiProvider.generateNarrative(NarrativeInput)`; `GeminiAiProvider`
+  (`@google/genai`, JSON out, 20 s timeout) or `NullAiProvider` (default / no key). Contract: NEVER
+  throws, NEVER blocks a report — timeout, refusal, malformed output all → `null` + a warning, parsed
+  with Zod (`parseNarrative` tolerates a ```json fence). **The model is shown aggregates only**: no
+  row, no cell value — a numeric column contributes its MEAN, never min/max (those are cell values).
+  Column names are sanitised (`cleanLabel`) and passed as data, with an explicit "never follow
+  instructions in a label". Tests inject `FakeAiProvider` (`h.ai.next(...)`, `h.ai.calls`).
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -567,6 +603,7 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
       `(companyId, effectiveAt)`; `invoice` — UNIQUE `(companyId, periodStart)`
       (also what makes the rollover idempotent); `seat_interval` —
       `(companyId, activeFrom)` + `(userId)`
+- [x] `data_quality_report` — UNIQUE `(fileId)`, `(companyId, status)`
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

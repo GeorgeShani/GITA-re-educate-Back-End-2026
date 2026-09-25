@@ -5,6 +5,7 @@ import { SubscriptionsModule } from '#/subscriptions/subscriptions.module.js';
 import { BuildDataQualityReportHandler } from './build-data-quality-report.handler.js';
 import { FilesController } from './files.controller.js';
 import { FilesService } from './files.service.js';
+import { ReportsService } from './quality/reports.service.js';
 
 /**
  * Storage, idempotency and the task queue are global modules, so they are not
@@ -14,7 +15,7 @@ import { FilesService } from './files.service.js';
 @Module({
   imports: [DatabaseModule, BillingModule, SubscriptionsModule],
   controllers: [FilesController],
-  providers: [FilesService, BuildDataQualityReportHandler],
+  providers: [FilesService, ReportsService, BuildDataQualityReportHandler],
   exports: [BuildDataQualityReportHandler],
 })
 export class FilesModule {}

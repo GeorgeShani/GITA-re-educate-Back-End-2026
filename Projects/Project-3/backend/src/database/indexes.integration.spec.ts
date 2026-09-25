@@ -110,6 +110,13 @@ describe('database indexes', () => {
     expect(index?.indexdef).toMatch(/\("companyId", key\)/);
   });
 
+  it('allows one data-quality report per file, and indexes reports by (companyId, status)', () => {
+    const unique = indexes.find((row) => row.tablename === 'data_quality_report' && /UNIQUE.*\("fileId"\)/.test(row.indexdef));
+    expect(unique).toBeDefined();
+    const tenant = indexes.find((row) => row.indexname === 'idx_data_quality_report_company_status');
+    expect(tenant?.indexdef).toMatch(/\("companyId", status\)/);
+  });
+
   it('indexes refresh_token.familyId, which family revocation updates by', () => {
     expect(find('refresh_token', 'familyId')).toBeDefined();
   });

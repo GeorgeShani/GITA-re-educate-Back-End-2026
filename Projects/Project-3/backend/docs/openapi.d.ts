@@ -82,6 +82,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a file's data-quality report
+         * @description Every upload queues a report, so this is never a 404 for a file you can see. `status` moves `queued` → `profiling` → `ready`. When `ready`, `metrics` holds the row and column counts and, per column: the share of empty cells, the inferred type (`integer`, `number`, `boolean`, `date`, `string`), whether the column mixes kinds of value and by how much, and numeric min / max / mean; plus duplicate and empty rows, ragged rows and header problems. Only the first 100,000 rows are profiled; `metrics.truncated` says when the file was longer.
+         *
+         *     `narrative` is a plain-language summary and recommendations written by an AI model from those statistics alone — it is never shown a row or a cell value. It is `null` when no AI provider is configured, or it timed out or answered unusably; the metrics are unaffected either way.
+         *
+         *     `unsupported` means the file is stored but not profiled (legacy `.xls`: save it as `.xlsx` or `.csv`). `failed` means it could not be read (corrupt, malformed, or too large to open safely) — `errorMessage` says why; a report can also show `failed` briefly while a temporary problem is retried automatically. Visible exactly when the file is: a file you cannot see is a 404.
+         */
+        get: operations["FilesController_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview a file's first rows
+         * @description The first 50 rows of the file and the inferred type of each column, for rendering a table without downloading anything. Served from what profiling stored, so it costs no file read. Dates are ISO strings and long cells are cut to 200 characters. Returns 409 while the report is still being prepared, and 422 with the reason when no preview can be made (`unsupported` or `failed`). Visible exactly when the file is.
+         */
+        get: operations["FilesController_preview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/billing/current": {
         parameters: {
             query?: never;
@@ -792,6 +836,88 @@ export interface components {
              */
             expiresAt: string;
         };
+        TypeCountsDto: {
+            integer: number;
+            number: number;
+            boolean: number;
+            date: number;
+            string: number;
+        };
+        NumericStatsDto: {
+            min: number;
+            max: number;
+            mean: number;
+        };
+        ColumnMetricsDto: {
+            index: number;
+            name: string;
+            /** @description Blank and whitespace-only cells count as empty. */
+            nullCount: number;
+            /** @description Percent of the column that is empty, 0–100, two decimals. */
+            nullPercent: number;
+            /**
+             * @description The dominant kind of value in the column.
+             * @enum {string}
+             */
+            inferredType: "integer" | "number" | "boolean" | "date" | "string" | "empty";
+            typeCounts: components["schemas"]["TypeCountsDto"];
+            /** @description More than one kind of value in the column (numbers AND text, say). */
+            inconsistent: boolean;
+            /** @description Percent of non-empty cells that disagree with the dominant type. */
+            inconsistentPercent: number;
+            /** @description Over the numeric cells; null if there are none. */
+            numeric: components["schemas"]["NumericStatsDto"] | null;
+        };
+        MetricsDto: {
+            /** @description Data rows profiled, header excluded. */
+            rowCount: number;
+            columnCount: number;
+            /** @description Rows with no value in any column. */
+            emptyRows: number;
+            /** @description Rows identical to an earlier row. */
+            duplicateRows: number;
+            /** @description Rows with more or fewer cells than the header. */
+            raggedRows: number;
+            /** @description True when the file had more rows than the profile budget: the numbers cover the first `rowBudget` rows. */
+            truncated: boolean;
+            rowBudget: number;
+            /** @description Problems with the header row (blank or repeated names). */
+            headerIssues: string[];
+            columns: components["schemas"]["ColumnMetricsDto"][];
+        };
+        NarrativeDto: {
+            summary: string;
+            recommendations: string[];
+            /** @description The model that wrote it. */
+            model: string;
+        };
+        ReportDto: {
+            fileId: string;
+            /** @enum {string} */
+            status: "queued" | "profiling" | "ready" | "unsupported" | "failed";
+            /** @description Present once `status` is `ready`. */
+            metrics: components["schemas"]["MetricsDto"] | null;
+            /** @description The plain-language summary. Null when no AI provider is configured or it produced nothing usable; the metrics are unaffected. */
+            narrative: components["schemas"]["NarrativeDto"] | null;
+            /** @description Why the report is `failed` or `unsupported`. */
+            errorMessage: string | null;
+            /** Format: date-time */
+            profiledAt: string | null;
+        };
+        PreviewColumnDto: {
+            name: string;
+            /** @enum {string} */
+            inferredType: "integer" | "number" | "boolean" | "date" | "string" | "empty";
+        };
+        PreviewDto: {
+            columns: components["schemas"]["PreviewColumnDto"][];
+            /** @description The first rows, one array of cells per row in column order. Dates are ISO strings. */
+            rows: ((string | number | boolean) | null)[][];
+            /** @description Rows in the file (up to the profile budget). */
+            totalRows: number;
+            /** @description True when `rows` is only the first part of the file. */
+            truncated: boolean;
+        };
         UpdateFileDto: {
             /** @enum {string} */
             visibility?: "company" | "restricted";
@@ -1325,6 +1451,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileDownloadDto"];
+                };
+            };
+        };
+    };
+    FilesController_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportDto"];
+                };
+            };
+        };
+    };
+    FilesController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewDto"];
                 };
             };
         };

@@ -32,10 +32,12 @@ import { toDto } from '#/common/response/to-dto.js';
 import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
 import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
 import { FileDownloadDto, FileDto, FilePageDto } from './dto/file.dto.js';
+import { PreviewDto, ReportDto } from './dto/report.dto.js';
 import { FilesQueryDto } from './dto/files-query.dto.js';
 import { UpdateFileDto } from './dto/update-file.dto.js';
 import { UploadFileBodyDoc, UploadFileDto } from './dto/upload-file.dto.js';
 import { FilesService } from './files.service.js';
+import { ReportsService } from './quality/reports.service.js';
 import { MAX_UPLOAD_BYTES } from './spreadsheet-types.js';
 import { SpreadsheetFileValidator } from './validation/spreadsheet-file.validator.js';
 
@@ -53,7 +55,10 @@ const QUOTA_WARNING_HEADER = 'X-Gridline-Quota-Warning';
 @Roles('admin', 'employee')
 @Controller('files')
 export class FilesController {
-  constructor(private readonly files: FilesService) {}
+  constructor(
+    private readonly files: FilesService,
+    private readonly reports: ReportsService,
+  ) {}
 
   /**
    * `FileInterceptor` runs first (it parses the multipart body), then
@@ -107,6 +112,18 @@ export class FilesController {
   @ApiOkResponse({ type: FileDownloadDto })
   async download(@Param('id', ParseUUIDPipe) id: string): Promise<FileDownloadDto> {
     return toDto(FileDownloadDto, await this.files.downloadLink(id));
+  }
+
+  @Get(':id/report')
+  @ApiOkResponse({ type: ReportDto })
+  async report(@Param('id', ParseUUIDPipe) id: string): Promise<ReportDto> {
+    return toDto(ReportDto, await this.reports.report(id));
+  }
+
+  @Get(':id/preview')
+  @ApiOkResponse({ type: PreviewDto })
+  async preview(@Param('id', ParseUUIDPipe) id: string): Promise<PreviewDto> {
+    return toDto(PreviewDto, await this.reports.preview(id));
   }
 
   @Patch(':id')

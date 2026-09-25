@@ -4,6 +4,7 @@ import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
 import { IdempotencyRecord } from '#/core/idempotency/idempotency-record.entity.js';
 import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
+import { DataQualityReport } from '#/files/data-quality-report.entity.js';
 import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
@@ -45,4 +46,5 @@ export const ENTITIES: (new () => object)[] = [
   FileAsset,
   FileAccessGrant,
   IdempotencyRecord,
+  DataQualityReport,
 ];

@@ -225,6 +225,228 @@ components:
       required:
         - url
         - expiresAt
+    TypeCountsDto:
+      type: object
+      properties:
+        integer:
+          type: number
+        number:
+          type: number
+        boolean:
+          type: number
+        date:
+          type: number
+        string:
+          type: number
+      required:
+        - integer
+        - number
+        - boolean
+        - date
+        - string
+    NumericStatsDto:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        mean:
+          type: number
+      required:
+        - min
+        - max
+        - mean
+    ColumnMetricsDto:
+      type: object
+      properties:
+        index:
+          type: number
+        name:
+          type: string
+        nullCount:
+          type: number
+          description: Blank and whitespace-only cells count as empty.
+        nullPercent:
+          type: number
+          description: Percent of the column that is empty, 0–100, two decimals.
+        inferredType:
+          type: string
+          enum: &ref_2
+            - integer
+            - number
+            - boolean
+            - date
+            - string
+            - empty
+          description: The dominant kind of value in the column.
+        typeCounts:
+          $ref: '#/components/schemas/TypeCountsDto'
+        inconsistent:
+          type: boolean
+          description: More than one kind of value in the column (numbers AND text, say).
+        inconsistentPercent:
+          type: number
+          description: Percent of non-empty cells that disagree with the dominant type.
+        numeric:
+          nullable: true
+          description: Over the numeric cells; null if there are none.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/NumericStatsDto'
+      required:
+        - index
+        - name
+        - nullCount
+        - nullPercent
+        - inferredType
+        - typeCounts
+        - inconsistent
+        - inconsistentPercent
+        - numeric
+    MetricsDto:
+      type: object
+      properties:
+        rowCount:
+          type: number
+          description: Data rows profiled, header excluded.
+        columnCount:
+          type: number
+        emptyRows:
+          type: number
+          description: Rows with no value in any column.
+        duplicateRows:
+          type: number
+          description: Rows identical to an earlier row.
+        raggedRows:
+          type: number
+          description: Rows with more or fewer cells than the header.
+        truncated:
+          type: boolean
+          description: >-
+            True when the file had more rows than the profile budget: the
+            numbers cover the first `rowBudget` rows.
+        rowBudget:
+          type: number
+        headerIssues:
+          description: Problems with the header row (blank or repeated names).
+          type: array
+          items:
+            type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnMetricsDto'
+      required:
+        - rowCount
+        - columnCount
+        - emptyRows
+        - duplicateRows
+        - raggedRows
+        - truncated
+        - rowBudget
+        - headerIssues
+        - columns
+    NarrativeDto:
+      type: object
+      properties:
+        summary:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        model:
+          type: string
+          description: The model that wrote it.
+      required:
+        - summary
+        - recommendations
+        - model
+    ReportDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+        status:
+          type: string
+          enum:
+            - queued
+            - profiling
+            - ready
+            - unsupported
+            - failed
+        metrics:
+          nullable: true
+          description: Present once `status` is `ready`.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/MetricsDto'
+        narrative:
+          nullable: true
+          description: >-
+            The plain-language summary. Null when no AI provider is configured
+            or it produced nothing usable; the metrics are unaffected.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/NarrativeDto'
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why the report is `failed` or `unsupported`.
+        profiledAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - fileId
+        - status
+        - metrics
+        - narrative
+        - errorMessage
+        - profiledAt
+    PreviewColumnDto:
+      type: object
+      properties:
+        name:
+          type: string
+        inferredType:
+          type: string
+          enum: *ref_2
+      required:
+        - name
+        - inferredType
+    PreviewDto:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreviewColumnDto'
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              nullable: true
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+          description: >-
+            The first rows, one array of cells per row in column order. Dates
+            are ISO strings.
+        totalRows:
+          type: number
+          description: Rows in the file (up to the profile budget).
+        truncated:
+          type: boolean
+          description: True when `rows` is only the first part of the file.
+      required:
+        - columns
+        - rows
+        - totalRows
+        - truncated
     UpdateFileDto:
       type: object
       properties:
@@ -306,7 +528,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_2
+          enum: &ref_3
             - free
             - basic
             - premium
@@ -352,7 +574,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_3
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -426,7 +648,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_3
         maxEmployees:
           type: number
           nullable: true
@@ -517,7 +739,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_3
         billingAnchorDay:
           type: number
           minimum: 1
@@ -545,7 +767,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_2
+          enum: *ref_3
       required:
         - plan
     PlanChangeResultDto:
@@ -555,7 +777,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_2
+          enum: *ref_3
         prorationCents:
           type: number
           description: >-
@@ -587,7 +809,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_3
+          enum: &ref_4
             - finance
             - e-commerce
             - healthcare
@@ -723,12 +945,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_4
+          enum: &ref_5
             - admin
             - employee
         status:
           type: string
-          enum: &ref_5
+          enum: &ref_6
             - invited
             - active
             - disabled
@@ -758,7 +980,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_4
         status:
           type: string
           enum:
@@ -867,7 +1089,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_4
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -981,7 +1203,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_3
+          enum: *ref_4
         billingEmail:
           type: string
           example: nino@acme.com
@@ -1014,10 +1236,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_4
+          enum: *ref_5
         status:
           type: string
-          enum: *ref_5
+          enum: *ref_6
         activatedAt:
           type: string
           format: date-time
