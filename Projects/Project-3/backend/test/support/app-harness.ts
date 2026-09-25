@@ -447,6 +447,8 @@ export class AppHarness {
       visibility: 'company' | 'restricted';
       grantedUserIds: string[];
       idempotencyKey: string;
+      /** Authenticate with this bearer token (an API key) instead of the session's. */
+      bearer: string;
     }> = {},
   ) {
     this.counter += 1;
@@ -455,7 +457,7 @@ ${this.counter},${randomUUID()}
 `;
     const request = this.http()
       .post('/files')
-      .set(...this.bearer(session));
+      .set(...(options.bearer ? ['Authorization', `Bearer ${options.bearer}`] as [string, string] : this.bearer(session)));
     if (options.idempotencyKey) request.set('Idempotency-Key', options.idempotencyKey);
     request.attach('file', Buffer.from(content), {
       filename: options.name ?? `data-${this.counter}.csv`,
@@ -464,6 +466,19 @@ ${this.counter},${randomUUID()}
     if (options.visibility) request.field('visibility', options.visibility);
     for (const userId of options.grantedUserIds ?? []) request.field('grantedUserIds', userId);
     return request;
+  }
+
+  /** Creates a personal API key through the real route; the plaintext is only available here. */
+  async createApiKey(
+    session: SessionBody,
+    options: { name?: string; scopes?: string[] } = {},
+  ): Promise<{ id: string; key: string; prefix: string }> {
+    const response = await this.http()
+      .post('/api-keys')
+      .set(...this.bearer(session))
+      .send({ name: options.name ?? 'test key', scopes: options.scopes ?? ['files:read'] })
+      .expect(201);
+    return z.object({ id: z.uuid(), key: z.string(), prefix: z.string() }).parse(response.body);
   }
 
   parseSession(body: unknown): SessionBody {

@@ -7,6 +7,7 @@ import { loadConfig } from './config/load-config.js';
 import './core/context/cls-store.js';
 import { AccessControlModule } from './access-control.module.js';
 import { AnalyticsModule } from './analytics/analytics.module.js';
+import { ApiKeysModule } from './api-keys/api-keys.module.js';
 import { AuditLogModule } from './audit/audit-log.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { BillingModule } from './billing/billing.module.js';
@@ -119,6 +120,7 @@ function observeImports(): DynamicModule[] {
     FilesModule,
     AuditLogModule,
     AnalyticsModule,
+    ApiKeysModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,
   ],

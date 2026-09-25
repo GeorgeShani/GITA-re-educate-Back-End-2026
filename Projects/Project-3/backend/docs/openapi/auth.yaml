@@ -1661,6 +1661,8 @@ components:
             - subscription.created
             - subscription.changed
             - billing.invoice_finalized
+            - api_key.created
+            - api_key.revoked
             - file.uploaded
             - file.access_changed
             - file.deleted
@@ -1949,3 +1951,129 @@ components:
         - storage
         - quota
         - planHistory
+    CreateApiKeyDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Nightly import script
+          minLength: 1
+          maxLength: 80
+          description: >-
+            What the key is for, so you can tell your keys apart and revoke the
+            right one.
+        scopes:
+          type: array
+          example:
+            - files:read
+          description: >-
+            What the key may do. A key can never do more than its creator’s role
+            allows: an employee cannot grant `billing:read`.
+          items:
+            type: string
+            enum: &ref_9
+              - files:read
+              - files:write
+              - billing:read
+      required:
+        - name
+        - scopes
+    CreatedApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: &ref_10
+            type: string
+            enum: *ref_9
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+        key:
+          type: string
+          example: gl_live_ab12cd34_<43 characters>
+          description: >-
+            The full key. Shown ONCE, here; store it now. Send it as
+            `Authorization: Bearer <key>`.
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+        - key
+    ApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: *ref_10
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+    ApiKeyPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

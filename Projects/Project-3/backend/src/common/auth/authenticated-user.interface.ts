@@ -1,4 +1,5 @@
 import type { UserRole } from '#/database/entities/user.entity.js';
+import type { ApiScope } from './require-scopes.decorator.js';
 
 /**
  * What `request.user` holds once `AuthGuard` has authenticated a request.
@@ -7,5 +8,12 @@ import type { UserRole } from '#/database/entities/user.entity.js';
 export interface AuthenticatedUser {
   userId: string;
   companyId: string;
+  /** The person's LIVE role — for an API key, the creator's role right now, never a snapshot. */
   role: UserRole;
+  /** How this request proved who it is. A key is never as powerful as a session (see `ScopesGuard`). */
+  authMethod: 'jwt' | 'api_key';
+  /** Only for `api_key`: the scopes the key holds, already narrowed by the creator's role. */
+  scopes?: ApiScope[];
+  /** Only for `api_key`: which key made the request, for the audit trail. */
+  apiKeyId?: string;
 }

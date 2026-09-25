@@ -10,6 +10,8 @@ import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interfa
 import { ALLOW_WHEN_SUSPENDED_KEY } from '#/common/auth/allow-when-suspended.decorator.js';
 import { IS_PUBLIC_KEY } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
+import { looksLikeApiKey } from '#/api-keys/api-key-token.js';
+import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { AuthenticationService } from './authentication.service.js';
 
 interface AuthenticatableRequest {
@@ -28,6 +30,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authentication: AuthenticationService,
+    private readonly apiKeys: ApiKeyAuthenticationService,
     private readonly context: RequestContextService,
   ) {}
 
@@ -42,7 +45,10 @@ export class AuthGuard implements CanActivate {
     const token = bearerToken(request.headers.authorization);
     if (!token) throw new UnauthorizedException('Missing bearer token');
 
-    const { user, companyStatus } = await this.authentication.authenticate(token);
+    // A `gl_live_…` bearer is an API key; anything else is a session JWT.
+    const { user, companyStatus } = looksLikeApiKey(token)
+      ? await this.apiKeys.authenticate(token)
+      : await this.authentication.authenticate(token);
 
     if (companyStatus === 'suspended') {
       const allowed = this.reflector.getAllAndOverride<boolean | undefined>(

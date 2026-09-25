@@ -34,6 +34,9 @@ export const AUDIT_ACTIONS = [
   'subscription.created',
   'subscription.changed',
   'billing.invoice_finalized',
+  // API keys
+  'api_key.created',
+  'api_key.revoked',
   // Files
   'file.uploaded',
   'file.access_changed',

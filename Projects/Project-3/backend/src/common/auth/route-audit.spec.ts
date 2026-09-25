@@ -21,7 +21,7 @@ import { AppModule } from '#/app.module.js';
 import { ENTITIES } from '#/database/entities.js';
 import { LocalDownloadController } from '#/core/storage/local-download.controller.js';
 import { HealthController } from '#/health/health.controller.js';
-import { REQUIRED_SCOPES_KEY, type ApiScope } from './require-scopes.decorator.js';
+import { API_SCOPES, REQUIRED_SCOPES_KEY } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
@@ -230,7 +230,7 @@ describe('route audit', () => {
   });
 
   it('every @RequireScopes() value is a recognised ApiScope', () => {
-    const validScopes: ApiScope[] = ['files:read', 'files:write', 'billing:read'];
+    const validScopes: readonly string[] = API_SCOPES;
 
     for (const route of routes) {
       const scopes: unknown = metadataOf(REQUIRED_SCOPES_KEY, route);

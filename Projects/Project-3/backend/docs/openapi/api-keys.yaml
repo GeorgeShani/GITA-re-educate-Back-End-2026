@@ -1,15 +1,16 @@
 openapi: 3.0.0
 paths:
-  /audit:
+  /api-keys:
     get:
-      operationId: AuditLogController_list
+      operationId: ApiKeysController_list
       parameters:
-        - name: cursor
+        - name: page
           required: false
           in: query
-          description: Opaque; take it from `meta.nextCursor` of the previous page.
           schema:
-            type: string
+            minimum: 1
+            default: 1
+            type: number
         - name: limit
           required: false
           in: query
@@ -18,94 +19,77 @@ paths:
             maximum: 100
             default: 20
             type: number
-        - name: action
-          required: false
-          in: query
-          schema:
-            type: string
-            enum:
-              - company.registered
-              - company.activated
-              - company.activation_resent
-              - company.updated
-              - user.profile_updated
-              - auth.password_reset_requested
-              - auth.password_reset
-              - auth.password_changed
-              - auth.identity_linked
-              - auth.identity_unlinked
-              - employee.invited
-              - employee.invite_resent
-              - employee.accepted_invite
-              - employee.disabled
-              - employee.reactivated
-              - subscription.created
-              - subscription.changed
-              - billing.invoice_finalized
-              - api_key.created
-              - api_key.revoked
-              - file.uploaded
-              - file.access_changed
-              - file.deleted
-        - name: actorUserId
-          required: false
-          in: query
-          description: Only what this person did.
-          schema:
-            format: uuid
-            type: string
-        - name: targetType
-          required: false
-          in: query
-          description: The kind of thing acted on.
-          schema:
-            example: file
-            type: string
-        - name: from
-          required: false
-          in: query
-          description: At or after this instant.
-          schema:
-            format: date-time
-            type: string
-        - name: to
-          required: false
-          in: query
-          description: Before this instant.
-          schema:
-            format: date-time
-            type: string
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditPageDto'
+                $ref: '#/components/schemas/ApiKeyPageDto'
       security: &ref_0
         - bearer: []
       tags: &ref_1
-        - audit
-      summary: List audit entries
+        - api-keys
+      summary: List API keys
       description: >-
-        The company's audit log, newest first, cursor-paginated (`limit`, and
-        `cursor` from `meta.nextCursor` until `hasMore` is false). Admin only.
-        Every state-changing action in the app writes an entry in the same
-        transaction as the change: who did it (`actorUserId`, null for the
-        system — the billing cycle — or someone since removed), what (`action`,
-        from a closed list), what it acted on (`targetType` / `targetId`), from
-        where (`ip`), and a `correlationId` that ties together everything one
-        request wrote and matches that request's logs.
+        Newest first, paginated (`page`, `limit`). An admin sees every key in
+        the company; an employee sees only their own. The secret is never
+        returned: you get the `prefix` (the first part of the key, not a secret)
+        to recognise it by, its `scopes`, whose it is, when it was `lastUsedAt`
+        (approximate — refreshed at most every five minutes) and whether it has
+        been revoked.
+    post:
+      operationId: ApiKeysController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedApiKeyDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Create an API key
+      description: >-
+        Mints a personal API key so a script or integration can use Gridline
+        without a browser session. **The full key is in this response and only
+        this one — it is stored as a hash and can never be shown again**, so
+        copy it now. Send it like a session token: `Authorization: Bearer
+        gl_live_…`.
 
 
-        Filters narrow the result: `action`, `actorUserId`, `targetType`, and
-        `from` (inclusive) / `to` (exclusive) timestamps. The list omits each
-        entry's `metadata`; read a single entry for that. The log is append-only
-        — nothing can edit or delete an entry, and the database itself refuses
-        to.
-  /audit/{id}:
-    get:
-      operationId: AuditLogController_get
+        A key acts **as you**, with your permissions at the moment of each
+        request, narrowed to the `scopes` you choose:
+
+        - `files:read` — list and read files, their reports and previews,
+        download links, and `GET /subscriptions/me`.
+
+        - `files:write` — upload, change who can see a file, and delete a file.
+
+        - `billing:read` — the billing statements and invoices. Admin only: an
+        employee cannot grant it (403), and if you stop being an admin your keys
+        lose it.
+
+
+        A key can never do anything else: it cannot sign in or change
+        credentials, manage employees or plans, read the audit log or analytics,
+        or create, list or revoke API keys — those need a signed-in session.
+        Disable a person and their keys stop working immediately.
+
+
+        Each person can hold up to 25 active keys (409 beyond that); revoke one
+        to make room. Give the key a `name` so you can tell your keys apart
+        later.
+  /api-keys/{id}:
+    delete:
+      operationId: ApiKeysController_revoke
       parameters:
         - name: id
           required: true
@@ -118,14 +102,16 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuditEntryDetailDto'
+                $ref: '#/components/schemas/ApiKeyDto'
       security: *ref_0
       tags: *ref_1
-      summary: Get one audit entry
+      summary: Revoke an API key
       description: >-
-        One entry with its `metadata`: the details specific to the action, such
-        as the plan changed to, or a file's name and type. Another company's
-        entry is a 404. Admin only.
+        Stops the key working immediately; it cannot be restored — create a new
+        one. An admin can revoke any key in the company, an employee only their
+        own (someone else's key is a 404, as if it did not exist). Revoking a
+        key that is already revoked succeeds and changes nothing. Removing an
+        employee revokes all of their keys.
 info:
   title: Gridline API
   description: >-

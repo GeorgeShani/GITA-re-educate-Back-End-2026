@@ -37,6 +37,11 @@ export class RequestContextService {
     return this.cls.isActive() ? this.cls.get('role') : undefined;
   }
 
+  /** The API key behind this request, if it was made with one. */
+  get apiKeyId(): string | undefined {
+    return this.cls.isActive() ? this.cls.get('apiKeyId') : undefined;
+  }
+
   /** The inbound request's IP; `undefined` outside HTTP (jobs, scheduled tasks). */
   get ip(): string | undefined {
     return this.cls.isActive() ? this.cls.get('ip') : undefined;
@@ -46,16 +51,34 @@ export class RequestContextService {
    * Called once per request by the auth guard. Every tenant-scoped query, log
    * line, audit entry and Observe span reads identity from here afterwards.
    */
-  setAuthenticated(user: { userId: string; companyId: string; role: 'admin' | 'employee' }): void {
+  setAuthenticated(user: {
+    userId: string;
+    companyId: string;
+    role: 'admin' | 'employee';
+    apiKeyId?: string | undefined;
+  }): void {
     if (!this.cls.isActive()) {
       throw new Error('Cannot set the authenticated user outside a request context.');
     }
     this.cls.set('userId', user.userId);
     this.cls.set('companyId', user.companyId);
     this.cls.set('role', user.role);
+    if (user.apiKeyId) this.cls.set('apiKeyId', user.apiKeyId);
   }
 
-  /**
+    requireUserId(): string {
+    const userId = this.userId;
+    if (!userId) throw new Error('No userId in request context — this code path requires an authenticated request.');
+    return userId;
+  }
+
+  requireRole(): 'admin' | 'employee' {
+    const role = this.role;
+    if (!role) throw new Error('No role in request context — this code path requires an authenticated request.');
+    return role;
+  }
+
+/**
    * Same as `companyId` but throws instead of returning `undefined`.
    * For code paths that are only ever reached behind the auth guard, where a
    * missing tenant is a bug and must not silently widen a query.

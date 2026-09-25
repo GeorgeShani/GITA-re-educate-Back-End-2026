@@ -103,6 +103,17 @@ describe('database indexes', () => {
     expect(indexes.some((row) => row.tablename === 'file_access_grant' && /\("userId"\)/.test(row.indexdef))).toBe(true);
   });
 
+  it('looks API keys up by a unique hash, and indexes them by (companyId, createdAt) and (companyId, createdByUserId)', () => {
+    const unique = indexes.find((row) => row.tablename === 'api_key' && /UNIQUE.*\("keyHash"\)/.test(row.indexdef));
+    expect(unique).toBeDefined();
+    expect(indexes.find((row) => row.indexname === 'idx_api_key_company_created')?.indexdef).toMatch(
+      /\("companyId", "createdAt"\)/,
+    );
+    expect(indexes.find((row) => row.indexname === 'idx_api_key_company_creator')?.indexdef).toMatch(
+      /\("companyId", "createdByUserId"\)/,
+    );
+  });
+
   it('allows one idempotency record per (company, key), leading with companyId', () => {
     const index = find('idempotency_record', 'companyId', 'key');
     expect(index?.indexdef).toMatch(/UNIQUE/);

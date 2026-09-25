@@ -74,6 +74,10 @@ describe('audit coverage (integration)', () => {
     await h.http().delete(`/employees/${invited.userId}`).set(...h.bearer(session)).expect(200);
     await h.http().post(`/employees/${invited.userId}/reactivate`).set(...h.bearer(session)).expect(200);
 
+    // API keys: create, revoke.
+    const apiKey = await h.createApiKey(session, { scopes: ['files:read'] });
+    await h.http().delete(`/api-keys/${apiKey.id}`).set(...h.bearer(session)).expect(200);
+
     // Files: upload, change who sees it, delete.
     const uploaded = await h.upload(session).expect(201);
     await h.http().patch(`/files/${uploaded.body.id}`).set(...h.bearer(session)).send({ visibility: 'restricted' }).expect(200);

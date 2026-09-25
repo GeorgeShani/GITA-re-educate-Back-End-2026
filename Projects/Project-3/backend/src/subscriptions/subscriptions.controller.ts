@@ -7,6 +7,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Public } from '#/common/auth/public.decorator.js';
+import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
@@ -30,6 +31,7 @@ export class SubscriptionsController {
   }
 
   @Roles('admin', 'employee')
+  @RequireScopes('files:read')
   @ApiBearerAuth()
   @Get('me')
   @ApiOkResponse({ type: SubscriptionDto })

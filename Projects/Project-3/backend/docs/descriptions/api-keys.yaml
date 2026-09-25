@@ -1,0 +1,48 @@
+# Prose for the `api-keys` tag, keyed by operationId. Hand-written — see auth.yaml.
+
+ApiKeysController_create:
+  summary: Create an API key
+  description: >-
+    Mints a personal API key so a script or integration can use Gridline without a
+    browser session. **The full key is in this response and only this one — it is stored
+    as a hash and can never be shown again**, so copy it now. Send it like a session token:
+    `Authorization: Bearer gl_live_…`.
+
+
+    A key acts **as you**, with your permissions at the moment of each request, narrowed
+    to the `scopes` you choose:
+
+    - `files:read` — list and read files, their reports and previews, download links, and
+    `GET /subscriptions/me`.
+
+    - `files:write` — upload, change who can see a file, and delete a file.
+
+    - `billing:read` — the billing statements and invoices. Admin only: an employee
+    cannot grant it (403), and if you stop being an admin your keys lose it.
+
+
+    A key can never do anything else: it cannot sign in or change credentials, manage
+    employees or plans, read the audit log or analytics, or create, list or revoke API
+    keys — those need a signed-in session. Disable a person and their keys stop working
+    immediately.
+
+
+    Each person can hold up to 25 active keys (409 beyond that); revoke one to make room.
+    Give the key a `name` so you can tell your keys apart later.
+
+ApiKeysController_list:
+  summary: List API keys
+  description: >-
+    Newest first, paginated (`page`, `limit`). An admin sees every key in the company; an
+    employee sees only their own. The secret is never returned: you get the `prefix`
+    (the first part of the key, not a secret) to recognise it by, its `scopes`, whose it
+    is, when it was `lastUsedAt` (approximate — refreshed at most every five minutes) and
+    whether it has been revoked.
+
+ApiKeysController_revoke:
+  summary: Revoke an API key
+  description: >-
+    Stops the key working immediately; it cannot be restored — create a new one. An admin
+    can revoke any key in the company, an employee only their own (someone else's key is a
+    404, as if it did not exist). Revoking a key that is already revoked succeeds and
+    changes nothing. Removing an employee revokes all of their keys.

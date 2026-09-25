@@ -1414,6 +1414,8 @@ paths:
               - subscription.created
               - subscription.changed
               - billing.invoice_finalized
+              - api_key.created
+              - api_key.revoked
               - file.uploaded
               - file.access_changed
               - file.deleted
@@ -1566,6 +1568,118 @@ paths:
 
         A deleted file still counts as an upload: deleting does not undo that it
         happened.
+  /api-keys:
+    post:
+      operationId: ApiKeysController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedApiKeyDto'
+      security: &ref_16
+        - bearer: []
+      tags: &ref_17
+        - api-keys
+      summary: Create an API key
+      description: >-
+        Mints a personal API key so a script or integration can use Gridline
+        without a browser session. **The full key is in this response and only
+        this one — it is stored as a hash and can never be shown again**, so
+        copy it now. Send it like a session token: `Authorization: Bearer
+        gl_live_…`.
+
+
+        A key acts **as you**, with your permissions at the moment of each
+        request, narrowed to the `scopes` you choose:
+
+        - `files:read` — list and read files, their reports and previews,
+        download links, and `GET /subscriptions/me`.
+
+        - `files:write` — upload, change who can see a file, and delete a file.
+
+        - `billing:read` — the billing statements and invoices. Admin only: an
+        employee cannot grant it (403), and if you stop being an admin your keys
+        lose it.
+
+
+        A key can never do anything else: it cannot sign in or change
+        credentials, manage employees or plans, read the audit log or analytics,
+        or create, list or revoke API keys — those need a signed-in session.
+        Disable a person and their keys stop working immediately.
+
+
+        Each person can hold up to 25 active keys (409 beyond that); revoke one
+        to make room. Give the key a `name` so you can tell your keys apart
+        later.
+    get:
+      operationId: ApiKeysController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyPageDto'
+      security: *ref_16
+      tags: *ref_17
+      summary: List API keys
+      description: >-
+        Newest first, paginated (`page`, `limit`). An admin sees every key in
+        the company; an employee sees only their own. The secret is never
+        returned: you get the `prefix` (the first part of the key, not a secret)
+        to recognise it by, its `scopes`, whose it is, when it was `lastUsedAt`
+        (approximate — refreshed at most every five minutes) and whether it has
+        been revoked.
+  /api-keys/{id}:
+    delete:
+      operationId: ApiKeysController_revoke
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyDto'
+      security: *ref_16
+      tags: *ref_17
+      summary: Revoke an API key
+      description: >-
+        Stops the key working immediately; it cannot be restored — create a new
+        one. An admin can revoke any key in the company, an employee only their
+        own (someone else's key is a 404, as if it did not exist). Revoking a
+        key that is already revoked succeeds and changes nothing. Removing an
+        employee revokes all of their keys.
 info:
   title: Gridline API
   description: >-
@@ -1589,7 +1703,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_16
+          enum: &ref_18
             - company
             - restricted
           default: company
@@ -1621,7 +1735,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_16
+          enum: *ref_18
         uploaderId:
           type: string
         grantedUserIds:
@@ -1730,7 +1844,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: &ref_17
+          enum: &ref_19
             - integer
             - number
             - boolean
@@ -1870,7 +1984,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_17
+          enum: *ref_19
       required:
         - name
         - inferredType
@@ -1910,7 +2024,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_16
+          enum: *ref_18
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -1986,7 +2100,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_18
+          enum: &ref_20
             - free
             - basic
             - premium
@@ -2032,7 +2146,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -2106,7 +2220,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
         maxEmployees:
           type: number
           nullable: true
@@ -2197,7 +2311,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
         billingAnchorDay:
           type: number
           minimum: 1
@@ -2225,7 +2339,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
       required:
         - plan
     PlanChangeResultDto:
@@ -2235,7 +2349,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
         prorationCents:
           type: number
           description: >-
@@ -2267,7 +2381,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_19
+          enum: &ref_21
             - finance
             - e-commerce
             - healthcare
@@ -2403,12 +2517,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_20
+          enum: &ref_22
             - admin
             - employee
         status:
           type: string
-          enum: &ref_21
+          enum: &ref_23
             - invited
             - active
             - disabled
@@ -2438,7 +2552,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_19
+          enum: *ref_21
         status:
           type: string
           enum:
@@ -2547,7 +2661,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_19
+          enum: *ref_21
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -2661,7 +2775,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_19
+          enum: *ref_21
         billingEmail:
           type: string
           example: nino@acme.com
@@ -2694,10 +2808,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_20
+          enum: *ref_22
         status:
           type: string
-          enum: *ref_21
+          enum: *ref_23
         activatedAt:
           type: string
           format: date-time
@@ -2737,7 +2851,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_22
+          enum: &ref_24
             - company.registered
             - company.activated
             - company.activation_resent
@@ -2756,6 +2870,8 @@ components:
             - subscription.created
             - subscription.changed
             - billing.invoice_finalized
+            - api_key.created
+            - api_key.revoked
             - file.uploaded
             - file.access_changed
             - file.deleted
@@ -2815,7 +2931,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_22
+          enum: *ref_24
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -2955,7 +3071,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -2989,12 +3105,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_18
+          enum: *ref_20
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -3044,3 +3160,129 @@ components:
         - storage
         - quota
         - planHistory
+    CreateApiKeyDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Nightly import script
+          minLength: 1
+          maxLength: 80
+          description: >-
+            What the key is for, so you can tell your keys apart and revoke the
+            right one.
+        scopes:
+          type: array
+          example:
+            - files:read
+          description: >-
+            What the key may do. A key can never do more than its creator’s role
+            allows: an employee cannot grant `billing:read`.
+          items:
+            type: string
+            enum: &ref_25
+              - files:read
+              - files:write
+              - billing:read
+      required:
+        - name
+        - scopes
+    CreatedApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: &ref_26
+            type: string
+            enum: *ref_25
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+        key:
+          type: string
+          example: gl_live_ab12cd34_<43 characters>
+          description: >-
+            The full key. Shown ONCE, here; store it now. Send it as
+            `Authorization: Bearer <key>`.
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+        - key
+    ApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: *ref_26
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+    ApiKeyPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

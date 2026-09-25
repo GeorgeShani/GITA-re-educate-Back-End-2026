@@ -20,6 +20,8 @@ declare module 'nestjs-cls' {
     /** Populated by the auth guard (Milestone 3). The tenant boundary. */
     companyId?: string;
     role?: 'admin' | 'employee';
+    /** Set when the request was made with an API key; the audit log records it. */
+    apiKeyId?: string;
     /** The inbound request's IP, for `AuditLogEntry.ip`. Absent outside HTTP. */
     ip?: string;
   }

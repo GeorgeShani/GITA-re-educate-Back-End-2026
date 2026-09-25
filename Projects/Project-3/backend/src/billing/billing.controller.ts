@@ -1,6 +1,7 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { AllowWhenSuspended } from '#/common/auth/allow-when-suspended.decorator.js';
+import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { OffsetQueryDto } from '#/common/pagination/offset-query.dto.js';
 import { mapPageData } from '#/common/pagination/paginate.js';
@@ -20,6 +21,7 @@ import { parseLineItems } from './line-item.schema.js';
 @RequiresSubscription()
 @AllowWhenSuspended()
 @Roles('admin')
+@RequireScopes('billing:read')
 @Controller('billing')
 export class BillingController {
   constructor(private readonly billing: BillingService) {}

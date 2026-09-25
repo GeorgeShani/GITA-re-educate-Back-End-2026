@@ -44,7 +44,10 @@ export class AuditService {
         action: input.action,
         targetType: input.target?.type ?? null,
         targetId: input.target?.id ?? null,
-        metadata: input.metadata ?? {},
+        // A request made with an API key says so, so the trail shows the key, not just the person.
+        metadata: this.context.apiKeyId
+          ? { ...input.metadata, apiKeyId: this.context.apiKeyId }
+          : (input.metadata ?? {}),
         ip: this.context.ip ?? null,
         correlationId: this.context.correlationId ?? null,
       }),

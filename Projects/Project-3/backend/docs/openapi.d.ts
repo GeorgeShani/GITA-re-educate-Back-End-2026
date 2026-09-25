@@ -862,6 +862,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List API keys
+         * @description Newest first, paginated (`page`, `limit`). An admin sees every key in the company; an employee sees only their own. The secret is never returned: you get the `prefix` (the first part of the key, not a secret) to recognise it by, its `scopes`, whose it is, when it was `lastUsedAt` (approximate — refreshed at most every five minutes) and whether it has been revoked.
+         */
+        get: operations["ApiKeysController_list"];
+        put?: never;
+        /**
+         * Create an API key
+         * @description Mints a personal API key so a script or integration can use Gridline without a browser session. **The full key is in this response and only this one — it is stored as a hash and can never be shown again**, so copy it now. Send it like a session token: `Authorization: Bearer gl_live_…`.
+         *
+         *     A key acts **as you**, with your permissions at the moment of each request, narrowed to the `scopes` you choose:
+         *     - `files:read` — list and read files, their reports and previews, download links, and `GET /subscriptions/me`.
+         *     - `files:write` — upload, change who can see a file, and delete a file.
+         *     - `billing:read` — the billing statements and invoices. Admin only: an employee cannot grant it (403), and if you stop being an admin your keys lose it.
+         *
+         *     A key can never do anything else: it cannot sign in or change credentials, manage employees or plans, read the audit log or analytics, or create, list or revoke API keys — those need a signed-in session. Disable a person and their keys stop working immediately.
+         *
+         *     Each person can hold up to 25 active keys (409 beyond that); revoke one to make room. Give the key a `name` so you can tell your keys apart later.
+         */
+        post: operations["ApiKeysController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api-keys/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke an API key
+         * @description Stops the key working immediately; it cannot be restored — create a new one. An admin can revoke any key in the company, an employee only their own (someone else's key is a 404, as if it did not exist). Revoking a key that is already revoked succeeds and changes nothing. Removing an employee revokes all of their keys.
+         */
+        delete: operations["ApiKeysController_revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1382,7 +1435,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -1406,7 +1459,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "file.uploaded" | "file.access_changed" | "file.deleted";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -1511,6 +1564,77 @@ export interface components {
             quota: components["schemas"]["QuotaBurnDownDto"];
             /** @description Newest change first, up to 50. */
             planHistory: components["schemas"]["PlanChangeDto"][];
+        };
+        CreateApiKeyDto: {
+            /**
+             * @description What the key is for, so you can tell your keys apart and revoke the right one.
+             * @example Nightly import script
+             */
+            name: string;
+            /**
+             * @description What the key may do. A key can never do more than its creator’s role allows: an employee cannot grant `billing:read`.
+             * @example [
+             *       "files:read"
+             *     ]
+             */
+            scopes: ("files:read" | "files:write" | "billing:read")[];
+        };
+        CreatedApiKeyDto: {
+            id: string;
+            name: string;
+            /**
+             * @description The first part of the key. Not a secret.
+             * @example gl_live_ab12cd34
+             */
+            prefix: string;
+            scopes: ("files:read" | "files:write" | "billing:read")[];
+            /** @description Whose key this is. Requests made with it act as this person. */
+            createdByUserId: string;
+            /**
+             * Format: date-time
+             * @description Approximate: refreshed at most every five minutes.
+             */
+            lastUsedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Set once revoked.
+             */
+            revokedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * @description The full key. Shown ONCE, here; store it now. Send it as `Authorization: Bearer <key>`.
+             * @example gl_live_ab12cd34_<43 characters>
+             */
+            key: string;
+        };
+        ApiKeyDto: {
+            id: string;
+            name: string;
+            /**
+             * @description The first part of the key. Not a secret.
+             * @example gl_live_ab12cd34
+             */
+            prefix: string;
+            scopes: ("files:read" | "files:write" | "billing:read")[];
+            /** @description Whose key this is. Requests made with it act as this person. */
+            createdByUserId: string;
+            /**
+             * Format: date-time
+             * @description Approximate: refreshed at most every five minutes.
+             */
+            lastUsedAt: string | null;
+            /**
+             * Format: date-time
+             * @description Set once revoked.
+             */
+            revokedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApiKeyPageDto: {
+            data: components["schemas"]["ApiKeyDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
         };
     };
     responses: never;
@@ -2608,7 +2732,7 @@ export interface operations {
                 /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
                 cursor?: string;
                 limit?: number;
-                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "file.uploaded" | "file.access_changed" | "file.deleted";
+                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted";
                 /** @description Only what this person did. */
                 actorUserId?: string;
                 /** @description The kind of thing acted on. */
@@ -2675,6 +2799,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UsageAnalyticsDto"];
+                };
+            };
+        };
+    };
+    ApiKeysController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyPageDto"];
+                };
+            };
+        };
+    };
+    ApiKeysController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiKeyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiKeyDto"];
+                };
+            };
+        };
+    };
+    ApiKeysController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyDto"];
                 };
             };
         };

@@ -165,9 +165,9 @@ document.
   login email = one account; the same person needs a different email per company.
 - `JWT_REFRESH_SECRET` is required by the env schema but currently unused:
   refresh tokens are opaque and hashed, not JWTs. Kept so `.env` files stay valid.
-- `@RequireScopes(...)` is the API-key analogue of `@Roles`, for `ApiKeyGuard`
+- `@RequireScopes(...)` is the API-key analogue of `@Roles`, enforced by `ScopesGuard`
   (Phase 10). A key's effective permission is `(creator's live role) ∩ (key's
-  scopes)` — never wider than either.
+  scopes)` — never wider than either. See *Personal API keys* below.
 - `@IdempotencyKey()` reads and validates the `Idempotency-Key` header. Returns
   `undefined` when absent; a route that requires one checks for that itself.
 - **`route-audit.spec.ts` is the enforcement mechanism, not code review.**
@@ -209,7 +209,7 @@ document.
 - `Invoice.lineItems` is `jsonb`: read it only through `parseLineItems` (Zod).
   `UNIQUE (companyId, periodStart)` is what makes rollover idempotent.
 - `UsageEvent.fileId` is a real FK to `file_asset` (Phase 6); files are only soft-deleted, so events never dangle.
-- **Global guards live in `AccessControlModule`, in order:** `AuthGuard` →
+- **Global guards live in `AccessControlModule`, in order:** `AuthGuard` → `ScopesGuard` →
   `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
   produced. `@RequiresSubscription()` (402 with no plan) goes on `employees/` and
   `files/`; `@AllowWhenSuspended()` marks the few routes (billing reads) a
@@ -234,8 +234,9 @@ document.
   employee `active` or `disabled` must open/close it.
 - **"Delete" is a soft-disable (D7)** and does five things in one transaction: status
   `disabled`, close the seat interval, delete the login identities, revoke every
-  refresh family, spend outstanding auth tokens. Later phases add file grants (6) and
-  API keys (10) to that list. Their uploads stay with the company.
+  refresh family, spend outstanding auth tokens. Later phases added file grants (6) and
+  API keys (10: revoked, and counted in the `employee.disabled` audit metadata). Their uploads
+  stay with the company.
 - **Reactivate = a fresh invitation.** Identities were deleted on removal, so the
   person becomes `invited`, holds a seat again (cap re-checked) and sets a password
   on accept. `disabledAt` clears on accept.
@@ -430,6 +431,42 @@ document.
   returns `COUNT`/`SUM` as strings). `GET /analytics/usage?from&to`: UTC days, `to` exclusive, ≤ 366 days,
   default = current period so far; the quota burn-down is ALWAYS the current period and counts by
   `periodKey`, so it equals the running bill's file count. A deleted file still counts as an upload.
+
+## Personal API keys *(from Phase 10 of the feature plan)*
+
+- **A key is a NAME for its creator, not a second kind of user.** `Authorization: Bearer gl_live_<8 hex>_<43 base64url>`
+  (`api-keys/api-key-token.ts`). `AuthGuard` routes a `gl_live_` bearer to `ApiKeyAuthenticationService`
+  (in `auth/`, beside the JWT one); everything else is a JWT. It looks the key up by SHA-256, then **re-reads the
+  creator's row on every request**: their live role and status, their company's status. Disable or demote the
+  creator and the next request changes with them. Every "no" (malformed, unknown, revoked, creator gone/disabled)
+  is the SAME 401 message.
+- **`request.user.authMethod` is `'jwt' | 'api_key'`**; a key request also carries `scopes` (already narrowed by
+  `effectiveScopes(role, granted)`) and `apiKeyId`. `RequestContextService.setAuthenticated` puts `apiKeyId` in
+  CLS and `AuditService.record` merges it into `metadata.apiKeyId`, so the trail says which key acted. Everything
+  downstream (services, visibility, quotas, uploader) sees just the creator — that is the design.
+- **`ScopesGuard` is DENY-BY-DEFAULT for keys.** A key request is refused (403) unless the route declares
+  `@RequireScopes(...)` AND the key holds every scope; sessions pass through untouched. So sign-in, credentials,
+  identities, employees, plan changes, audit, analytics and `/api-keys` itself are closed to keys **without
+  anyone remembering to close them**, and a leaked key cannot mint persistence. Handler-level `@RequireScopes`
+  overrides class-level (`getAllAndOverride`): `FilesController` is `files:read` with `files:write` on
+  POST/PATCH/DELETE. `GET /subscriptions/me` = `files:read`; `BillingController` = `billing:read` (still
+  `@Roles('admin')`). **A new route is unreachable by keys until someone adds `@RequireScopes` on purpose.**
+- **Scopes** are `API_SCOPES` in `require-scopes.decorator.ts` (`files:read`, `files:write`, `billing:read`);
+  `route-audit.spec.ts` checks every declared value against it. An employee cannot put `billing:read` on a key
+  (403 at creation), and `effectiveScopes` drops it again per request if the creator's role changes.
+- **Routes** (`src/api-keys/`, `@Roles('admin','employee')`, session only, no plan needed): `POST /api-keys`
+  returns the plaintext **once** (`key`; only the hash is stored — never log or audit it), `GET /api-keys`
+  (offset; admin sees the company's, an employee only their own, newest first), `DELETE /api-keys/:id` (revoke;
+  an admin any, an employee only their own — someone else's is a **404**; idempotent, audits once).
+- **Cap: 25 active keys per person.** Creation locks the creator's `user` row (`FOR UPDATE`) so two requests
+  cannot both take the last slot (proved by holding the lock in a test). Revoked keys do not count.
+- **`lastUsedAt` is approximate** — written by a conditional `UPDATE` at most once per
+  `LAST_USED_GRANULARITY_MS` (5 min), so authenticating is not a write per request.
+- **`EmployeesService.disable` revokes the person's keys** and records the count in `employee.disabled`
+  metadata (`revokedApiKeys`). It is tidiness, not the mechanism (the live re-read already 401s them); reactivation
+  does not bring them back.
+- `ApiKey` indexes: UNIQUE `keyHash`, `(companyId, createdAt)`, `(companyId, createdByUserId)`.
+- Tests: `h.createApiKey(session, { name, scopes })` and `h.upload(session, { bearer: key })` in the harness.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -626,6 +663,7 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
       (also what makes the rollover idempotent); `seat_interval` —
       `(companyId, activeFrom)` + `(userId)`
 - [x] `data_quality_report` — UNIQUE `(fileId)`, `(companyId, status)`
+- [x] `api_key` — UNIQUE `(keyHash)`, `(companyId, createdAt)`, `(companyId, createdByUserId)`
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

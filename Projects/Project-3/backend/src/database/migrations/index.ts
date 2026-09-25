@@ -6,6 +6,7 @@ import { BillingCore1790240568294 } from './1790240568294-BillingCore.js';
 import { OAuthIdentities1790262864492 } from './1790262864492-OAuthIdentities.js';
 import { FilesAndIdempotency1790265133409 } from './1790265133409-FilesAndIdempotency.js';
 import { DataQualityReports1790284381430 } from './1790284381430-DataQualityReports.js';
+import { ApiKeys1790315301576 } from './1790315301576-ApiKeys.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -25,4 +26,5 @@ export const MIGRATIONS: MixedList<Function> = [
   OAuthIdentities1790262864492,
   FilesAndIdempotency1790265133409,
   DataQualityReports1790284381430,
+  ApiKeys1790315301576,
 ];

@@ -23,6 +23,7 @@ import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { AuthToken } from '#/database/entities/auth-token.entity.js';
 import { Company } from '#/database/entities/company.entity.js';
+import { ApiKey } from '#/api-keys/api-key.entity.js';
 import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
@@ -160,7 +161,9 @@ export class EmployeesService {
    * relying on `status` alone means nothing that only checks a token or an
    * identity can resurrect them.
    *
-   * Later phases hook in here: API keys (Phase 10).
+   * Their API keys are revoked too. A key already stops working with its creator (the guard
+   * re-reads the person), so this is the tidy record of it — and a reactivated person does not
+   * quietly get old keys back.
    */
   async disable(id: string): Promise<User> {
     const companyId = this.context.requireCompanyId();
@@ -192,6 +195,12 @@ export class EmployeesService {
       // Access they were granted to restricted files goes with them. Files they
       // uploaded stay with the company; reactivating does not bring grants back.
       await manager.delete(FileAccessGrant, { userId: target.id });
+      const revokedKeys = await manager
+        .createQueryBuilder()
+        .update(ApiKey)
+        .set({ revokedAt: now })
+        .where('"createdByUserId" = :userId AND "revokedAt" IS NULL', { userId: target.id })
+        .execute();
       await this.sessions.revokeAllForUser(manager, target.id);
       await manager
         .createQueryBuilder()
@@ -201,7 +210,11 @@ export class EmployeesService {
         .execute();
 
       await this.audit.record(
-        { action: 'employee.disabled', target: { type: 'user', id: target.id } },
+        {
+          action: 'employee.disabled',
+          target: { type: 'user', id: target.id },
+          metadata: { revokedApiKeys: revokedKeys.affected ?? 0 },
+        },
         manager,
       );
       return manager.findOneOrFail(User, { where: { id: target.id } });

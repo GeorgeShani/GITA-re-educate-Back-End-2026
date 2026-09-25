@@ -25,6 +25,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import type { Response } from 'express';
+import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { mapPageData } from '#/common/pagination/paginate.js';
 import { MessageResponseDto } from '#/common/response/message-response.dto.js';
@@ -53,6 +54,8 @@ const QUOTA_WARNING_HEADER = 'X-Gridline-Quota-Warning';
 @ApiBearerAuth()
 @RequiresSubscription()
 @Roles('admin', 'employee')
+// Reads by default; the handlers that change something override with `files:write`.
+@RequireScopes('files:read')
 @Controller('files')
 export class FilesController {
   constructor(
@@ -66,6 +69,7 @@ export class FilesController {
    * different upload that reused a key.
    */
   @Post()
+  @RequireScopes('files:write')
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }),
     IdempotencyInterceptor,
@@ -127,6 +131,7 @@ export class FilesController {
   }
 
   @Patch(':id')
+  @RequireScopes('files:write')
   @ApiOkResponse({ type: FileDto })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -137,6 +142,7 @@ export class FilesController {
   }
 
   @Delete(':id')
+  @RequireScopes('files:write')
   @HttpCode(200)
   @ApiOkResponse({ type: MessageResponseDto })
   async remove(@Param('id', ParseUUIDPipe) id: string): Promise<MessageResponseDto> {

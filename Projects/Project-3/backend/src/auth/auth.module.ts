@@ -5,6 +5,7 @@ import { APP_CONFIG } from '#/config/load-config.js';
 import { DatabaseModule } from '#/database/database.module.js';
 import { UsersModule } from '#/users/users.module.js';
 import { AccountLookupService } from './account-lookup.service.js';
+import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { AuthenticationService } from './authentication.service.js';
@@ -40,6 +41,7 @@ import { SessionService } from './session.service.js';
     TokenFactory,
     AuthTokenService,
     AuthenticationService,
+    ApiKeyAuthenticationService,
     AccountLookupService,
     RegistrationService,
     SessionService,
@@ -70,6 +72,6 @@ import { SessionService } from './session.service.js';
   // The guards are registered in `AccessControlModule`, where their order is
   // visible in one place. The token/session/lookup services are what the
   // employees module needs to invite, disable and re-invite people.
-  exports: [AuthenticationService, AuthTokenService, SessionService, AccountLookupService],
+  exports: [AuthenticationService, ApiKeyAuthenticationService, AuthTokenService, SessionService, AccountLookupService],
 })
 export class AuthModule {}

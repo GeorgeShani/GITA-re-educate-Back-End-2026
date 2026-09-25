@@ -1,3 +1,4 @@
+import { ApiKey } from '#/api-keys/api-key.entity.js';
 import { Invoice } from '#/billing/invoice.entity.js';
 import { SeatInterval } from '#/billing/seat-interval.entity.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
@@ -47,4 +48,5 @@ export const ENTITIES: (new () => object)[] = [
   FileAccessGrant,
   IdempotencyRecord,
   DataQualityReport,
+  ApiKey,
 ];

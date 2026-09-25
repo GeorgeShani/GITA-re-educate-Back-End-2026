@@ -8,6 +8,7 @@ import { AllowWhenSuspended } from '#/common/auth/allow-when-suspended.decorator
 import { Public } from '#/common/auth/public.decorator.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { AuthGuard } from './auth.guard.js';
+import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
 import { AuthenticationService } from './authentication.service.js';
 
 class Routes {
@@ -20,7 +21,16 @@ class Routes {
   open(): void {}
 }
 
-const USER = { userId: 'u1', companyId: 'c1', role: 'admin' } as const;
+const USER = { userId: 'u1', companyId: 'c1', role: 'admin', authMethod: 'jwt' } as const;
+const KEY_USER = {
+  userId: 'u2',
+  companyId: 'c1',
+  role: 'employee',
+  authMethod: 'api_key',
+  scopes: ['files:read'],
+  apiKeyId: 'k1',
+} as const;
+const VALID_KEY = `gl_live_ab12cd34_${'A'.repeat(43)}`;
 
 function requestWith(authorization: string | undefined) {
   return { headers: { authorization }, user: undefined };
@@ -35,6 +45,10 @@ async function setup(companyStatus: 'active' | 'suspended') {
       {
         provide: AuthenticationService,
         useValue: { authenticate: async () => ({ user: USER, companyStatus }) },
+      },
+      {
+        provide: ApiKeyAuthenticationService,
+        useValue: { authenticate: async () => ({ user: KEY_USER, companyStatus }) },
       },
       {
         provide: RequestContextService,
@@ -73,6 +87,34 @@ describe('AuthGuard', () => {
     expect(await result).toBe(true);
     expect(request.user).toEqual(USER);
     expect(authenticated).toEqual([USER]);
+  });
+
+  describe('API keys', () => {
+    it('routes a gl_live_ bearer to the API-key authenticator, and anything else to the JWT one', async () => {
+      const { run } = await setup('active');
+
+      const viaKey = run('normal', `Bearer ${VALID_KEY}`);
+      await viaKey.result;
+      expect(viaKey.request.user).toEqual(KEY_USER);
+
+      const viaJwt = run('normal', 'Bearer eyJhbGciOi.payload.sig');
+      await viaJwt.result;
+      expect(viaJwt.request.user).toEqual(USER);
+    });
+
+    it('puts the key in the request context, so audit entries can name it', async () => {
+      const { run, authenticated } = await setup('active');
+
+      await run('normal', `Bearer ${VALID_KEY}`).result;
+      expect(authenticated).toEqual([KEY_USER]);
+    });
+
+    it('applies the suspended-company rule to key requests too', async () => {
+      const { run } = await setup('suspended');
+
+      await expect(run('normal', `Bearer ${VALID_KEY}`).result).rejects.toBeInstanceOf(ForbiddenException);
+      expect(await run('billing', `Bearer ${VALID_KEY}`).result).toBe(true);
+    });
   });
 
   describe('a suspended company', () => {
