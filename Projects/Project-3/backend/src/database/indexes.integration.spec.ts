@@ -95,6 +95,16 @@ describe('database indexes', () => {
     expect(index?.tablename).toBe('file_asset');
     expect(index?.indexdef).toMatch(/\("companyId", "createdAt"\)/);
     expect(index?.indexdef).toMatch(/WHERE.*"deletedAt" IS NULL/);
+    // Latest-and-live: the default list. Older versions are read through the full tenant index.
+    expect(index?.indexdef).toMatch(/"isLatest"/);
+  });
+
+  it('allows one version number per dataset, and indexes a dataset’s versions by (companyId, datasetId)', () => {
+    const unique = find('file_asset', 'datasetId', 'version');
+    expect(unique?.indexdef).toMatch(/UNIQUE/);
+    expect(indexes.find((row) => row.indexname === 'idx_file_asset_company_dataset')?.indexdef).toMatch(
+      /\("companyId", "datasetId"\)/,
+    );
   });
 
   it('allows one grant per (file, person), and indexes grants by person', () => {

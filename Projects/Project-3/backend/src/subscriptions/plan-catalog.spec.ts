@@ -12,6 +12,7 @@ describe('PLAN_CATALOG', () => {
       overagePerFileCents: null,
       rateLimitPerMinute: 30,
       maxQualityRules: 3,
+      maxVersionsPerDataset: 5,
     });
   });
 
@@ -42,6 +43,10 @@ describe('PLAN_CATALOG', () => {
   it('a higher plan never allows fewer quality rules, and Premium has no limit', () => {
     const limits = PLANS.map((plan) => PLAN_CATALOG[plan].maxQualityRules);
     expect(limits).toEqual([3, 25, null]);
+  });
+
+  it('a higher plan never keeps fewer versions per file, and Premium has no limit', () => {
+    expect(PLANS.map((plan) => PLAN_CATALOG[plan].maxVersionsPerDataset)).toEqual([5, 50, null]);
   });
 
   it('describes every plan', () => {

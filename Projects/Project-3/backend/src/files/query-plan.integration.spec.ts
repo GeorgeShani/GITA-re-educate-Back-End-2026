@@ -57,10 +57,10 @@ describe('query plans (integration)', () => {
     }
     for (const company of companies) {
       await h.dataSource.query(
-        `INSERT INTO file_asset (id, "companyId", "uploaderId", "originalName", "mimeType", "sizeBytes", "storageKey", visibility, "createdAt", "updatedAt")
-         SELECT gen_random_uuid(), $1, $2, 'file-' || n || '.csv', 'text/csv', 100, 'seeded/' || gen_random_uuid(), 'company',
-                now() - (n || ' minutes')::interval, now()
-         FROM generate_series(1, $3) AS n`,
+        `INSERT INTO file_asset (id, "datasetId", "companyId", "uploaderId", "originalName", "mimeType", "sizeBytes", "storageKey", visibility, "createdAt", "updatedAt")
+         SELECT s.id, s.id, $1, $2, 'file-' || s.n || '.csv', 'text/csv', 100, 'seeded/' || s.id, 'company',
+                now() - (s.n || ' minutes')::interval, now()
+         FROM (SELECT n, gen_random_uuid() AS id FROM generate_series(1, $3) AS n) AS s`,
         [company.companyId, company.userId, FILES_PER_COMPANY],
       );
     }
@@ -72,17 +72,27 @@ describe('query plans (integration)', () => {
   }, 300_000);
   afterAll(() => h.stop());
 
-  /** The list query exactly as `FilesService.list` builds it, run through EXPLAIN. */
-  async function planFor(viewer: FileViewer, cursor: { createdAt: Date; id: string } | undefined) {
+  /**
+   * The list query exactly as `FilesService.list` builds it, run through EXPLAIN: the default list shows only
+   * the latest version of each file (`isLatest`), and `allVersions` drops that filter.
+   */
+  async function planFor(
+    viewer: FileViewer,
+    cursor: { createdAt: Date; id: string } | undefined,
+    options: { allVersions?: boolean; everyNode?: boolean } = {},
+  ) {
     const repository = h.dataSource.getRepository(FileAsset);
     const qb = applyFileVisibility(h.app.get(TenantScope).forCompany(repository, companyId, 'f'), 'f', viewer);
+    if (!options.allVersions) qb.andWhere('f.isLatest = true');
     applyCursor(qb, 'f', cursor, 'DESC').take(21);
     const [sql, parameters] = qb.getQueryAndParameters();
 
     const rows = explainRows.parse(await h.dataSource.query(`EXPLAIN (FORMAT JSON) ${sql}`, parameters));
     const root = rows[0]?.['QUERY PLAN'][0]?.Plan;
     if (!root) throw new Error('EXPLAIN returned no plan');
-    return flatten(root).filter((node) => node['Relation Name'] === 'file_asset');
+    // A bitmap plan puts the index on a CHILD node (which has no relation name), so a caller that wants
+    // to see the index by name asks for every node.
+    return options.everyNode ? flatten(root) : flatten(root).filter((node) => node['Relation Name'] === 'file_asset');
   }
 
   const TENANT_INDEXES = ['idx_file_asset_company', 'idx_file_asset_company_live'];
@@ -95,6 +105,18 @@ describe('query plans (integration)', () => {
     // The planner prefers the partial index (companyId, createdAt WHERE deletedAt IS NULL) over the
     // full one for this predicate, because it is smaller and already ordered the way the page is.
     expect(nodes.map((node) => node['Index Name'])).toEqual(['idx_file_asset_company_live']);
+  });
+
+  it('listing EVERY version drops the isLatest filter, so the partial index no longer applies: another tenant index serves it', async () => {
+    const nodes = await planFor({ userId: adminId, role: 'admin' }, undefined, { allVersions: true, everyNode: true });
+
+    expect(nodes.map((node) => node['Node Type'])).not.toContain('Seq Scan');
+    const indexes = nodes.map((node) => node['Index Name']).filter((name) => name !== undefined);
+    // Which of the two full tenant indexes (companyId, deletedAt, createdAt) or (companyId, datasetId) the planner
+    // prefers is its own call; what matters is that it is one of them and never the whole table.
+    expect(indexes.length).toBeGreaterThan(0);
+    expect(indexes).not.toContain('idx_file_asset_company_live');
+    for (const name of indexes) expect(['idx_file_asset_company', 'idx_file_asset_company_dataset']).toContain(name);
   });
 
   it('the FULL tenant index is the one used when deleted rows are in play (the partial one cannot serve those)', async () => {

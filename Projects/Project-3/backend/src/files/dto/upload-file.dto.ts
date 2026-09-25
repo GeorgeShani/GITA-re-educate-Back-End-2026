@@ -24,6 +24,18 @@ export class UploadFileDto {
   grantedUserIds?: string[];
 }
 
+/**
+ * The text fields of a new-VERSION upload: none. A version inherits the visibility and grants of the
+ * file's current latest version, so the global `forbidNonWhitelisted` rejects any field sent with it.
+ */
+export class UploadVersionDto {}
+
+/** Documents the multipart shape of a new version in OpenAPI; never instantiated. */
+export class UploadVersionBodyDoc extends UploadVersionDto {
+  @ApiProperty({ type: 'string', format: 'binary', description: 'A CSV, XLS or XLSX file, up to 25 MB.' })
+  file!: unknown;
+}
+
 /** Documents the multipart shape in OpenAPI; never instantiated. */
 export class UploadFileBodyDoc extends UploadFileDto {
   @ApiProperty({ type: 'string', format: 'binary', description: 'A CSV, XLS or XLSX file, up to 25 MB.' })

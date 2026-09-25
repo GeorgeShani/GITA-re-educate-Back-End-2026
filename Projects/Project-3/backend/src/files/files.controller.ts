@@ -27,16 +27,17 @@ import {
 import type { Response } from 'express';
 import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
+import { OffsetQueryDto } from '#/common/pagination/offset-query.dto.js';
 import { mapPageData } from '#/common/pagination/paginate.js';
 import { MessageResponseDto } from '#/common/response/message-response.dto.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
 import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
-import { FileDownloadDto, FileDto, FilePageDto } from './dto/file.dto.js';
-import { PreviewDto, ReportDto } from './dto/report.dto.js';
+import { FileDownloadDto, FileDto, FilePageDto, FileVersionPageDto } from './dto/file.dto.js';
+import { ComparisonDto, PreviewDto, ReportDto } from './dto/report.dto.js';
 import { FilesQueryDto } from './dto/files-query.dto.js';
 import { UpdateFileDto } from './dto/update-file.dto.js';
-import { UploadFileBodyDoc, UploadFileDto } from './dto/upload-file.dto.js';
+import { UploadFileBodyDoc, UploadFileDto, UploadVersionBodyDoc, UploadVersionDto } from './dto/upload-file.dto.js';
 import { FilesService } from './files.service.js';
 import { ReportsService } from './quality/reports.service.js';
 import { MAX_UPLOAD_BYTES } from './spreadsheet-types.js';
@@ -96,6 +97,56 @@ export class FilesController {
     const uploaded = await this.files.upload(file, dto);
     if (uploaded.quotaWarning) res.setHeader(QUOTA_WARNING_HEADER, uploaded.quotaWarning);
     return FileDto.from(uploaded.file, uploaded.grantedUserIds);
+  }
+
+  /** A new version of an existing file: the same upload path, quota and idempotency as `POST /files`. */
+  @Post(':id/versions')
+  @RequireScopes('files:write')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 } }),
+    IdempotencyInterceptor,
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UploadVersionBodyDoc })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description:
+      'A UUID. A retry with the same key and the same file replays the first response instead of uploading twice.',
+  })
+  @ApiCreatedResponse({ type: FileDto })
+  async uploadVersion(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addValidator(new SpreadsheetFileValidator())
+        .build({ fileIsRequired: true, errorHttpStatusCode: 400 }),
+    )
+    file: Express.Multer.File,
+    @Body() _body: UploadVersionDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<FileDto> {
+    const uploaded = await this.files.uploadVersion(id, file);
+    if (uploaded.quotaWarning) res.setHeader(QUOTA_WARNING_HEADER, uploaded.quotaWarning);
+    return FileDto.from(uploaded.file, uploaded.grantedUserIds);
+  }
+
+  @Get(':id/versions')
+  @ApiOkResponse({ type: FileVersionPageDto })
+  async versions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: OffsetQueryDto,
+  ): Promise<FileVersionPageDto> {
+    return toDto(FileVersionPageDto, mapPageData(await this.files.listVersions(id, query), (file) => FileDto.from(file)));
+  }
+
+  @Get(':id/compare/:otherId')
+  @ApiOkResponse({ type: ComparisonDto })
+  async compare(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('otherId', ParseUUIDPipe) otherId: string,
+  ): Promise<ComparisonDto> {
+    return toDto(ComparisonDto, await this.reports.compare(id, otherId));
   }
 
   @Get()

@@ -49,6 +49,14 @@ export class PlanDto {
   @Expose()
   maxQualityRules!: number | null;
 
+  @ApiProperty({
+    type: Number,
+    nullable: true,
+    description: 'Versions one file may hold (each version still counts toward the file quota); null = unlimited.',
+  })
+  @Expose()
+  maxVersionsPerDataset!: number | null;
+
   static from(plan: Plan): PlanDto {
     return toDto(PlanDto, { plan, maxSeats: maxSeats(plan), ...PLAN_CATALOG[plan] });
   }

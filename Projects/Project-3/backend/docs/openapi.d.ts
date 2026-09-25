@@ -14,6 +14,8 @@ export interface paths {
         /**
          * List files
          * @description The files the caller may see: everything company-wide, plus restricted files they uploaded or were granted, and every file for an admin. Cursor-paginated, newest first (`sort=createdAt` reverses it); follow `meta.nextCursor` until `hasMore` is false. Filters (`mimeType`, `visibility`, `uploaderId`, `uploadedAfter`, `uploadedBefore`) only ever narrow that set. Rows never include where the bytes are stored or who a restricted file is shared with.
+         *
+         *     A file that has several **versions** is listed once, as its newest version (`isLatest`); `allVersions=true` lists every version you can see. `datasetId` is shared by all the versions of one file.
          */
         get: operations["FilesController_list"];
         put?: never;
@@ -28,6 +30,58 @@ export interface paths {
          *     Each upload queues a data-quality report and is recorded in the audit log. Returns 413 above 25 MB.
          */
         post: operations["FilesController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a file's versions
+         * @description Every version of the file `id` belongs to that the caller may see, newest first, offset-paginated. Works from any of its versions. Versions the caller cannot see are left out, and a file you cannot see at all is a 404.
+         */
+        get: operations["FilesController_versions"];
+        put?: never;
+        /**
+         * Upload a new version of a file
+         * @description Adds the next version to the file `id` belongs to (any of its versions will do): version 2, then 3, and so on. Multipart, with the same `file` part and the same rules as `POST /files` — the type is read from the bytes, up to 25 MB, `Idempotency-Key` is honoured — and it is a real upload: **it counts toward the period's file quota** and the plan's limit applies (402 past it, exactly like a new file), and it gets its own data-quality report.
+         *
+         *     The new version becomes the file's **latest**. It inherits who can see the file — the visibility and the grants of the previous latest version, plus that version's uploader, so nobody loses the file because someone else uploaded the next version — and takes **no fields** of its own (sending one is a 400). After that each version's access is its own: `PATCH /files/{id}` changes one version only.
+         *
+         *     Only the uploader or an admin may add a version: someone who can see the file but did not upload it gets 403, and a file you cannot see (or that was deleted) is a 404. Each plan keeps a number of versions per file (Free 5, Basic 50, Premium unlimited); beyond it the answer is 409 naming the plan and the number, and deleting a version makes room. Version numbers are never reused. Needs the `files:write` scope for an API key.
+         *
+         *     When the new version drops or retypes a column that the previous one had, the uploader and the admins get a `dataset.schema_changed` notification once its report is built.
+         */
+        post: operations["FilesController_uploadVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/files/{id}/compare/{otherId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compare two versions of a file
+         * @description What changed from `id` to `otherId` (normally an older version to a newer one), worked out from their stored data-quality reports — nothing is read from the files again. Both must be visible to you (a file you cannot see is a 404) and be versions of the same file (422 otherwise), and both reports must be `ready` (409 while one is still being built, 422 when one failed or is unsupported).
+         *
+         *     The answer lists `columnsAdded` and `columnsRemoved` (names ignore case, so a renamed header is one of each), `typeChanges` (a column whose dominant type changed), `nullPercentChanges` (empty cells moved by 5 percentage points or more), the change in rows, columns, duplicate rows and quality score, and `schemaChanged`: true when a column was removed or retyped — the changes that break a reader of the data. New columns and shifts in blanks do not set it.
+         */
+        get: operations["FilesController_compare"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1135,11 +1189,87 @@ export interface components {
             sizeBytes: number;
             /** @enum {string} */
             visibility: "company" | "restricted";
+            /**
+             * Format: uuid
+             * @description Shared by every version of one file. A first upload's is its own `id`.
+             */
+            datasetId: string;
+            /** @description Which version of the file this is: 1, 2, 3… Numbers are never reused. */
+            version: number;
+            /** @description The newest version. A default list shows only these. */
+            isLatest: boolean;
             uploaderId: string;
             /** @description Who a restricted file is shared with. Shown only to the uploader and admins, and only on single-file responses; null everywhere else. */
             grantedUserIds: string[] | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        UploadVersionBodyDoc: {
+            /**
+             * Format: binary
+             * @description A CSV, XLS or XLSX file, up to 25 MB.
+             */
+            file: string;
+        };
+        OffsetMetaDto: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            limit: number;
+            /** @description Rows matching the filter across all pages. */
+            total: number;
+            totalPages: number;
+        };
+        FileVersionPageDto: {
+            data: components["schemas"]["FileDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
+        };
+        ComparedFileDto: {
+            /** Format: uuid */
+            fileId: string;
+            version: number;
+            originalName: string;
+        };
+        TypeChangeDto: {
+            column: string;
+            /** @enum {string} */
+            from: "integer" | "number" | "boolean" | "date" | "string" | "empty";
+            /** @enum {string} */
+            to: "integer" | "number" | "boolean" | "date" | "string" | "empty";
+        };
+        NullPercentChangeDto: {
+            column: string;
+            /** @description Percent empty in `from`. */
+            from: number;
+            /** @description Percent empty in `to`. */
+            to: number;
+            /** @description Percentage points; positive means more empty cells. */
+            delta: number;
+        };
+        CountChangeDto: {
+            from: number | null;
+            to: number | null;
+            /** @description `to` minus `from`; null when either side has no value. */
+            delta: number | null;
+        };
+        ComparisonDto: {
+            from: components["schemas"]["ComparedFileDto"];
+            to: components["schemas"]["ComparedFileDto"];
+            /** @description In `to` but not in `from` (names ignore case; a renamed header is one removed and one added). */
+            columnsAdded: string[];
+            /** @description In `from` but not in `to`. */
+            columnsRemoved: string[];
+            /** @description Columns whose dominant type changed. A column that is empty on either side has no type to compare. */
+            typeChanges: components["schemas"]["TypeChangeDto"][];
+            /** @description Columns whose share of empty cells moved by 5 percentage points or more. */
+            nullPercentChanges: components["schemas"]["NullPercentChangeDto"][];
+            rowCount: components["schemas"]["CountChangeDto"];
+            columnCount: components["schemas"]["CountChangeDto"];
+            duplicateRows: components["schemas"]["CountChangeDto"];
+            /** @description The quality score; `delta` is null when either file was not scored. */
+            qualityScore: components["schemas"]["CountChangeDto"];
+            /** @description A column was removed or changed type — what breaks a reader of the data. New columns and shifts in blanks do not count. */
+            schemaChanged: boolean;
         };
         CursorMetaDto: {
             /** @description Pass as `cursor` to get the next page; null on the last page. */
@@ -1355,15 +1485,6 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
-        OffsetMetaDto: {
-            /** @example 1 */
-            page: number;
-            /** @example 20 */
-            limit: number;
-            /** @description Rows matching the filter across all pages. */
-            total: number;
-            totalPages: number;
-        };
         InvoicePageDto: {
             data: components["schemas"]["InvoiceDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
@@ -1374,7 +1495,7 @@ export interface components {
              * @description What happened. Decides the shape of `payload`.
              * @enum {string}
              */
-            type: "quota.threshold" | "report.ready" | "report.failed" | "rules.failed" | "file.shared" | "invoice.finalized";
+            type: "quota.threshold" | "report.ready" | "report.failed" | "rules.failed" | "dataset.schema_changed" | "file.shared" | "invoice.finalized";
             /** @description Ids, counts and names for this `type` — never cell values. For `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`, `upgradeTo`. For `report.ready`/`report.failed`: `fileId`, `fileName`. For `file.shared`: `fileId`, `fileName`, `sharedByUserId`. For `invoice.finalized`: `invoiceId`, `totalCents`. */
             payload: {
                 [key: string]: unknown;
@@ -1418,6 +1539,8 @@ export interface components {
             rateLimitPerMinute: number;
             /** @description Data-quality rules the company may keep, enabled or not; null = unlimited. */
             maxQualityRules: number | null;
+            /** @description Versions one file may hold (each version still counts toward the file quota); null = unlimited. */
+            maxVersionsPerDataset: number | null;
         };
         PeriodDto: {
             /**
@@ -1981,6 +2104,8 @@ export interface operations {
                 uploadedAfter?: string;
                 /** @description Uploaded before this instant. */
                 uploadedBefore?: string;
+                /** @description By default each file is listed once, as its newest version. `true` lists every version you can see. */
+                allVersions?: boolean;
             };
             header?: never;
             path?: never;
@@ -2020,6 +2145,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["FileDto"];
+                };
+            };
+        };
+    };
+    FilesController_versions: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileVersionPageDto"];
+                };
+            };
+        };
+    };
+    FilesController_uploadVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description A UUID. A retry with the same key and the same file replays the first response instead of uploading twice. */
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["UploadVersionBodyDoc"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileDto"];
+                };
+            };
+        };
+    };
+    FilesController_compare: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                otherId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComparisonDto"];
                 };
             };
         };

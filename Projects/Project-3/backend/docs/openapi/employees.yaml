@@ -206,6 +206,20 @@ components:
         visibility:
           type: string
           enum: *ref_2
+        datasetId:
+          type: string
+          format: uuid
+          description: >-
+            Shared by every version of one file. A first upload's is its own
+            `id`.
+        version:
+          type: number
+          description: >-
+            Which version of the file this is: 1, 2, 3… Numbers are never
+            reused.
+        isLatest:
+          type: boolean
+          description: The newest version. A default list shows only these.
         uploaderId:
           type: string
         grantedUserIds:
@@ -225,9 +239,183 @@ components:
         - mimeType
         - sizeBytes
         - visibility
+        - datasetId
+        - version
+        - isLatest
         - uploaderId
         - grantedUserIds
         - createdAt
+    UploadVersionBodyDoc:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A CSV, XLS or XLSX file, up to 25 MB.
+      required:
+        - file
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    FileVersionPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    ComparedFileDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        version:
+          type: number
+        originalName:
+          type: string
+      required:
+        - fileId
+        - version
+        - originalName
+    TypeChangeDto:
+      type: object
+      properties:
+        column:
+          type: string
+        from:
+          type: string
+          enum: &ref_3
+            - integer
+            - number
+            - boolean
+            - date
+            - string
+            - empty
+        to:
+          type: string
+          enum: *ref_3
+      required:
+        - column
+        - from
+        - to
+    NullPercentChangeDto:
+      type: object
+      properties:
+        column:
+          type: string
+        from:
+          type: number
+          description: Percent empty in `from`.
+        to:
+          type: number
+          description: Percent empty in `to`.
+        delta:
+          type: number
+          description: Percentage points; positive means more empty cells.
+      required:
+        - column
+        - from
+        - to
+        - delta
+    CountChangeDto:
+      type: object
+      properties:
+        from:
+          type: number
+          nullable: true
+        to:
+          type: number
+          nullable: true
+        delta:
+          type: number
+          nullable: true
+          description: '`to` minus `from`; null when either side has no value.'
+      required:
+        - from
+        - to
+        - delta
+    ComparisonDto:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/ComparedFileDto'
+        to:
+          $ref: '#/components/schemas/ComparedFileDto'
+        columnsAdded:
+          description: >-
+            In `to` but not in `from` (names ignore case; a renamed header is
+            one removed and one added).
+          type: array
+          items:
+            type: string
+        columnsRemoved:
+          description: In `from` but not in `to`.
+          type: array
+          items:
+            type: string
+        typeChanges:
+          description: >-
+            Columns whose dominant type changed. A column that is empty on
+            either side has no type to compare.
+          type: array
+          items:
+            $ref: '#/components/schemas/TypeChangeDto'
+        nullPercentChanges:
+          description: >-
+            Columns whose share of empty cells moved by 5 percentage points or
+            more.
+          type: array
+          items:
+            $ref: '#/components/schemas/NullPercentChangeDto'
+        rowCount:
+          $ref: '#/components/schemas/CountChangeDto'
+        columnCount:
+          $ref: '#/components/schemas/CountChangeDto'
+        duplicateRows:
+          $ref: '#/components/schemas/CountChangeDto'
+        qualityScore:
+          description: The quality score; `delta` is null when either file was not scored.
+          allOf:
+            - $ref: '#/components/schemas/CountChangeDto'
+        schemaChanged:
+          type: boolean
+          description: >-
+            A column was removed or changed type — what breaks a reader of the
+            data. New columns and shifts in blanks do not count.
+      required:
+        - from
+        - to
+        - columnsAdded
+        - columnsRemoved
+        - typeChanges
+        - nullPercentChanges
+        - rowCount
+        - columnCount
+        - duplicateRows
+        - qualityScore
+        - schemaChanged
     CursorMetaDto:
       type: object
       properties:
@@ -314,13 +502,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: &ref_3
-            - integer
-            - number
-            - boolean
-            - date
-            - string
-            - empty
+          enum: *ref_3
           description: The dominant kind of value in the column.
         typeCounts:
           $ref: '#/components/schemas/TypeCountsDto'
@@ -726,25 +908,6 @@ components:
         - status
         - dueDate
         - createdAt
-    OffsetMetaDto:
-      type: object
-      properties:
-        page:
-          type: number
-          example: 1
-        limit:
-          type: number
-          example: 20
-        total:
-          type: number
-          description: Rows matching the filter across all pages.
-        totalPages:
-          type: number
-      required:
-        - page
-        - limit
-        - total
-        - totalPages
     InvoicePageDto:
       type: object
       properties:
@@ -769,6 +932,7 @@ components:
             - report.ready
             - report.failed
             - rules.failed
+            - dataset.schema_changed
             - file.shared
             - invoice.finalized
           description: What happened. Decides the shape of `payload`.
@@ -864,6 +1028,12 @@ components:
           description: >-
             Data-quality rules the company may keep, enabled or not; null =
             unlimited.
+        maxVersionsPerDataset:
+          type: number
+          nullable: true
+          description: >-
+            Versions one file may hold (each version still counts toward the
+            file quota); null = unlimited.
       required:
         - plan
         - maxEmployees
@@ -874,6 +1044,7 @@ components:
         - overagePerFileCents
         - rateLimitPerMinute
         - maxQualityRules
+        - maxVersionsPerDataset
     PeriodDto:
       type: object
       properties:

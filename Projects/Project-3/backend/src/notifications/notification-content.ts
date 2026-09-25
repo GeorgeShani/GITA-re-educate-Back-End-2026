@@ -42,6 +42,20 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
     }),
   }),
   z.object({
+    type: z.literal('dataset.schema_changed'),
+    payload: z.object({
+      datasetId: z.uuid(),
+      fileId: z.uuid(),
+      fileName: z.string(),
+      version: z.number().int(),
+      previousVersion: z.number().int(),
+      /** Column names, capped: enough to see what moved without a header row's worth of text. */
+      columnsAdded: z.array(z.string()),
+      columnsRemoved: z.array(z.string()),
+      typeChanges: z.array(z.object({ column: z.string(), from: z.string(), to: z.string() })),
+    }),
+  }),
+  z.object({
     type: z.literal('file.shared'),
     payload: z.object({ fileId: z.uuid(), fileName: z.string(), sharedByUserId: z.uuid() }),
   }),

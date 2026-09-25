@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { CursorPageOf } from '#/common/pagination/cursor-page.dto.js';
+import { OffsetPageOf } from '#/common/pagination/offset-page.dto.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { FILE_VISIBILITIES, type FileAsset, type FileVisibility } from '../file-asset.entity.js';
 
@@ -29,6 +30,21 @@ export class FileDto {
   @Expose()
   visibility!: FileVisibility;
 
+  @ApiProperty({
+    format: 'uuid',
+    description: "Shared by every version of one file. A first upload's is its own `id`.",
+  })
+  @Expose()
+  datasetId!: string;
+
+  @ApiProperty({ description: 'Which version of the file this is: 1, 2, 3… Numbers are never reused.' })
+  @Expose()
+  version!: number;
+
+  @ApiProperty({ description: 'The newest version. A default list shows only these.' })
+  @Expose()
+  isLatest!: boolean;
+
   @ApiProperty()
   @Expose()
   uploaderId!: string;
@@ -52,6 +68,8 @@ export class FileDto {
 }
 
 export class FilePageDto extends CursorPageOf(FileDto) {}
+
+export class FileVersionPageDto extends OffsetPageOf(FileDto) {}
 
 export class FileDownloadDto {
   @ApiProperty({

@@ -8,6 +8,7 @@ import { DataQualityReport } from '../data-quality-report.entity.js';
 import { FilesService } from '../files.service.js';
 import { type DataQualityMetrics, metricsSchema } from './metrics.js';
 import type { PreviewCell } from './profile.js';
+import { type MetricsDiff, type ReportSnapshot, diffMetrics } from './diff.js';
 import { type RuleResult, ruleResultSchema } from './rules.js';
 
 const recommendationsSchema = z.array(z.string());
@@ -26,6 +27,15 @@ export interface ReportView {
   /** One result per rule the company had when the report was built; null when it had none. */
   ruleResults: RuleResult[] | null;
 }
+
+export interface ComparedFile {
+  fileId: string;
+  version: number;
+  originalName: string;
+}
+
+/** How report `to` differs from report `from`, for two versions of one file. */
+export type ComparisonView = MetricsDiff & { from: ComparedFile; to: ComparedFile };
 
 export interface PreviewView {
   columns: Array<{ name: string; inferredType: DataQualityMetrics['columns'][number]['inferredType'] }>;
@@ -103,6 +113,42 @@ export class ReportsService {
     });
     await this.realtime.fileStatus(file.id);
     return this.report(file.id);
+  }
+
+  /**
+   * What changed between two versions of one file, from their stored reports alone (nothing is
+   * re-read from storage). Both files must be visible to the caller — one they cannot see is a 404 —
+   * and belong to the same dataset (422 otherwise); both reports must be `ready`.
+   */
+  async compare(fromId: string, toId: string): Promise<ComparisonView> {
+    const [from, to] = [await this.files.requireVisible(fromId), await this.files.requireVisible(toId)];
+    if (from.datasetId !== to.datasetId) {
+      throw new UnprocessableEntityException('These two files are not versions of the same file.');
+    }
+    const [before, after] = [await this.snapshotOf(from), await this.snapshotOf(to)];
+
+    const describe = (file: typeof from): ComparedFile => ({
+      fileId: file.id,
+      version: file.version,
+      originalName: file.originalName,
+    });
+    return { ...diffMetrics(before, after), from: describe(from), to: describe(to) };
+  }
+
+  private async snapshotOf(file: { id: string; companyId: string; version: number }): Promise<ReportSnapshot> {
+    const row = await this.dataSource
+      .getRepository(DataQualityReport)
+      .findOne({ where: { fileId: file.id, companyId: file.companyId } });
+    if (!row) throw new NotFoundException('No report exists for this file.');
+    if (row.status === 'queued' || row.status === 'profiling') {
+      throw new ConflictException(`The report for version ${file.version} is still being prepared. Try again in a moment.`);
+    }
+    if (row.status !== 'ready') {
+      throw new UnprocessableEntityException(
+        `Version ${file.version} has no report to compare: ${row.errorMessage ?? 'it could not be profiled.'}`,
+      );
+    }
+    return { metrics: metricsSchema.parse(row.metrics), qualityScore: row.qualityScore };
   }
 
   /**

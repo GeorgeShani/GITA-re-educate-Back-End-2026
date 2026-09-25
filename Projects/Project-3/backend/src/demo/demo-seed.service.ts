@@ -195,6 +195,7 @@ export class DemoSeedService {
 
       await manager.insert(FileAsset, {
         id,
+        datasetId: id,
         companyId,
         uploaderId: uploader.id,
         originalName: file.name,

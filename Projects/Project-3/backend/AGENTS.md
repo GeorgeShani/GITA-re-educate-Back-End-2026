@@ -676,6 +676,41 @@ document.
   broke it. `file.status` carries `qualityScore`.
 - The demo company has three rules (`DEMO_RULES`), so its reports show a score and a failure.
 
+## File versions & change detection *(from Phase 17 of the product plan)*
+
+- **A version is a file.** `file_asset` gained `datasetId` (shared by every version; a first upload's is its own `id`), `version`
+  (1, 2, 3…, UNIQUE per dataset, **never reused** after a delete: the next number is `max` over ALL rows, deleted ones included) and
+  `isLatest` (exactly one LIVE version per dataset). A version has its own object, grants, report, `UsageEvent`, quota slot and
+  audit entry, so everything that reads a file keeps working unchanged. `datasetId` has NO database default: every writer sets it
+  (`FilesService.store`, `DemoSeedService`, the harness's `seedUsage`, raw SQL in specs).
+- **One upload path.** `FilesService.upload` and `uploadVersion` both call `store(file, target)` (`{kind:'new'}` | `{kind:'version'}`),
+  so quota (402), quota alerts, idempotency, audit, usage and realtime cannot drift apart. `POST /files/:id/versions` (`files:write`,
+  uploader or admin via `requireManageable`; 403 seen-but-not-yours, 404 unseen/deleted) takes NO fields (`UploadVersionDto` is
+  empty, so `forbidNonWhitelisted` rejects any).
+- **Locks, in this order:** subscription row (quota) → every row of the dataset `FOR UPDATE` in id order (`lockDataset`). `remove`
+  takes the same dataset lock (peek the row unlocked to learn `datasetId`, lock, re-read from the locked rows), so an upload of the
+  next version and a delete of the latest cannot interleave, and lock order is the same everywhere (no deadlock). Deleting the
+  latest version promotes the highest remaining live one; the deleted row gets `isLatest = false`.
+- **Inherited access.** A version takes the visibility and grants of the dataset's current latest, plus that version's UPLOADER
+  (so an admin adding v2 does not lock out the employee who uploaded v1), keeping only active members. It does NOT notify
+  `file.shared`. After creation each version's access is its own (`PATCH /files/:id` changes one version).
+- **Limits:** `PLAN_CATALOG[plan].maxVersionsPerDataset` (Free 5, Basic 50, Premium unlimited) counts LIVE versions; a downgrade is
+  not refused over it (existing versions stay, new ones are blocked). Every version also consumes the file quota.
+- **Listing:** `GET /files` adds `f.isLatest = true` (so the PARTIAL index `idx_file_asset_company_live` — now `WHERE deletedAt IS NULL
+  AND isLatest` — still serves the default list); `?allVersions=true` drops it and uses a full tenant index. `GET /files/:id/versions`
+  lists a dataset's versions the caller may see (offset, newest first). `query-plan.integration.spec.ts` builds its query with the
+  same filter: **when `FilesService.list` changes, change `planFor` with it**.
+- **Change detection is pure and stored-data-only.** `files/quality/diff.ts` `diffMetrics(from, to)`: columns matched by name ignoring
+  case (a renamed header = one removed + one added), type changes (never involving an all-empty column), empty-cell shifts of >= 5
+  percentage points, deltas for rows / columns / duplicate rows / quality score, and `schemaChanged` = a column removed OR retyped
+  (additions and blanks do not count). `GET /files/:id/compare/:otherId` (`ReportsService.compare`) needs both files visible (404),
+  the same dataset (422), both reports `ready` (409 while building, 422 failed/unsupported).
+- **Alert:** after building a version >= 2's report the handler compares it with the nearest earlier LIVE version's stored report and,
+  if `schemaChanged`, sends `dataset.schema_changed` (column NAMES, capped at 20, plus the versions) to the uploader and admins. A
+  report rebuild re-sends it (no dedupe).
+- Migration `FileVersions` is hand-edited: `datasetId` is added nullable, backfilled from `id`, then NOT NULL; the partial index is
+  recreated with `AND "isLatest"`.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -862,7 +897,7 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `user` — UNIQUE `(companyId, email)`, leading with `companyId` — no
       separate tenant index needed, this composite already serves it
 - [x] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
-      `(companyId, createdAt) WHERE deleted_at IS NULL`
+      `(companyId, createdAt) WHERE deleted_at IS NULL AND is_latest`, `(companyId, datasetId)`, UNIQUE `(datasetId, version)`
 - [x] `file_access_grant` — UNIQUE `(fileId, userId)` (+ plain `userId`); `idempotency_record` — UNIQUE `(companyId, key)`
 - [x] `usage_event` — `(companyId, periodKey)`
 - [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`

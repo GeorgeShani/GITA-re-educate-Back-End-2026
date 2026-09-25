@@ -342,6 +342,7 @@ export class AppHarness {
       const id = randomUUID();
       return {
         id,
+        datasetId: id,
         companyId,
         uploaderId,
         originalName: 'seeded.csv',

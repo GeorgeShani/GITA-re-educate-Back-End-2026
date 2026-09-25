@@ -26,6 +26,8 @@ export interface PlanRules {
   rateLimitPerMinute: number;
   /** Data-quality rules a company may keep (enabled or not). `null` = unlimited. */
   maxQualityRules: number | null;
+  /** Live versions one file (dataset) may hold. `null` = unlimited. Every version still counts toward the file quota. */
+  maxVersionsPerDataset: number | null;
 }
 
 /**
@@ -43,6 +45,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     overagePerFileCents: null,
     rateLimitPerMinute: 30,
     maxQualityRules: 3,
+    maxVersionsPerDataset: 5,
   },
   basic: {
     maxEmployees: 10,
@@ -52,6 +55,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     overagePerFileCents: null,
     rateLimitPerMinute: 120,
     maxQualityRules: 25,
+    maxVersionsPerDataset: 50,
   },
   premium: {
     maxEmployees: null,
@@ -61,6 +65,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     overagePerFileCents: 50,
     rateLimitPerMinute: 600,
     maxQualityRules: null,
+    maxVersionsPerDataset: null,
   },
 };
 

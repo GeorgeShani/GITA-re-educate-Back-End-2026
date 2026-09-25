@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -16,8 +17,9 @@ import { periodKey } from '#/billing/period.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { UsageService } from '#/billing/usage.service.js';
 import { decodeCursor } from '#/common/pagination/cursor.js';
-import { applyCursor, toCursorPage } from '#/common/pagination/paginate.js';
-import type { CursorPage } from '#/common/pagination/paginated-result.js';
+import type { OffsetQueryDto } from '#/common/pagination/offset-query.dto.js';
+import { applyCursor, toCursorPage, toOffsetPage } from '#/common/pagination/paginate.js';
+import type { CursorPage, OffsetPage } from '#/common/pagination/paginated-result.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
@@ -54,6 +56,11 @@ export interface UploadResult {
   quotaWarning: string | null;
 }
 
+/** Where an upload goes: a file of its own, or the next version of an existing dataset. */
+type StoreTarget =
+  | { kind: 'new'; visibility: FileVisibility; grantedUserIds: string[] | undefined }
+  | { kind: 'version'; datasetId: string };
+
 export interface FileWithGrants {
   file: FileAsset;
   /** Present only for someone who may manage the file; everyone else learns nothing about who else has access. */
@@ -69,6 +76,9 @@ const LIST_COLUMNS = [
   'f.mimeType',
   'f.sizeBytes',
   'f.visibility',
+  'f.datasetId',
+  'f.version',
+  'f.isLatest',
   'f.deletedAt',
   'f.createdAt',
   'f.updatedAt',
@@ -136,7 +146,24 @@ export class FilesService {
    * no quota is consumed. A rejected type, a failed check or a storage error never
    * reaches step 4's usage event.
    */
-  async upload(file: Express.Multer.File, dto: UploadFileDto): Promise<UploadResult> {
+  upload(file: Express.Multer.File, dto: UploadFileDto): Promise<UploadResult> {
+    return this.store(file, { kind: 'new', visibility: dto.visibility, grantedUserIds: dto.grantedUserIds });
+  }
+
+  /**
+   * A new version of an existing file. It is an upload in every respect — its own object, usage event,
+   * quota slot, report, audit entry — through the SAME `store` path as `upload`, so the quota, idempotency
+   * and realtime rules cannot drift apart. The caller must be able to manage the file they point at
+   * (uploader or admin). The version inherits the visibility and grants of the dataset's current latest
+   * version; after that each version's access is its own (`PATCH /files/:id`).
+   */
+  async uploadVersion(baseId: string, file: Express.Multer.File): Promise<UploadResult> {
+    const base = await this.requireManageable(baseId);
+    return this.store(file, { kind: 'version', datasetId: base.datasetId });
+  }
+
+  /** The one upload path: a brand-new file, or the next version of a dataset. */
+  private async store(file: Express.Multer.File, target: StoreTarget): Promise<UploadResult> {
     const { companyId, viewer } = this.caller();
 
     const mimeType = await sniffSpreadsheet(file.buffer);
@@ -145,8 +172,10 @@ export class FilesService {
       throw new BadRequestException('Only CSV, XLS and XLSX spreadsheets are accepted.');
     }
 
-    const grants = this.grantsFor(dto.visibility, dto.grantedUserIds, viewer.userId);
-    await this.assertActiveMembers(this.dataSource.manager, companyId, grants);
+    // A new file names its own visibility and grants; a version takes both from its dataset, inside the transaction.
+    const requested =
+      target.kind === 'new' ? this.grantsFor(target.visibility, target.grantedUserIds, viewer.userId) : [];
+    if (target.kind === 'new') await this.assertActiveMembers(this.dataSource.manager, companyId, requested);
     await this.precheckQuota(companyId);
 
     const fileId = randomUUID();
@@ -174,7 +203,41 @@ export class FilesService {
           throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
         }
 
-        await this.assertActiveMembers(manager, companyId, grants);
+        let visibility: FileVisibility;
+        let grants: string[];
+        let datasetId: string = fileId;
+        let version = 1;
+        if (target.kind === 'new') {
+          await this.assertActiveMembers(manager, companyId, requested);
+          visibility = target.visibility;
+          grants = requested;
+        } else {
+          // Every version row of the dataset is locked (in id order, like `remove`), so two uploads of
+          // one dataset, or an upload and a delete of its latest version, cannot interleave.
+          const rows = await this.lockDataset(manager, companyId, target.datasetId);
+          const live = rows.filter((row) => !row.deletedAt);
+          const latest = live.reduce<FileAsset | null>((best, row) => (best && best.version > row.version ? best : row), null);
+          if (!latest) throw new NotFoundException(NOT_FOUND);
+
+          const cap = PLAN_CATALOG[subscription.plan].maxVersionsPerDataset;
+          if (cap !== null && live.length >= cap) {
+            throw new ConflictException(
+              `Your ${subscription.plan} plan keeps up to ${cap} versions of a file and this one has ${live.length}. ` +
+                'Delete an old version or upgrade with PATCH /subscriptions/me.',
+            );
+          }
+
+          datasetId = target.datasetId;
+          version = Math.max(...rows.map((row) => row.version)) + 1;
+          visibility = latest.visibility;
+          // Whoever could see the latest version can see this one: its grantees AND its uploader (who is
+          // not a grantee, but would otherwise lose the file when someone else uploads the next version).
+          grants =
+            latest.visibility === 'restricted'
+              ? await this.activeMembers(manager, companyId, [...(await this.grantIds(manager, latest.id)), latest.uploaderId], viewer.userId)
+              : [];
+          await manager.update(FileAsset, { datasetId, companyId, isLatest: true }, { isLatest: false });
+        }
 
         const saved = await manager.save(
           manager.create(FileAsset, {
@@ -185,7 +248,10 @@ export class FilesService {
             mimeType,
             sizeBytes: file.size,
             storageKey,
-            visibility: dto.visibility,
+            visibility,
+            datasetId,
+            version,
+            isLatest: true,
             deletedAt: null,
           }),
         );
@@ -207,7 +273,8 @@ export class FilesService {
           filesUsed: filesBefore + 1,
           filesLimit: PLAN_CATALOG[subscription.plan].filesPerPeriod,
         });
-        await this.notifyShared(manager, saved, grants, viewer.userId);
+        // A new version is not "shared" with anyone: the people who can see it could already see the file.
+        if (target.kind === 'new') await this.notifyShared(manager, saved, grants, viewer.userId);
         // The report exists from the moment the file does, so `GET /files/:id/report` is
         // never a 404 for a real file; the queued task fills it in.
         await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });
@@ -224,9 +291,11 @@ export class FilesService {
               originalName: saved.originalName,
               mimeType,
               sizeBytes: saved.sizeBytes,
-              visibility: dto.visibility,
+              visibility,
               grantCount: grants.length,
               overage: decision.kind === 'overage',
+              datasetId,
+              version,
             },
           },
           manager,
@@ -263,6 +332,8 @@ export class FilesService {
   async list(query: FilesQueryDto): Promise<CursorPage<FileAsset>> {
     const { viewer } = this.caller();
     const qb = this.visibleFiles(this.dataSource.manager, 'f', viewer).select(LIST_COLUMNS);
+    // One row per file by default: the newest version. `allVersions` lists every one the caller may see.
+    if (!query.allVersions) qb.andWhere('f.isLatest = true');
 
     if (query.mimeType) qb.andWhere('f.mimeType = :mimeType', { mimeType: query.mimeType });
     if (query.visibility) qb.andWhere('f.visibility = :visibility', { visibility: query.visibility });
@@ -384,15 +455,27 @@ export class FilesService {
     const { viewer } = this.caller();
 
     const storageKey = await this.dataSource.transaction(async (manager) => {
-      const file = await this.findVisible(manager, id, viewer, true);
+      // Every version row of the dataset is locked first (in id order, like `store`), then the file is
+      // re-read from the locked rows: deleting the LATEST version promotes the next one, and that must
+      // not interleave with someone uploading the next version.
+      const peek = await this.findVisible(manager, id, viewer);
+      const rows = await this.lockDataset(manager, peek.companyId, peek.datasetId);
+      const file = rows.find((row) => row.id === peek.id && !row.deletedAt);
+      if (!file) throw new NotFoundException(NOT_FOUND);
       this.assertCanManage(file, viewer);
 
-      await manager.update(FileAsset, { id: file.id }, { deletedAt: this.clock.now() });
+      await manager.update(FileAsset, { id: file.id }, { deletedAt: this.clock.now(), isLatest: false });
+      if (file.isLatest) {
+        const next = rows
+          .filter((row) => row.id !== file.id && !row.deletedAt)
+          .reduce<FileAsset | null>((best, row) => (best && best.version > row.version ? best : row), null);
+        if (next) await manager.update(FileAsset, { id: next.id }, { isLatest: true });
+      }
       await this.audit.record(
         {
           action: 'file.deleted',
           target: { type: 'file', id: file.id },
-          metadata: { originalName: file.originalName },
+          metadata: { originalName: file.originalName, datasetId: file.datasetId, version: file.version },
         },
         manager,
       );
@@ -404,7 +487,52 @@ export class FilesService {
     await this.discardObject(storageKey);
   }
 
+  /** The versions of the dataset `id` belongs to that the caller may see, newest first. */
+  async listVersions(id: string, query: OffsetQueryDto): Promise<OffsetPage<FileAsset>> {
+    const { viewer } = this.caller();
+    const base = await this.findVisible(this.dataSource.manager, id, viewer);
+    const [rows, total] = await this.visibleFiles(this.dataSource.manager, 'f', viewer)
+      .select(LIST_COLUMNS)
+      .andWhere('f.datasetId = :datasetId', { datasetId: base.datasetId })
+      .orderBy('f.version', 'DESC')
+      .skip((query.page - 1) * query.limit)
+      .take(query.limit)
+      .getManyAndCount();
+    return toOffsetPage(rows, total, query.page, query.limit);
+  }
+
   // ---- internals ----------------------------------------------------------
+
+  /**
+   * Every row of a dataset (deleted ones too: a version number is never reused), locked `FOR UPDATE`
+   * in id order. Anything that changes which version is latest takes this first, so they serialise.
+   */
+  private lockDataset(manager: EntityManager, companyId: string, datasetId: string): Promise<FileAsset[]> {
+    return this.tenantScope
+      .forCompany(manager.getRepository(FileAsset), companyId, 'f')
+      .andWhere('f.datasetId = :datasetId', { datasetId })
+      .orderBy('f.id', 'ASC')
+      .setLock('pessimistic_write')
+      .getMany();
+  }
+
+  /** Of `candidates`, the ones who are active members of the company, except `except`. */
+  private async activeMembers(
+    manager: EntityManager,
+    companyId: string,
+    candidates: string[],
+    except: string,
+  ): Promise<string[]> {
+    const wanted = [...new Set(candidates)].filter((userId) => userId !== except);
+    if (wanted.length === 0) return [];
+    const found = await this.tenantScope
+      .forCompany(manager.getRepository(User), companyId, 'u')
+      .andWhere('u.id IN (:...wanted)', { wanted })
+      .andWhere("u.status = 'active'")
+      .select('u.id')
+      .getMany();
+    return found.map((user) => user.id);
+  }
 
   /** Tells people a file was shared with them. Never the person who did the sharing. */
   private async notifyShared(

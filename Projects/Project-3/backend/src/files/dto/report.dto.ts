@@ -149,6 +149,69 @@ export class ReportDto {
   ruleResults!: RuleResultDto[] | null;
 }
 
+class ComparedFileDto {
+  @ApiProperty({ format: 'uuid' }) @Expose() fileId!: string;
+  @ApiProperty() @Expose() version!: number;
+  @ApiProperty() @Expose() originalName!: string;
+}
+
+class TypeChangeDto {
+  @ApiProperty() @Expose() column!: string;
+  @ApiProperty({ enum: COLUMN_TYPES }) @Expose() from!: ColumnType;
+  @ApiProperty({ enum: COLUMN_TYPES }) @Expose() to!: ColumnType;
+}
+
+class NullPercentChangeDto {
+  @ApiProperty() @Expose() column!: string;
+  @ApiProperty({ description: 'Percent empty in `from`.' }) @Expose() from!: number;
+  @ApiProperty({ description: 'Percent empty in `to`.' }) @Expose() to!: number;
+  @ApiProperty({ description: 'Percentage points; positive means more empty cells.' }) @Expose() delta!: number;
+}
+
+class CountChangeDto {
+  @ApiProperty({ type: Number, nullable: true }) @Expose() from!: number | null;
+  @ApiProperty({ type: Number, nullable: true }) @Expose() to!: number | null;
+  @ApiProperty({ type: Number, nullable: true, description: '`to` minus `from`; null when either side has no value.' })
+  @Expose()
+  delta!: number | null;
+}
+
+export class ComparisonDto {
+  @ApiProperty({ type: () => ComparedFileDto }) @Expose() @Type(() => ComparedFileDto) from!: ComparedFileDto;
+  @ApiProperty({ type: () => ComparedFileDto }) @Expose() @Type(() => ComparedFileDto) to!: ComparedFileDto;
+
+  @ApiProperty({ type: [String], description: 'In `to` but not in `from` (names ignore case; a renamed header is one removed and one added).' })
+  @Expose()
+  columnsAdded!: string[];
+
+  @ApiProperty({ type: [String], description: 'In `from` but not in `to`.' })
+  @Expose()
+  columnsRemoved!: string[];
+
+  @ApiProperty({ type: () => [TypeChangeDto], description: 'Columns whose dominant type changed. A column that is empty on either side has no type to compare.' })
+  @Expose()
+  @Type(() => TypeChangeDto)
+  typeChanges!: TypeChangeDto[];
+
+  @ApiProperty({ type: () => [NullPercentChangeDto], description: 'Columns whose share of empty cells moved by 5 percentage points or more.' })
+  @Expose()
+  @Type(() => NullPercentChangeDto)
+  nullPercentChanges!: NullPercentChangeDto[];
+
+  @ApiProperty({ type: () => CountChangeDto }) @Expose() @Type(() => CountChangeDto) rowCount!: CountChangeDto;
+  @ApiProperty({ type: () => CountChangeDto }) @Expose() @Type(() => CountChangeDto) columnCount!: CountChangeDto;
+  @ApiProperty({ type: () => CountChangeDto }) @Expose() @Type(() => CountChangeDto) duplicateRows!: CountChangeDto;
+
+  @ApiProperty({ type: () => CountChangeDto, description: 'The quality score; `delta` is null when either file was not scored.' })
+  @Expose()
+  @Type(() => CountChangeDto)
+  qualityScore!: CountChangeDto;
+
+  @ApiProperty({ description: 'A column was removed or changed type — what breaks a reader of the data. New columns and shifts in blanks do not count.' })
+  @Expose()
+  schemaChanged!: boolean;
+}
+
 export class PreviewColumnDto {
   @ApiProperty() @Expose() name!: string;
   @ApiProperty({ enum: COLUMN_TYPES }) @Expose() inferredType!: ColumnType;

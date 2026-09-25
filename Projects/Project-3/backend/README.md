@@ -147,6 +147,11 @@ password at all, so there is nothing to guess.
   the `file.status` event. A rule about a column a file lacks is skipped, not failed. Editing a rule never rewrites an old report;
   `POST /files/:id/report/rebuild` (uploader or admin) re-checks against today's rules. Limits: Free 3, Basic 25, Premium unlimited
   rules, at most 10 `unique` rules; a downgrade over the target's limit is refused.
+- **File versions** (`POST /files/:id/versions`, `GET /files/:id/versions`, `GET /files/:id/compare/:otherId`): each file has a
+  `datasetId`, a `version` and `isLatest`. A new version is an ordinary upload (quota, idempotency, its own report) that inherits the
+  file's visibility and grants; `GET /files` lists only the latest of each unless `?allVersions=true`. Deleting the latest promotes
+  the previous one; version numbers are never reused. Comparing works from stored reports; a version that drops or retypes a column
+  sends `dataset.schema_changed` to the uploader and admins. Limits: Free 5, Basic 50, Premium unlimited versions per file.
 - **GraphQL** (`POST /graphql`) is a read-only twin of `GET /analytics/usage` — admins only, no mutations, depth and cost
   limits, and a committed schema (`src/graphql/schema.gql`, regenerate with `npm run graphql:schema`).
 

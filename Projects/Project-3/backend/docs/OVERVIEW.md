@@ -103,6 +103,17 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 - Limits follow the plan (Free 3 rules, Basic 25, Premium unlimited; at most 10 "unique" rules). *Why:* the reports stop being
   just descriptive — a company can say what "good data" means for it and be told, on upload, when a file is not.
 
+### 5b. File versions and change detection
+- Data comes back: the March export, the April export. Instead of a pile of near-identical files, an uploader adds a **new
+  version** of the same file (`POST /files/:id/versions`). The list shows each file once, as its newest version; the versions
+  list shows the history; a version inherits who could see the file. Each version is a real upload — it counts toward the file
+  quota and gets its own report — and each plan keeps a number of versions per file (Free 5, Basic 50, Premium unlimited).
+- **Compare** any two versions (`GET /files/:id/compare/:otherId`): columns added or removed, columns whose type changed,
+  columns that got emptier, and the change in rows, duplicates and quality score — worked out from the stored reports, so nothing
+  is re-read. When a new version **drops or retypes a column** the old one had, the uploader and the admins are told. *Why:* the
+  changes that quietly break whatever reads the data are the ones worth surfacing the moment a file lands.
+- Deleting the newest version makes the previous one the newest again; version numbers are never reused.
+
 ### 6. Audit log and usage analytics
 - **Every state-changing action writes an audit entry in the same transaction as the change**, from a closed list of actions
   (a test proves each is really written). The table is append-only — the database itself refuses updates and deletes.

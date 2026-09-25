@@ -16,7 +16,8 @@ import {
   UnsupportedFormatError,
   readSpreadsheet,
 } from './parsing/spreadsheet-reader.js';
-import { PROFILE_LIMITS } from './quality/metrics.js';
+import { diffMetrics } from './quality/diff.js';
+import { type DataQualityMetrics, PROFILE_LIMITS, metricsSchema } from './quality/metrics.js';
 import { narrativeInputFrom, profileSheet } from './quality/profile.js';
 import { evaluateRules, uniqueColumnKeys } from './quality/rules.js';
 import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from './spreadsheet-types.js';
@@ -24,8 +25,19 @@ import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from './spreadsheet-type
 const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid() });
 export type BuildDataQualityReportPayload = z.infer<typeof payloadSchema>;
 
+/** What a new version did to its predecessor's columns: only worth telling anyone when something was removed or retyped. */
+interface SchemaChange {
+  previousVersion: number;
+  columnsAdded: string[];
+  columnsRemoved: string[];
+  typeChanges: Array<{ column: string; from: string; to: string }>;
+}
+
+/** How many column names one notification carries. */
+const MAX_LISTED_COLUMNS = 20;
+
 type ProfileOutcome =
-  | { status: 'ready'; failedErrorRules: string[]; qualityScore: number | null }
+  | { status: 'ready'; failedErrorRules: string[]; qualityScore: number | null; schemaChange: SchemaChange | null }
   | { status: 'unsupported' }
   | { status: 'failed'; reason: string };
 
@@ -120,9 +132,22 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
               payload: { fileId: file.id, fileName: file.originalName, reason: outcome.reason },
             },
       );
+      const admins = outcome.status === 'ready' ? await this.notifications.activeAdminIds(manager, file.companyId) : [];
+      // A version that dropped or retyped a column its predecessor had: the uploader and the admins.
+      if (outcome.status === 'ready' && outcome.schemaChange) {
+        await this.notifications.notify(manager, file.companyId, [file.uploaderId, ...admins], {
+          type: 'dataset.schema_changed',
+          payload: {
+            datasetId: file.datasetId,
+            fileId: file.id,
+            fileName: file.originalName,
+            version: file.version,
+            ...outcome.schemaChange,
+          },
+        });
+      }
       // A file that breaks an error-level rule is everyone's business: the uploader and the admins.
       if (outcome.status === 'ready' && outcome.failedErrorRules.length > 0) {
-        const admins = await this.notifications.activeAdminIds(manager, file.companyId);
         await this.notifications.notify(manager, file.companyId, [file.uploaderId, ...admins], {
           type: 'rules.failed',
           payload: {
@@ -138,6 +163,45 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
       // retry) the whole task.
       this.logger.warn({ err: error, fileId: file.id }, 'Could not write the report notification');
     }
+  }
+
+  /**
+   * For a version 2 or later: does it drop or retype a column that the nearest earlier LIVE version has?
+   * (Its report is compared as stored; nothing is re-read.) Null when there is nothing to compare with, or
+   * nothing that would break a reader — new columns and shifts in blanks are not worth an alert.
+   */
+  private async schemaChangeFrom(
+    file: FileAsset,
+    metrics: DataQualityMetrics,
+    qualityScore: number | null,
+  ): Promise<SchemaChange | null> {
+    if (file.version <= 1) return null;
+    const previous = await this.dataSource
+      .getRepository(FileAsset)
+      .createQueryBuilder('f')
+      .where('f."companyId" = :companyId AND f."datasetId" = :datasetId', {
+        companyId: file.companyId,
+        datasetId: file.datasetId,
+      })
+      .andWhere('f.version < :version AND f."deletedAt" IS NULL', { version: file.version })
+      .orderBy('f.version', 'DESC')
+      .getOne();
+    if (!previous) return null;
+
+    const row = await this.dataSource
+      .getRepository(DataQualityReport)
+      .findOne({ where: { fileId: previous.id, companyId: file.companyId } });
+    const before = row?.status === 'ready' ? metricsSchema.safeParse(row.metrics) : null;
+    if (!row || !before?.success) return null;
+
+    const diff = diffMetrics({ metrics: before.data, qualityScore: row.qualityScore }, { metrics, qualityScore });
+    if (!diff.schemaChanged) return null;
+    return {
+      previousVersion: previous.version,
+      columnsAdded: diff.columnsAdded.slice(0, MAX_LISTED_COLUMNS),
+      columnsRemoved: diff.columnsRemoved.slice(0, MAX_LISTED_COLUMNS),
+      typeChanges: diff.typeChanges.slice(0, MAX_LISTED_COLUMNS),
+    };
   }
 
   private async profile(reportId: string, file: FileAsset): Promise<ProfileOutcome> {
@@ -200,6 +264,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
       status: 'ready',
       failedErrorRules: failed.filter((result) => result.severity === 'error').map((result) => result.name),
       qualityScore: evaluation.score,
+      schemaChange: await this.schemaChangeFrom(file, profile.metrics, evaluation.score),
     };
   }
 }

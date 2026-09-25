@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsDate, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsBoolean, IsDate, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { toBoolean } from '#/common/http/query-boolean.js';
 import { CursorQueryDto } from '#/common/pagination/cursor-query.dto.js';
 import { FILE_VISIBILITIES, type FileVisibility } from '../file-asset.entity.js';
 import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from '../spreadsheet-types.js';
@@ -58,4 +59,15 @@ export class FilesQueryDto extends CursorQueryDto {
   @Type(() => Date)
   @IsDate()
   uploadedBefore?: Date;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    default: false,
+    description:
+      'By default each file is listed once, as its newest version. `true` lists every version you can see.',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  allVersions?: boolean;
 }
