@@ -103,6 +103,8 @@ npm run docs:types      # docs/openapi.yaml -> docs/openapi.d.ts, for a typed fr
 Every environment variable, where it comes from and what breaks without it:
 [`docs/ENV_SECRETS_GUIDE.md`](./docs/ENV_SECRETS_GUIDE.md). Inside Docker the database URLs need a container-side
 override (`.env` says `localhost`): see [`.env.docker.example`](./.env.docker.example).
+Public brand assets use a separate private S3 bucket behind CloudFront OAC; see
+[`docs/CLOUDFRONT_ASSETS.md`](./docs/CLOUDFRONT_ASSETS.md). Customer spreadsheet objects are never exposed by that distribution.
 
 ## Seed data
 

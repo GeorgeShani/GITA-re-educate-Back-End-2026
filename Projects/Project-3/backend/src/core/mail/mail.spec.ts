@@ -6,7 +6,10 @@ const MESSAGES: MailMessage[] = [
   {
     template: 'activation',
     to: 'admin@acme.test',
-    vars: { companyName: 'Acme & Sons', activationUrl: 'https://gridline.test/activate?token=abc123' },
+    vars: {
+      companyName: 'Acme & Sons',
+      activationUrl: 'https://gridline.test/activate?token=abc123',
+    },
   },
   {
     template: 'invite',
@@ -20,9 +23,31 @@ const MESSAGES: MailMessage[] = [
   {
     template: 'password_reset',
     to: 'user@acme.test',
-    vars: { fullName: 'Nino', resetUrl: 'https://gridline.test/reset?token=rst789' },
+    vars: {
+      fullName: 'Nino',
+      resetUrl: 'https://gridline.test/reset?token=rst789',
+    },
   },
-  { template: 'password_changed', to: 'user@acme.test', vars: { fullName: 'Nino' } },
+  {
+    template: 'password_changed',
+    to: 'user@acme.test',
+    vars: { fullName: 'Nino' },
+  },
+  {
+    template: 'payment_failed',
+    to: 'billing@acme.test',
+    vars: {
+      companyName: 'Acme',
+      totalFormatted: '$50.00',
+      graceEndsAt: '2026-03-08',
+      billingUrl: 'https://gridline.test/billing',
+    },
+  },
+  {
+    template: 'payment_recovered',
+    to: 'billing@acme.test',
+    vars: { companyName: 'Acme', billingUrl: 'https://gridline.test/billing' },
+  },
   {
     template: 'invoice_finalized',
     to: 'billing@acme.test',
@@ -34,10 +59,24 @@ const MESSAGES: MailMessage[] = [
       invoiceUrl: 'https://gridline.test/billing/invoices/1',
     },
   },
+  {
+    template: 'quota_threshold',
+    to: 'billing@acme.test',
+    vars: {
+      companyName: 'Acme',
+      threshold: 80,
+      headline: 'You are approaching your quota.',
+      detail: '80 of 100 files have been processed.',
+      billingUrl: 'https://gridline.test/billing',
+    },
+  },
 ];
 
 describe('TemplateRenderer', () => {
-  const renderer = new TemplateRenderer();
+  const renderer = new TemplateRenderer({
+    appUrl: 'https://gridline.test',
+    assetsUrl: undefined,
+  });
 
   beforeAll(() => renderer.compile());
 
@@ -54,7 +93,14 @@ describe('TemplateRenderer', () => {
     },
   );
 
-  it.each(MESSAGES.filter((message) => 'activationUrl' in message.vars || 'inviteUrl' in message.vars || 'resetUrl' in message.vars))(
+  it.each(
+    MESSAGES.filter(
+      (message) =>
+        'activationUrl' in message.vars ||
+        'inviteUrl' in message.vars ||
+        'resetUrl' in message.vars,
+    ),
+  )(
     '$template puts its link in both the html and the plain-text part',
     (message) => {
       const email = renderer.render(message);
@@ -85,7 +131,40 @@ describe('TemplateRenderer', () => {
     const [activation] = MESSAGES;
     if (!activation) throw new Error('fixture missing');
 
-    expect(() => new TemplateRenderer().render(activation)).toThrow(/not compiled/);
+    expect(() =>
+      new TemplateRenderer({
+        appUrl: 'https://gridline.test',
+        assetsUrl: undefined,
+      }).render(activation),
+    ).toThrow(/not compiled/);
+  });
+
+  it('renders the versioned CloudFront logo with accessible attributes when configured', async () => {
+    const branded = new TemplateRenderer({
+      appUrl: 'https://gridline.test',
+      assetsUrl: 'https://assets.gridline.test',
+    });
+    await branded.compile();
+    const [activation] = MESSAGES;
+    if (!activation) throw new Error('fixture missing');
+
+    const email = branded.render(activation);
+
+    expect(email.html).toContain(
+      'https://assets.gridline.test/brand/v1/logo.png',
+    );
+    expect(email.html).toMatch(/alt="Gridline"/);
+    expect(email.html).toMatch(/width="160"/);
+  });
+
+  it('renders the text wordmark when no public asset origin is configured', () => {
+    const [activation] = MESSAGES;
+    if (!activation) throw new Error('fixture missing');
+
+    const email = renderer.render(activation);
+
+    expect(email.html).toContain('Gridline');
+    expect(email.html).not.toContain('/brand/v1/logo.png');
   });
 });
 
@@ -108,7 +187,11 @@ describe('mailMessageSchema (the send_email payload boundary)', () => {
 
   it('rejects an unknown template and a malformed recipient', () => {
     expect(
-      mailMessageSchema.safeParse({ template: 'nope', to: 'a@b.test', vars: {} }).success,
+      mailMessageSchema.safeParse({
+        template: 'nope',
+        to: 'a@b.test',
+        vars: {},
+      }).success,
     ).toBe(false);
     expect(
       mailMessageSchema.safeParse({

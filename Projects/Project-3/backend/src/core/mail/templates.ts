@@ -19,7 +19,20 @@ export interface TemplateDefinition {
   mjml: string;
 }
 
-function layout(body: string): string {
+export interface TemplateBranding {
+  assetsUrl?: string;
+}
+
+function header(branding: TemplateBranding): string {
+  if (branding.assetsUrl) {
+    return `<mj-image src="${branding.assetsUrl}${BRAND.logoPath}" href="{{appUrl}}" width="160px" alt="Gridline" padding="8px 25px" />`;
+  }
+  return `<mj-text font-size="18px" font-weight="700" color="${BRAND.primary}" align="center">
+          <a href="{{appUrl}}" style="color:${BRAND.primary};text-decoration:none">Gridline</a>
+        </mj-text>`;
+}
+
+function layout(body: string, branding: TemplateBranding): string {
   return `
 <mjml>
   <mj-head>
@@ -31,9 +44,7 @@ function layout(body: string): string {
   <mj-body background-color="${BRAND.background}">
     <mj-section padding="32px 0 8px">
       <mj-column>
-        <mj-text font-size="18px" font-weight="700" color="${BRAND.primary}" align="center">
-          Gridline
-        </mj-text>
+        ${header(branding)}
       </mj-column>
     </mj-section>
     <mj-section background-color="${BRAND.surface}" border="1px solid ${BRAND.border}" padding="24px 16px">
@@ -56,78 +67,107 @@ function button(label: string, href: string): string {
   return `<mj-button background-color="${BRAND.primary}" color="${BRAND.primaryText}" href="${href}" border-radius="4px" font-size="15px">${label}</mj-button>`;
 }
 
-export const TEMPLATES: Record<MailTemplateName, TemplateDefinition> = {
-  activation: {
-    subject: 'Activate your Gridline account',
-    text: 'Welcome to Gridline. Activate {{companyName}} to get started:\n{{activationUrl}}\n\nThis link expires in 24 hours.',
-    mjml: layout(`
+export function createTemplates(
+  branding: TemplateBranding,
+): Record<MailTemplateName, TemplateDefinition> {
+  return {
+    activation: {
+      subject: 'Activate your Gridline account',
+      text: 'Welcome to Gridline. Activate {{companyName}} to get started:\n{{activationUrl}}\n\nThis link expires in 24 hours.',
+      mjml: layout(
+        `
         <mj-text>Welcome to Gridline. Activate <strong>{{companyName}}</strong> to get started.</mj-text>
         ${button('Activate account', '{{activationUrl}}')}
-        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 24 hours.</mj-text>`),
-  },
+        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 24 hours.</mj-text>`,
+        branding,
+      ),
+    },
 
-  invite: {
-    subject: "You're invited to {{companyName}} on Gridline",
-    text: 'Hi {{fullName}},\n\nYou have been invited to join {{companyName}} on Gridline. Accept the invitation:\n{{inviteUrl}}\n\nThis link expires in 7 days.',
-    mjml: layout(`
+    invite: {
+      subject: "You're invited to {{companyName}} on Gridline",
+      text: 'Hi {{fullName}},\n\nYou have been invited to join {{companyName}} on Gridline. Accept the invitation:\n{{inviteUrl}}\n\nThis link expires in 7 days.',
+      mjml: layout(
+        `
         <mj-text>Hi {{fullName}},</mj-text>
         <mj-text>You have been invited to join <strong>{{companyName}}</strong> on Gridline.</mj-text>
         ${button('Accept invitation', '{{inviteUrl}}')}
-        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 7 days.</mj-text>`),
-  },
+        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 7 days.</mj-text>`,
+        branding,
+      ),
+    },
 
-  password_reset: {
-    subject: 'Reset your Gridline password',
-    text: 'Hi {{fullName}},\n\nReset your password:\n{{resetUrl}}\n\nThis link expires in 1 hour. If you did not ask for this, ignore this email.',
-    mjml: layout(`
+    password_reset: {
+      subject: 'Reset your Gridline password',
+      text: 'Hi {{fullName}},\n\nReset your password:\n{{resetUrl}}\n\nThis link expires in 1 hour. If you did not ask for this, ignore this email.',
+      mjml: layout(
+        `
         <mj-text>Hi {{fullName}},</mj-text>
         <mj-text>We received a request to reset your password.</mj-text>
         ${button('Reset password', '{{resetUrl}}')}
-        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 1 hour. If you did not ask for this, you can ignore this email.</mj-text>`),
-  },
+        <mj-text font-size="13px" color="${BRAND.textMuted}">This link expires in 1 hour. If you did not ask for this, you can ignore this email.</mj-text>`,
+        branding,
+      ),
+    },
 
-  password_changed: {
-    subject: 'Your Gridline password was changed',
-    text: 'Hi {{fullName}},\n\nYour password was just changed and all other sessions were signed out. If this was not you, reset your password immediately.',
-    mjml: layout(`
+    password_changed: {
+      subject: 'Your Gridline password was changed',
+      text: 'Hi {{fullName}},\n\nYour password was just changed and all other sessions were signed out. If this was not you, reset your password immediately.',
+      mjml: layout(
+        `
         <mj-text>Hi {{fullName}},</mj-text>
-        <mj-text>Your password was just changed and all other sessions were signed out. If this was not you, reset your password immediately.</mj-text>`),
-  },
+        <mj-text>Your password was just changed and all other sessions were signed out. If this was not you, reset your password immediately.</mj-text>`,
+        branding,
+      ),
+    },
 
-  payment_failed: {
-    subject: 'Payment failed for {{companyName}}',
-    text: 'We could not collect {{totalFormatted}} for {{companyName}}. Update the payment method before {{graceEndsAt}} to avoid suspension.\n{{billingUrl}}',
-    mjml: layout(`
+    payment_failed: {
+      subject: 'Payment failed for {{companyName}}',
+      text: 'We could not collect {{totalFormatted}} for {{companyName}}. Update the payment method before {{graceEndsAt}} to avoid suspension.\n{{billingUrl}}',
+      mjml: layout(
+        `
         <mj-text>We could not collect <strong>{{totalFormatted}}</strong> for <strong>{{companyName}}</strong>.</mj-text>
         <mj-text>Update the payment method before {{graceEndsAt}} to avoid suspension.</mj-text>
-        ${button('Fix billing', '{{billingUrl}}')}`),
-  },
+        ${button('Fix billing', '{{billingUrl}}')}`,
+        branding,
+      ),
+    },
 
-  payment_recovered: {
-    subject: 'Payment received for {{companyName}}',
-    text: 'Payment for {{companyName}} succeeded. Billing access is current again.\n{{billingUrl}}',
-    mjml: layout(`
+    payment_recovered: {
+      subject: 'Payment received for {{companyName}}',
+      text: 'Payment for {{companyName}} succeeded. Billing access is current again.\n{{billingUrl}}',
+      mjml: layout(
+        `
         <mj-text>Payment for <strong>{{companyName}}</strong> succeeded.</mj-text>
         <mj-text>Billing access is current again.</mj-text>
-        ${button('View billing', '{{billingUrl}}')}`),
-  },
+        ${button('View billing', '{{billingUrl}}')}`,
+        branding,
+      ),
+    },
 
-  invoice_finalized: {
-    subject: 'Your Gridline invoice for {{periodStart}} – {{periodEnd}}',
-    text: 'Your invoice for {{companyName}} ({{periodStart}} – {{periodEnd}}) is ready. Total: {{totalFormatted}}\n{{invoiceUrl}}',
-    mjml: layout(`
+    invoice_finalized: {
+      subject: 'Your Gridline invoice for {{periodStart}} – {{periodEnd}}',
+      text: 'Your invoice for {{companyName}} ({{periodStart}} – {{periodEnd}}) is ready. Total: {{totalFormatted}}\n{{invoiceUrl}}',
+      mjml: layout(
+        `
         <mj-text>Your invoice for <strong>{{companyName}}</strong> is ready.</mj-text>
         <mj-text>Period: {{periodStart}} – {{periodEnd}}<br />Total: <strong>{{totalFormatted}}</strong></mj-text>
-        ${button('View invoice', '{{invoiceUrl}}')}`),
-  },
+        ${button('View invoice', '{{invoiceUrl}}')}`,
+        branding,
+      ),
+    },
 
-  quota_threshold: {
-    subject: '{{companyName}}: you have used {{threshold}}% of your file quota',
-    text: '{{companyName}}\n\n{{headline}}\n{{detail}}\n\nPlans and usage:\n{{billingUrl}}',
-    mjml: layout(`
+    quota_threshold: {
+      subject:
+        '{{companyName}}: you have used {{threshold}}% of your file quota',
+      text: '{{companyName}}\n\n{{headline}}\n{{detail}}\n\nPlans and usage:\n{{billingUrl}}',
+      mjml: layout(
+        `
         <mj-text><strong>{{companyName}}</strong></mj-text>
         <mj-text>{{headline}}</mj-text>
         <mj-text>{{detail}}</mj-text>
-        ${button('See your plan', '{{billingUrl}}')}`),
-  },
-};
+        ${button('See your plan', '{{billingUrl}}')}`,
+        branding,
+      ),
+    },
+  };
+}

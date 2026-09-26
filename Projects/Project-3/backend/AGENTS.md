@@ -737,6 +737,18 @@ document.
 - `npm run stripe:verify-catalog` is the deployment-time network check for immutable price, meter, portal and webhook configuration.
   Ordinary application boot validates configuration shape but never depends on Stripe network availability.
 
+## CloudFront brand assets *(from Phase 17.6 of the product plan)*
+
+- `ASSETS_BASE_URL` is an optional public origin for **brand assets only**. Normalize trailing slashes in configuration and require
+  HTTPS in production. Versioned paths live in `core/mail/brand.ts`; callers never concatenate an arbitrary object key.
+- `TemplateRenderer` owns global `appUrl`/`assetsUrl` context. Do not add branding fields to each `MailMessage` task payload: queued
+  business data and deployment presentation are separate concerns.
+- Email templates compile under MJML strict validation for both modes. With an assets origin they render an accessible, fixed-width
+  image; without one they retain the text wordmark, so local development has no CDN dependency.
+- The CloudFront distribution fronts a dedicated private S3 brand bucket through Origin Access Control. Never reuse or expose the
+  private spreadsheet bucket. AWS resources are intentionally provisioned outside this repository; frontend `next/image` and CSP
+  configuration are documented in `docs/CLOUDFRONT_ASSETS.md` for the frontend milestone.
+
 ## Pagination & sorting *(from Phase 3)*
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —

@@ -49,6 +49,16 @@ Secrets are marked 🔒: never commit them, never paste them into a ticket, and 
 | `SMTP_USER` / `SMTP_PASSWORD` 🔒 | — | Your provider's SMTP credentials. |
 | `MAIL_FROM` | `Gridline <no-reply@gridline.app>` | An address your provider has verified. |
 
+## Public brand assets — CloudFront
+
+| Variable | Default | Notes |
+|---|---|---|
+| `ASSETS_BASE_URL` | absent | Public HTTPS CloudFront origin for versioned brand assets. Trailing slashes are removed. When absent, emails render the text wordmark. |
+
+This origin serves public branding only. It must use a separate private S3 bucket behind CloudFront Origin Access
+Control; never expose or reuse the tenant spreadsheet bucket. See
+[`CLOUDFRONT_ASSETS.md`](./CLOUDFRONT_ASSETS.md) for the AWS boundary and the later Next.js `remotePatterns`/CSP work.
+
 ## AI narrative — `AI_PROVIDER`
 
 | Variable | Default | Notes |

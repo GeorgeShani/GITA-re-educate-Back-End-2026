@@ -83,18 +83,28 @@ describe('loadConfig', () => {
 
   it('rate limiting is ON unless explicitly switched off', () => {
     expect(loadConfig(validEnv()).RATE_LIMIT_ENABLED).toBe(true);
-    expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: '' })).RATE_LIMIT_ENABLED).toBe(true);
-    expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: 'true' })).RATE_LIMIT_ENABLED).toBe(true);
+    expect(
+      loadConfig(validEnv({ RATE_LIMIT_ENABLED: '' })).RATE_LIMIT_ENABLED,
+    ).toBe(true);
+    expect(
+      loadConfig(validEnv({ RATE_LIMIT_ENABLED: 'true' })).RATE_LIMIT_ENABLED,
+    ).toBe(true);
     for (const off of ['false', '0', 'off', 'FALSE']) {
-      expect(loadConfig(validEnv({ RATE_LIMIT_ENABLED: off })).RATE_LIMIT_ENABLED).toBe(false);
+      expect(
+        loadConfig(validEnv({ RATE_LIMIT_ENABLED: off })).RATE_LIMIT_ENABLED,
+      ).toBe(false);
     }
   });
 
   it('trusts no proxy by default, and a bounded number of hops when told to', () => {
     expect(loadConfig(validEnv()).TRUST_PROXY).toBe(0);
     expect(loadConfig(validEnv({ TRUST_PROXY: '1' })).TRUST_PROXY).toBe(1);
-    expect(() => loadConfig(validEnv({ TRUST_PROXY: '-1' }))).toThrow(/TRUST_PROXY/);
-    expect(() => loadConfig(validEnv({ TRUST_PROXY: 'yes' }))).toThrow(/TRUST_PROXY/);
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: '-1' }))).toThrow(
+      /TRUST_PROXY/,
+    );
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: 'yes' }))).toThrow(
+      /TRUST_PROXY/,
+    );
   });
 
   it('returns a frozen object so nothing can mutate config at runtime', () => {
@@ -148,5 +158,31 @@ describe('loadConfig', () => {
     );
 
     expect(config.ALLOW_UNPAID_PLANS).toBe(true);
+  });
+
+  it('normalizes the public assets origin without retaining trailing slashes', () => {
+    const config = loadConfig(
+      validEnv({ ASSETS_BASE_URL: 'https://assets.gridline.example.com///' }),
+    );
+
+    expect(config.ASSETS_BASE_URL).toBe('https://assets.gridline.example.com');
+  });
+
+  it('requires HTTPS for public assets in production', () => {
+    expect(() =>
+      loadConfig(
+        validEnv({
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+          JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
+          MAIL_TRANSPORT: 'smtp',
+          SMTP_HOST: 'smtp.example.com',
+          SMTP_PORT: '587',
+          APP_PUBLIC_URL: 'https://gridline.example.com',
+          ALLOW_UNPAID_PLANS: 'true',
+          ASSETS_BASE_URL: 'http://assets.gridline.example.com',
+        }),
+      ),
+    ).toThrow(/ASSETS_BASE_URL/);
   });
 });

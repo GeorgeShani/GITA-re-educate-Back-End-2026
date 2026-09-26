@@ -1,6 +1,10 @@
 import Handlebars from 'handlebars';
-import type { MailMessage, MailTemplateName, RenderedEmail } from './mail-message.js';
-import { TEMPLATES } from './templates.js';
+import type {
+  MailMessage,
+  MailTemplateName,
+  RenderedEmail,
+} from './mail-message.js';
+import { createTemplates } from './templates.js';
 
 interface CompiledTemplate {
   subject: HandlebarsTemplateDelegate;
@@ -21,16 +25,26 @@ interface CompiledTemplate {
 export class TemplateRenderer {
   private readonly compiled = new Map<MailTemplateName, CompiledTemplate>();
 
+  constructor(
+    private readonly globals: {
+      appUrl: string;
+      assetsUrl?: string;
+    },
+  ) {}
+
   async compile(): Promise<void> {
     // Loaded here, not at the top of the file: mjml is heavy, and a static
     // import would make merely importing AppModule (docs generation, specs)
     // pay for it even when no email is ever rendered.
     const { default: mjml2html } = await import('mjml');
 
-    for (const [name, definition] of Object.entries(TEMPLATES)) {
-      if (!isTemplateName(name)) continue;
+    const templates = createTemplates({ assetsUrl: this.globals.assetsUrl });
+    for (const [name, definition] of Object.entries(templates)) {
+      if (!isTemplateName(name, templates)) continue;
 
-      const { html, errors } = await mjml2html(definition.mjml, { validationLevel: 'strict' });
+      const { html, errors } = await mjml2html(definition.mjml, {
+        validationLevel: 'strict',
+      });
       if (errors.length > 0) {
         const detail = errors.map((error) => error.formattedMessage).join('; ');
         throw new Error(`MJML template "${name}" is invalid: ${detail}`);
@@ -55,13 +69,16 @@ export class TemplateRenderer {
 
     return {
       to: message.to,
-      subject: template.subject(message.vars),
-      text: template.text(message.vars),
-      html: template.html(message.vars),
+      subject: template.subject({ ...message.vars, ...this.globals }),
+      text: template.text({ ...message.vars, ...this.globals }),
+      html: template.html({ ...message.vars, ...this.globals }),
     };
   }
 }
 
-function isTemplateName(value: string): value is MailTemplateName {
-  return value in TEMPLATES;
+function isTemplateName(
+  value: string,
+  templates: Record<MailTemplateName, unknown>,
+): value is MailTemplateName {
+  return value in templates;
 }

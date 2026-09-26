@@ -13,4 +13,5 @@ export const BRAND = {
   background: '#f3f6fa',
   surface: '#ffffff',
   border: '#dbe3ec',
+  logoPath: '/brand/v1/logo.png',
 } as const;

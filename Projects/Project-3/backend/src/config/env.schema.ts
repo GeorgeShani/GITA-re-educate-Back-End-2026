@@ -56,7 +56,9 @@ const booleanFlag = (defaultValue: boolean) =>
  */
 const requiredString = (min = 1, hint = 'is required') =>
   z
-    .string({ error: (issue) => (issue.input === undefined ? hint : undefined) })
+    .string({
+      error: (issue) => (issue.input === undefined ? hint : undefined),
+    })
     .min(min, min > 1 ? `must be at least ${min} characters` : hint);
 
 export const envSchema = z
@@ -150,10 +152,17 @@ export const envSchema = z
     STRIPE_FILE_METER_EVENT_NAME: optionalString(),
     STRIPE_FILE_METER_ID: optionalString(),
     STRIPE_PORTAL_CONFIGURATION_ID: optionalString(),
-    STRIPE_DUNNING_GRACE_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+    STRIPE_DUNNING_GRACE_DAYS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(30)
+      .default(7),
 
     /** Public brand assets served through CloudFront. Customer files never use this origin. */
-    ASSETS_BASE_URL: optionalUrl(),
+    ASSETS_BASE_URL: optionalUrl().transform((value) =>
+      value?.replace(/\/+$/, ''),
+    ),
 
     /**
      * Plan-tiered request throttling (Phase 11). On by default; the test config switches
@@ -162,7 +171,12 @@ export const envSchema = z
     RATE_LIMIT_ENABLED: z
       .string()
       .optional()
-      .transform((value) => value === undefined || value === '' || !['false', '0', 'off'].includes(value.toLowerCase())),
+      .transform(
+        (value) =>
+          value === undefined ||
+          value === '' ||
+          !['false', '0', 'off'].includes(value.toLowerCase()),
+      ),
 
     /**
      * How many reverse proxies sit in front of the API (Express `trust proxy`). 0 = none, so
@@ -209,7 +223,10 @@ export const envSchema = z
     if (env.MAIL_TRANSPORT !== 'smtp') {
       issue('MAIL_TRANSPORT', 'must be smtp in production');
     }
-    if (!URL.canParse(env.APP_PUBLIC_URL) || new URL(env.APP_PUBLIC_URL).hostname === 'localhost') {
+    if (
+      !URL.canParse(env.APP_PUBLIC_URL) ||
+      new URL(env.APP_PUBLIC_URL).hostname === 'localhost'
+    ) {
       issue('APP_PUBLIC_URL', 'must be a public URL in production');
     }
     for (const [key, secret] of [
@@ -217,7 +234,10 @@ export const envSchema = z
       ['JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET],
     ]) {
       if (secret.length < 32 || secret.toLowerCase().includes('change-me')) {
-        issue(key, 'must be at least 32 characters and not an example placeholder in production');
+        issue(
+          key,
+          'must be at least 32 characters and not an example placeholder in production',
+        );
       }
     }
     if (env.PAYMENTS_PROVIDER !== 'stripe' && !env.ALLOW_UNPAID_PLANS) {
@@ -226,7 +246,10 @@ export const envSchema = z
         'must be stripe in production unless ALLOW_UNPAID_PLANS=true is explicitly set',
       );
     }
-    if (env.ASSETS_BASE_URL && new URL(env.ASSETS_BASE_URL).protocol !== 'https:') {
+    if (
+      env.ASSETS_BASE_URL &&
+      new URL(env.ASSETS_BASE_URL).protocol !== 'https:'
+    ) {
       issue('ASSETS_BASE_URL', 'must use https in production');
     }
   })
@@ -238,7 +261,9 @@ export const envSchema = z
     observeEnabled: Boolean(env.OBSERVE_APP_KEY && env.OBSERVE_APP_SECRET),
     /** Google sign-in is registered only when all three halves exist; otherwise its routes answer 503. */
     googleOAuthEnabled: Boolean(
-      env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET && env.GOOGLE_CALLBACK_URL,
+      env.GOOGLE_CLIENT_ID &&
+      env.GOOGLE_CLIENT_SECRET &&
+      env.GOOGLE_CALLBACK_URL,
     ),
     corsOrigins: env.CORS_ORIGIN.split(',')
       .map((origin) => origin.trim())
