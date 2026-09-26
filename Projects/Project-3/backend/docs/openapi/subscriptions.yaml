@@ -56,6 +56,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubscriptionDto'
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingPlanDto'
       security:
         - bearer: []
       tags: *ref_0
@@ -63,8 +69,11 @@ paths:
       description: >-
         The mandatory step after activation: features that need a plan answer
         402 until one is chosen. Admin only. Billing is anchored to today's day
-        of the month; the first period starts at UTC midnight today. Returns 409
-        if a plan already exists — use `PATCH /subscriptions/me` to change it.
+        of the month; the first period starts at UTC midnight today. Free
+        activates immediately. Basic and Premium return 202 with a hosted Stripe
+        Checkout URL and remain inactive until a verified Stripe webhook
+        provisions them. Returns 409 if a plan already exists — use `PATCH
+        /subscriptions/me` to change it.
     patch:
       operationId: SubscriptionsController_change
       parameters:
@@ -90,18 +99,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PlanChangeResultDto'
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingPlanDto'
       security:
         - bearer: []
       tags: *ref_0
       summary: Change plan
       description: >-
-        Upgrade or downgrade. A change is a new activation: the outgoing period
-        is closed and invoiced for the days it ran (the switch day belongs to
-        the new plan), and a fresh period opens today, re-anchoring billing to
-        today's day of the month. `prorationCents` is the total of that closing
-        invoice. Rejected with 409, naming the numbers, if the company is over
-        the target plan's employee cap or (for Free and Basic) has already
-        uploaded more files this period than it allows. Admin only.
+        Upgrade or downgrade. With Stripe configured, the request returns 202
+        while the current local plan remains authoritative; Stripe applies
+        immediate proration and resets the billing cycle, and only a verified
+        webhook changes Gridline's local plan. The local development fallback
+        keeps the deterministic calculator path. Rejected with 409, naming the
+        numbers, if the company is over the target plan's employee cap or (for
+        Free and Basic) has already uploaded more files this period than it
+        allows, or while a dataset exceeds the target's version cap. Admin only.
 
 
         Send an `Idempotency-Key` (a UUID) so a retried request is not applied —
@@ -138,6 +154,19 @@ components:
       bearerFormat: JWT
       type: http
   schemas:
+    StripeWebhookDto:
+      type: object
+      properties:
+        received:
+          type: boolean
+        duplicate:
+          type: boolean
+        applied:
+          type: boolean
+      required:
+        - received
+        - duplicate
+        - applied
     UploadFileBodyDoc:
       type: object
       properties:
@@ -862,12 +891,37 @@ components:
           type: string
           enum:
             - finalized
+            - draft
+            - open
+            - paid
+            - uncollectible
+            - void
         dueDate:
           type: string
           format: date-time
         createdAt:
           type: string
           format: date-time
+        provider:
+          type: string
+          enum:
+            - local
+            - stripe
+        stripeHostedInvoiceUrl:
+          type: object
+          nullable: true
+        stripeInvoicePdfUrl:
+          type: object
+          nullable: true
+        currency:
+          type: object
+          nullable: true
+        paymentAttempts:
+          type: number
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
       required:
         - id
         - plan
@@ -878,6 +932,8 @@ components:
         - status
         - dueDate
         - createdAt
+        - provider
+        - paymentAttempts
     InvoicePageDto:
       type: object
       properties:
@@ -890,6 +946,14 @@ components:
       required:
         - data
         - meta
+    PortalSessionDto:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
     NotificationDto:
       type: object
       properties:
@@ -1105,6 +1169,29 @@ components:
           enum: *ref_3
       required:
         - plan
+    PendingPlanDto:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - pending
+        intentId:
+          type: string
+          format: uuid
+        targetPlan:
+          type: string
+          enum: *ref_3
+        checkoutUrl:
+          type: object
+          nullable: true
+          description: >-
+            Hosted Stripe Checkout URL. Null for changes to an existing paid
+            subscription.
+      required:
+        - state
+        - intentId
+        - targetPlan
     PlanChangeResultDto:
       type: object
       properties:
@@ -1953,6 +2040,11 @@ components:
             - subscription.created
             - subscription.changed
             - billing.invoice_finalized
+            - billing.checkout_started
+            - billing.payment_failed
+            - billing.payment_succeeded
+            - billing.company_suspended
+            - billing.company_reactivated
             - api_key.created
             - api_key.revoked
             - file.uploaded

@@ -526,6 +526,19 @@ components:
       bearerFormat: JWT
       type: http
   schemas:
+    StripeWebhookDto:
+      type: object
+      properties:
+        received:
+          type: boolean
+        duplicate:
+          type: boolean
+        applied:
+          type: boolean
+      required:
+        - received
+        - duplicate
+        - applied
     UploadFileBodyDoc:
       type: object
       properties:
@@ -1250,12 +1263,37 @@ components:
           type: string
           enum:
             - finalized
+            - draft
+            - open
+            - paid
+            - uncollectible
+            - void
         dueDate:
           type: string
           format: date-time
         createdAt:
           type: string
           format: date-time
+        provider:
+          type: string
+          enum:
+            - local
+            - stripe
+        stripeHostedInvoiceUrl:
+          type: object
+          nullable: true
+        stripeInvoicePdfUrl:
+          type: object
+          nullable: true
+        currency:
+          type: object
+          nullable: true
+        paymentAttempts:
+          type: number
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
       required:
         - id
         - plan
@@ -1266,6 +1304,8 @@ components:
         - status
         - dueDate
         - createdAt
+        - provider
+        - paymentAttempts
     InvoicePageDto:
       type: object
       properties:
@@ -1278,6 +1318,14 @@ components:
       required:
         - data
         - meta
+    PortalSessionDto:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
     NotificationDto:
       type: object
       properties:
@@ -1493,6 +1541,29 @@ components:
           enum: *ref_4
       required:
         - plan
+    PendingPlanDto:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - pending
+        intentId:
+          type: string
+          format: uuid
+        targetPlan:
+          type: string
+          enum: *ref_4
+        checkoutUrl:
+          type: object
+          nullable: true
+          description: >-
+            Hosted Stripe Checkout URL. Null for changes to an existing paid
+            subscription.
+      required:
+        - state
+        - intentId
+        - targetPlan
     PlanChangeResultDto:
       type: object
       properties:
@@ -2341,6 +2412,11 @@ components:
             - subscription.created
             - subscription.changed
             - billing.invoice_finalized
+            - billing.checkout_started
+            - billing.payment_failed
+            - billing.payment_succeeded
+            - billing.company_suspended
+            - billing.company_reactivated
             - api_key.created
             - api_key.revoked
             - file.uploaded

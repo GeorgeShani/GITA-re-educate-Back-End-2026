@@ -11,10 +11,13 @@ import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
 import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
+import { BillingIntentService, type PendingBillingIntent } from '#/payments/billing-intent.service.js';
 import { PLAN_CATALOG, type Plan, maxSeats } from './plan-catalog.js';
 import { planChangeProblems } from './plan-change.js';
 import { SubscriptionChange } from './subscription-change.entity.js';
 import { Subscription } from './subscription.entity.js';
+import { FileAsset } from '#/files/file-asset.entity.js';
+import { z } from 'zod';
 
 export interface SubscriptionView {
   plan: Plan;
@@ -24,6 +27,19 @@ export interface SubscriptionView {
   usage: { files: number; employees: number; seats: number };
   nextDueDate: Date;
 }
+
+export type ChooseSubscriptionResult =
+  | { kind: 'active'; view: SubscriptionView }
+  | { kind: 'pending'; intent: PendingBillingIntent };
+
+export type ChangeSubscriptionResult =
+  | {
+      kind: 'active';
+      view: SubscriptionView;
+      previousPlan: Plan;
+      prorationCents: number;
+    }
+  | { kind: 'pending'; intent: PendingBillingIntent };
 
 const NO_PLAN = 'No plan selected yet. Choose one with POST /subscriptions/me.';
 
@@ -36,6 +52,7 @@ export class SubscriptionsService {
     private readonly usage: UsageService,
     private readonly audit: AuditService,
     private readonly metrics: BusinessMetrics,
+    private readonly billingIntents: BillingIntentService,
     private readonly context: RequestContextService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
@@ -66,6 +83,69 @@ export class SubscriptionsService {
       .andWhere("u.role = 'employee'")
       .andWhere("u.status IN ('invited', 'active')")
       .getCount();
+  }
+
+  activeEmployees(manager: EntityManager, companyId: string): Promise<number> {
+    return this.tenantScope
+      .forCompany(manager.getRepository(User), companyId, 'u')
+      .andWhere("u.role = 'employee'")
+      .andWhere("u.status = 'active'")
+      .getCount();
+  }
+
+  async requestChoose(plan: Plan): Promise<ChooseSubscriptionResult> {
+    if (!this.billingIntents.enabled || plan === 'free') {
+      return { kind: 'active', view: await this.choose(plan) };
+    }
+    const companyId = this.context.requireCompanyId();
+    if (await this.exists(companyId)) {
+      throw new ConflictException(
+        'This company already has a plan. Change it with PATCH /subscriptions/me.',
+      );
+    }
+    const activeEmployees = await this.activeEmployees(this.dataSource.manager, companyId);
+    return {
+      kind: 'pending',
+      intent: await this.billingIntents.beginCheckout(companyId, plan, activeEmployees),
+    };
+  }
+
+  async requestChange(target: Plan): Promise<ChangeSubscriptionResult> {
+    if (!this.billingIntents.enabled) {
+      const changed = await this.change(target);
+      return { kind: 'active', ...changed };
+    }
+
+    const companyId = this.context.requireCompanyId();
+    const subscription = await this.dataSource.getRepository(Subscription).findOne({
+      where: { companyId },
+    });
+    if (!subscription) throw new NotFoundException(NO_PLAN);
+    if (subscription.plan === target) {
+      throw new ConflictException(`This company is already on the ${target} plan.`);
+    }
+    await this.assertPlanChangeAllowed(subscription, target);
+    if (subscription.plan === 'free' && target !== 'free') {
+      return {
+        kind: 'pending',
+        intent: await this.billingIntents.beginCheckout(
+          companyId,
+          target,
+          await this.activeEmployees(this.dataSource.manager, companyId),
+        ),
+      };
+    }
+    if (target === 'free') {
+      return { kind: 'pending', intent: await this.billingIntents.beginCancellation(companyId) };
+    }
+    return {
+      kind: 'pending',
+      intent: await this.billingIntents.beginPaidChange(
+        companyId,
+        target,
+        await this.activeEmployees(this.dataSource.manager, companyId),
+      ),
+    };
   }
 
   async view(manager: EntityManager = this.dataSource.manager): Promise<SubscriptionView> {
@@ -215,6 +295,36 @@ export class SubscriptionsService {
     });
     this.metrics.subscriptionChanged(target);
     return changed;
+  }
+
+  private async assertPlanChangeAllowed(subscription: Subscription, target: Plan): Promise<void> {
+    const companyId = subscription.companyId;
+    const problems = planChangeProblems(target, {
+      qualityRules: await this.tenantScope
+        .forCompany(this.dataSource.getRepository(QualityRule), companyId, 'r')
+        .getCount(),
+      employees: await this.employeeSeatsHeld(this.dataSource.manager, companyId),
+      files: await this.usage.filesInPeriod(
+        this.dataSource.manager,
+        companyId,
+        periodKey({ start: subscription.currentPeriodStart, end: subscription.currentPeriodEnd }),
+      ),
+      maxDatasetVersions: await this.maximumLiveVersions(companyId),
+    });
+    if (problems.length > 0) throw new ConflictException(problems);
+  }
+
+  private async maximumLiveVersions(companyId: string): Promise<number> {
+    const rows: unknown = await this.dataSource
+      .getRepository(FileAsset)
+      .createQueryBuilder('f')
+      .select('COUNT(*)', 'versions')
+      .where('f.companyId = :companyId', { companyId })
+      .andWhere('f.deletedAt IS NULL')
+      .groupBy('f.datasetId')
+      .getRawMany();
+    const parsed = z.array(z.object({ versions: z.coerce.number().int().nonnegative() })).parse(rows);
+    return parsed.reduce((maximum, row) => Math.max(maximum, row.versions), 0);
   }
 
   private async describe(

@@ -17,6 +17,7 @@ import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation, uniqueViolationConstraint } from '#/database/pg-errors.js';
+import { BillingSyncService } from '#/payments/billing-sync.service.js';
 import { OAUTH_EXCHANGE_TOKEN_TTL_MS } from '../auth.constants.js';
 import { AuthTokenService } from '../auth-token.service.js';
 import { type Session, SessionService } from '../session.service.js';
@@ -70,6 +71,7 @@ export class OAuthService {
     private readonly authTokens: AuthTokenService,
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
+    private readonly billingSync: BillingSyncService,
     private readonly logger: PinoLogger,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -315,6 +317,7 @@ export class OAuthService {
             activeFrom: now,
             activeTo: null,
           });
+          await this.billingSync.recordSeatChange(manager, user.companyId, now);
         }
         await this.audit.record(
           {

@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppHarness, DEFAULT_PASSWORD } from '#test/support/app-harness.js';
 import { BillingCycleService } from '#/billing/cycle/billing-cycle.service.js';
+import { BillingIntentService } from '#/payments/billing-intent.service.js';
+import { BillingAccount } from '#/payments/billing-account.entity.js';
+import { DunningEvaluator } from '#/payments/dunning-evaluator.service.js';
+import type { PaymentInvoice, VerifiedPaymentEvent } from '#/payments/payment-provider.js';
+import { StripeWebhookService } from '#/payments/stripe-webhook.service.js';
 import { AUDIT_ACTIONS } from './audit-actions.js';
 
 /**
@@ -108,6 +113,53 @@ describe('audit coverage (integration)', () => {
     await h.http().patch('/subscriptions/me').set(...h.bearer(session)).send({ plan: 'premium' }).expect(200);
     h.clock.set(new Date('2026-05-02T00:10:00.000Z'));
     await h.app.get(BillingCycleService).runCycle();
+
+    // Stripe billing lifecycle. The harness fake is intentionally network-free even though
+    // this app instance keeps the legacy provider disabled for all earlier flows.
+    await h.app.get(BillingIntentService).beginCheckout(admin.companyId, 'basic', 0);
+    const billingAccount = await h.dataSource.getRepository(BillingAccount).findOneByOrFail({
+      companyId: admin.companyId,
+    });
+    const stripeInvoice: PaymentInvoice = {
+      id: 'in_audit_coverage',
+      customerId: billingAccount.stripeCustomerId ?? 'missing',
+      subscriptionId: null,
+      status: 'open',
+      totalCents: 500,
+      currency: 'usd',
+      periodStart: new Date('2026-05-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-06-01T00:00:00.000Z'),
+      dueAt: null,
+      hostedUrl: 'https://invoice.stripe.test/in_audit_coverage',
+      pdfUrl: null,
+      attempts: 1,
+      attemptedAt: h.clock.now(),
+      paidAt: null,
+    };
+    h.payments.invoices.set(stripeInvoice.id, stripeInvoice);
+    const failedEvent: VerifiedPaymentEvent = {
+      id: 'evt_audit_failed',
+      type: 'invoice.payment_failed',
+      createdAt: h.clock.now(),
+      livemode: false,
+      customerId: stripeInvoice.customerId,
+      subscriptionId: null,
+      invoiceId: stripeInvoice.id,
+      checkoutSessionId: null,
+    };
+    await h.app
+      .get(StripeWebhookService)
+      .handle(h.payments.issueWebhook(failedEvent), 'valid');
+    h.clock.advance(8 * 86_400_000);
+    await h.app.get(DunningEvaluator).evaluate();
+
+    stripeInvoice.status = 'paid';
+    stripeInvoice.paidAt = h.clock.now();
+    h.payments.invoices.set(stripeInvoice.id, stripeInvoice);
+    await h.app.get(StripeWebhookService).handle(
+      h.payments.issueWebhook({ ...failedEvent, id: 'evt_audit_paid', type: 'invoice.payment_succeeded' }),
+      'valid',
+    );
 
     const recorded = await recordedActions();
     const missing = AUDIT_ACTIONS.filter((action) => !recorded.has(action));

@@ -19,16 +19,16 @@ describe('cursor codec', () => {
   });
 
   it('rejects garbage input rather than returning a nonsense date', () => {
-    expect(() => decodeCursor('not-a-real-cursor')).toThrowError(BadRequestException);
+    expect(() => decodeCursor('not-a-real-cursor')).toThrow(BadRequestException);
   });
 
   it('rejects a well-formed-but-incomplete payload', () => {
     const missingId = Buffer.from('2026-01-01T00:00:00.000Z', 'utf8').toString('base64url');
-    expect(() => decodeCursor(missingId)).toThrowError(BadRequestException);
+    expect(() => decodeCursor(missingId)).toThrow(BadRequestException);
   });
 
   it('rejects a payload with an unparsable date', () => {
     const badDate = Buffer.from('not-a-date|some-id', 'utf8').toString('base64url');
-    expect(() => decodeCursor(badDate)).toThrowError(BadRequestException);
+    expect(() => decodeCursor(badDate)).toThrow(BadRequestException);
   });
 });

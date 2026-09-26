@@ -31,6 +31,7 @@
     "billing:run-cycle": "node dist/billing/cycle/run-cycle.js",
     "seed:all": "node dist/seeds/seed-all.js",
     "seed:demo": "node dist/demo/seed-demo.js",
+    "stripe:verify-catalog": "npm run build && node dist/payments/verify-stripe-catalog.js",
     "migration:generate": "npm run build && typeorm migration:generate -d dist/database/data-source.js",
     "migration:run": "node dist/database/migrate.js",
     "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",
@@ -82,6 +83,7 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "stripe": "^22.6.2",
     "typeorm": "^1.1.1",
     "zod": "^4.6.4"
   },

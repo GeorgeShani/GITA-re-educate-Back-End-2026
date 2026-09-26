@@ -40,6 +40,27 @@ describe('planChangeProblems', () => {
     ]);
   });
 
+  it('blocks a downgrade while one dataset exceeds the target version cap', () => {
+    expect(
+      planChangeProblems('free', {
+        employees: 0,
+        files: 5,
+        qualityRules: 0,
+        maxDatasetVersions: 6,
+      }),
+    ).toEqual([
+      'Free keeps up to 5 versions per file, but one dataset has 6 — delete old versions first.',
+    ]);
+    expect(
+      planChangeProblems('premium', {
+        employees: 0,
+        files: 5,
+        qualityRules: 0,
+        maxDatasetVersions: 500,
+      }),
+    ).toEqual([]);
+  });
+
   it('reports every problem at once, not just the first', () => {
     expect(planChangeProblems('free', { employees: 4, files: 50, qualityRules: 0 })).toHaveLength(2);
   });

@@ -4,7 +4,13 @@ import { OffsetPageOf } from '#/common/pagination/offset-page.dto.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { PLANS, type Plan } from '#/subscriptions/plan-catalog.js';
 import { parseLineItems } from '../line-item.schema.js';
-import { INVOICE_STATUSES, type Invoice, type InvoiceStatus } from '../invoice.entity.js';
+import {
+  INVOICE_PROVIDERS,
+  INVOICE_STATUSES,
+  type Invoice,
+  type InvoiceProvider,
+  type InvoiceStatus,
+} from '../invoice.entity.js';
 import { LineItemDto } from './statement.dto.js';
 
 /** A finalized invoice. Immutable: what it says now is what it said when it was issued. */
@@ -49,6 +55,30 @@ export class InvoiceDto {
   @ApiProperty({ type: String, format: 'date-time' })
   @Expose()
   createdAt!: Date;
+
+  @ApiProperty({ enum: INVOICE_PROVIDERS })
+  @Expose()
+  provider!: InvoiceProvider;
+
+  @ApiProperty({ required: false, nullable: true })
+  @Expose()
+  stripeHostedInvoiceUrl!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  @Expose()
+  stripeInvoicePdfUrl!: string | null;
+
+  @ApiProperty({ required: false, nullable: true })
+  @Expose()
+  currency!: string | null;
+
+  @ApiProperty()
+  @Expose()
+  paymentAttempts!: number;
+
+  @ApiProperty({ type: String, format: 'date-time', required: false, nullable: true })
+  @Expose()
+  paidAt!: Date | null;
 
   /** `lineItems` is `jsonb`; it is parsed, never trusted, on its way out. */
   static from(invoice: Invoice): InvoiceDto {

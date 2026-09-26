@@ -30,16 +30,16 @@ describe('ParseSortPipe', () => {
   });
 
   it('rejects a field outside the whitelist, naming it', () => {
-    expect(() => pipe.transform('secret')).toThrowError(BadRequestException);
-    expect(() => pipe.transform('secret')).toThrowError(/secret/);
+    expect(() => pipe.transform('secret')).toThrow(BadRequestException);
+    expect(() => pipe.transform('secret')).toThrow(/secret/);
   });
 
   it('rejects one bad field even when others in the list are valid', () => {
-    expect(() => pipe.transform('createdAt,secret')).toThrowError(BadRequestException);
+    expect(() => pipe.transform('createdAt,secret')).toThrow(BadRequestException);
   });
 
   it('never allows a field wider than the whitelist it was built with', () => {
     const narrow = new ParseSortPipe(['id']);
-    expect(() => narrow.transform('createdAt')).toThrowError(BadRequestException);
+    expect(() => narrow.transform('createdAt')).toThrow(BadRequestException);
   });
 });

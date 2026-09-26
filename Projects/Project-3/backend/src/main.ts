@@ -38,6 +38,7 @@ async function bootstrap(): Promise<void> {
     // nestjs-pino 4 (it silently dropped every line); re-attempted here on
     // Nest 12 + nestjs-pino 5, and verified by the gate.
     bufferLogs: true,
+    rawBody: true,
   });
 
   app.useLogger(app.get(Logger));

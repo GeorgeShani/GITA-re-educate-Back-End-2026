@@ -31,6 +31,7 @@ import { TenantScope } from '#/database/tenant-scope.js';
 import { type OffsetPage } from '#/common/pagination/paginated-result.js';
 import { toOffsetPage } from '#/common/pagination/paginate.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
+import { BillingSyncService } from '#/payments/billing-sync.service.js';
 import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { EmployeesQueryDto } from './dto/employees-query.dto.js';
 import type { InviteEmployeeDto } from './dto/invite-employee.dto.js';
@@ -50,6 +51,7 @@ export class EmployeesService {
     private readonly queue: TaskQueue,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeEmitter,
+    private readonly billingSync: BillingSyncService,
     private readonly context: RequestContextService,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -192,6 +194,9 @@ export class EmployeesService {
         .set({ activeTo: now })
         .where('"userId" = :userId AND "activeTo" IS NULL', { userId: target.id })
         .execute();
+      if (target.status === 'active') {
+        await this.billingSync.recordSeatChange(manager, companyId, now);
+      }
 
       await manager.delete(AuthIdentity, { userId: target.id });
       // Access they were granted to restricted files goes with them. Files they

@@ -34,6 +34,11 @@ export const AUDIT_ACTIONS = [
   'subscription.created',
   'subscription.changed',
   'billing.invoice_finalized',
+  'billing.checkout_started',
+  'billing.payment_failed',
+  'billing.payment_succeeded',
+  'billing.company_suspended',
+  'billing.company_reactivated',
   // API keys
   'api_key.created',
   'api_key.revoked',

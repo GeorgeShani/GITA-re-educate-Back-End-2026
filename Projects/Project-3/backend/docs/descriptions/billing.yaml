@@ -36,3 +36,11 @@ BillingController_invoice:
     An invoice with its line items. Invoices are immutable: what this returns is what
     was issued, even if the plan has changed since. Another company's invoice is a 404.
     Admin only.
+
+BillingController_portalSession:
+  summary: Open Stripe billing management
+  description: >-
+    Creates a short-lived Stripe Customer Portal session for the company. The portal permits
+    payment-method changes and invoice history only; plan changes stay in Gridline so its
+    downgrade checks cannot be bypassed. Admin only, and deliberately available while the
+    company is suspended for an overdue payment.

@@ -94,6 +94,24 @@ export const TEMPLATES: Record<MailTemplateName, TemplateDefinition> = {
         <mj-text>Your password was just changed and all other sessions were signed out. If this was not you, reset your password immediately.</mj-text>`),
   },
 
+  payment_failed: {
+    subject: 'Payment failed for {{companyName}}',
+    text: 'We could not collect {{totalFormatted}} for {{companyName}}. Update the payment method before {{graceEndsAt}} to avoid suspension.\n{{billingUrl}}',
+    mjml: layout(`
+        <mj-text>We could not collect <strong>{{totalFormatted}}</strong> for <strong>{{companyName}}</strong>.</mj-text>
+        <mj-text>Update the payment method before {{graceEndsAt}} to avoid suspension.</mj-text>
+        ${button('Fix billing', '{{billingUrl}}')}`),
+  },
+
+  payment_recovered: {
+    subject: 'Payment received for {{companyName}}',
+    text: 'Payment for {{companyName}} succeeded. Billing access is current again.\n{{billingUrl}}',
+    mjml: layout(`
+        <mj-text>Payment for <strong>{{companyName}}</strong> succeeded.</mj-text>
+        <mj-text>Billing access is current again.</mj-text>
+        ${button('View billing', '{{billingUrl}}')}`),
+  },
+
   invoice_finalized: {
     subject: 'Your Gridline invoice for {{periodStart}} – {{periodEnd}}',
     text: 'Your invoice for {{companyName}} ({{periodStart}} – {{periodEnd}}) is ready. Total: {{totalFormatted}}\n{{invoiceUrl}}',

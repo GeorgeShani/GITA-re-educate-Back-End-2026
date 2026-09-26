@@ -173,11 +173,24 @@ describe('database indexes', () => {
     expect(index?.indexdef).toMatch(/\("companyId", "effectiveAt"\)/);
   });
 
-  it('makes an invoice unique per (companyId, periodStart), which is what makes rollover idempotent', () => {
-    const index = find('invoice', 'companyId', 'periodStart');
+  it('makes each local invoice period unique while allowing Stripe proration invoices in the same period', () => {
+    const index = indexes.find((row) => row.indexname === 'idx_invoice_local_period_unique');
     expect(index).toBeDefined();
     expect(index?.indexdef).toMatch(/UNIQUE/);
+    expect(index?.indexdef).toMatch(/WHERE.*provider.*local/);
     expect(index?.indexdef.indexOf('companyId')).toBeLessThan(index?.indexdef.indexOf('periodStart') ?? 0);
+  });
+
+  it('indexes Stripe billing identities, event deduplication and ordered seat synchronization', () => {
+    expect(find('billing_account', 'companyId')?.indexdef).toMatch(/UNIQUE/);
+    expect(find('billing_account', 'stripeCustomerId')?.indexdef).toMatch(/UNIQUE/);
+    expect(find('billing_account', 'stripeSubscriptionId')?.indexdef).toMatch(/UNIQUE/);
+    expect(find('stripe_event', 'stripeEventId')?.indexdef).toMatch(/UNIQUE/);
+    expect(find('seat_sync', 'companyId', 'sequence')?.indexdef).toMatch(/UNIQUE/);
+    expect(indexes.find((row) => row.indexname === 'idx_seat_sync_company_status_sequence')?.indexdef).toMatch(
+      /\("companyId", status, sequence\)/,
+    );
+    expect(find('invoice', 'stripeInvoiceId')?.indexdef).toMatch(/UNIQUE/);
   });
 
   it('deliberately does not index invoice.lineItems', () => {

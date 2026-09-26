@@ -67,6 +67,27 @@ All three must be set, otherwise Google routes answer 503 and password auth is u
 | `GOOGLE_CLIENT_SECRET` 🔒 | The same client. |
 | `GOOGLE_CALLBACK_URL` | `${public origin}/api/auth/google/callback`, and it must also be listed as an **authorized redirect URI** on the client. `http://localhost:3000/api/auth/google/callback` behind Caddy; `http://localhost:4000/auth/google/callback` for a bare `start:dev`. |
 
+## Stripe Billing
+
+Production uses Stripe as the authority for paid billing cycles, proration, invoices and payment
+state. Gridline remains authoritative for permissions, plan limits, usage records and downgrade
+validation. Configure the four immutable monthly prices, the file meter, a Customer Portal
+configuration that permits only payment-method updates and invoice history, and the webhook
+endpoint. Run `npm run stripe:verify-catalog` during deployment to prove the Dashboard resources
+still match Gridline's product rules without adding a Stripe network dependency to every boot.
+
+| Variable | Notes |
+|---|---|
+| `PAYMENTS_PROVIDER` | `stripe` in production; `none` keeps the deterministic local calculator available for offline development. |
+| `ALLOW_UNPAID_PLANS` | Explicit production escape hatch. Keep `false` for the real product. |
+| `STRIPE_SECRET_KEY` 🔒 / `STRIPE_WEBHOOK_SECRET` 🔒 | Stripe API key and signing secret. The callback verifies the exact raw body. |
+| `STRIPE_WEBHOOK_ENDPOINT_ID` | `we_…` id checked by `stripe:verify-catalog`. |
+| `STRIPE_BASIC_BASE_PRICE_ID` / `STRIPE_BASIC_SEAT_PRICE_ID` | Monthly $0 base and licensed $5 active-employee price. |
+| `STRIPE_PREMIUM_BASE_PRICE_ID` / `STRIPE_PREMIUM_OVERAGE_PRICE_ID` | Monthly $300 base and graduated metered usage (1000 free, then $0.50/file). |
+| `STRIPE_FILE_METER_ID` / `STRIPE_FILE_METER_EVENT_NAME` | Stripe meter and event name. Usage-event UUIDs are sent as idempotency identifiers. |
+| `STRIPE_PORTAL_CONFIGURATION_ID` | Portal configuration for cards and invoice history only. |
+| `STRIPE_DUNNING_GRACE_DAYS` | Days after a failed invoice before the company is suspended; default 7. |
+
 ## Rate limiting & proxies
 
 | Variable | Default | Notes |

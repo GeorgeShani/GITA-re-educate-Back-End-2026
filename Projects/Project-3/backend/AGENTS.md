@@ -694,8 +694,8 @@ document.
 - **Inherited access.** A version takes the visibility and grants of the dataset's current latest, plus that version's UPLOADER
   (so an admin adding v2 does not lock out the employee who uploaded v1), keeping only active members. It does NOT notify
   `file.shared`. After creation each version's access is its own (`PATCH /files/:id` changes one version).
-- **Limits:** `PLAN_CATALOG[plan].maxVersionsPerDataset` (Free 5, Basic 50, Premium unlimited) counts LIVE versions; a downgrade is
-  not refused over it (existing versions stay, new ones are blocked). Every version also consumes the file quota.
+- **Limits:** `PLAN_CATALOG[plan].maxVersionsPerDataset` (Free 5, Basic 50, Premium unlimited) counts LIVE versions. A downgrade is
+  refused when any dataset exceeds the target cap; every version also consumes the file quota.
 - **Listing:** `GET /files` adds `f.isLatest = true` (so the PARTIAL index `idx_file_asset_company_live` — now `WHERE deletedAt IS NULL
   AND isLatest` — still serves the default list); `?allVersions=true` drops it and uses a full tenant index. `GET /files/:id/versions`
   lists a dataset's versions the caller may see (offset, newest first). `query-plan.integration.spec.ts` builds its query with the
@@ -710,6 +710,32 @@ document.
   report rebuild re-sends it (no dedupe).
 - Migration `FileVersions` is hand-edited: `datasetId` is added nullable, backfilled from `id`, then NOT NULL; the partial index is
   recreated with `AND "isLatest"`.
+
+## Stripe subscriptions *(from Phase 17.5 of the product plan)*
+
+- **Stripe is authoritative for paid billing.** Stripe owns paid billing cycles, proration, invoices, payment attempts and payment
+  state. Gridline owns authorization, plan limits, usage records and downgrade validation. The local calculator remains an estimate
+  and regression oracle; it must not create chargeable paid invoices when Stripe is enabled.
+- `PAYMENT_PROVIDER` is the only external payment boundary. Automated tests override it with `FakePaymentProvider`; application
+  services never import the Stripe SDK directly. `PAYMENTS_PROVIDER=none` is an explicit local-development mode, not a production
+  billing implementation.
+- A paid plan request first writes a `BillingAccount.pendingIntentId`; the local plan stays unchanged until a verified Stripe webhook
+  retrieves and applies the provider's current subscription. A newer intent supersedes older Checkout sessions. A stale completed
+  session is ignored and its accidental Stripe subscription is cancelled.
+- `POST /webhooks/stripe` is public because Stripe cannot authenticate as a Gridline user, but it verifies the signature against the
+  exact Nest raw body. Processing inserts `StripeEvent` in the same transaction for deduplication, resolves the tenant from the
+  stored Stripe customer ID (never metadata), and retrieves current Stripe state before applying an event so out-of-order delivery
+  cannot restore a stale plan.
+- Basic bills **active employees only**. Invite acceptance and employee disable enqueue ordered `SeatSync` rows in the business
+  transaction. Premium upload records enqueue usage synchronization after the usage row exists; the immutable usage-event ID is the
+  Stripe meter identifier and therefore the retry idempotency key.
+- Legacy local invoices remain readable. Their rollover uniqueness is the partial index
+  `idx_invoice_local_period_unique`; Stripe invoices are unique by `stripeInvoiceId` and are mirrored from webhooks.
+- Payment failure starts a configurable grace period. `DunningEvaluator` suspends only after the grace expires; successful payment
+  reactivates the company once no overdue invoice remains. Suspended admins can sign in, read billing, and create a portal session;
+  employees remain blocked.
+- `npm run stripe:verify-catalog` is the deployment-time network check for immutable price, meter, portal and webhook configuration.
+  Ordinary application boot validates configuration shape but never depends on Stripe network availability.
 
 ## Pagination & sorting *(from Phase 3)*
 
@@ -902,9 +928,12 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `usage_event` — `(companyId, periodKey)`
 - [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`
 - [x] `subscription` — UNIQUE `(companyId)`; `subscription_change` —
-      `(companyId, effectiveAt)`; `invoice` — UNIQUE `(companyId, periodStart)`
-      (also what makes the rollover idempotent); `seat_interval` —
+      `(companyId, effectiveAt)`; `invoice` — UNIQUE `(stripeInvoiceId)` plus partial UNIQUE
+      `(companyId, periodStart) WHERE provider = 'local'` (what makes legacy rollover idempotent); `seat_interval` —
       `(companyId, activeFrom)` + `(userId)`
+- [x] `billing_account` — UNIQUE `(companyId)`, `(stripeCustomerId)`, `(stripeSubscriptionId)`;
+      `stripe_event` — UNIQUE `(stripeEventId)`; `seat_sync` — UNIQUE `(companyId, sequence)` plus
+      `(companyId, status, sequence)` for ordered delivery
 - [x] `data_quality_report` — UNIQUE `(fileId)`, `(companyId, status)`
 - [x] `api_key` — UNIQUE `(keyHash)`, `(companyId, createdAt)`, `(companyId, createdByUserId)`
 - [x] `notification` — `(companyId, userId, createdAt, id)`; `quota_alert` — UNIQUE `(companyId, periodKey, threshold)`

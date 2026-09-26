@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/webhooks/stripe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive a Stripe billing event
+         * @description Public Stripe callback. The API verifies the signature over the exact raw request body, deduplicates the event, retrieves current Stripe state to defeat out-of-order delivery, and then mirrors subscription or invoice state transactionally. Browser redirects never provision a paid plan. Invalid signatures return 400 and reveal no tenant information.
+         */
+        post: operations["StripeWebhookController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files": {
         parameters: {
             query?: never;
@@ -268,6 +288,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/billing/portal-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Open Stripe billing management
+         * @description Creates a short-lived Stripe Customer Portal session for the company. The portal permits payment-method changes and invoice history only; plan changes stay in Gridline so its downgrade checks cannot be bypassed. Admin only, and deliberately available while the company is suspended for an overdue payment.
+         */
+        post: operations["BillingController_portalSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notifications": {
         parameters: {
             query?: never;
@@ -391,7 +431,7 @@ export interface paths {
         put?: never;
         /**
          * Choose the first plan
-         * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
+         * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Free activates immediately. Basic and Premium return 202 with a hosted Stripe Checkout URL and remain inactive until a verified Stripe webhook provisions them. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
          */
         post: operations["SubscriptionsController_choose"];
         delete?: never;
@@ -399,7 +439,7 @@ export interface paths {
         head?: never;
         /**
          * Change plan
-         * @description Upgrade or downgrade. A change is a new activation: the outgoing period is closed and invoiced for the days it ran (the switch day belongs to the new plan), and a fresh period opens today, re-anchoring billing to today's day of the month. `prorationCents` is the total of that closing invoice. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows. Admin only.
+         * @description Upgrade or downgrade. With Stripe configured, the request returns 202 while the current local plan remains authoritative; Stripe applies immediate proration and resets the billing cycle, and only a verified webhook changes Gridline's local plan. The local development fallback keeps the deterministic calculator path. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows, or while a dataset exceeds the target's version cap. Admin only.
          *
          *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
          *
@@ -1167,6 +1207,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        StripeWebhookDto: {
+            received: boolean;
+            duplicate: boolean;
+            applied: boolean;
+        };
         UploadFileBodyDoc: {
             /**
              * @default company
@@ -1479,15 +1524,27 @@ export interface components {
             /** @description Integer cents. */
             totalCents: number;
             /** @enum {string} */
-            status: "finalized";
+            status: "finalized" | "draft" | "open" | "paid" | "uncollectible" | "void";
             /** Format: date-time */
             dueDate: string;
             /** Format: date-time */
             createdAt: string;
+            /** @enum {string} */
+            provider: "local" | "stripe";
+            stripeHostedInvoiceUrl?: Record<string, never> | null;
+            stripeInvoicePdfUrl?: Record<string, never> | null;
+            currency?: Record<string, never> | null;
+            paymentAttempts: number;
+            /** Format: date-time */
+            paidAt?: string | null;
         };
         InvoicePageDto: {
             data: components["schemas"]["InvoiceDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
+        };
+        PortalSessionDto: {
+            /** Format: uri */
+            url: string;
         };
         NotificationDto: {
             id: string;
@@ -1591,6 +1648,16 @@ export interface components {
         ChoosePlanDto: {
             /** @enum {string} */
             plan: "free" | "basic" | "premium";
+        };
+        PendingPlanDto: {
+            /** @enum {string} */
+            state: "pending";
+            /** Format: uuid */
+            intentId: string;
+            /** @enum {string} */
+            targetPlan: "free" | "basic" | "premium";
+            /** @description Hosted Stripe Checkout URL. Null for changes to an existing paid subscription. */
+            checkoutUrl?: Record<string, never> | null;
         };
         PlanChangeResultDto: {
             subscription: components["schemas"]["SubscriptionDto"];
@@ -1967,7 +2034,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -1991,7 +2058,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -2089,6 +2156,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    StripeWebhookController_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StripeWebhookDto"];
+                };
+            };
+        };
+    };
     FilesController_list: {
         parameters: {
             query?: {
@@ -2436,6 +2522,25 @@ export interface operations {
             };
         };
     };
+    BillingController_portalSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalSessionDto"];
+                };
+            };
+        };
+    };
     NotificationsController_list: {
         parameters: {
             query?: {
@@ -2579,6 +2684,14 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionDto"];
                 };
             };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingPlanDto"];
+                };
+            };
         };
     };
     SubscriptionsController_change: {
@@ -2603,6 +2716,14 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlanChangeResultDto"];
+                };
+            };
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingPlanDto"];
                 };
             };
         };
@@ -3472,7 +3593,7 @@ export interface operations {
                 /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
                 cursor?: string;
                 limit?: number;
-                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
                 /** @description Only what this person did. */
                 actorUserId?: string;
                 /** @description The kind of thing acted on. */

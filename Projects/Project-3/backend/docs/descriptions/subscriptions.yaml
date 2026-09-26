@@ -19,19 +19,21 @@ SubscriptionsController_choose:
   description: >-
     The mandatory step after activation: features that need a plan answer 402
     until one is chosen. Admin only. Billing is anchored to today's day of the
-    month; the first period starts at UTC midnight today. Returns 409 if a plan
-    already exists — use `PATCH /subscriptions/me` to change it.
+    month; the first period starts at UTC midnight today. Free activates immediately.
+    Basic and Premium return 202 with a hosted Stripe Checkout URL and remain inactive
+    until a verified Stripe webhook provisions them. Returns 409 if a plan already exists —
+    use `PATCH /subscriptions/me` to change it.
 
 SubscriptionsController_change:
   summary: Change plan
   description: >-
-    Upgrade or downgrade. A change is a new activation: the outgoing period is
-    closed and invoiced for the days it ran (the switch day belongs to the new
-    plan), and a fresh period opens today, re-anchoring billing to today's day of
-    the month. `prorationCents` is the total of that closing invoice. Rejected
+    Upgrade or downgrade. With Stripe configured, the request returns 202 while the
+    current local plan remains authoritative; Stripe applies immediate proration and resets
+    the billing cycle, and only a verified webhook changes Gridline's local plan. The local
+    development fallback keeps the deterministic calculator path. Rejected
     with 409, naming the numbers, if the company is over the target plan's
     employee cap or (for Free and Basic) has already uploaded more files this
-    period than it allows. Admin only.
+    period than it allows, or while a dataset exceeds the target's version cap. Admin only.
 
 
     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or

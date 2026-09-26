@@ -7,6 +7,7 @@ import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
+import { BillingSyncService } from '#/payments/billing-sync.service.js';
 import { AuthTokenService } from './auth-token.service.js';
 import { PasswordHasher } from './crypto/password-hasher.js';
 import type { AcceptInviteDto } from './dto/accept-invite.dto.js';
@@ -22,6 +23,7 @@ export class InviteAcceptanceService {
     private readonly authTokens: AuthTokenService,
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
+    private readonly billingSync: BillingSyncService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -76,6 +78,7 @@ export class InviteAcceptanceService {
             activeFrom: now,
             activeTo: null,
           });
+          await this.billingSync.recordSeatChange(manager, user.companyId, now);
         }
 
         await this.audit.record(

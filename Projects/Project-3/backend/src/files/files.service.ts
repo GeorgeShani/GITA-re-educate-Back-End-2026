@@ -30,6 +30,7 @@ import { User } from '#/database/entities/user.entity.js';
 import { TenantScope } from '#/database/tenant-scope.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { QuotaAlertsService } from '#/notifications/quota-alerts.service.js';
+import { BillingSyncService } from '#/payments/billing-sync.service.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import type { QuotaUpdatedEvent } from '#/realtime/realtime-events.js';
 import { PLAN_CATALOG } from '#/subscriptions/plan-catalog.js';
@@ -122,6 +123,7 @@ export class FilesService {
     private readonly metrics: BusinessMetrics,
     private readonly notifications: NotificationsService,
     private readonly quotaAlerts: QuotaAlertsService,
+    private readonly billingSync: BillingSyncService,
     private readonly context: RequestContextService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -262,7 +264,16 @@ export class FilesService {
           );
         }
         // Stamped from the injected clock: analytics buckets uploads by this instant.
-        await manager.insert(UsageEvent, { companyId, fileId, periodKey: key, createdAt: now });
+        const usageEvent = await manager.save(
+          manager.create(UsageEvent, {
+            companyId,
+            fileId,
+            periodKey: key,
+            createdAt: now,
+            stripeReportedAt: null,
+          }),
+        );
+        await this.billingSync.recordUsage(manager, usageEvent, subscription.plan);
         // 80% and 100% of the period's quota: told once each, in this transaction, so a rolled-back
         // upload announces nothing.
         await this.quotaAlerts.check(manager, {

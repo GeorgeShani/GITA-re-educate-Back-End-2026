@@ -7,6 +7,8 @@ export interface CompanyUsage {
   files: number;
   /** Data-quality rules the company has defined, enabled or not. */
   qualityRules: number;
+  /** Largest live version count held by any one dataset. */
+  maxDatasetVersions?: number;
 }
 
 function plural(count: number, noun: string): string {
@@ -47,6 +49,17 @@ export function planChangeProblems(target: Plan, usage: CompanyUsage): string[] 
     const excess = usage.qualityRules - rules.maxQualityRules;
     problems.push(
       `${LABEL[target]} allows ${plural(rules.maxQualityRules, 'quality rule')}, but the company has ${usage.qualityRules} — delete ${excess} first.`,
+    );
+  }
+
+  if (
+    rules.maxVersionsPerDataset !== null &&
+    usage.maxDatasetVersions !== undefined &&
+    usage.maxDatasetVersions > rules.maxVersionsPerDataset
+  ) {
+    problems.push(
+      `${LABEL[target]} keeps up to ${plural(rules.maxVersionsPerDataset, 'version')} per file, ` +
+        `but one dataset has ${usage.maxDatasetVersions} — delete old versions first.`,
     );
   }
 

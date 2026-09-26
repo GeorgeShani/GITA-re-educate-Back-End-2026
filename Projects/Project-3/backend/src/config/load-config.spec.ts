@@ -42,11 +42,11 @@ describe('loadConfig', () => {
     const env = validEnv();
     delete env.DATABASE_URL;
 
-    expect(() => loadConfig(env)).toThrowError(/DATABASE_URL/);
+    expect(() => loadConfig(env)).toThrow(/DATABASE_URL/);
   });
 
   it('rejects a too-short signing secret rather than accepting a weak one', () => {
-    expect(() => loadConfig(validEnv({ JWT_ACCESS_SECRET: 'short' }))).toThrowError(
+    expect(() => loadConfig(validEnv({ JWT_ACCESS_SECRET: 'short' }))).toThrow(
       /JWT_ACCESS_SECRET/,
     );
   });
@@ -57,8 +57,8 @@ describe('loadConfig', () => {
     delete env.JWT_REFRESH_SECRET;
 
     const run = () => loadConfig(env);
-    expect(run).toThrowError(/DATABASE_URL/);
-    expect(run).toThrowError(/JWT_REFRESH_SECRET/);
+    expect(run).toThrow(/DATABASE_URL/);
+    expect(run).toThrow(/JWT_REFRESH_SECRET/);
   });
 
   it('enables telemetry only when BOTH credential halves are present', () => {
@@ -93,11 +93,60 @@ describe('loadConfig', () => {
   it('trusts no proxy by default, and a bounded number of hops when told to', () => {
     expect(loadConfig(validEnv()).TRUST_PROXY).toBe(0);
     expect(loadConfig(validEnv({ TRUST_PROXY: '1' })).TRUST_PROXY).toBe(1);
-    expect(() => loadConfig(validEnv({ TRUST_PROXY: '-1' }))).toThrowError(/TRUST_PROXY/);
-    expect(() => loadConfig(validEnv({ TRUST_PROXY: 'yes' }))).toThrowError(/TRUST_PROXY/);
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: '-1' }))).toThrow(/TRUST_PROXY/);
+    expect(() => loadConfig(validEnv({ TRUST_PROXY: 'yes' }))).toThrow(/TRUST_PROXY/);
   });
 
   it('returns a frozen object so nothing can mutate config at runtime', () => {
     expect(Object.isFrozen(loadConfig(validEnv()))).toBe(true);
+  });
+
+  it('keeps payments disabled by default outside production', () => {
+    const config = loadConfig(validEnv());
+
+    expect(config.PAYMENTS_PROVIDER).toBe('none');
+    expect(config.ALLOW_UNPAID_PLANS).toBe(false);
+    expect(config.STRIPE_DUNNING_GRACE_DAYS).toBe(7);
+  });
+
+  it('requires the complete Stripe catalog when Stripe is enabled', () => {
+    expect(() => loadConfig(validEnv({ PAYMENTS_PROVIDER: 'stripe' }))).toThrow(
+      /STRIPE_SECRET_KEY/,
+    );
+  });
+
+  it('refuses unsafe production defaults', () => {
+    const production = validEnv({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+      JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
+    });
+
+    expect(() => loadConfig(production)).toThrow(/MAIL_TRANSPORT/);
+    expect(() =>
+      loadConfig({
+        ...production,
+        MAIL_TRANSPORT: 'smtp',
+        SMTP_HOST: 'smtp.example.com',
+        SMTP_PORT: '587',
+      }),
+    ).toThrow(/APP_PUBLIC_URL/);
+  });
+
+  it('allows an explicit unpaid production deployment override', () => {
+    const config = loadConfig(
+      validEnv({
+        NODE_ENV: 'production',
+        JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+        JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
+        MAIL_TRANSPORT: 'smtp',
+        SMTP_HOST: 'smtp.example.com',
+        SMTP_PORT: '587',
+        APP_PUBLIC_URL: 'https://gridline.example.com',
+        ALLOW_UNPAID_PLANS: 'true',
+      }),
+    );
+
+    expect(config.ALLOW_UNPAID_PLANS).toBe(true);
   });
 });

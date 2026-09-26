@@ -20,12 +20,14 @@ import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { MAIL_TRANSPORT } from '#/core/mail/mail-transport.js';
 import { TELEMETRY_SINK } from '#/core/telemetry/telemetry-sink.js';
+import { PAYMENT_PROVIDER } from '#/payments/payment-provider.js';
 import { TaskRunner } from '#/core/tasks/task-runner.service.js';
 import { RecordingTelemetry } from './recording-telemetry.js';
 import { FakeAiProvider } from './fake-ai.js';
 import { FakeClock } from './fake-clock.js';
 import { FakeGoogleOAuthProvider } from './fake-oauth.js';
 import { MailCapture } from './mail-capture.js';
+import { FakePaymentProvider } from './fake-payment.js';
 import { PostgresTestContext } from './postgres-context.js';
 
 const sessionSchema = z.object({
@@ -90,6 +92,8 @@ export class AppHarness {
     private readonly db: PostgresTestContext,
     /** Stands in for Observe: what the app reported (counters, span tags). Cleared by `reset()`. */
     readonly telemetry: RecordingTelemetry,
+    /** Stripe boundary: disabled by default so legacy calculator specs keep exercising the local development path. */
+    readonly payments: FakePaymentProvider,
   ) {}
 
   /**
@@ -97,12 +101,15 @@ export class AppHarness {
    * `rateLimit: true` switches the plan throttler ON — the integration config turns it off,
    * because the other specs make far more requests per company than a Free plan allows.
    */
-  static async start(options: { googleConfigured?: boolean; rateLimit?: boolean } = {}): Promise<AppHarness> {
+  static async start(
+    options: { googleConfigured?: boolean; rateLimit?: boolean; payments?: boolean } = {},
+  ): Promise<AppHarness> {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
     const google = new FakeGoogleOAuthProvider();
     const ai = new FakeAiProvider();
     const telemetry = new RecordingTelemetry();
+    const payments = new FakePaymentProvider(options.payments === true);
     const storageDir = await mkdtemp(join(tmpdir(), 'gridline-storage-'));
     const storage = new LocalStorageDriver({
       root: storageDir,
@@ -127,11 +134,13 @@ export class AppHarness {
       .useValue(ai)
       .overrideProvider(TELEMETRY_SINK)
       .useValue(telemetry)
+      .overrideProvider(PAYMENT_PROVIDER)
+      .useValue(payments)
       .compile();
     if (previousRateLimit === undefined) delete process.env.RATE_LIMIT_ENABLED;
     else process.env.RATE_LIMIT_ENABLED = previousRateLimit;
 
-    const app = moduleRef.createNestApplication();
+    const app = moduleRef.createNestApplication({ rawBody: true });
     await app.init();
 
     return new AppHarness(
@@ -145,6 +154,7 @@ export class AppHarness {
       app.get(TaskRunner),
       await PostgresTestContext.start(),
       telemetry,
+      payments,
     );
   }
 
@@ -155,6 +165,7 @@ export class AppHarness {
     this.google.clear();
     this.ai.reset();
     this.telemetry.clear();
+    this.payments.reset();
     this.clock.set(START);
     await rm(this.storageDir, { recursive: true, force: true });
     await mkdir(this.storageDir, { recursive: true });
@@ -482,9 +493,12 @@ export class AppHarness {
     const content = options.content ?? `id,value
 ${this.counter},${randomUUID()}
 `;
+    const authorization: [string, string] = options.bearer
+      ? ['Authorization', `Bearer ${options.bearer}`]
+      : this.bearer(session);
     const request = this.http()
       .post('/files')
-      .set(...(options.bearer ? ['Authorization', `Bearer ${options.bearer}`] as [string, string] : this.bearer(session)));
+      .set(...authorization);
     if (options.idempotencyKey) request.set('Idempotency-Key', options.idempotencyKey);
     request.attach('file', Buffer.from(content), {
       filename: options.name ?? `data-${this.counter}.csv`,

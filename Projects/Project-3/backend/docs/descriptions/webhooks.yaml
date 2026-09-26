@@ -1,0 +1,9 @@
+# Prose for public provider callbacks. These are machine endpoints, not browser APIs.
+
+StripeWebhookController_receive:
+  summary: Receive a Stripe billing event
+  description: >-
+    Public Stripe callback. The API verifies the signature over the exact raw request body,
+    deduplicates the event, retrieves current Stripe state to defeat out-of-order delivery,
+    and then mirrors subscription or invoice state transactionally. Browser redirects never
+    provision a paid plan. Invalid signatures return 400 and reveal no tenant information.

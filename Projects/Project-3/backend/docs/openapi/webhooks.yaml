@@ -1,0 +1,2167 @@
+openapi: 3.0.0
+paths:
+  /webhooks/stripe:
+    post:
+      operationId: StripeWebhookController_receive
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StripeWebhookDto'
+      tags:
+        - webhooks
+      summary: Receive a Stripe billing event
+      description: >-
+        Public Stripe callback. The API verifies the signature over the exact
+        raw request body, deduplicates the event, retrieves current Stripe state
+        to defeat out-of-order delivery, and then mirrors subscription or
+        invoice state transactionally. Browser redirects never provision a paid
+        plan. Invalid signatures return 400 and reveal no tenant information.
+info:
+  title: Gridline API
+  description: >-
+    Multi-tenant SaaS backend for spreadsheet upload, per-file permissions, and
+    seat + usage billing.
+  version: 0.1.0
+  contact: {}
+tags: []
+servers:
+  - url: /api
+  - url: http://localhost:4000
+components:
+  securitySchemes:
+    bearer:
+      scheme: bearer
+      bearerFormat: JWT
+      type: http
+  schemas:
+    StripeWebhookDto:
+      type: object
+      properties:
+        received:
+          type: boolean
+        duplicate:
+          type: boolean
+        applied:
+          type: boolean
+      required:
+        - received
+        - duplicate
+        - applied
+    UploadFileBodyDoc:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: &ref_0
+            - company
+            - restricted
+          default: company
+        grantedUserIds:
+          description: >-
+            With `restricted`: the colleagues who may also see the file (the
+            uploader and admins always can). Repeat the field, or send a JSON
+            array. Empty means the uploader and admins only.
+          type: array
+          items:
+            type: string
+        file:
+          type: string
+          format: binary
+          description: A CSV, XLS or XLSX file, up to 25 MB.
+      required:
+        - file
+    FileDto:
+      type: object
+      properties:
+        id:
+          type: string
+        originalName:
+          type: string
+        mimeType:
+          type: string
+          description: From the file's bytes, not from what the client claimed.
+        sizeBytes:
+          type: number
+        visibility:
+          type: string
+          enum: *ref_0
+        datasetId:
+          type: string
+          format: uuid
+          description: >-
+            Shared by every version of one file. A first upload's is its own
+            `id`.
+        version:
+          type: number
+          description: >-
+            Which version of the file this is: 1, 2, 3… Numbers are never
+            reused.
+        isLatest:
+          type: boolean
+          description: The newest version. A default list shows only these.
+        uploaderId:
+          type: string
+        grantedUserIds:
+          nullable: true
+          description: >-
+            Who a restricted file is shared with. Shown only to the uploader and
+            admins, and only on single-file responses; null everywhere else.
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - originalName
+        - mimeType
+        - sizeBytes
+        - visibility
+        - datasetId
+        - version
+        - isLatest
+        - uploaderId
+        - grantedUserIds
+        - createdAt
+    UploadVersionBodyDoc:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: A CSV, XLS or XLSX file, up to 25 MB.
+      required:
+        - file
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    FileVersionPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    ComparedFileDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        version:
+          type: number
+        originalName:
+          type: string
+      required:
+        - fileId
+        - version
+        - originalName
+    TypeChangeDto:
+      type: object
+      properties:
+        column:
+          type: string
+        from:
+          type: string
+          enum: &ref_1
+            - integer
+            - number
+            - boolean
+            - date
+            - string
+            - empty
+        to:
+          type: string
+          enum: *ref_1
+      required:
+        - column
+        - from
+        - to
+    NullPercentChangeDto:
+      type: object
+      properties:
+        column:
+          type: string
+        from:
+          type: number
+          description: Percent empty in `from`.
+        to:
+          type: number
+          description: Percent empty in `to`.
+        delta:
+          type: number
+          description: Percentage points; positive means more empty cells.
+      required:
+        - column
+        - from
+        - to
+        - delta
+    CountChangeDto:
+      type: object
+      properties:
+        from:
+          type: number
+          nullable: true
+        to:
+          type: number
+          nullable: true
+        delta:
+          type: number
+          nullable: true
+          description: '`to` minus `from`; null when either side has no value.'
+      required:
+        - from
+        - to
+        - delta
+    ComparisonDto:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/ComparedFileDto'
+        to:
+          $ref: '#/components/schemas/ComparedFileDto'
+        columnsAdded:
+          description: >-
+            In `to` but not in `from` (names ignore case; a renamed header is
+            one removed and one added).
+          type: array
+          items:
+            type: string
+        columnsRemoved:
+          description: In `from` but not in `to`.
+          type: array
+          items:
+            type: string
+        typeChanges:
+          description: >-
+            Columns whose dominant type changed. A column that is empty on
+            either side has no type to compare.
+          type: array
+          items:
+            $ref: '#/components/schemas/TypeChangeDto'
+        nullPercentChanges:
+          description: >-
+            Columns whose share of empty cells moved by 5 percentage points or
+            more.
+          type: array
+          items:
+            $ref: '#/components/schemas/NullPercentChangeDto'
+        rowCount:
+          $ref: '#/components/schemas/CountChangeDto'
+        columnCount:
+          $ref: '#/components/schemas/CountChangeDto'
+        duplicateRows:
+          $ref: '#/components/schemas/CountChangeDto'
+        qualityScore:
+          description: The quality score; `delta` is null when either file was not scored.
+          allOf:
+            - $ref: '#/components/schemas/CountChangeDto'
+        schemaChanged:
+          type: boolean
+          description: >-
+            A column was removed or changed type — what breaks a reader of the
+            data. New columns and shifts in blanks do not count.
+      required:
+        - from
+        - to
+        - columnsAdded
+        - columnsRemoved
+        - typeChanges
+        - nullPercentChanges
+        - rowCount
+        - columnCount
+        - duplicateRows
+        - qualityScore
+        - schemaChanged
+    CursorMetaDto:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` to get the next page; null on the last page.
+        hasMore:
+          type: boolean
+      required:
+        - nextCursor
+        - hasMore
+    FilePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/FileDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    FileDownloadDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: >-
+            A short-lived link. Fetch it directly; it needs no Authorization
+            header.
+        expiresAt:
+          type: string
+          format: date-time
+          description: The link stops working at this instant.
+      required:
+        - url
+        - expiresAt
+    TypeCountsDto:
+      type: object
+      properties:
+        integer:
+          type: number
+        number:
+          type: number
+        boolean:
+          type: number
+        date:
+          type: number
+        string:
+          type: number
+      required:
+        - integer
+        - number
+        - boolean
+        - date
+        - string
+    NumericStatsDto:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        mean:
+          type: number
+      required:
+        - min
+        - max
+        - mean
+    ColumnMetricsDto:
+      type: object
+      properties:
+        index:
+          type: number
+        name:
+          type: string
+        nullCount:
+          type: number
+          description: Blank and whitespace-only cells count as empty.
+        nullPercent:
+          type: number
+          description: Percent of the column that is empty, 0–100, two decimals.
+        inferredType:
+          type: string
+          enum: *ref_1
+          description: The dominant kind of value in the column.
+        typeCounts:
+          $ref: '#/components/schemas/TypeCountsDto'
+        inconsistent:
+          type: boolean
+          description: More than one kind of value in the column (numbers AND text, say).
+        inconsistentPercent:
+          type: number
+          description: Percent of non-empty cells that disagree with the dominant type.
+        numeric:
+          nullable: true
+          description: Over the numeric cells; null if there are none.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/NumericStatsDto'
+      required:
+        - index
+        - name
+        - nullCount
+        - nullPercent
+        - inferredType
+        - typeCounts
+        - inconsistent
+        - inconsistentPercent
+        - numeric
+    MetricsDto:
+      type: object
+      properties:
+        rowCount:
+          type: number
+          description: Data rows profiled, header excluded.
+        columnCount:
+          type: number
+        emptyRows:
+          type: number
+          description: Rows with no value in any column.
+        duplicateRows:
+          type: number
+          description: Rows identical to an earlier row.
+        raggedRows:
+          type: number
+          description: Rows with more or fewer cells than the header.
+        truncated:
+          type: boolean
+          description: >-
+            True when the file had more rows than the profile budget: the
+            numbers cover the first `rowBudget` rows.
+        rowBudget:
+          type: number
+        headerIssues:
+          description: Problems with the header row (blank or repeated names).
+          type: array
+          items:
+            type: string
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnMetricsDto'
+      required:
+        - rowCount
+        - columnCount
+        - emptyRows
+        - duplicateRows
+        - raggedRows
+        - truncated
+        - rowBudget
+        - headerIssues
+        - columns
+    NarrativeDto:
+      type: object
+      properties:
+        summary:
+          type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+        model:
+          type: string
+          description: The model that wrote it.
+      required:
+        - summary
+        - recommendations
+        - model
+    RuleResultDto:
+      type: object
+      properties:
+        ruleId:
+          type: string
+          description: >-
+            The rule this result is for (it may have been edited or deleted
+            since).
+        name:
+          type: string
+        kind:
+          type: string
+          enum: &ref_6
+            - required_column
+            - max_null_percent
+            - type_is
+            - min_value
+            - max_value
+            - unique
+            - max_duplicate_rows
+        columnName:
+          type: string
+          nullable: true
+        severity:
+          type: string
+          enum: &ref_7
+            - error
+            - warning
+        status:
+          type: string
+          enum:
+            - passed
+            - failed
+            - skipped
+          description: >-
+            `skipped`: the rule does not apply to this file (its column is not
+            in it, or holds no numbers).
+        message:
+          type: string
+          description: What was found and what was required, in words.
+        params:
+          type: object
+          additionalProperties: true
+          description: What the rule required when this report was built.
+      required:
+        - ruleId
+        - name
+        - kind
+        - columnName
+        - severity
+        - status
+        - message
+        - params
+    ReportDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+        status:
+          type: string
+          enum:
+            - queued
+            - profiling
+            - ready
+            - unsupported
+            - failed
+        metrics:
+          nullable: true
+          description: Present once `status` is `ready`.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/MetricsDto'
+        narrative:
+          nullable: true
+          description: >-
+            The plain-language summary. Null when no AI provider is configured
+            or it produced nothing usable; the metrics are unaffected.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/NarrativeDto'
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why the report is `failed` or `unsupported`.
+        profiledAt:
+          type: string
+          format: date-time
+          nullable: true
+        qualityScore:
+          type: number
+          nullable: true
+          description: >-
+            How the file did against the company’s quality rules, 0–100: the
+            share of applicable rules it passed, an `error` rule counting double
+            a `warning`. Null when no rule applied (or none is defined).
+        ruleResults:
+          nullable: true
+          description: >-
+            One result per rule the company had when this report was built, each
+            carrying the rule as it was then (rules can be edited later). Null
+            when the company had no rules. Rebuild the report to check against
+            today’s rules.
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleResultDto'
+      required:
+        - fileId
+        - status
+        - metrics
+        - narrative
+        - errorMessage
+        - profiledAt
+        - qualityScore
+        - ruleResults
+    PreviewColumnDto:
+      type: object
+      properties:
+        name:
+          type: string
+        inferredType:
+          type: string
+          enum: *ref_1
+      required:
+        - name
+        - inferredType
+    PreviewDto:
+      type: object
+      properties:
+        columns:
+          type: array
+          items:
+            $ref: '#/components/schemas/PreviewColumnDto'
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              nullable: true
+              oneOf:
+                - type: string
+                - type: number
+                - type: boolean
+          description: >-
+            The first rows, one array of cells per row in column order. Dates
+            are ISO strings.
+        totalRows:
+          type: number
+          description: Rows in the file (up to the profile budget).
+        truncated:
+          type: boolean
+          description: True when `rows` is only the first part of the file.
+      required:
+        - columns
+        - rows
+        - totalRows
+        - truncated
+    UpdateFileDto:
+      type: object
+      properties:
+        visibility:
+          type: string
+          enum: *ref_0
+        grantedUserIds:
+          description: >-
+            REPLACES the set of colleagues granted access. Only meaningful for a
+            `restricted` file; switching to `company` clears it.
+          type: array
+          items:
+            type: string
+    MessageResponseDto:
+      type: object
+      properties:
+        message:
+          type: string
+          example: If that account exists, an email is on its way.
+      required:
+        - message
+    BillingPeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: 'Exclusive, UTC midnight: when the next period starts.'
+        days:
+          type: number
+      required:
+        - start
+        - end
+        - days
+    LineItemDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - seat
+            - plan_base
+            - overage
+        description:
+          type: string
+          example: Employee seat
+        unitCents:
+          type: number
+          description: The full price this line is a fraction of, in cents.
+        amountCents:
+          type: number
+          description: What this line costs, in integer cents.
+        userId:
+          type: string
+          description: 'seat: the employee this seat is for.'
+        activeDays:
+          type: number
+          description: 'seat: days the employee was active in the period.'
+        billedDays:
+          type: number
+          description: 'plan_base: days the plan was billed.'
+        periodDays:
+          type: number
+          description: 'seat / plan_base: days in the whole period.'
+        files:
+          type: number
+          description: 'overage: files beyond the plan’s included quota.'
+      required:
+        - kind
+        - description
+        - unitCents
+        - amountCents
+    StatementDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: &ref_2
+            - free
+            - basic
+            - premium
+        period:
+          $ref: '#/components/schemas/BillingPeriodDto'
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemDto'
+        totalCents:
+          type: number
+          description: >-
+            What the invoice will be if nothing changes: employees active now
+            are assumed to stay active to the end of the period, and files count
+            as uploaded so far. Integer cents.
+        seats:
+          type: number
+          description: 'Seats in use right now: the admin plus every active employee.'
+        filesThisPeriod:
+          type: number
+          description: Files uploaded so far this period.
+        dueDate:
+          type: string
+          format: date-time
+          description: When the period ends and the invoice is finalized.
+        asOf:
+          type: string
+          format: date-time
+          description: When this statement was computed.
+      required:
+        - plan
+        - period
+        - lineItems
+        - totalCents
+        - seats
+        - filesThisPeriod
+        - dueDate
+        - asOf
+    InvoiceDto:
+      type: object
+      properties:
+        id:
+          type: string
+        plan:
+          type: string
+          enum: *ref_2
+          description: The plan that was live during the billed period.
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+          description: >-
+            Exclusive. Earlier than the period end when a plan change closed the
+            period early.
+        lineItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineItemDto'
+        totalCents:
+          type: number
+          description: Integer cents.
+        status:
+          type: string
+          enum:
+            - finalized
+            - draft
+            - open
+            - paid
+            - uncollectible
+            - void
+        dueDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        provider:
+          type: string
+          enum:
+            - local
+            - stripe
+        stripeHostedInvoiceUrl:
+          type: object
+          nullable: true
+        stripeInvoicePdfUrl:
+          type: object
+          nullable: true
+        currency:
+          type: object
+          nullable: true
+        paymentAttempts:
+          type: number
+        paidAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - plan
+        - periodStart
+        - periodEnd
+        - lineItems
+        - totalCents
+        - status
+        - dueDate
+        - createdAt
+        - provider
+        - paymentAttempts
+    InvoicePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    PortalSessionDto:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+      required:
+        - url
+    NotificationDto:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - quota.threshold
+            - report.ready
+            - report.failed
+            - rules.failed
+            - dataset.schema_changed
+            - file.shared
+            - invoice.finalized
+          description: What happened. Decides the shape of `payload`.
+        payload:
+          type: object
+          additionalProperties: true
+          description: >-
+            Ids, counts and names for this `type` — never cell values. For
+            `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`,
+            `upgradeTo`. For `report.ready`/`report.failed`: `fileId`,
+            `fileName`. For `file.shared`: `fileId`, `fileName`,
+            `sharedByUserId`. For `invoice.finalized`: `invoiceId`,
+            `totalCents`.
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Null while unread.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - payload
+        - readAt
+        - createdAt
+    NotificationPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    UnreadCountDto:
+      type: object
+      properties:
+        count:
+          type: number
+          description: How many of your notifications are unread.
+      required:
+        - count
+    MarkedReadDto:
+      type: object
+      properties:
+        updated:
+          type: number
+          description: How many notifications this call marked as read.
+      required:
+        - updated
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_2
+        maxEmployees:
+          type: number
+          nullable: true
+          description: Employees allowed; null = unlimited.
+        maxSeats:
+          type: number
+          nullable: true
+          description: Seats = the admin plus employees; null = unlimited.
+        filesPerPeriod:
+          type: number
+          description: Files per billing period before the over-quota rule applies.
+        seatPriceCents:
+          type: number
+          description: Cents per employee per full period (prorated by active days).
+        basePriceCents:
+          type: number
+          description: Flat cents per full period.
+        overagePerFileCents:
+          type: number
+          nullable: true
+          description: >-
+            Cents per file over the quota; null = uploads over the quota are
+            refused instead.
+        rateLimitPerMinute:
+          type: number
+          description: >-
+            Requests per minute the whole company may make, shared by its users
+            and API keys.
+        maxQualityRules:
+          type: number
+          nullable: true
+          description: >-
+            Data-quality rules the company may keep, enabled or not; null =
+            unlimited.
+        maxVersionsPerDataset:
+          type: number
+          nullable: true
+          description: >-
+            Versions one file may hold (each version still counts toward the
+            file quota); null = unlimited.
+      required:
+        - plan
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+        - seatPriceCents
+        - basePriceCents
+        - overagePerFileCents
+        - rateLimitPerMinute
+        - maxQualityRules
+        - maxVersionsPerDataset
+    PeriodDto:
+      type: object
+      properties:
+        start:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        end:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        key:
+          type: string
+          example: '2026-03-01'
+          description: The period start date; the label usage is counted under.
+        days:
+          type: number
+          example: 31
+      required:
+        - start
+        - end
+        - key
+        - days
+    LimitsDto:
+      type: object
+      properties:
+        maxEmployees:
+          type: number
+          nullable: true
+        maxSeats:
+          type: number
+          nullable: true
+        filesPerPeriod:
+          type: number
+      required:
+        - maxEmployees
+        - maxSeats
+        - filesPerPeriod
+    UsageDto:
+      type: object
+      properties:
+        files:
+          type: number
+          description: Files uploaded in the current period.
+        employees:
+          type: number
+          description: Employees holding a seat — invited and active.
+        seats:
+          type: number
+          description: 'Seats in use: the admin plus those employees.'
+      required:
+        - files
+        - employees
+        - seats
+    SubscriptionDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_2
+        billingAnchorDay:
+          type: number
+          minimum: 1
+          maximum: 31
+          description: Day of the month the period rolls over on.
+        period:
+          $ref: '#/components/schemas/PeriodDto'
+        limits:
+          $ref: '#/components/schemas/LimitsDto'
+        usage:
+          $ref: '#/components/schemas/UsageDto'
+        nextDueDate:
+          type: string
+          format: date-time
+          description: When the current period ends and is invoiced.
+      required:
+        - plan
+        - billingAnchorDay
+        - period
+        - limits
+        - usage
+        - nextDueDate
+    ChoosePlanDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_2
+      required:
+        - plan
+    PendingPlanDto:
+      type: object
+      properties:
+        state:
+          type: string
+          enum:
+            - pending
+        intentId:
+          type: string
+          format: uuid
+        targetPlan:
+          type: string
+          enum: *ref_2
+        checkoutUrl:
+          type: object
+          nullable: true
+          description: >-
+            Hosted Stripe Checkout URL. Null for changes to an existing paid
+            subscription.
+      required:
+        - state
+        - intentId
+        - targetPlan
+    PlanChangeResultDto:
+      type: object
+      properties:
+        subscription:
+          $ref: '#/components/schemas/SubscriptionDto'
+        previousPlan:
+          type: string
+          enum: *ref_2
+        prorationCents:
+          type: number
+          description: >-
+            Total cents of the invoice that closed the outgoing plan (0 if
+            nothing was owed yet).
+      required:
+        - subscription
+        - previousPlan
+        - prorationCents
+    RegisterCompanyDto:
+      type: object
+      properties:
+        companyName:
+          type: string
+          example: Acme Logistics
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: &ref_3
+            - finance
+            - e-commerce
+            - healthcare
+            - education
+            - logistics
+            - manufacturing
+            - media
+            - real-estate
+            - technology
+            - other
+      required:
+        - companyName
+        - email
+        - password
+        - country
+        - industry
+    RegisterCompanyResponseDto:
+      type: object
+      properties:
+        companyId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          example: pending_activation
+        message:
+          type: string
+          example: Check your inbox to activate your account.
+      required:
+        - companyId
+        - userId
+        - status
+        - message
+    EmailOnlyDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+      required:
+        - email
+    LoginDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+        password:
+          type: string
+          maxLength: 128
+      required:
+        - email
+        - password
+    SessionDto:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: 'Short-lived JWT. Send as `Authorization: Bearer`.'
+        refreshToken:
+          type: string
+          description: Opaque, single-use. Rotated on every refresh.
+        tokenType:
+          type: string
+          example: Bearer
+        expiresIn:
+          type: number
+          description: Seconds until the access token expires.
+          example: 900
+      required:
+        - accessToken
+        - refreshToken
+        - tokenType
+        - expiresIn
+    RefreshTokenDto:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+      required:
+        - refreshToken
+    ResetPasswordDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the reset email.
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - newPassword
+    AcceptInviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The single-use token from the invitation email.
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - token
+        - password
+    ChangePasswordDto:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 128
+      required:
+        - currentPassword
+        - newPassword
+    UserProfileDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invites are sent to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: &ref_4
+            - admin
+            - employee
+        status:
+          type: string
+          enum: &ref_5
+            - invited
+            - active
+            - disabled
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+    CompanyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        billingEmail:
+          type: string
+          description: Where invoices and account notices go.
+        country:
+          type: string
+          example: GE
+        industry:
+          type: string
+          enum: *ref_3
+        status:
+          type: string
+          enum:
+            - pending_activation
+            - active
+            - suspended
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isDemo:
+          type: boolean
+          description: >-
+            True for the seeded read-only demo company, where every write is
+            refused. A client can use it to show a demo banner.
+      required:
+        - id
+        - name
+        - billingEmail
+        - country
+        - industry
+        - status
+        - activatedAt
+        - isDemo
+    MeDto:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/UserProfileDto'
+        company:
+          $ref: '#/components/schemas/CompanyDto'
+      required:
+        - user
+        - company
+    GoogleUrlDto:
+      type: object
+      properties:
+        intent:
+          type: string
+          enum:
+            - login
+            - register
+            - invite
+          description: >-
+            `login` and `register` behave identically (a known Google account
+            signs in, an unknown one is offered company registration); the value
+            is for the frontend. `invite` binds the Google account to the
+            invited user.
+        inviteToken:
+          type: string
+          description: 'Required for `invite`: the token from the invitation email.'
+      required:
+        - intent
+    OAuthUrlDto:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Send the browser here. Google sends it back to the API callback.
+      required:
+        - url
+    OAuthExchangeDto:
+      type: object
+      properties:
+        code:
+          type: string
+          description: >-
+            The single-use `code` from the redirect to
+            `/session/oauth-complete`. Valid for 60 seconds.
+      required:
+        - code
+    OAuthRegistrationTokenDto:
+      type: object
+      properties:
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+      required:
+        - oauthRegistrationToken
+    OAuthRegistrationPreviewDto:
+      type: object
+      properties:
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address to prefill, or null when Google reported a relay/alias
+            address (ask the person for one).
+        emailVerified:
+          type: boolean
+          description: >-
+            True when Google vouches for `email`; registration then needs no
+            activation email.
+        name:
+          type: string
+          nullable: true
+      required:
+        - email
+        - emailVerified
+        - name
+    OAuthRegisterCompanyDto:
+      type: object
+      properties:
+        companyName:
+          type: string
+          example: Acme Logistics
+          minLength: 2
+          maxLength: 120
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: *ref_3
+        oauthRegistrationToken:
+          type: string
+          description: The `oauthRegistration` token from the redirect to `/register`.
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+      required:
+        - companyName
+        - country
+        - industry
+        - oauthRegistrationToken
+    OAuthRegisterCompanyResponseDto:
+      type: object
+      properties:
+        companyId:
+          type: string
+        userId:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending_activation
+            - active
+        message:
+          type: string
+        session:
+          nullable: true
+          description: >-
+            Present when Google vouched for the address, so the company is
+            active at once and the person is signed in.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SessionDto'
+      required:
+        - companyId
+        - userId
+        - status
+        - message
+    IdentityDto:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+          enum:
+            - password
+            - google
+        email:
+          type: string
+          nullable: true
+          description: >-
+            The address as that provider reports it; may differ from the work
+            address.
+        emailVerified:
+          type: boolean
+        lastUsedAt:
+          format: date-time
+          type: string
+          nullable: true
+        createdAt:
+          format: date-time
+          type: string
+      required:
+        - id
+        - provider
+        - email
+        - emailVerified
+        - lastUsedAt
+        - createdAt
+    IdentityListDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentityDto'
+      required:
+        - data
+    UpdateMeDto:
+      type: object
+      properties:
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - fullName
+    MemberDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
+    UpdateCompanyDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        country:
+          type: string
+          example: GE
+          description: ISO 3166-1 alpha-2 country code
+        industry:
+          type: string
+          enum: *ref_3
+        billingEmail:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+    InviteEmployeeDto:
+      type: object
+      properties:
+        email:
+          type: string
+          example: nino@acme.com
+          maxLength: 254
+          description: Where the invitation is sent. Also the address they sign in with.
+        fullName:
+          type: string
+          example: Nino Beridze
+          minLength: 1
+          maxLength: 120
+      required:
+        - email
+        - fullName
+    EmployeeDto:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          description: The company contact address invitations go to.
+        fullName:
+          type: string
+        role:
+          type: string
+          enum: *ref_4
+        status:
+          type: string
+          enum: *ref_5
+        activatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - email
+        - fullName
+        - role
+        - status
+        - activatedAt
+        - disabledAt
+        - createdAt
+    EmployeePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    QualityRuleDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: *ref_6
+        columnName:
+          type: string
+          nullable: true
+          description: Null for a rule about the whole file.
+        params:
+          type: object
+          additionalProperties: true
+        severity:
+          type: string
+          enum: *ref_7
+        enabled:
+          type: boolean
+        createdByUserId:
+          type: string
+          description: The admin who created it.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - kind
+        - columnName
+        - params
+        - severity
+        - enabled
+        - createdByUserId
+        - createdAt
+        - updatedAt
+    QualityRulePageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/QualityRuleDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    CreateQualityRuleDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Emails are filled in
+          minLength: 1
+          maxLength: 80
+        kind:
+          type: string
+          enum: *ref_6
+          description: >-
+            `required_column` the column must exist; `max_null_percent` at most
+            that share empty; `type_is` the column is that type; `min_value` /
+            `max_value` numeric bounds; `unique` no value repeats;
+            `max_duplicate_rows` (whole file, no column) at most that many
+            repeated rows.
+        columnName:
+          type: string
+          example: email
+          description: >-
+            The column it applies to, matched to a file’s header
+            case-insensitively. Required for every kind but
+            `max_duplicate_rows`, which takes none. A file without that column
+            skips the rule (use `required_column` to demand one).
+        params:
+          type: object
+          additionalProperties: true
+          description: >-
+            The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`;
+            `type_is` `{ type: integer | number | boolean | date | string,
+            maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min
+            }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`.
+            `required_column` and `unique` take `{}`.
+        severity:
+          type: string
+          enum: *ref_7
+          default: error
+          description: >-
+            An `error` counts double in the quality score, and a failing one
+            notifies the uploader and the admins.
+        enabled:
+          type: boolean
+          default: true
+          description: >-
+            A disabled rule is kept, and counts toward the plan’s limit, but is
+            not checked.
+      required:
+        - name
+        - kind
+    UpdateQualityRuleDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        columnName:
+          type: string
+          maxLength: 200
+          description: Only for a rule that is about a column.
+        params:
+          type: object
+          additionalProperties: true
+          description: >-
+            REPLACES the rule’s numbers. The rule’s numbers, by `kind`:
+            `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer |
+            number | boolean | date | string, maxInconsistentPercent?: 0–100
+            (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`;
+            `max_duplicate_rows` `{ max }`. `required_column` and `unique` take
+            `{}`.
+        severity:
+          type: string
+          enum: *ref_7
+        enabled:
+          type: boolean
+    DayRangeDto:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+          description: Inclusive, UTC midnight.
+        to:
+          type: string
+          format: date-time
+          description: Exclusive, UTC midnight.
+        days:
+          type: number
+      required:
+        - from
+        - to
+        - days
+    FilesPerDayDto:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-03-05'
+        files:
+          type: number
+          description: >-
+            Files uploaded that UTC day; 0 for a quiet day, so every day has a
+            point.
+      required:
+        - date
+        - files
+    EmployeeActivityDto:
+      type: object
+      properties:
+        userId:
+          type: string
+        fullName:
+          type: string
+        files:
+          type: number
+        bytes:
+          type: number
+          description: Total size of what they uploaded in the range.
+        lastUploadAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - fullName
+        - files
+        - bytes
+        - lastUploadAt
+    StorageUsageDto:
+      type: object
+      properties:
+        liveFiles:
+          type: number
+          description: >-
+            Files that exist right now (deleted ones excluded), regardless of
+            the range.
+        liveBytes:
+          type: number
+          description: Bytes those files occupy.
+        uploadedBytesInRange:
+          type: number
+          description: Bytes uploaded within the range, including files deleted since.
+      required:
+        - liveFiles
+        - liveBytes
+        - uploadedBytesInRange
+    BurnDownPointDto:
+      type: object
+      properties:
+        date:
+          type: string
+          example: '2026-03-05'
+        used:
+          type: number
+          description: >-
+            Files uploaded this period so far, cumulative, at the end of that
+            day.
+        pace:
+          type: number
+          description: >-
+            Where an even pace would be: included files × days elapsed ÷ days in
+            the period.
+      required:
+        - date
+        - used
+        - pace
+    QuotaBurnDownDto:
+      type: object
+      properties:
+        plan:
+          type: string
+          enum: *ref_2
+        limit:
+          type: number
+          description: Files included per billing period on this plan.
+        used:
+          type: number
+          description: Files uploaded so far this period.
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+          description: 'Exclusive: when the quota resets.'
+        points:
+          description: One point per day from the period start through today.
+          type: array
+          items:
+            $ref: '#/components/schemas/BurnDownPointDto'
+      required:
+        - plan
+        - limit
+        - used
+        - periodStart
+        - periodEnd
+        - points
+    PlanChangeDto:
+      type: object
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+        fromPlan:
+          type: string
+          enum: *ref_2
+          nullable: true
+          description: Null for the first plan chosen.
+        toPlan:
+          type: string
+          enum: *ref_2
+        prorationCents:
+          type: number
+          description: Integer cents billed for the outgoing plan’s part-period.
+        invoiceId:
+          type: string
+          nullable: true
+          description: The invoice that closed the outgoing period.
+        invoiceTotalCents:
+          type: number
+          nullable: true
+      required:
+        - effectiveAt
+        - fromPlan
+        - toPlan
+        - prorationCents
+        - invoiceId
+        - invoiceTotalCents
+    UsageAnalyticsDto:
+      type: object
+      properties:
+        range:
+          $ref: '#/components/schemas/DayRangeDto'
+        filesPerDay:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilesPerDayDto'
+        byEmployee:
+          description: Most active first. Includes people since removed.
+          type: array
+          items:
+            $ref: '#/components/schemas/EmployeeActivityDto'
+        storage:
+          $ref: '#/components/schemas/StorageUsageDto'
+        quota:
+          description: Always the CURRENT billing period, whatever the range.
+          allOf:
+            - $ref: '#/components/schemas/QuotaBurnDownDto'
+        planHistory:
+          description: Newest change first, up to 50.
+          type: array
+          items:
+            $ref: '#/components/schemas/PlanChangeDto'
+      required:
+        - range
+        - filesPerDay
+        - byEmployee
+        - storage
+        - quota
+        - planHistory
+    AuditEntryDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: &ref_8
+            - company.registered
+            - company.activated
+            - company.activation_resent
+            - company.updated
+            - user.profile_updated
+            - auth.password_reset_requested
+            - auth.password_reset
+            - auth.password_changed
+            - auth.identity_linked
+            - auth.identity_unlinked
+            - employee.invited
+            - employee.invite_resent
+            - employee.accepted_invite
+            - employee.disabled
+            - employee.reactivated
+            - subscription.created
+            - subscription.changed
+            - billing.invoice_finalized
+            - billing.checkout_started
+            - billing.payment_failed
+            - billing.payment_succeeded
+            - billing.company_suspended
+            - billing.company_reactivated
+            - api_key.created
+            - api_key.revoked
+            - file.uploaded
+            - file.access_changed
+            - file.deleted
+            - quality_rule.created
+            - quality_rule.updated
+            - quality_rule.deleted
+            - report.rebuild_requested
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+    AuditPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEntryDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    AuditEntryDetailDto:
+      type: object
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: *ref_8
+          description: What happened, `<area>.<what_happened>`.
+        actorUserId:
+          type: string
+          nullable: true
+          description: >-
+            Who did it. Null for the system (the billing cycle) or a person
+            since removed.
+        targetType:
+          type: string
+          nullable: true
+          example: file
+        targetId:
+          type: string
+          nullable: true
+          description: The id of what it happened to.
+        ip:
+          type: string
+          nullable: true
+          description: The caller’s IP address, when it came over HTTP.
+        correlationId:
+          type: string
+          nullable: true
+          description: >-
+            Ties entries written by one request together, and to that request’s
+            logs.
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+          description: >-
+            Details specific to the action (for example the plan changed to, or
+            the name of a file).
+      required:
+        - id
+        - action
+        - actorUserId
+        - targetType
+        - targetId
+        - ip
+        - correlationId
+        - createdAt
+        - metadata
+    CreateApiKeyDto:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Nightly import script
+          minLength: 1
+          maxLength: 80
+          description: >-
+            What the key is for, so you can tell your keys apart and revoke the
+            right one.
+        scopes:
+          type: array
+          example:
+            - files:read
+          description: >-
+            What the key may do. A key can never do more than its creator’s role
+            allows: an employee cannot grant `billing:read`.
+          items:
+            type: string
+            enum: &ref_9
+              - files:read
+              - files:write
+              - billing:read
+      required:
+        - name
+        - scopes
+    CreatedApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: &ref_10
+            type: string
+            enum: *ref_9
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+        key:
+          type: string
+          example: gl_live_ab12cd34_<43 characters>
+          description: >-
+            The full key. Shown ONCE, here; store it now. Send it as
+            `Authorization: Bearer <key>`.
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+        - key
+    ApiKeyDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          example: gl_live_ab12cd34
+          description: The first part of the key. Not a secret.
+        scopes:
+          type: array
+          items: *ref_10
+        createdByUserId:
+          type: string
+          description: Whose key this is. Requests made with it act as this person.
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 'Approximate: refreshed at most every five minutes.'
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Set once revoked.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - prefix
+        - scopes
+        - createdByUserId
+        - lastUsedAt
+        - revokedAt
+        - createdAt
+    ApiKeyPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta

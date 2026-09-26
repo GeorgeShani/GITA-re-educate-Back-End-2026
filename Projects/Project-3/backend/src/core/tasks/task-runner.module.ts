@@ -5,6 +5,9 @@ import { MailModule } from '#/core/mail/mail.module.js';
 import { SendEmailHandler } from '#/core/mail/send-email.handler.js';
 import { BuildDataQualityReportHandler } from '#/files/build-data-quality-report.handler.js';
 import { FilesModule } from '#/files/files.module.js';
+import { PaymentsModule } from '#/payments/payments.module.js';
+import { ReportStripeUsageHandler } from '#/payments/report-stripe-usage.handler.js';
+import { SyncStripeSeatsHandler } from '#/payments/sync-stripe-seats.handler.js';
 import { TASK_HANDLERS, type TaskHandler } from './task-handler.js';
 import { TaskRunner } from './task-runner.service.js';
 import { TaskScheduler } from './task-scheduler.service.js';
@@ -17,15 +20,22 @@ import { TaskScheduler } from './task-scheduler.service.js';
  * `dead` with "No handler registered for task type …".
  */
 @Module({
-  imports: [DatabaseModule, ScheduleModule.forRoot(), MailModule, FilesModule],
+  imports: [DatabaseModule, ScheduleModule.forRoot(), MailModule, FilesModule, PaymentsModule],
   providers: [
     {
       provide: TASK_HANDLERS,
-      inject: [SendEmailHandler, BuildDataQualityReportHandler],
+      inject: [
+        SendEmailHandler,
+        BuildDataQualityReportHandler,
+        SyncStripeSeatsHandler,
+        ReportStripeUsageHandler,
+      ],
       useFactory: (
         sendEmail: SendEmailHandler,
         buildReport: BuildDataQualityReportHandler,
-      ): TaskHandler[] => [sendEmail, buildReport],
+        syncSeats: SyncStripeSeatsHandler,
+        reportUsage: ReportStripeUsageHandler,
+      ): TaskHandler[] => [sendEmail, buildReport, syncSeats, reportUsage],
     },
     TaskRunner,
     TaskScheduler,

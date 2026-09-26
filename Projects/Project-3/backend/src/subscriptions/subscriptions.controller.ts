@@ -1,5 +1,7 @@
-import { Body, Controller, Get, HttpCode, Patch, Post, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Res, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
 import {
+  ApiAcceptedResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiHeader,
@@ -15,6 +17,7 @@ import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.intercept
 import { ChoosePlanDto } from './dto/choose-plan.dto.js';
 import { PlanDto } from './dto/plan.dto.js';
 import { PlanChangeResultDto, SubscriptionDto } from './dto/subscription.dto.js';
+import { PendingPlanDto } from './dto/pending-plan.dto.js';
 import { PLANS } from './plan-catalog.js';
 import { SubscriptionsService } from './subscriptions.service.js';
 
@@ -47,8 +50,15 @@ export class SubscriptionsController {
   @StrictThrottle(10)
   @Post('me')
   @ApiCreatedResponse({ type: SubscriptionDto })
-  async choose(@Body() dto: ChoosePlanDto): Promise<SubscriptionDto> {
-    return toDto(SubscriptionDto, await this.subscriptions.choose(dto.plan));
+  @ApiAcceptedResponse({ type: PendingPlanDto })
+  async choose(
+    @Body() dto: ChoosePlanDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<SubscriptionDto | PendingPlanDto> {
+    const result = await this.subscriptions.requestChoose(dto.plan);
+    if (result.kind === 'active') return toDto(SubscriptionDto, result.view);
+    response.status(HttpStatus.ACCEPTED);
+    return toDto(PendingPlanDto, { state: 'pending', ...result.intent });
   }
 
   @Roles('admin')
@@ -64,8 +74,20 @@ export class SubscriptionsController {
       'A UUID. A retry with the same key and body replays the first response instead of changing the plan (and billing the proration) twice.',
   })
   @ApiOkResponse({ type: PlanChangeResultDto })
-  async change(@Body() dto: ChoosePlanDto): Promise<PlanChangeResultDto> {
-    const { view, previousPlan, prorationCents } = await this.subscriptions.change(dto.plan);
-    return toDto(PlanChangeResultDto, { subscription: view, previousPlan, prorationCents });
+  @ApiAcceptedResponse({ type: PendingPlanDto })
+  async change(
+    @Body() dto: ChoosePlanDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<PlanChangeResultDto | PendingPlanDto> {
+    const result = await this.subscriptions.requestChange(dto.plan);
+    if (result.kind === 'active') {
+      return toDto(PlanChangeResultDto, {
+        subscription: result.view,
+        previousPlan: result.previousPlan,
+        prorationCents: result.prorationCents,
+      });
+    }
+    response.status(HttpStatus.ACCEPTED);
+    return toDto(PendingPlanDto, { state: 'pending', ...result.intent });
   }
 }

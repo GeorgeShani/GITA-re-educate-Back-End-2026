@@ -11,6 +11,9 @@ import { FileAsset } from '#/files/file-asset.entity.js';
 import { Notification } from '#/notifications/notification.entity.js';
 import { QuotaAlert } from '#/notifications/quota-alert.entity.js';
 import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
+import { BillingAccount } from '#/payments/billing-account.entity.js';
+import { SeatSync } from '#/payments/seat-sync.entity.js';
+import { StripeEvent } from '#/payments/stripe-event.entity.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { AuthIdentity } from './entities/auth-identity.entity.js';
@@ -55,4 +58,7 @@ export const ENTITIES: (new () => object)[] = [
   Notification,
   QuotaAlert,
   QualityRule,
+  BillingAccount,
+  StripeEvent,
+  SeatSync,
 ];

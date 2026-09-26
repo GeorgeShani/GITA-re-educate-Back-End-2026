@@ -67,7 +67,7 @@ export class SessionService {
     if (user.status === 'disabled') {
       throw new ForbiddenException('This account has been disabled');
     }
-    if (company.status !== 'active') {
+    if (company.status !== 'active' && !(company.status === 'suspended' && user.role === 'admin')) {
       throw new ForbiddenException('This company is not active');
     }
 
@@ -119,7 +119,13 @@ export class SessionService {
           where: { id: presented.userId },
           relations: { company: true },
         });
-        if (!user || user.status !== 'active' || user.company?.status !== 'active') {
+        const companyStatus = user?.company?.status;
+        const mayUseBillingRecovery = companyStatus === 'suspended' && user?.role === 'admin';
+        if (
+          !user ||
+          user.status !== 'active' ||
+          (companyStatus !== 'active' && !mayUseBillingRecovery)
+        ) {
           await this.revokeFamily(manager, presented.familyId);
           return { kind: 'rejected' };
         }

@@ -27,4 +27,7 @@ export class UsageEvent extends BaseEntity {
 
   @Column({ type: 'text' })
   periodKey!: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  stripeReportedAt!: Date | null;
 }

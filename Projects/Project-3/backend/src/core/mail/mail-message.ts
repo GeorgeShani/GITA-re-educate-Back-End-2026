@@ -12,12 +12,12 @@ const httpUrl = z.url({ protocol: /^https?$/ });
 export const mailMessageSchema = z.discriminatedUnion('template', [
   z.object({
     template: z.literal('activation'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({ companyName: z.string(), activationUrl: httpUrl }),
   }),
   z.object({
     template: z.literal('invite'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({
       fullName: z.string(),
       companyName: z.string(),
@@ -26,17 +26,32 @@ export const mailMessageSchema = z.discriminatedUnion('template', [
   }),
   z.object({
     template: z.literal('password_reset'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({ fullName: z.string(), resetUrl: httpUrl }),
   }),
   z.object({
     template: z.literal('password_changed'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({ fullName: z.string() }),
   }),
   z.object({
+    template: z.literal('payment_failed'),
+    to: z.email(),
+    vars: z.object({
+      companyName: z.string(),
+      totalFormatted: z.string(),
+      graceEndsAt: z.string(),
+      billingUrl: httpUrl,
+    }),
+  }),
+  z.object({
+    template: z.literal('payment_recovered'),
+    to: z.email(),
+    vars: z.object({ companyName: z.string(), billingUrl: httpUrl }),
+  }),
+  z.object({
     template: z.literal('invoice_finalized'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({
       companyName: z.string(),
       periodStart: z.string(),
@@ -47,7 +62,7 @@ export const mailMessageSchema = z.discriminatedUnion('template', [
   }),
   z.object({
     template: z.literal('quota_threshold'),
-    to: z.string().email(),
+    to: z.email(),
     vars: z.object({
       companyName: z.string(),
       threshold: z.number().int(),

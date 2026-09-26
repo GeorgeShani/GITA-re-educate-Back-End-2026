@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { DatabaseModule } from '#/database/database.module.js';
+import { PaymentsModule } from '#/payments/payments.module.js';
 import { UsersModule } from '#/users/users.module.js';
 import { AccountLookupService } from './account-lookup.service.js';
 import { ApiKeyAuthenticationService } from './api-key-authentication.service.js';
@@ -26,6 +27,7 @@ import { SessionService } from './session.service.js';
 @Module({
   imports: [
     DatabaseModule,
+    PaymentsModule,
     UsersModule,
     JwtModule.registerAsync({
       inject: [APP_CONFIG],

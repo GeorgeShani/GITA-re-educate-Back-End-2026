@@ -128,6 +128,12 @@ password at all, so there is nothing to guess.
   *10 employees plus the admin* (max $50/month). The other reading — 10 seats *including* the admin (max $45) — is the
   one-line change `basic.maxEmployees: 9`; nothing else needs touching, and `plan-catalog.spec.ts` will tell you which
   assertions encode the current reading.
+- **Paid subscriptions are fulfilled by Stripe, not by a fake local switch.** Free activates locally; Basic and Premium return a
+  hosted Checkout URL and become active only after a signed Stripe webhook confirms the provider state. Paid changes reset the
+  cycle and invoice proration immediately. Basic synchronizes active-employee quantity through an ordered durable task; Premium
+  reports every file-version usage event with that immutable event ID for retry-safe metering. Failed payment opens a seven-day
+  grace period, then suspends access while leaving billing recovery available to admins. Run `npm run stripe:verify-catalog` during
+  deployment to prove the configured prices, meter, portal and webhook match Gridline's assumptions.
 - **Rate limits follow the plan.** 30 / 120 / 600 requests a minute per *company* (Free / Basic / Premium), shared by its
   users and API keys, with `X-RateLimit-*` headers and a 429 that names the plan and the way up. Sign-in and email-sending
   routes have tighter per-address limits. Counters are in memory: correct for one API instance.

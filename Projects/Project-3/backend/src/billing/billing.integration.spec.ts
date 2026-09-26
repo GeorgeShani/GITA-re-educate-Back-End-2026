@@ -46,6 +46,12 @@ const invoiceSchema = z
     status: z.literal('finalized'),
     dueDate: z.string(),
     createdAt: z.string(),
+    provider: z.literal('local'),
+    stripeHostedInvoiceUrl: z.null(),
+    stripeInvoicePdfUrl: z.null(),
+    currency: z.null(),
+    paymentAttempts: z.literal(0),
+    paidAt: z.null(),
   })
   .strict();
 const invoicePage = z.object({
