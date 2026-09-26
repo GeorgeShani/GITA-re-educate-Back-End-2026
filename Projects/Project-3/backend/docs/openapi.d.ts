@@ -992,6 +992,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/files/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List a file's comment thread
+         * @description Lists comments oldest first with cursor pagination. The same visibility rule as the file applies: callers who cannot see the file receive 404. Deleted comments remain as bodyless tombstones so replies keep their place. A personal API key needs `files:read`.
+         */
+        get: operations["FileCommentsController_list"];
+        put?: never;
+        /**
+         * Comment on a file
+         * @description Creates a top-level comment or a one-level reply. Mentioned users must be active company members who can already see the file; mentioning someone never grants access. Newly mentioned people receive an inbox notification. Session authentication is required—API keys cannot create comments.
+         */
+        post: operations["CommentMutationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/comments/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a comment
+         * @description Authors and company admins may delete a comment. Deletion preserves a bodyless tombstone, clears all mention rows, and leaves replies in place. Repeating the request is safe. Session authentication is required.
+         */
+        delete: operations["CommentMutationsController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Edit your comment
+         * @description Authors may replace the body and mention set of a live comment. Only newly added mentions are notified. Comment text is never copied into audit metadata. Session authentication is required.
+         */
+        patch: operations["CommentMutationsController_update"];
+        trace?: never;
+    };
     "/quality-rules": {
         parameters: {
             query?: never;
@@ -1552,7 +1600,7 @@ export interface components {
              * @description What happened. Decides the shape of `payload`.
              * @enum {string}
              */
-            type: "quota.threshold" | "report.ready" | "report.failed" | "rules.failed" | "dataset.schema_changed" | "file.shared" | "invoice.finalized";
+            type: "quota.threshold" | "report.ready" | "report.failed" | "rules.failed" | "dataset.schema_changed" | "file.shared" | "invoice.finalized" | "comment.mentioned";
             /** @description Ids, counts and names for this `type` — never cell values. For `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`, `upgradeTo`. For `report.ready`/`report.failed`: `fileId`, `fileName`. For `file.shared`: `fileId`, `fileName`, `sharedByUserId`. For `invoice.finalized`: `invoiceId`, `totalCents`. */
             payload: {
                 [key: string]: unknown;
@@ -1875,6 +1923,47 @@ export interface components {
             data: components["schemas"]["EmployeeDto"][];
             meta: components["schemas"]["OffsetMetaDto"];
         };
+        CommentUserDto: {
+            /** Format: uuid */
+            id: string;
+            fullName: string;
+        };
+        CommentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            fileId: string;
+            /** Format: uuid */
+            parentId: string | null;
+            /** @description Null for a deleted tombstone. */
+            body: string | null;
+            author: components["schemas"]["CommentUserDto"];
+            mentionedUsers: components["schemas"]["CommentUserDto"][];
+            /** Format: date-time */
+            editedAt: string | null;
+            /** Format: date-time */
+            deletedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CommentPageDto: {
+            data: components["schemas"]["CommentDto"][];
+            meta: components["schemas"]["CursorMetaDto"];
+        };
+        CreateCommentDto: {
+            body: string;
+            /**
+             * Format: uuid
+             * @description A top-level comment on the same file.
+             */
+            parentId?: string;
+            /** @default [] */
+            mentionedUserIds: string[];
+        };
+        UpdateCommentDto: {
+            body?: string;
+            mentionedUserIds?: string[];
+        };
         QualityRuleDto: {
             id: string;
             name: string;
@@ -2034,7 +2123,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -2058,7 +2147,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -3472,6 +3561,102 @@ export interface operations {
             };
         };
     };
+    FileCommentsController_list: {
+        parameters: {
+            query?: {
+                /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
+                cursor?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentPageDto"];
+                };
+            };
+        };
+    };
+    CommentMutationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommentDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+        };
+    };
+    CommentMutationsController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+        };
+    };
+    CommentMutationsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCommentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentDto"];
+                };
+            };
+        };
+    };
     QualityRulesController_list: {
         parameters: {
             query?: {
@@ -3593,7 +3778,7 @@ export interface operations {
                 /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
                 cursor?: string;
                 limit?: number;
-                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
                 /** @description Only what this person did. */
                 actorUserId?: string;
                 /** @description The kind of thing acted on. */

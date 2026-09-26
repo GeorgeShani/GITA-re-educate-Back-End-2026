@@ -13,6 +13,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { BillingModule } from './billing/billing.module.js';
 import { BillingCycleModule } from './billing/cycle/billing-cycle.module.js';
 import { CompaniesModule } from './companies/companies.module.js';
+import { CommentsModule } from './comments/comments.module.js';
 import { AiModule } from './core/ai/ai.module.js';
 import { AuditModule } from './core/audit/audit.module.js';
 import { CoreModule } from './core/core.module.js';
@@ -92,7 +93,10 @@ function observeImports(): DynamicModule[] {
         mount: true,
         setup: (
           cls,
-          req: { headers: Record<string, string | string[] | undefined>; ip?: string },
+          req: {
+            headers: Record<string, string | string[] | undefined>;
+            ip?: string;
+          },
         ) => {
           // Reuse an inbound id so a single trace spans web -> api. The Next.js
           // BFF forwards this header.
@@ -125,6 +129,7 @@ function observeImports(): DynamicModule[] {
     SubscriptionsModule,
     EmployeesModule,
     FilesModule,
+    CommentsModule,
     NotificationsModule,
     QualityRulesModule,
     RealtimeModule,

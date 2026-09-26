@@ -13,6 +13,7 @@ import {
   type AuditAppendedEvent,
   companyRoom,
   type FileStatusEvent,
+  type CommentRealtimeEvent,
   type NotificationCreatedEvent,
   type QuotaUpdatedEvent,
   userRoom,
@@ -45,8 +46,12 @@ export class RealtimeEmitter {
   /** A file's report status changed (queued → profiling → ready | failed | unsupported). */
   async fileStatus(fileId: string): Promise<void> {
     await this.safely('file.status', async () => {
-      const file = await this.dataSource.getRepository(FileAsset).findOne({ where: { id: fileId } });
-      const report = await this.dataSource.getRepository(DataQualityReport).findOne({ where: { fileId } });
+      const file = await this.dataSource
+        .getRepository(FileAsset)
+        .findOne({ where: { id: fileId } });
+      const report = await this.dataSource
+        .getRepository(DataQualityReport)
+        .findOne({ where: { fileId } });
       if (!file || file.deletedAt || !report) return;
 
       const event: FileStatusEvent = {
@@ -61,9 +66,14 @@ export class RealtimeEmitter {
   }
 
   /** An upload was counted against the company's plan. Everyone in the company sees the meter move. */
-  async quotaUpdated(companyId: string, event: QuotaUpdatedEvent): Promise<void> {
+  async quotaUpdated(
+    companyId: string,
+    event: QuotaUpdatedEvent,
+  ): Promise<void> {
     await this.safely('quota.updated', async () => {
-      this.gateway.server.to(companyRoom(companyId)).emit('quota.updated', event);
+      this.gateway.server
+        .to(companyRoom(companyId))
+        .emit('quota.updated', event);
     });
   }
 
@@ -78,7 +88,9 @@ export class RealtimeEmitter {
         targetId: entry.targetId,
         createdAt: entry.createdAt.toISOString(),
       };
-      this.gateway.server.to(adminRoom(entry.companyId)).emit('audit.appended', event);
+      this.gateway.server
+        .to(adminRoom(entry.companyId))
+        .emit('audit.appended', event);
     });
   }
 
@@ -94,8 +106,37 @@ export class RealtimeEmitter {
         readAt: null,
         createdAt: view.createdAt.toISOString(),
       };
-      this.gateway.server.to(userRoom(row.userId)).emit('notification.created', event);
+      this.gateway.server
+        .to(userRoom(row.userId))
+        .emit('notification.created', event);
     });
+  }
+
+  async commentCreated(
+    fileId: string,
+    event: CommentRealtimeEvent,
+  ): Promise<void> {
+    await this.commentEvent('comment.created', fileId, event);
+  }
+
+  async commentUpdated(
+    fileId: string,
+    event: CommentRealtimeEvent,
+  ): Promise<void> {
+    await this.commentEvent('comment.updated', fileId, event);
+  }
+
+  async commentDeleted(
+    fileId: string,
+    event: CommentRealtimeEvent,
+  ): Promise<void> {
+    await this.commentEvent('comment.deleted', fileId, event);
+  }
+
+  async fileAccessChanged(fileId: string): Promise<void> {
+    await this.safely('file access changed', () =>
+      this.gateway.evictFileWatchers(fileId),
+    );
   }
 
   /** Drops every socket a person has open (a removed employee must not keep listening). */
@@ -109,12 +150,28 @@ export class RealtimeEmitter {
   private async audience(file: FileAsset): Promise<string[]> {
     if (file.visibility === 'company') return [companyRoom(file.companyId)];
 
-    const grants = await this.dataSource.getRepository(FileAccessGrant).find({ where: { fileId: file.id } });
+    const grants = await this.dataSource
+      .getRepository(FileAccessGrant)
+      .find({ where: { fileId: file.id } });
     return [
       adminRoom(file.companyId),
       userRoom(file.uploaderId),
       ...grants.map((grant) => userRoom(grant.userId)),
     ];
+  }
+
+  private async commentEvent(
+    name: 'comment.created' | 'comment.updated' | 'comment.deleted',
+    fileId: string,
+    event: CommentRealtimeEvent,
+  ): Promise<void> {
+    await this.safely(name, async () => {
+      const file = await this.dataSource
+        .getRepository(FileAsset)
+        .findOne({ where: { id: fileId } });
+      if (!file || file.deletedAt) return;
+      this.gateway.server.to(await this.audience(file)).emit(name, event);
+    });
   }
 
   private async safely(what: string, run: () => Promise<void>): Promise<void> {

@@ -1,0 +1,25 @@
+FileCommentsController_list:
+  summary: List a file's comment thread
+  description: >-
+    Lists comments oldest first with cursor pagination. The same visibility rule as the file applies:
+    callers who cannot see the file receive 404. Deleted comments remain as bodyless tombstones so replies
+    keep their place. A personal API key needs `files:read`.
+
+CommentMutationsController_create:
+  summary: Comment on a file
+  description: >-
+    Creates a top-level comment or a one-level reply. Mentioned users must be active company members who can
+    already see the file; mentioning someone never grants access. Newly mentioned people receive an inbox
+    notification. Session authentication is required—API keys cannot create comments.
+
+CommentMutationsController_update:
+  summary: Edit your comment
+  description: >-
+    Authors may replace the body and mention set of a live comment. Only newly added mentions are notified.
+    Comment text is never copied into audit metadata. Session authentication is required.
+
+CommentMutationsController_remove:
+  summary: Delete a comment
+  description: >-
+    Authors and company admins may delete a comment. Deletion preserves a bodyless tombstone, clears all
+    mention rows, and leaves replies in place. Repeating the request is safe. Session authentication is required.

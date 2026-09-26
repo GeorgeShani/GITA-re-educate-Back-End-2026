@@ -46,6 +46,9 @@ export const AUDIT_ACTIONS = [
   'file.uploaded',
   'file.access_changed',
   'file.deleted',
+  'comment.created',
+  'comment.updated',
+  'comment.deleted',
   // Data-quality rules and reports
   'quality_rule.created',
   'quality_rule.updated',

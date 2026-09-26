@@ -8,6 +8,7 @@ import {
   ConnectedSocket,
   MessageBody,
   type OnGatewayConnection,
+  type OnGatewayDisconnect,
   type OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
@@ -27,11 +28,14 @@ import {
   type AuthRefreshResult,
   type ClientToServerEvents,
   companyRoom,
+  fileRoom,
   type InterServerEvents,
   type ServerToClientEvents,
   type SocketData,
+  type SocketActionAcknowledgement,
   userRoom,
 } from './realtime-events.js';
+import { RealtimeAccessService } from './realtime-access.service.js';
 
 export type RealtimeServer = Server<
   ClientToServerEvents,
@@ -51,6 +55,10 @@ const handshakeAuth = z.object({ token: z.string().min(1) });
 const refreshRequest = z.object({ token: z.string().min(1) });
 const SWEEP_INTERVAL_MS = 15_000;
 const EXPIRING_WINDOW_MS = 60_000;
+const fileAction = z.object({ fileId: z.uuid() });
+const typingAction = z.object({ fileId: z.uuid(), isTyping: z.boolean() });
+const TYPING_WINDOW_MS = 1_000;
+const TYPING_EVENTS_PER_WINDOW = 5;
 
 /**
  * The Socket.IO endpoint. It is push-only: clients connect, are put in rooms, and listen.
@@ -72,18 +80,25 @@ export class RealtimeGateway
   implements
     OnGatewayInit,
     OnGatewayConnection<RealtimeSocket>,
+    OnGatewayDisconnect,
     OnModuleInit,
     OnModuleDestroy
 {
   @WebSocketServer()
   server!: RealtimeServer;
   private sweepTimer: NodeJS.Timeout | undefined;
+  private readonly watchedFiles = new Map<string, Set<string>>();
+  private readonly typingWindows = new Map<
+    string,
+    { startedAt: number; count: number }
+  >();
 
   constructor(
     private readonly authentication: AuthenticationService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
+    private readonly access: RealtimeAccessService,
   ) {
     this.logger.setContext(RealtimeGateway.name);
   }
@@ -118,7 +133,15 @@ export class RealtimeGateway
   }
 
   handleConnection(socket: RealtimeSocket): void {
+    this.watchedFiles.set(socket.id, new Set());
     void this.joinIdentityRooms(socket);
+  }
+
+  handleDisconnect(socket: RealtimeSocket): void {
+    const watched = this.watchedFiles.get(socket.id) ?? new Set<string>();
+    this.watchedFiles.delete(socket.id);
+    this.typingWindows.delete(socket.id);
+    for (const fileId of watched) void this.emitPresence(fileId);
   }
 
   @SubscribeMessage('auth.refresh')
@@ -188,6 +211,99 @@ export class RealtimeGateway
     }
   }
 
+  @SubscribeMessage('file.watch')
+  @Public()
+  async watchFile(
+    @ConnectedSocket() socket: RealtimeSocket,
+    @MessageBody() payload: unknown,
+    @Ack() acknowledge: SocketActionAcknowledgement,
+  ): Promise<void> {
+    const parsed = fileAction.safeParse(payload);
+    if (
+      !parsed.success ||
+      this.isExpired(socket, this.clock.now()) ||
+      !(await this.access.canViewFile(
+        socket.data.companyId,
+        parsed.data.fileId,
+        {
+          userId: socket.data.userId,
+          role: socket.data.role,
+        },
+      ))
+    ) {
+      acknowledge({ ok: false, error: 'unauthorized' });
+      if (this.isExpired(socket, this.clock.now())) this.expire(socket);
+      return;
+    }
+    await socket.join(fileRoom(parsed.data.fileId));
+    const watched = this.watchedFiles.get(socket.id) ?? new Set<string>();
+    watched.add(parsed.data.fileId);
+    this.watchedFiles.set(socket.id, watched);
+    acknowledge({ ok: true });
+    await this.emitPresence(parsed.data.fileId);
+  }
+
+  @SubscribeMessage('file.unwatch')
+  @Public()
+  async unwatchFile(
+    @ConnectedSocket() socket: RealtimeSocket,
+    @MessageBody() payload: unknown,
+    @Ack() acknowledge: SocketActionAcknowledgement,
+  ): Promise<void> {
+    const parsed = fileAction.safeParse(payload);
+    if (!parsed.success || this.isExpired(socket, this.clock.now())) {
+      acknowledge({ ok: false, error: 'unauthorized' });
+      if (this.isExpired(socket, this.clock.now())) this.expire(socket);
+      return;
+    }
+    await socket.leave(fileRoom(parsed.data.fileId));
+    this.watchedFiles.get(socket.id)?.delete(parsed.data.fileId);
+    acknowledge({ ok: true });
+    await this.emitPresence(parsed.data.fileId);
+  }
+
+  @SubscribeMessage('comment.typing')
+  @Public()
+  async commentTyping(
+    @ConnectedSocket() socket: RealtimeSocket,
+    @MessageBody() payload: unknown,
+  ): Promise<void> {
+    const parsed = typingAction.safeParse(payload);
+    if (
+      !parsed.success ||
+      this.isExpired(socket, this.clock.now()) ||
+      !this.watchedFiles.get(socket.id)?.has(parsed.data.fileId) ||
+      !this.allowTyping(socket.id, this.clock.now())
+    ) {
+      return;
+    }
+    socket.to(fileRoom(parsed.data.fileId)).emit('comment.typing', {
+      fileId: parsed.data.fileId,
+      userId: socket.data.userId,
+      isTyping: parsed.data.isTyping,
+    });
+  }
+
+  async evictFileWatchers(fileId: string): Promise<void> {
+    if (!this.server) return;
+    const sockets = await this.server.in(fileRoom(fileId)).fetchSockets();
+    for (const socket of sockets) {
+      const mayView = await this.access.canViewFile(
+        socket.data.companyId,
+        fileId,
+        {
+          userId: socket.data.userId,
+          role: socket.data.role,
+        },
+      );
+      if (!mayView) {
+        await socket.leave(fileRoom(fileId));
+        this.watchedFiles.get(socket.id)?.delete(fileId);
+      }
+    }
+    await this.emitPresence(fileId);
+  }
+
   private async authenticate(socket: RealtimeSocket): Promise<void> {
     const auth = handshakeAuth.safeParse(socket.handshake.auth);
     if (!auth.success) throw new Error('No token');
@@ -226,6 +342,28 @@ export class RealtimeGateway
       expiredAt: isoTimestamp(socket.data.expiresAt),
     });
     socket.disconnect(true);
+  }
+
+  private allowTyping(socketId: string, now: Date): boolean {
+    const current = this.typingWindows.get(socketId);
+    if (!current || now.getTime() - current.startedAt >= TYPING_WINDOW_MS) {
+      this.typingWindows.set(socketId, { startedAt: now.getTime(), count: 1 });
+      return true;
+    }
+    if (current.count >= TYPING_EVENTS_PER_WINDOW) return false;
+    current.count += 1;
+    return true;
+  }
+
+  private async emitPresence(fileId: string): Promise<void> {
+    if (!this.server) return;
+    const sockets = await this.server.in(fileRoom(fileId)).fetchSockets();
+    const userIds = [
+      ...new Set(sockets.map((socket) => socket.data.userId)),
+    ].sort();
+    this.server
+      .to(fileRoom(fileId))
+      .emit('presence.changed', { fileId, userIds });
   }
 }
 

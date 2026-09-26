@@ -1760,6 +1760,130 @@ paths:
         they become `invited`, hold a seat again (the plan's cap is re-checked,
         409 if full) and set a password when they accept. Only for a removed
         employee.
+  /files/{id}/comments:
+    get:
+      operationId: FileCommentsController_list
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: cursor
+          required: false
+          in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPageDto'
+      security:
+        - bearer: []
+      tags:
+        - comments
+      summary: List a file's comment thread
+      description: >-
+        Lists comments oldest first with cursor pagination. The same visibility
+        rule as the file applies: callers who cannot see the file receive 404.
+        Deleted comments remain as bodyless tombstones so replies keep their
+        place. A personal API key needs `files:read`.
+    post:
+      operationId: CommentMutationsController_create
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
+      security: &ref_16
+        - bearer: []
+      tags: &ref_17
+        - comments
+      summary: Comment on a file
+      description: >-
+        Creates a top-level comment or a one-level reply. Mentioned users must
+        be active company members who can already see the file; mentioning
+        someone never grants access. Newly mentioned people receive an inbox
+        notification. Session authentication is required—API keys cannot create
+        comments.
+  /comments/{id}:
+    patch:
+      operationId: CommentMutationsController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
+      security: *ref_16
+      tags: *ref_17
+      summary: Edit your comment
+      description: >-
+        Authors may replace the body and mention set of a live comment. Only
+        newly added mentions are notified. Comment text is never copied into
+        audit metadata. Session authentication is required.
+    delete:
+      operationId: CommentMutationsController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
+      security: *ref_16
+      tags: *ref_17
+      summary: Delete a comment
+      description: >-
+        Authors and company admins may delete a comment. Deletion preserves a
+        bodyless tombstone, clears all mention rows, and leaves replies in
+        place. Repeating the request is safe. Session authentication is
+        required.
   /quality-rules:
     get:
       operationId: QualityRulesController_list
@@ -1786,9 +1910,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRulePageDto'
-      security: &ref_16
+      security: &ref_18
         - bearer: []
-      tags: &ref_17
+      tags: &ref_19
         - quality-rules
       summary: List the company's quality rules
       description: >-
@@ -1813,8 +1937,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_16
-      tags: *ref_17
+      security: *ref_18
+      tags: *ref_19
       summary: Create a quality rule
       description: >-
         Adds a rule that every later upload is checked against (an existing file
@@ -1877,8 +2001,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_16
-      tags: *ref_17
+      security: *ref_18
+      tags: *ref_19
       summary: Change a quality rule
       description: >-
         Changes a rule's name, column, `params` (which REPLACE the old ones and
@@ -1901,8 +2025,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_16
-      tags: *ref_17
+      security: *ref_18
+      tags: *ref_19
       summary: Delete a quality rule
       description: >-
         Removes the rule and returns it. Reports that already used it keep their
@@ -2029,6 +2153,9 @@ paths:
               - file.uploaded
               - file.access_changed
               - file.deleted
+              - comment.created
+              - comment.updated
+              - comment.deleted
               - quality_rule.created
               - quality_rule.updated
               - quality_rule.deleted
@@ -2068,9 +2195,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditPageDto'
-      security: &ref_18
+      security: &ref_20
         - bearer: []
-      tags: &ref_19
+      tags: &ref_21
         - audit
       summary: List audit entries
       description: >-
@@ -2105,8 +2232,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEntryDetailDto'
-      security: *ref_18
-      tags: *ref_19
+      security: *ref_20
+      tags: *ref_21
       summary: Get one audit entry
       description: >-
         One entry with its `metadata`: the details specific to the action, such
@@ -2129,9 +2256,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatedApiKeyDto'
-      security: &ref_20
+      security: &ref_22
         - bearer: []
-      tags: &ref_21
+      tags: &ref_23
         - api-keys
       summary: Create an API key
       description: >-
@@ -2189,8 +2316,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyPageDto'
-      security: *ref_20
-      tags: *ref_21
+      security: *ref_22
+      tags: *ref_23
       summary: List API keys
       description: >-
         Newest first, paginated (`page`, `limit`). An admin sees every key in
@@ -2215,8 +2342,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyDto'
-      security: *ref_20
-      tags: *ref_21
+      security: *ref_22
+      tags: *ref_23
       summary: Revoke an API key
       description: >-
         Stops the key working immediately; it cannot be restored — create a new
@@ -2287,7 +2414,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_22
+          enum: &ref_24
             - company
             - restricted
           default: company
@@ -2319,7 +2446,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_22
+          enum: *ref_24
         datasetId:
           type: string
           format: uuid
@@ -2420,7 +2547,7 @@ components:
           type: string
         from:
           type: string
-          enum: &ref_23
+          enum: &ref_25
             - integer
             - number
             - boolean
@@ -2429,7 +2556,7 @@ components:
             - empty
         to:
           type: string
-          enum: *ref_23
+          enum: *ref_25
       required:
         - column
         - from
@@ -2616,7 +2743,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: *ref_23
+          enum: *ref_25
           description: The dominant kind of value in the column.
         typeCounts:
           $ref: '#/components/schemas/TypeCountsDto'
@@ -2713,7 +2840,7 @@ components:
           type: string
         kind:
           type: string
-          enum: &ref_28
+          enum: &ref_30
             - required_column
             - max_null_percent
             - type_is
@@ -2726,7 +2853,7 @@ components:
           nullable: true
         severity:
           type: string
-          enum: &ref_29
+          enum: &ref_31
             - error
             - warning
         status:
@@ -2822,7 +2949,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_23
+          enum: *ref_25
       required:
         - name
         - inferredType
@@ -2862,7 +2989,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_22
+          enum: *ref_24
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -2938,7 +3065,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_24
+          enum: &ref_26
             - free
             - basic
             - premium
@@ -2984,7 +3111,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -3084,6 +3211,7 @@ components:
             - dataset.schema_changed
             - file.shared
             - invoice.finalized
+            - comment.mentioned
           description: What happened. Decides the shape of `payload`.
         payload:
           type: object
@@ -3142,7 +3270,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         maxEmployees:
           type: number
           nullable: true
@@ -3253,7 +3381,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         billingAnchorDay:
           type: number
           minimum: 1
@@ -3281,7 +3409,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
       required:
         - plan
     PendingPlanDto:
@@ -3296,7 +3424,7 @@ components:
           format: uuid
         targetPlan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         checkoutUrl:
           type: object
           nullable: true
@@ -3314,7 +3442,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         prorationCents:
           type: number
           description: >-
@@ -3346,7 +3474,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_25
+          enum: &ref_27
             - finance
             - e-commerce
             - healthcare
@@ -3482,12 +3610,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_26
+          enum: &ref_28
             - admin
             - employee
         status:
           type: string
-          enum: &ref_27
+          enum: &ref_29
             - invited
             - active
             - disabled
@@ -3517,7 +3645,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_25
+          enum: *ref_27
         status:
           type: string
           enum:
@@ -3632,7 +3760,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_25
+          enum: *ref_27
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -3746,7 +3874,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_25
+          enum: *ref_27
         billingEmail:
           type: string
           example: nino@acme.com
@@ -3779,10 +3907,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_26
+          enum: *ref_28
         status:
           type: string
-          enum: *ref_27
+          enum: *ref_29
         activatedAt:
           type: string
           format: date-time
@@ -3815,6 +3943,104 @@ components:
       required:
         - data
         - meta
+    CommentUserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
+    CommentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        body:
+          type: string
+          nullable: true
+          description: Null for a deleted tombstone.
+        author:
+          $ref: '#/components/schemas/CommentUserDto'
+        mentionedUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentUserDto'
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fileId
+        - parentId
+        - body
+        - author
+        - mentionedUsers
+        - editedAt
+        - deletedAt
+        - createdAt
+    CommentPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    CreateCommentDto:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 5000
+        parentId:
+          type: string
+          format: uuid
+          description: A top-level comment on the same file.
+        mentionedUserIds:
+          maxItems: 50
+          default: []
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - body
+    UpdateCommentDto:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 5000
+        mentionedUserIds:
+          maxItems: 50
+          type: array
+          items:
+            type: string
+            format: uuid
     QualityRuleDto:
       type: object
       properties:
@@ -3824,7 +4050,7 @@ components:
           type: string
         kind:
           type: string
-          enum: *ref_28
+          enum: *ref_30
         columnName:
           type: string
           nullable: true
@@ -3834,7 +4060,7 @@ components:
           additionalProperties: true
         severity:
           type: string
-          enum: *ref_29
+          enum: *ref_31
         enabled:
           type: boolean
         createdByUserId:
@@ -3879,7 +4105,7 @@ components:
           maxLength: 80
         kind:
           type: string
-          enum: *ref_28
+          enum: *ref_30
           description: >-
             `required_column` the column must exist; `max_null_percent` at most
             that share empty; `type_is` the column is that type; `min_value` /
@@ -3905,7 +4131,7 @@ components:
             `required_column` and `unique` take `{}`.
         severity:
           type: string
-          enum: *ref_29
+          enum: *ref_31
           default: error
           description: >-
             An `error` counts double in the quality score, and a failing one
@@ -3942,7 +4168,7 @@ components:
             `{}`.
         severity:
           type: string
-          enum: *ref_29
+          enum: *ref_31
         enabled:
           type: boolean
     DayRangeDto:
@@ -4040,7 +4266,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -4074,12 +4300,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_24
+          enum: *ref_26
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -4136,7 +4362,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_30
+          enum: &ref_32
             - company.registered
             - company.activated
             - company.activation_resent
@@ -4165,6 +4391,9 @@ components:
             - file.uploaded
             - file.access_changed
             - file.deleted
+            - comment.created
+            - comment.updated
+            - comment.deleted
             - quality_rule.created
             - quality_rule.updated
             - quality_rule.deleted
@@ -4225,7 +4454,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_30
+          enum: *ref_32
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -4290,7 +4519,7 @@ components:
             allows: an employee cannot grant `billing:read`.
           items:
             type: string
-            enum: &ref_31
+            enum: &ref_33
               - files:read
               - files:write
               - billing:read
@@ -4310,9 +4539,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_32
+          items: &ref_34
             type: string
-            enum: *ref_31
+            enum: *ref_33
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -4358,7 +4587,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_32
+          items: *ref_34
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.

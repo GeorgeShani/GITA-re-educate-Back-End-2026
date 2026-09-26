@@ -764,6 +764,20 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
 - Socket message handlers are authenticated by the handshake and their own protocol checks. Mark them `@Public()` so the HTTP
   `AuthGuard` does not reinterpret a WebSocket frame; HTTP-only throttling, demo and API-key scope guards explicitly skip `ws`.
 
+## Comments, mentions & presence _(from Phase 19 of the product plan)_
+
+- `FilesService.requireVisible` remains the gate for every comment read or write. An invisible file/comment is 404; mentioning a
+  person never creates a file grant. Replies are one level deep: a parent belongs to the same file and cannot itself be a reply.
+- Mentions are relational (`file_comment_mention`), unique per `(commentId, userId)`, and may name only active members who can
+  already see the file. Editing replaces the set and notifies only newly added people. Keep comment bodies out of notifications,
+  audit metadata and logs.
+- Authors edit; authors or admins delete. Delete is a tombstone (`body = null`, `deletedAt` set) and removes mentions, preserving
+  reply position. Comment writes are session-only because their controller deliberately declares no API-key scope; reads accept
+  `files:read`.
+- Persisted `comment.created|updated|deleted` events are emitted only after the transaction returns. `file.watch` joins a
+  visibility-checked `file:<id>` room; presence deduplicates user IDs across tabs. `comment.typing` is ephemeral and limited to five
+  events per second per socket. File access changes re-check and evict room members immediately.
+
 ## Pagination & sorting _(from Phase 3)_
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -952,6 +966,8 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `file_asset` — `(companyId, deletedAt, createdAt)` + partial
       `(companyId, createdAt) WHERE deleted_at IS NULL AND is_latest`, `(companyId, datasetId)`, UNIQUE `(datasetId, version)`
 - [x] `file_access_grant` — UNIQUE `(fileId, userId)` (+ plain `userId`); `idempotency_record` — UNIQUE `(companyId, key)`
+- [x] `file_comment` — `(companyId, fileId, createdAt, id)` + `(parentId)`;
+      `file_comment_mention` — UNIQUE `(commentId, userId)` + `(companyId, userId)`
 - [x] `usage_event` — `(companyId, periodKey)`
 - [x] `audit_log_entry` — `(companyId, createdAt DESC, id)`
 - [x] `subscription` — UNIQUE `(companyId)`; `subscription_change` —

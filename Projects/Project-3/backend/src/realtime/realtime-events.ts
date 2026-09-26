@@ -7,6 +7,7 @@ export const companyRoom = (companyId: string) => `company:${companyId}`;
 export const userRoom = (userId: string) => `user:${userId}`;
 /** Only admins of that company. */
 export const adminRoom = (companyId: string) => `admins:${companyId}`;
+export const fileRoom = (fileId: string) => `file:${fileId}`;
 
 /** A file's report moved to a new status. `error` is set when it is `failed` or `unsupported`. */
 export interface FileStatusEvent {
@@ -61,6 +62,33 @@ export type AuthRefreshResult =
 
 export type AuthRefreshAcknowledgement = (result: AuthRefreshResult) => void;
 
+export interface CommentRealtimeEvent {
+  id: string;
+  fileId: string;
+  parentId: string | null;
+  body: string | null;
+  author: { id: string; fullName: string };
+  mentionedUsers: Array<{ id: string; fullName: string }>;
+  editedAt: Date | null;
+  deletedAt: Date | null;
+  createdAt: Date;
+}
+
+export interface CommentTypingEvent {
+  fileId: string;
+  userId: string;
+  isTyping: boolean;
+}
+
+export interface PresenceChangedEvent {
+  fileId: string;
+  userIds: string[];
+}
+
+export type SocketActionResult =
+  { ok: true } | { ok: false; error: 'unauthorized' };
+export type SocketActionAcknowledgement = (result: SocketActionResult) => void;
+
 /** What the server pushes. The client sends nothing but its handshake. */
 export interface ServerToClientEvents {
   'file.status': (event: FileStatusEvent) => void;
@@ -69,6 +97,11 @@ export interface ServerToClientEvents {
   'notification.created': (event: NotificationCreatedEvent) => void;
   'session.expiring': (event: SessionExpiringEvent) => void;
   'session.expired': (event: SessionExpiredEvent) => void;
+  'comment.created': (event: CommentRealtimeEvent) => void;
+  'comment.updated': (event: CommentRealtimeEvent) => void;
+  'comment.deleted': (event: CommentRealtimeEvent) => void;
+  'comment.typing': (event: CommentTypingEvent) => void;
+  'presence.changed': (event: PresenceChangedEvent) => void;
 }
 
 export interface ClientToServerEvents {
@@ -76,6 +109,15 @@ export interface ClientToServerEvents {
     request: AuthRefreshRequest,
     acknowledge: AuthRefreshAcknowledgement,
   ) => void;
+  'file.watch': (
+    request: { fileId: string },
+    acknowledge: SocketActionAcknowledgement,
+  ) => void;
+  'file.unwatch': (
+    request: { fileId: string },
+    acknowledge: SocketActionAcknowledgement,
+  ) => void;
+  'comment.typing': (request: { fileId: string; isTyping: boolean }) => void;
 }
 export type InterServerEvents = Record<string, never>;
 

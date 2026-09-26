@@ -29,7 +29,11 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('report.failed'),
-    payload: z.object({ fileId: z.uuid(), fileName: z.string(), reason: z.string() }),
+    payload: z.object({
+      fileId: z.uuid(),
+      fileName: z.string(),
+      reason: z.string(),
+    }),
   }),
   z.object({
     type: z.literal('rules.failed'),
@@ -52,12 +56,18 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
       /** Column names, capped: enough to see what moved without a header row's worth of text. */
       columnsAdded: z.array(z.string()),
       columnsRemoved: z.array(z.string()),
-      typeChanges: z.array(z.object({ column: z.string(), from: z.string(), to: z.string() })),
+      typeChanges: z.array(
+        z.object({ column: z.string(), from: z.string(), to: z.string() }),
+      ),
     }),
   }),
   z.object({
     type: z.literal('file.shared'),
-    payload: z.object({ fileId: z.uuid(), fileName: z.string(), sharedByUserId: z.uuid() }),
+    payload: z.object({
+      fileId: z.uuid(),
+      fileName: z.string(),
+      sharedByUserId: z.uuid(),
+    }),
   }),
   z.object({
     type: z.literal('invoice.finalized'),
@@ -68,9 +78,19 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
       periodEnd: z.string(),
     }),
   }),
+  z.object({
+    type: z.literal('comment.mentioned'),
+    payload: z.object({
+      commentId: z.uuid(),
+      fileId: z.uuid(),
+      mentionedByUserId: z.uuid(),
+    }),
+  }),
 ]);
 
 export type NotificationContent = z.infer<typeof notificationContentSchema>;
 export type NotificationType = NotificationContent['type'];
 
-export const NOTIFICATION_TYPES = notificationContentSchema.options.map((option) => option.shape.type.value);
+export const NOTIFICATION_TYPES = notificationContentSchema.options.map(
+  (option) => option.shape.type.value,
+);

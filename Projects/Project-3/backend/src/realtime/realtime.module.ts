@@ -1,10 +1,12 @@
 import { Global, Module, type OnModuleInit } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuthModule } from '#/auth/auth.module.js';
+import { DatabaseModule } from '#/database/database.module.js';
 import { AuditBroadcaster } from './audit-broadcaster.js';
 import { NotificationBroadcaster } from './notification-broadcaster.js';
 import { RealtimeEmitter } from './realtime-emitter.service.js';
 import { RealtimeGateway } from './realtime.gateway.js';
+import { RealtimeAccessService } from './realtime-access.service.js';
 
 /**
  * Global so `FilesService`, the report handler and `EmployeesService` can inject the emitter
@@ -13,8 +15,8 @@ import { RealtimeGateway } from './realtime.gateway.js';
  */
 @Global()
 @Module({
-  imports: [AuthModule],
-  providers: [RealtimeGateway, RealtimeEmitter],
+  imports: [AuthModule, DatabaseModule],
+  providers: [RealtimeGateway, RealtimeEmitter, RealtimeAccessService],
   exports: [RealtimeEmitter],
 })
 export class RealtimeModule implements OnModuleInit {

@@ -159,6 +159,14 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 - Socket.IO pushes `file.status` (queued → profiling → ready), `quota.updated`, `audit.appended` and `notification.created`.
   Events go out **only after the change commits**, and a restricted file's events reach only the people who may see it —
   decided at emit time.
+- People can watch a file for deduplicated live presence and rate-limited typing indicators. Access changes evict sockets that
+  can no longer see it. Comment create, edit and delete events arrive after commit.
+
+### 10b. Comments and mentions
+
+- Visible coworkers discuss a file in a one-level thread. Authors edit; authors or admins delete, leaving a bodyless tombstone so
+  replies do not move. Mentions notify only newly mentioned people and never grant file access.
+- Comment text is treated as private content: it is returned to authorized readers but never copied into audit metadata.
 
 ### 10a. Notifications and quota alerts
 

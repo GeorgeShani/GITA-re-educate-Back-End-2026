@@ -64,7 +64,9 @@ describe('database indexes', () => {
   });
 
   it('makes a password login email globally unique, case-insensitively, for password identities only', () => {
-    const index = indexes.find((row) => row.indexname === 'uq_auth_identity_password_email');
+    const index = indexes.find(
+      (row) => row.indexname === 'uq_auth_identity_password_email',
+    );
     expect(index).toBeDefined();
     if (!index) return;
 
@@ -78,20 +80,28 @@ describe('database indexes', () => {
   });
 
   it('allows one identity per provider per user', () => {
-    const index = indexes.find((row) => row.indexname === 'uq_auth_identity_user_provider');
+    const index = indexes.find(
+      (row) => row.indexname === 'uq_auth_identity_user_provider',
+    );
     expect(index?.tablename).toBe('auth_identity');
     expect(index?.indexdef).toMatch(/UNIQUE/);
     expect(index?.indexdef).toMatch(/\("userId", provider\)/);
   });
 
   it('indexes file_asset on (companyId, deletedAt, createdAt), the keyset index for GET /files', () => {
-    const index = indexes.find((row) => row.indexname === 'idx_file_asset_company');
+    const index = indexes.find(
+      (row) => row.indexname === 'idx_file_asset_company',
+    );
     expect(index?.tablename).toBe('file_asset');
-    expect(index?.indexdef).toMatch(/\("companyId", "deletedAt", "createdAt"\)/);
+    expect(index?.indexdef).toMatch(
+      /\("companyId", "deletedAt", "createdAt"\)/,
+    );
   });
 
   it('keeps a PARTIAL index over live files only, so deleted rows never bloat the hot path', () => {
-    const index = indexes.find((row) => row.indexname === 'idx_file_asset_company_live');
+    const index = indexes.find(
+      (row) => row.indexname === 'idx_file_asset_company_live',
+    );
     expect(index?.tablename).toBe('file_asset');
     expect(index?.indexdef).toMatch(/\("companyId", "createdAt"\)/);
     expect(index?.indexdef).toMatch(/WHERE.*"deletedAt" IS NULL/);
@@ -102,40 +112,56 @@ describe('database indexes', () => {
   it('allows one version number per dataset, and indexes a dataset’s versions by (companyId, datasetId)', () => {
     const unique = find('file_asset', 'datasetId', 'version');
     expect(unique?.indexdef).toMatch(/UNIQUE/);
-    expect(indexes.find((row) => row.indexname === 'idx_file_asset_company_dataset')?.indexdef).toMatch(
-      /\("companyId", "datasetId"\)/,
-    );
+    expect(
+      indexes.find((row) => row.indexname === 'idx_file_asset_company_dataset')
+        ?.indexdef,
+    ).toMatch(/\("companyId", "datasetId"\)/);
   });
 
   it('allows one grant per (file, person), and indexes grants by person', () => {
     const unique = find('file_access_grant', 'fileId', 'userId');
     expect(unique?.indexdef).toMatch(/UNIQUE/);
-    expect(indexes.some((row) => row.tablename === 'file_access_grant' && /\("userId"\)/.test(row.indexdef))).toBe(true);
+    expect(
+      indexes.some(
+        (row) =>
+          row.tablename === 'file_access_grant' &&
+          /\("userId"\)/.test(row.indexdef),
+      ),
+    ).toBe(true);
   });
 
   it('looks API keys up by a unique hash, and indexes them by (companyId, createdAt) and (companyId, createdByUserId)', () => {
-    const unique = indexes.find((row) => row.tablename === 'api_key' && /UNIQUE.*\("keyHash"\)/.test(row.indexdef));
+    const unique = indexes.find(
+      (row) =>
+        row.tablename === 'api_key' &&
+        /UNIQUE.*\("keyHash"\)/.test(row.indexdef),
+    );
     expect(unique).toBeDefined();
-    expect(indexes.find((row) => row.indexname === 'idx_api_key_company_created')?.indexdef).toMatch(
-      /\("companyId", "createdAt"\)/,
-    );
-    expect(indexes.find((row) => row.indexname === 'idx_api_key_company_creator')?.indexdef).toMatch(
-      /\("companyId", "createdByUserId"\)/,
-    );
+    expect(
+      indexes.find((row) => row.indexname === 'idx_api_key_company_created')
+        ?.indexdef,
+    ).toMatch(/\("companyId", "createdAt"\)/);
+    expect(
+      indexes.find((row) => row.indexname === 'idx_api_key_company_creator')
+        ?.indexdef,
+    ).toMatch(/\("companyId", "createdByUserId"\)/);
   });
 
   it('indexes notifications by (companyId, userId, createdAt, id), and allows one quota alert per (company, period, threshold)', () => {
-    expect(indexes.find((row) => row.indexname === 'idx_notification_company_user_created')?.indexdef).toMatch(
-      /\("companyId", "userId", "createdAt", id\)/,
-    );
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_notification_company_user_created',
+      )?.indexdef,
+    ).toMatch(/\("companyId", "userId", "createdAt", id\)/);
     const unique = find('quota_alert', 'companyId', 'periodKey', 'threshold');
     expect(unique?.indexdef).toMatch(/UNIQUE/);
   });
 
   it('indexes quality rules by (companyId, createdAt)', () => {
-    expect(indexes.find((row) => row.indexname === 'idx_quality_rule_company')?.indexdef).toMatch(
-      /\("companyId", "createdAt"\)/,
-    );
+    expect(
+      indexes.find((row) => row.indexname === 'idx_quality_rule_company')
+        ?.indexdef,
+    ).toMatch(/\("companyId", "createdAt"\)/);
   });
 
   it('allows one idempotency record per (company, key), leading with companyId', () => {
@@ -146,9 +172,15 @@ describe('database indexes', () => {
   });
 
   it('allows one data-quality report per file, and indexes reports by (companyId, status)', () => {
-    const unique = indexes.find((row) => row.tablename === 'data_quality_report' && /UNIQUE.*\("fileId"\)/.test(row.indexdef));
+    const unique = indexes.find(
+      (row) =>
+        row.tablename === 'data_quality_report' &&
+        /UNIQUE.*\("fileId"\)/.test(row.indexdef),
+    );
     expect(unique).toBeDefined();
-    const tenant = indexes.find((row) => row.indexname === 'idx_data_quality_report_company_status');
+    const tenant = indexes.find(
+      (row) => row.indexname === 'idx_data_quality_report_company_status',
+    );
     expect(tenant?.indexdef).toMatch(/\("companyId", status\)/);
   });
 
@@ -169,45 +201,81 @@ describe('database indexes', () => {
   });
 
   it('indexes subscription_change on (companyId, effectiveAt) for plan history', () => {
-    const index = indexes.find((row) => row.indexname === 'idx_subscription_change_company_effective');
+    const index = indexes.find(
+      (row) => row.indexname === 'idx_subscription_change_company_effective',
+    );
     expect(index?.indexdef).toMatch(/\("companyId", "effectiveAt"\)/);
   });
 
   it('makes each local invoice period unique while allowing Stripe proration invoices in the same period', () => {
-    const index = indexes.find((row) => row.indexname === 'idx_invoice_local_period_unique');
+    const index = indexes.find(
+      (row) => row.indexname === 'idx_invoice_local_period_unique',
+    );
     expect(index).toBeDefined();
     expect(index?.indexdef).toMatch(/UNIQUE/);
     expect(index?.indexdef).toMatch(/WHERE.*provider.*local/);
-    expect(index?.indexdef.indexOf('companyId')).toBeLessThan(index?.indexdef.indexOf('periodStart') ?? 0);
+    expect(index?.indexdef.indexOf('companyId')).toBeLessThan(
+      index?.indexdef.indexOf('periodStart') ?? 0,
+    );
+  });
+
+  it('indexes comment threads by tenant and file, and allows one mention per comment and user', () => {
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_file_comment_company_file_created',
+      )?.indexdef,
+    ).toMatch(/\("companyId", "fileId", "createdAt", id\)/);
+    expect(find('file_comment', 'parentId')).toBeDefined();
+    expect(
+      find('file_comment_mention', 'commentId', 'userId')?.indexdef,
+    ).toMatch(/UNIQUE/);
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_file_comment_mention_company_user',
+      )?.indexdef,
+    ).toMatch(/\("companyId", "userId"\)/);
   });
 
   it('indexes Stripe billing identities, event deduplication and ordered seat synchronization', () => {
     expect(find('billing_account', 'companyId')?.indexdef).toMatch(/UNIQUE/);
-    expect(find('billing_account', 'stripeCustomerId')?.indexdef).toMatch(/UNIQUE/);
-    expect(find('billing_account', 'stripeSubscriptionId')?.indexdef).toMatch(/UNIQUE/);
-    expect(find('stripe_event', 'stripeEventId')?.indexdef).toMatch(/UNIQUE/);
-    expect(find('seat_sync', 'companyId', 'sequence')?.indexdef).toMatch(/UNIQUE/);
-    expect(indexes.find((row) => row.indexname === 'idx_seat_sync_company_status_sequence')?.indexdef).toMatch(
-      /\("companyId", status, sequence\)/,
+    expect(find('billing_account', 'stripeCustomerId')?.indexdef).toMatch(
+      /UNIQUE/,
     );
+    expect(find('billing_account', 'stripeSubscriptionId')?.indexdef).toMatch(
+      /UNIQUE/,
+    );
+    expect(find('stripe_event', 'stripeEventId')?.indexdef).toMatch(/UNIQUE/);
+    expect(find('seat_sync', 'companyId', 'sequence')?.indexdef).toMatch(
+      /UNIQUE/,
+    );
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_seat_sync_company_status_sequence',
+      )?.indexdef,
+    ).toMatch(/\("companyId", status, sequence\)/);
     expect(find('invoice', 'stripeInvoiceId')?.indexdef).toMatch(/UNIQUE/);
   });
 
   it('deliberately does not index invoice.lineItems', () => {
     const lineItemIndexes = indexes.filter(
-      (index) => index.tablename === 'invoice' && index.indexdef.includes('lineItems'),
+      (index) =>
+        index.tablename === 'invoice' && index.indexdef.includes('lineItems'),
     );
     expect(lineItemIndexes).toEqual([]);
   });
 
   it('indexes usage_event on (companyId, periodKey) — the quota check and rollup hot path', () => {
-    const index = indexes.find((row) => row.indexname === 'idx_usage_event_company_period');
+    const index = indexes.find(
+      (row) => row.indexname === 'idx_usage_event_company_period',
+    );
     expect(index?.tablename).toBe('usage_event');
     expect(index?.indexdef).toMatch(/\("companyId", "periodKey"\)/);
   });
 
   it('indexes seat_interval on (companyId, activeFrom) and userId', () => {
-    const overlap = indexes.find((row) => row.indexname === 'idx_seat_interval_company_from');
+    const overlap = indexes.find(
+      (row) => row.indexname === 'idx_seat_interval_company_from',
+    );
     expect(overlap?.indexdef).toMatch(/\("companyId", "activeFrom"\)/);
     expect(find('seat_interval', 'userId')).toBeDefined();
   });
@@ -229,7 +297,9 @@ describe('database indexes', () => {
 
   it('deliberately does not index background_task.payload', () => {
     const payloadIndexes = indexes.filter(
-      (index) => index.tablename === 'background_task' && index.indexdef.includes('payload'),
+      (index) =>
+        index.tablename === 'background_task' &&
+        index.indexdef.includes('payload'),
     );
     expect(payloadIndexes).toEqual([]);
   });

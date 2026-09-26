@@ -148,6 +148,9 @@ password at all, so there is nothing to guess.
   The server tracks the verified JWT expiry, warns once during its final minute, and disconnects at expiry. A client that obtains a
   replacement access token emits `auth.refresh` before then; only the same active user is accepted and room membership is rebuilt
   from the person's current role. API keys never authenticate sockets.
+- **Comments and presence**: visible coworkers can discuss a file in a one-level thread, mention people who already have access,
+  and watch a file for deduplicated presence and rate-limited typing indicators. Comment changes are pushed after commit; file
+  access changes evict unauthorized watchers immediately. API keys may read comments with `files:read` but never write them.
 - **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
 /notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after

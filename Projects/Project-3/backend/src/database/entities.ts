@@ -1,5 +1,7 @@
 import { ApiKey } from '#/api-keys/api-key.entity.js';
 import { Invoice } from '#/billing/invoice.entity.js';
+import { FileComment } from '#/comments/file-comment.entity.js';
+import { FileCommentMention } from '#/comments/file-comment-mention.entity.js';
 import { SeatInterval } from '#/billing/seat-interval.entity.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { AuditLogEntry } from '#/core/audit/audit-log-entry.entity.js';
@@ -61,4 +63,6 @@ export const ENTITIES: (new () => object)[] = [
   BillingAccount,
   StripeEvent,
   SeatSync,
+  FileComment,
+  FileCommentMention,
 ];

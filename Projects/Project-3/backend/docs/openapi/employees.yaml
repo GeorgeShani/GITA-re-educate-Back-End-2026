@@ -983,6 +983,7 @@ components:
             - dataset.schema_changed
             - file.shared
             - invoice.finalized
+            - comment.mentioned
           description: What happened. Decides the shape of `payload`.
         payload:
           type: object
@@ -1714,6 +1715,104 @@ components:
       required:
         - data
         - meta
+    CommentUserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+      required:
+        - id
+        - fullName
+    CommentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        body:
+          type: string
+          nullable: true
+          description: Null for a deleted tombstone.
+        author:
+          $ref: '#/components/schemas/CommentUserDto'
+        mentionedUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentUserDto'
+        editedAt:
+          type: string
+          format: date-time
+          nullable: true
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fileId
+        - parentId
+        - body
+        - author
+        - mentionedUsers
+        - editedAt
+        - deletedAt
+        - createdAt
+    CommentPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CommentDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    CreateCommentDto:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 5000
+        parentId:
+          type: string
+          format: uuid
+          description: A top-level comment on the same file.
+        mentionedUserIds:
+          maxItems: 50
+          default: []
+          type: array
+          items:
+            type: string
+            format: uuid
+      required:
+        - body
+    UpdateCommentDto:
+      type: object
+      properties:
+        body:
+          type: string
+          maxLength: 5000
+        mentionedUserIds:
+          maxItems: 50
+          type: array
+          items:
+            type: string
+            format: uuid
     QualityRuleDto:
       type: object
       properties:
@@ -2064,6 +2163,9 @@ components:
             - file.uploaded
             - file.access_changed
             - file.deleted
+            - comment.created
+            - comment.updated
+            - comment.deleted
             - quality_rule.created
             - quality_rule.updated
             - quality_rule.deleted

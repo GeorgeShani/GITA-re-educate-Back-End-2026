@@ -3,6 +3,7 @@ import type {
   AuthRefreshResult,
   ClientToServerEvents,
   ServerToClientEvents,
+  SocketActionResult,
 } from '#/realtime/realtime-events.js';
 
 type ClientSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
@@ -21,6 +22,9 @@ export interface Listener {
     timeoutMs?: number,
   ): Promise<unknown[]>;
   refresh(token: string): Promise<AuthRefreshResult>;
+  watch(fileId: string): Promise<SocketActionResult>;
+  unwatch(fileId: string): Promise<SocketActionResult>;
+  typing(fileId: string, isTyping: boolean): void;
   close(): void;
 }
 
@@ -31,6 +35,11 @@ const OBSERVED = [
   'notification.created',
   'session.expiring',
   'session.expired',
+  'comment.created',
+  'comment.updated',
+  'comment.deleted',
+  'comment.typing',
+  'presence.changed',
 ] as const;
 
 /**
@@ -89,6 +98,11 @@ export function connect(
             done(result);
           });
         }),
+      watch: (fileId) => action(socket, 'file.watch', fileId),
+      unwatch: (fileId) => action(socket, 'file.unwatch', fileId),
+      typing: (fileId, isTyping) => {
+        socket.emit('comment.typing', { fileId, isTyping });
+      },
       close: () => {
         socket.close();
       },
@@ -98,6 +112,23 @@ export function connect(
     socket.once('connect_error', (error) => {
       socket.close();
       reject(error);
+    });
+  });
+}
+
+function action(
+  socket: ClientSocket,
+  event: 'file.watch' | 'file.unwatch',
+  fileId: string,
+): Promise<SocketActionResult> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error(`Timed out waiting for ${event} acknowledgement`)),
+      5_000,
+    );
+    socket.emit(event, { fileId }, (result) => {
+      clearTimeout(timeout);
+      resolve(result);
     });
   });
 }

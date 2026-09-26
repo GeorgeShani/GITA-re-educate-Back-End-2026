@@ -18,13 +18,23 @@ import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { UsageService } from '#/billing/usage.service.js';
 import { decodeCursor } from '#/common/pagination/cursor.js';
 import type { OffsetQueryDto } from '#/common/pagination/offset-query.dto.js';
-import { applyCursor, toCursorPage, toOffsetPage } from '#/common/pagination/paginate.js';
-import type { CursorPage, OffsetPage } from '#/common/pagination/paginated-result.js';
+import {
+  applyCursor,
+  toCursorPage,
+  toOffsetPage,
+} from '#/common/pagination/paginate.js';
+import type {
+  CursorPage,
+  OffsetPage,
+} from '#/common/pagination/paginated-result.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
-import { type DownloadLink, StorageService } from '#/core/storage/storage.service.js';
+import {
+  type DownloadLink,
+  StorageService,
+} from '#/core/storage/storage.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { User } from '#/database/entities/user.entity.js';
 import { TenantScope } from '#/database/tenant-scope.js';
@@ -46,7 +56,8 @@ import { type FileViewer, applyFileVisibility } from './file-visibility.js';
 import { blockedMessage, overageWarning, quotaDecision } from './quota.js';
 import { sniffSpreadsheet } from './validation/sniff-spreadsheet.js';
 
-const NO_PLAN = 'No plan selected yet. Choose one with POST /subscriptions/me to use this feature.';
+const NO_PLAN =
+  'No plan selected yet. Choose one with POST /subscriptions/me to use this feature.';
 const NOT_FOUND = 'File not found';
 const MAX_NAME_LENGTH = 255;
 
@@ -59,7 +70,11 @@ export interface UploadResult {
 
 /** Where an upload goes: a file of its own, or the next version of an existing dataset. */
 type StoreTarget =
-  | { kind: 'new'; visibility: FileVisibility; grantedUserIds: string[] | undefined }
+  | {
+      kind: 'new';
+      visibility: FileVisibility;
+      grantedUserIds: string[] | undefined;
+    }
   | { kind: 'version'; datasetId: string };
 
 export interface FileWithGrants {
@@ -149,7 +164,11 @@ export class FilesService {
    * reaches step 4's usage event.
    */
   upload(file: Express.Multer.File, dto: UploadFileDto): Promise<UploadResult> {
-    return this.store(file, { kind: 'new', visibility: dto.visibility, grantedUserIds: dto.grantedUserIds });
+    return this.store(file, {
+      kind: 'new',
+      visibility: dto.visibility,
+      grantedUserIds: dto.grantedUserIds,
+    });
   }
 
   /**
@@ -159,25 +178,44 @@ export class FilesService {
    * (uploader or admin). The version inherits the visibility and grants of the dataset's current latest
    * version; after that each version's access is its own (`PATCH /files/:id`).
    */
-  async uploadVersion(baseId: string, file: Express.Multer.File): Promise<UploadResult> {
+  async uploadVersion(
+    baseId: string,
+    file: Express.Multer.File,
+  ): Promise<UploadResult> {
     const base = await this.requireManageable(baseId);
     return this.store(file, { kind: 'version', datasetId: base.datasetId });
   }
 
   /** The one upload path: a brand-new file, or the next version of a dataset. */
-  private async store(file: Express.Multer.File, target: StoreTarget): Promise<UploadResult> {
+  private async store(
+    file: Express.Multer.File,
+    target: StoreTarget,
+  ): Promise<UploadResult> {
     const { companyId, viewer } = this.caller();
 
     const mimeType = await sniffSpreadsheet(file.buffer);
     if (!mimeType) {
       // The pipe normally stops this first; a service must not trust its caller to.
-      throw new BadRequestException('Only CSV, XLS and XLSX spreadsheets are accepted.');
+      throw new BadRequestException(
+        'Only CSV, XLS and XLSX spreadsheets are accepted.',
+      );
     }
 
     // A new file names its own visibility and grants; a version takes both from its dataset, inside the transaction.
     const requested =
-      target.kind === 'new' ? this.grantsFor(target.visibility, target.grantedUserIds, viewer.userId) : [];
-    if (target.kind === 'new') await this.assertActiveMembers(this.dataSource.manager, companyId, requested);
+      target.kind === 'new'
+        ? this.grantsFor(
+            target.visibility,
+            target.grantedUserIds,
+            viewer.userId,
+          )
+        : [];
+    if (target.kind === 'new')
+      await this.assertActiveMembers(
+        this.dataSource.manager,
+        companyId,
+        requested,
+      );
     await this.precheckQuota(companyId);
 
     const fileId = randomUUID();
@@ -187,8 +225,12 @@ export class FilesService {
     let committed: { result: UploadResult; quota: QuotaUpdatedEvent };
     try {
       committed = await this.dataSource.transaction(async (manager) => {
-        const subscription = await this.subscriptions.lockForUpdate(manager, companyId);
-        if (!subscription) throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
+        const subscription = await this.subscriptions.lockForUpdate(
+          manager,
+          companyId,
+        );
+        if (!subscription)
+          throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
 
         const now = this.clock.now();
         // Bring the period up to date first, or the count below is for a period that has ended.
@@ -198,11 +240,22 @@ export class FilesService {
           end: subscription.currentPeriodEnd,
         });
 
-        const filesBefore = await this.usage.filesInPeriod(manager, companyId, key);
-        const decision = quotaDecision(subscription.plan, filesBefore, subscription.currentPeriodEnd);
+        const filesBefore = await this.usage.filesInPeriod(
+          manager,
+          companyId,
+          key,
+        );
+        const decision = quotaDecision(
+          subscription.plan,
+          filesBefore,
+          subscription.currentPeriodEnd,
+        );
         if (decision.kind === 'blocked') {
           this.metrics.quotaExceeded(subscription.plan, 'blocked');
-          throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
+          throw new HttpException(
+            blockedMessage(decision),
+            HttpStatus.PAYMENT_REQUIRED,
+          );
         }
 
         let visibility: FileVisibility;
@@ -216,9 +269,16 @@ export class FilesService {
         } else {
           // Every version row of the dataset is locked (in id order, like `remove`), so two uploads of
           // one dataset, or an upload and a delete of its latest version, cannot interleave.
-          const rows = await this.lockDataset(manager, companyId, target.datasetId);
+          const rows = await this.lockDataset(
+            manager,
+            companyId,
+            target.datasetId,
+          );
           const live = rows.filter((row) => !row.deletedAt);
-          const latest = live.reduce<FileAsset | null>((best, row) => (best && best.version > row.version ? best : row), null);
+          const latest = live.reduce<FileAsset | null>(
+            (best, row) => (best && best.version > row.version ? best : row),
+            null,
+          );
           if (!latest) throw new NotFoundException(NOT_FOUND);
 
           const cap = PLAN_CATALOG[subscription.plan].maxVersionsPerDataset;
@@ -236,9 +296,21 @@ export class FilesService {
           // not a grantee, but would otherwise lose the file when someone else uploads the next version).
           grants =
             latest.visibility === 'restricted'
-              ? await this.activeMembers(manager, companyId, [...(await this.grantIds(manager, latest.id)), latest.uploaderId], viewer.userId)
+              ? await this.activeMembers(
+                  manager,
+                  companyId,
+                  [
+                    ...(await this.grantIds(manager, latest.id)),
+                    latest.uploaderId,
+                  ],
+                  viewer.userId,
+                )
               : [];
-          await manager.update(FileAsset, { datasetId, companyId, isLatest: true }, { isLatest: false });
+          await manager.update(
+            FileAsset,
+            { datasetId, companyId, isLatest: true },
+            { isLatest: false },
+          );
         }
 
         const saved = await manager.save(
@@ -246,7 +318,9 @@ export class FilesService {
             id: fileId,
             companyId,
             uploaderId: viewer.userId,
-            originalName: sanitizeFileName(decodeMultipartName(file.originalname)),
+            originalName: sanitizeFileName(
+              decodeMultipartName(file.originalname),
+            ),
             mimeType,
             sizeBytes: file.size,
             storageKey,
@@ -273,7 +347,11 @@ export class FilesService {
             stripeReportedAt: null,
           }),
         );
-        await this.billingSync.recordUsage(manager, usageEvent, subscription.plan);
+        await this.billingSync.recordUsage(
+          manager,
+          usageEvent,
+          subscription.plan,
+        );
         // 80% and 100% of the period's quota: told once each, in this transaction, so a rolled-back
         // upload announces nothing.
         await this.quotaAlerts.check(manager, {
@@ -285,10 +363,15 @@ export class FilesService {
           filesLimit: PLAN_CATALOG[subscription.plan].filesPerPeriod,
         });
         // A new version is not "shared" with anyone: the people who can see it could already see the file.
-        if (target.kind === 'new') await this.notifyShared(manager, saved, grants, viewer.userId);
+        if (target.kind === 'new')
+          await this.notifyShared(manager, saved, grants, viewer.userId);
         // The report exists from the moment the file does, so `GET /files/:id/report` is
         // never a 404 for a real file; the queued task fills it in.
-        await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });
+        await manager.insert(DataQualityReport, {
+          companyId,
+          fileId,
+          status: 'queued',
+        });
         await this.queue.enqueue(
           'build_data_quality_report',
           { fileId, companyId },
@@ -316,7 +399,8 @@ export class FilesService {
           result: {
             file: saved,
             grantedUserIds: grants,
-            quotaWarning: decision.kind === 'overage' ? overageWarning(decision) : null,
+            quotaWarning:
+              decision.kind === 'overage' ? overageWarning(decision) : null,
           },
           quota: {
             plan: subscription.plan,
@@ -333,7 +417,8 @@ export class FilesService {
 
     // Only now that the upload has committed: count it, and tell the company's screens.
     this.metrics.fileUploaded(committed.quota.plan);
-    if (committed.result.quotaWarning) this.metrics.quotaExceeded(committed.quota.plan, 'overage');
+    if (committed.result.quotaWarning)
+      this.metrics.quotaExceeded(committed.quota.plan, 'overage');
     await this.realtime.fileStatus(fileId);
     await this.realtime.quotaUpdated(companyId, committed.quota);
     return committed.result;
@@ -342,15 +427,26 @@ export class FilesService {
   /** Newest first by default, keyset-paginated; the visibility predicate always applies first. */
   async list(query: FilesQueryDto): Promise<CursorPage<FileAsset>> {
     const { viewer } = this.caller();
-    const qb = this.visibleFiles(this.dataSource.manager, 'f', viewer).select(LIST_COLUMNS);
+    const qb = this.visibleFiles(this.dataSource.manager, 'f', viewer).select(
+      LIST_COLUMNS,
+    );
     // One row per file by default: the newest version. `allVersions` lists every one the caller may see.
     if (!query.allVersions) qb.andWhere('f.isLatest = true');
 
-    if (query.mimeType) qb.andWhere('f.mimeType = :mimeType', { mimeType: query.mimeType });
-    if (query.visibility) qb.andWhere('f.visibility = :visibility', { visibility: query.visibility });
-    if (query.uploaderId) qb.andWhere('f.uploaderId = :uploaderId', { uploaderId: query.uploaderId });
-    if (query.uploadedAfter) qb.andWhere('f.createdAt >= :after', { after: query.uploadedAfter });
-    if (query.uploadedBefore) qb.andWhere('f.createdAt < :before', { before: query.uploadedBefore });
+    if (query.mimeType)
+      qb.andWhere('f.mimeType = :mimeType', { mimeType: query.mimeType });
+    if (query.visibility)
+      qb.andWhere('f.visibility = :visibility', {
+        visibility: query.visibility,
+      });
+    if (query.uploaderId)
+      qb.andWhere('f.uploaderId = :uploaderId', {
+        uploaderId: query.uploaderId,
+      });
+    if (query.uploadedAfter)
+      qb.andWhere('f.createdAt >= :after', { after: query.uploadedAfter });
+    if (query.uploadedBefore)
+      qb.andWhere('f.createdAt < :before', { before: query.uploadedBefore });
 
     applyCursor(
       qb,
@@ -364,7 +460,14 @@ export class FilesService {
   async get(id: string): Promise<FileWithGrants> {
     const { viewer } = this.caller();
     const file = await this.findVisible(this.dataSource.manager, id, viewer);
-    return { file, grantedUserIds: await this.grantsIfManager(this.dataSource.manager, file, viewer) };
+    return {
+      file,
+      grantedUserIds: await this.grantsIfManager(
+        this.dataSource.manager,
+        file,
+        viewer,
+      ),
+    };
   }
 
   /** The file, if the caller may see it (404 otherwise): the gate for everything hanging off a file. */
@@ -396,19 +499,31 @@ export class FilesService {
   async update(id: string, dto: UpdateFileDto): Promise<FileWithGrants> {
     const { companyId, viewer } = this.caller();
     if (dto.visibility === undefined && dto.grantedUserIds === undefined) {
-      throw new BadRequestException('Provide `visibility` and/or `grantedUserIds`.');
+      throw new BadRequestException(
+        'Provide `visibility` and/or `grantedUserIds`.',
+      );
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const updated = await this.dataSource.transaction(async (manager) => {
       // Locked, so two edits of one file's grants cannot interleave their delete-then-insert.
       const file = await this.findVisible(manager, id, viewer, true);
       this.assertCanManage(file, viewer);
 
       const next: FileVisibility = dto.visibility ?? file.visibility;
-      if (next === 'company' && dto.grantedUserIds !== undefined && dto.grantedUserIds.length > 0) {
-        throw new BadRequestException('`grantedUserIds` only applies to a restricted file.');
+      if (
+        next === 'company' &&
+        dto.grantedUserIds !== undefined &&
+        dto.grantedUserIds.length > 0
+      ) {
+        throw new BadRequestException(
+          '`grantedUserIds` only applies to a restricted file.',
+        );
       }
-      if (dto.visibility === undefined && dto.grantedUserIds !== undefined && file.visibility === 'company') {
+      if (
+        dto.visibility === undefined &&
+        dto.grantedUserIds !== undefined &&
+        file.visibility === 'company'
+      ) {
         throw new BadRequestException(
           'This file is visible to the whole company. Set `visibility` to `restricted` to choose who can see it.',
         );
@@ -425,13 +540,23 @@ export class FilesService {
 
       if (desired) await this.assertActiveMembers(manager, companyId, desired);
 
-      const added = desired ? desired.filter((userId) => !current.includes(userId)) : [];
-      const removed = desired ? current.filter((userId) => !desired.includes(userId)) : [];
+      const added = desired
+        ? desired.filter((userId) => !current.includes(userId))
+        : [];
+      const removed = desired
+        ? current.filter((userId) => !desired.includes(userId))
+        : [];
       if (removed.length > 0) {
-        await manager.delete(FileAccessGrant, { fileId: file.id, userId: In(removed) });
+        await manager.delete(FileAccessGrant, {
+          fileId: file.id,
+          userId: In(removed),
+        });
       }
       if (added.length > 0) {
-        await manager.insert(FileAccessGrant, added.map((userId) => ({ fileId: file.id, userId })));
+        await manager.insert(
+          FileAccessGrant,
+          added.map((userId) => ({ fileId: file.id, userId })),
+        );
       }
       if (next !== file.visibility) {
         await manager.update(FileAsset, { id: file.id }, { visibility: next });
@@ -452,9 +577,16 @@ export class FilesService {
         manager,
       );
 
-      const fresh = await manager.findOneOrFail(FileAsset, { where: { id: file.id } });
-      return { file: fresh, grantedUserIds: await this.grantIds(manager, file.id) };
+      const fresh = await manager.findOneOrFail(FileAsset, {
+        where: { id: file.id },
+      });
+      return {
+        file: fresh,
+        grantedUserIds: await this.grantIds(manager, file.id),
+      };
     });
+    await this.realtime.fileAccessChanged(id);
+    return updated;
   }
 
   /**
@@ -470,23 +602,39 @@ export class FilesService {
       // re-read from the locked rows: deleting the LATEST version promotes the next one, and that must
       // not interleave with someone uploading the next version.
       const peek = await this.findVisible(manager, id, viewer);
-      const rows = await this.lockDataset(manager, peek.companyId, peek.datasetId);
+      const rows = await this.lockDataset(
+        manager,
+        peek.companyId,
+        peek.datasetId,
+      );
       const file = rows.find((row) => row.id === peek.id && !row.deletedAt);
       if (!file) throw new NotFoundException(NOT_FOUND);
       this.assertCanManage(file, viewer);
 
-      await manager.update(FileAsset, { id: file.id }, { deletedAt: this.clock.now(), isLatest: false });
+      await manager.update(
+        FileAsset,
+        { id: file.id },
+        { deletedAt: this.clock.now(), isLatest: false },
+      );
       if (file.isLatest) {
         const next = rows
           .filter((row) => row.id !== file.id && !row.deletedAt)
-          .reduce<FileAsset | null>((best, row) => (best && best.version > row.version ? best : row), null);
-        if (next) await manager.update(FileAsset, { id: next.id }, { isLatest: true });
+          .reduce<FileAsset | null>(
+            (best, row) => (best && best.version > row.version ? best : row),
+            null,
+          );
+        if (next)
+          await manager.update(FileAsset, { id: next.id }, { isLatest: true });
       }
       await this.audit.record(
         {
           action: 'file.deleted',
           target: { type: 'file', id: file.id },
-          metadata: { originalName: file.originalName, datasetId: file.datasetId, version: file.version },
+          metadata: {
+            originalName: file.originalName,
+            datasetId: file.datasetId,
+            version: file.version,
+          },
         },
         manager,
       );
@@ -496,13 +644,21 @@ export class FilesService {
     // After the commit: if this fails the file is already gone from every listing and
     // only an unreachable object is left, which is far better than the reverse.
     await this.discardObject(storageKey);
+    await this.realtime.fileAccessChanged(id);
   }
 
   /** The versions of the dataset `id` belongs to that the caller may see, newest first. */
-  async listVersions(id: string, query: OffsetQueryDto): Promise<OffsetPage<FileAsset>> {
+  async listVersions(
+    id: string,
+    query: OffsetQueryDto,
+  ): Promise<OffsetPage<FileAsset>> {
     const { viewer } = this.caller();
     const base = await this.findVisible(this.dataSource.manager, id, viewer);
-    const [rows, total] = await this.visibleFiles(this.dataSource.manager, 'f', viewer)
+    const [rows, total] = await this.visibleFiles(
+      this.dataSource.manager,
+      'f',
+      viewer,
+    )
       .select(LIST_COLUMNS)
       .andWhere('f.datasetId = :datasetId', { datasetId: base.datasetId })
       .orderBy('f.version', 'DESC')
@@ -518,7 +674,11 @@ export class FilesService {
    * Every row of a dataset (deleted ones too: a version number is never reused), locked `FOR UPDATE`
    * in id order. Anything that changes which version is latest takes this first, so they serialise.
    */
-  private lockDataset(manager: EntityManager, companyId: string, datasetId: string): Promise<FileAsset[]> {
+  private lockDataset(
+    manager: EntityManager,
+    companyId: string,
+    datasetId: string,
+  ): Promise<FileAsset[]> {
     return this.tenantScope
       .forCompany(manager.getRepository(FileAsset), companyId, 'f')
       .andWhere('f.datasetId = :datasetId', { datasetId })
@@ -534,7 +694,9 @@ export class FilesService {
     candidates: string[],
     except: string,
   ): Promise<string[]> {
-    const wanted = [...new Set(candidates)].filter((userId) => userId !== except);
+    const wanted = [...new Set(candidates)].filter(
+      (userId) => userId !== except,
+    );
     if (wanted.length === 0) return [];
     const found = await this.tenantScope
       .forCompany(manager.getRepository(User), companyId, 'u')
@@ -558,7 +720,11 @@ export class FilesService {
       userIds.filter((userId) => userId !== sharedByUserId),
       {
         type: 'file.shared',
-        payload: { fileId: file.id, fileName: file.originalName, sharedByUserId },
+        payload: {
+          fileId: file.id,
+          fileName: file.originalName,
+          sharedByUserId,
+        },
       },
     );
   }
@@ -571,10 +737,18 @@ export class FilesService {
   }
 
   /** The company's live files this viewer may see: TenantScope first, then the one visibility rule. */
-  private visibleFiles(manager: EntityManager, alias: string, viewer: FileViewer) {
+  private visibleFiles(
+    manager: EntityManager,
+    alias: string,
+    viewer: FileViewer,
+  ) {
     const companyId = this.context.requireCompanyId();
     return applyFileVisibility(
-      this.tenantScope.forCompany(manager.getRepository(FileAsset), companyId, alias),
+      this.tenantScope.forCompany(
+        manager.getRepository(FileAsset),
+        companyId,
+        alias,
+      ),
       alias,
       viewer,
     );
@@ -587,7 +761,9 @@ export class FilesService {
     viewer: FileViewer,
     lock = false,
   ): Promise<FileAsset> {
-    const qb = this.visibleFiles(manager, 'f', viewer).andWhere('f.id = :id', { id });
+    const qb = this.visibleFiles(manager, 'f', viewer).andWhere('f.id = :id', {
+      id,
+    });
     if (lock) qb.setLock('pessimistic_write');
     const file = await qb.getOne();
     if (!file) throw new NotFoundException(NOT_FOUND);
@@ -596,7 +772,9 @@ export class FilesService {
 
   private assertCanManage(file: FileAsset, viewer: FileViewer): void {
     if (viewer.role !== 'admin' && file.uploaderId !== viewer.userId) {
-      throw new ForbiddenException('Only the uploader or an admin can change or delete this file.');
+      throw new ForbiddenException(
+        'Only the uploader or an admin can change or delete this file.',
+      );
     }
   }
 
@@ -610,8 +788,14 @@ export class FilesService {
       : null;
   }
 
-  private async grantIds(manager: EntityManager, fileId: string): Promise<string[]> {
-    const rows = await manager.find(FileAccessGrant, { where: { fileId }, order: { createdAt: 'ASC', id: 'ASC' } });
+  private async grantIds(
+    manager: EntityManager,
+    fileId: string,
+  ): Promise<string[]> {
+    const rows = await manager.find(FileAccessGrant, {
+      where: { fileId },
+      order: { createdAt: 'ASC', id: 'ASC' },
+    });
     return rows.map((row) => row.userId);
   }
 
@@ -626,11 +810,15 @@ export class FilesService {
   ): string[] {
     if (visibility === 'company') {
       if (requested && requested.length > 0) {
-        throw new BadRequestException('`grantedUserIds` only applies to a restricted file.');
+        throw new BadRequestException(
+          '`grantedUserIds` only applies to a restricted file.',
+        );
       }
       return [];
     }
-    return [...new Set(requested ?? [])].filter((userId) => userId !== uploaderId);
+    return [...new Set(requested ?? [])].filter(
+      (userId) => userId !== uploaderId,
+    );
   }
 
   /** Grantees must be active members of THIS company. One message for "unknown" and "someone else's". */
@@ -660,22 +848,30 @@ export class FilesService {
     const subscription = await this.tenantScope
       .forCompany(this.dataSource.getRepository(Subscription), companyId, 'sub')
       .getOne();
-    if (!subscription) throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
+    if (!subscription)
+      throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
     // A period that has ended has a stale count; the transaction rolls forward and decides.
-    if (this.clock.now().getTime() >= subscription.currentPeriodEnd.getTime()) return;
+    if (this.clock.now().getTime() >= subscription.currentPeriodEnd.getTime())
+      return;
 
     const decision = quotaDecision(
       subscription.plan,
       await this.usage.filesInPeriod(
         this.dataSource.manager,
         companyId,
-        periodKey({ start: subscription.currentPeriodStart, end: subscription.currentPeriodEnd }),
+        periodKey({
+          start: subscription.currentPeriodStart,
+          end: subscription.currentPeriodEnd,
+        }),
       ),
       subscription.currentPeriodEnd,
     );
     if (decision.kind === 'blocked') {
       this.metrics.quotaExceeded(subscription.plan, 'blocked');
-      throw new HttpException(blockedMessage(decision), HttpStatus.PAYMENT_REQUIRED);
+      throw new HttpException(
+        blockedMessage(decision),
+        HttpStatus.PAYMENT_REQUIRED,
+      );
     }
   }
 
@@ -683,7 +879,10 @@ export class FilesService {
     try {
       await this.storage.delete(storageKey);
     } catch (error) {
-      this.logger.error({ err: error, storageKey }, 'Failed to delete a stored object; it is now orphaned');
+      this.logger.error(
+        { err: error, storageKey },
+        'Failed to delete a stored object; it is now orphaned',
+      );
     }
   }
 }

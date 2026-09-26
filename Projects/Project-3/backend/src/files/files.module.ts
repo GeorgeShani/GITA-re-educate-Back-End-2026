@@ -16,6 +16,6 @@ import { ReportsService } from './quality/reports.service.js';
   imports: [DatabaseModule, BillingModule, SubscriptionsModule],
   controllers: [FilesController],
   providers: [FilesService, ReportsService, BuildDataQualityReportHandler],
-  exports: [BuildDataQualityReportHandler],
+  exports: [FilesService, ReportsService, BuildDataQualityReportHandler],
 })
 export class FilesModule {}
