@@ -15,12 +15,20 @@ import { User } from '#/database/entities/user.entity.js';
 import { ACCESS_TOKEN_TTL_SECONDS } from './auth.constants.js';
 
 /** What a verified token claims. Parsed, not trusted: `verify` returns `any`. */
-const accessTokenClaims = z.object({ sub: z.uuid() });
+const accessTokenClaims = z.object({
+  sub: z.uuid(),
+  exp: z.number().int().positive(),
+});
 
 export interface Authentication {
   user: AuthenticatedUser;
   /** `active`, or `suspended` — `AuthGuard` decides which routes a suspended company may still reach. */
   companyStatus: CompanyStatus;
+}
+
+export interface SessionAuthentication extends Authentication {
+  /** Unix timestamp in seconds, copied from the verified JWT `exp` claim. */
+  tokenExpiresAt: number;
 }
 
 export interface SignedAccessToken {
@@ -58,7 +66,7 @@ export class AuthenticationService {
     return { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS };
   }
 
-  async authenticate(token: string): Promise<Authentication> {
+  async authenticate(token: string): Promise<SessionAuthentication> {
     const claims = await this.verify(token);
 
     const user = await this.users.findOne({
@@ -75,7 +83,10 @@ export class AuthenticationService {
     // only an `invited` admin). Anything else is refused outright; a suspended
     // company is let through here so `AuthGuard` can allow the few routes
     // (`@AllowWhenSuspended()`) that stay reachable.
-    if (user.company.status !== 'active' && user.company.status !== 'suspended') {
+    if (
+      user.company.status !== 'active' &&
+      user.company.status !== 'suspended'
+    ) {
       throw new ForbiddenException('This company is not active');
     }
 
@@ -88,10 +99,13 @@ export class AuthenticationService {
         isDemo: user.company.isDemo,
       },
       companyStatus: user.company.status,
+      tokenExpiresAt: claims.exp,
     };
   }
 
-  private async verify(token: string): Promise<z.infer<typeof accessTokenClaims>> {
+  private async verify(
+    token: string,
+  ): Promise<z.infer<typeof accessTokenClaims>> {
     let payload: unknown;
     try {
       payload = await this.jwt.verifyAsync(token, {
@@ -104,7 +118,8 @@ export class AuthenticationService {
     }
 
     const parsed = accessTokenClaims.safeParse(payload);
-    if (!parsed.success) throw new UnauthorizedException('Invalid or expired access token');
+    if (!parsed.success)
+      throw new UnauthorizedException('Invalid or expired access token');
     return parsed.data;
   }
 }

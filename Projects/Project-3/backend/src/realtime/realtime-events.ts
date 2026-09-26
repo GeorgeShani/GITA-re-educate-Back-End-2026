@@ -44,15 +44,39 @@ export interface NotificationCreatedEvent {
   createdAt: string;
 }
 
+export interface SessionExpiringEvent {
+  expiresAt: string;
+}
+
+export interface SessionExpiredEvent {
+  expiredAt: string;
+}
+
+export interface AuthRefreshRequest {
+  token: string;
+}
+
+export type AuthRefreshResult =
+  { ok: true; expiresAt: string } | { ok: false; error: 'unauthorized' };
+
+export type AuthRefreshAcknowledgement = (result: AuthRefreshResult) => void;
+
 /** What the server pushes. The client sends nothing but its handshake. */
 export interface ServerToClientEvents {
   'file.status': (event: FileStatusEvent) => void;
   'quota.updated': (event: QuotaUpdatedEvent) => void;
   'audit.appended': (event: AuditAppendedEvent) => void;
   'notification.created': (event: NotificationCreatedEvent) => void;
+  'session.expiring': (event: SessionExpiringEvent) => void;
+  'session.expired': (event: SessionExpiredEvent) => void;
 }
 
-export type ClientToServerEvents = Record<string, never>;
+export interface ClientToServerEvents {
+  'auth.refresh': (
+    request: AuthRefreshRequest,
+    acknowledge: AuthRefreshAcknowledgement,
+  ) => void;
+}
 export type InterServerEvents = Record<string, never>;
 
 /** Filled by the handshake middleware; read when the socket joins its rooms. */
@@ -60,4 +84,6 @@ export interface SocketData {
   userId: string;
   companyId: string;
   role: 'admin' | 'employee';
+  expiresAt: number;
+  expirationWarningSent: boolean;
 }

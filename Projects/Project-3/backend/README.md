@@ -23,10 +23,10 @@ Neon fronts every connection with PgBouncer in transaction-pooling mode,
 which breaks DDL and prepared statements. That's why there are **two**
 connection strings, not one:
 
-| Var | Endpoint | Used by |
-|---|---|---|
-| `DATABASE_URL` | Neon's **pooled** endpoint (`-pooler` in the hostname) | The running app (`TypeOrmModule.forRootAsync`) |
-| `DIRECT_URL` | Neon's **direct** endpoint | Migrations only — `migration:run`, `migration:generate`, `migration:revert`, `migration:show` |
+| Var            | Endpoint                                               | Used by                                                                                       |
+| -------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | Neon's **pooled** endpoint (`-pooler` in the hostname) | The running app (`TypeOrmModule.forRootAsync`)                                                |
+| `DIRECT_URL`   | Neon's **direct** endpoint                             | Migrations only — `migration:run`, `migration:generate`, `migration:revert`, `migration:show` |
 
 Both are built from one function, `buildDataSourceOptions(urls, { direct })`
 in `src/database/data-source-options.ts` — the app calls it with
@@ -57,7 +57,7 @@ DIRECT_URL=postgres://gridline:gridline@localhost:5432/gridline
 ```
 
 Swap `localhost` for the Compose service name `db` only when these values are
-consumed *from inside another container* (e.g. if you add a service-level
+consumed _from inside another container_ (e.g. if you add a service-level
 override) — `db:5432` doesn't resolve from the host.
 
 **Migrations** are never auto-run by the app (`migrationsRun: false`,
@@ -127,7 +127,7 @@ password at all, so there is nothing to guess.
   in-process event emitter: a handful of jobs that must survive a restart is what this is for.
 - **Plans are code, in one place.** `src/subscriptions/plan-catalog.ts` (`PLAN_CATALOG`) holds every number the brief
   specifies: seat caps, file quotas, prices, overage, request budgets. **Decision D2** ("Basic: 0 to 10 users") is read as
-  *10 employees plus the admin* (max $50/month). The other reading — 10 seats *including* the admin (max $45) — is the
+  _10 employees plus the admin_ (max $50/month). The other reading — 10 seats *including* the admin (max $45) — is the
   one-line change `basic.maxEmployees: 9`; nothing else needs touching, and `plan-catalog.spec.ts` will tell you which
   assertions encode the current reading.
 - **Paid subscriptions are fulfilled by Stripe, not by a fake local switch.** Free activates locally; Basic and Premium return a
@@ -136,17 +136,20 @@ password at all, so there is nothing to guess.
   reports every file-version usage event with that immutable event ID for retry-safe metering. Failed payment opens a seven-day
   grace period, then suspends access while leaving billing recovery available to admins. Run `npm run stripe:verify-catalog` during
   deployment to prove the configured prices, meter, portal and webhook match Gridline's assumptions.
-- **Rate limits follow the plan.** 30 / 120 / 600 requests a minute per *company* (Free / Basic / Premium), shared by its
+- **Rate limits follow the plan.** 30 / 120 / 600 requests a minute per _company_ (Free / Basic / Premium), shared by its
   users and API keys, with `X-RateLimit-*` headers and a 429 that names the plan and the way up. Sign-in and email-sending
   routes have tighter per-address limits. Counters are in memory: correct for one API instance.
-- **API keys** (`gl_live_…`) are personal, shown once and stored hashed. A key acts as its creator *as they are now* (role
+- **API keys** (`gl_live_…`) are personal, shown once and stored hashed. A key acts as its creator _as they are now_ (role
   and status re-read every request), narrowed to its scopes (`files:read`, `files:write`, `billing:read`). A route with no
   `@RequireScopes` is closed to keys, so identity, employees, plans, audit, analytics, GraphQL and `/api-keys` itself can
   never be reached with one — a leaked key cannot create more access. Disabling a person revokes their keys.
 - **Realtime** (Socket.IO, `io(url, { auth: { token } })`, same access token as REST): `file.status`, `quota.updated` and
   `audit.appended`, emitted only after the change commits. Restricted-file events reach only the people who may see the file.
+  The server tracks the verified JWT expiry, warns once during its final minute, and disconnects at expiry. A client that obtains a
+  replacement access token emits `auth.refresh` before then; only the same active user is accepted and room membership is rebuilt
+  from the person's current role. API keys never authenticate sockets.
 - **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
-  /notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
+/notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after
   the commit. **Quota alerts** fire at 80% and 100% of the file quota, once per billing period each (a unique
   `(company, period, threshold)` row decides), to every admin and by email to the billing address.

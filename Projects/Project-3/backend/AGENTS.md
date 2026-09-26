@@ -21,7 +21,7 @@ recorded as a trap in the implementation plan.
   nulling columns. Both tsc and oxc agree, so nothing errors — you just get
   wrong writes.
 - **Imports: `./…` for the same folder or below, `#/…` for anything above or elsewhere.**
-  `#/*` is a native Node *subpath import* (package.json `"imports"`), **not** a
+  `#/*` is a native Node _subpath import_ (package.json `"imports"`), **not** a
   `tsconfig` `paths` alias — those compile and pass in Vitest, then fail at
   `node dist/main.js` because ESM has no runtime path mapping. Write
   `import { X } from '#/core/clock/clock.js'` (path from `src/`, explicit `.js`);
@@ -107,7 +107,7 @@ document.
   LLM responses, and parsed spreadsheet shapes. Anything whose shape the
   database or a third party controls.
 
-## Persistence *(from Phase 2)*
+## Persistence _(from Phase 2)_
 
 - Entities extend the abstract `BaseEntity` (uuid + timestamps).
 - Add every new entity to the **`ENTITIES`** array in
@@ -124,7 +124,7 @@ document.
 - Add the new index to the checklist below and to the `pg_indexes` assertion
   spec in the same change.
 
-## Auth & RBAC *(from Phase 2 of the feature plan)*
+## Auth & RBAC _(from Phase 2 of the feature plan)_
 
 - **Auth is opt-out.** `AuthGuard` (global `APP_GUARD`, in `AuthModule`) requires
   a valid access token on every route unless it is `@Public()`, then
@@ -153,7 +153,7 @@ document.
   concurrent uses cannot both win. Issuing supersedes earlier unconsumed tokens
   of that type, so only the newest link works.
 - **Refresh tokens rotate** and share a `familyId`. Presenting a spent token
-  revokes the whole family; the revocation must *commit*, so the transaction
+  revokes the whole family; the revocation must _commit_, so the transaction
   returns an outcome and the 401 is thrown after it. Password change/reset revoke
   every family for the user.
 - **Email-flow endpoints never reveal whether an address exists** (resend
@@ -167,7 +167,7 @@ document.
   refresh tokens are opaque and hashed, not JWTs. Kept so `.env` files stay valid.
 - `@RequireScopes(...)` is the API-key analogue of `@Roles`, enforced by `ScopesGuard`
   (Phase 10). A key's effective permission is `(creator's live role) ∩ (key's
-  scopes)` — never wider than either. See *Personal API keys* below.
+scopes)` — never wider than either. See _Personal API keys_ below.
 - `@IdempotencyKey()` reads and validates the `Idempotency-Key` header. Returns
   `undefined` when absent; a route that requires one checks for that itself.
 - **`route-audit.spec.ts` is the enforcement mechanism, not code review.**
@@ -181,7 +181,7 @@ document.
   `mail.latestTokenTo()`). Time-dependent behaviour (token expiry) is tested by
   advancing `h.clock`, never by sleeping.
 
-## Billing & subscriptions *(from Phase 3 of the feature plan)*
+## Billing & subscriptions _(from Phase 3 of the feature plan)_
 
 - **Money is integer cents, never floats.** A prorated amount is
   `unit × days ÷ periodDays` through `divRound` (round half-up in integer
@@ -193,7 +193,7 @@ document.
   at day granularity: the **switch day belongs entirely to the incoming plan**.
 - **A plan change is a new activation (D6):** close and invoice the outgoing
   period for the days it ran, then open a fresh period anchored to the switch day.
-  Only the *outgoing* plan is ever prorated. Leaving Premium with more files than
+  Only the _outgoing_ plan is ever prorated. Leaving Premium with more files than
   the target allows is refused, so a plan-change invoice can never carry overage.
 - **Seat time comes from `seat_interval`, not `User.activatedAt/disabledAt`.**
   Those two columns hold one interval; a disable-then-reactivate would overwrite
@@ -219,14 +219,14 @@ document.
   by `migration:generate` once per column, which fails on the second `CREATE TYPE`.
   Hand-edit the migration to create and drop it once.
 
-## Employees *(from Phase 4 of the feature plan)*
+## Employees _(from Phase 4 of the feature plan)_
 
 - **Seat cap = `invited` + `active` employees** (an invitation holds a seat, D4).
   Every operation that adds one — invite, reactivate — runs inside a transaction
   that first takes `SubscriptionsService.lockForUpdate`, counts with
   `employeeSeatsHeld`, and asks `seatCapProblem`. The lock is what stops two admins
   taking the last seat; `employees.integration.spec.ts` proves it by holding the
-  row lock in an open transaction and asserting the invite *blocks* (racing two
+  row lock in an open transaction and asserting the invite _blocks_ (racing two
   HTTP requests rarely overlaps enough to prove anything).
 - **Employee lifecycle owns `seat_interval`.** Accepting an invite (any path —
   Phase 5's Google flow too) opens a row at that instant; disabling closes the open
@@ -251,26 +251,26 @@ document.
 - Class-level `@Roles(...)`/`@Public()` count for `route-audit.spec.ts` exactly as
   they do for the guards (route value wins, else the controller's).
 
-## Google sign-in & linked accounts *(from Phase 5 of the feature plan)*
+## Google sign-in & linked accounts _(from Phase 5 of the feature plan)_
 
 - **Email is not the key.** Sign-in looks up `(provider, providerUserId)`; the email a
   provider reports is an attribute of the identity and may differ from `User.email`
   forever. `auth/oauth/oauth-resolution.ts` is SCOPE's identity table as one pure
   function (unit-tested row by row) — change a rule there, not in the service.
 - **The seam is `OAuthProvider`** (`authorizationUrl`, `exchangeCode` → `{ providerUserId,
-  email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOOGLE_*`
+email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOOGLE_*`
   variables are unset (routes answer 503, password auth untouched); the harness
   replaces it with `FakeGoogleOAuthProvider`. The real provider is plain `fetch`: code
   exchange with the client secret, then the userinfo endpoint — back-channel to Google,
   no ID-token signature to verify.
 - **The invite token is the proof of identity.** `intent: invite` carries the token's
-  *hash* in the signed state; the callback consumes it and binds whatever Google
+  _hash_ in the signed state; the callback consumes it and binds whatever Google
   account came back with no email comparison. Accepting an invite this way does
   everything `POST /auth/accept-invite` does — activates, sets `activatedAt`, **opens the
   `seat_interval`**, audits `employee.accepted_invite`. Any new way to accept an invite
   must do the same.
-- **Auto-link by email is the narrow, dangerous path**: only for an *unknown* identity,
-  a provider-**verified**, non-relay address, matching **exactly one** *active* user's
+- **Auto-link by email is the narrow, dangerous path**: only for an _unknown_ identity,
+  a provider-**verified**, non-relay address, matching **exactly one** _active_ user's
   contact address (an active user's address was proved by an emailed link). Unverified,
   relay, ambiguous (two companies) or inactive-company matches never link.
   `relay-address.ts` lists the relay domains; a relay address is never a contact
@@ -283,7 +283,7 @@ document.
   (`Path=/`, because Caddy strips `/api` — a narrower path is never sent back). The
   callback needs the two to agree. A server-side caller of those two routes must forward
   `Set-Cookie` to the browser.
-- **Tokens never appear in a URL.** The callback always *redirects* (never JSON — a person
+- **Tokens never appear in a URL.** The callback always _redirects_ (never JSON — a person
   is looking at it): `/session/oauth-complete?code=` (a 60-second single-use
   `oauth_exchange` AuthToken, traded at `POST /auth/oauth/exchange`, re-checking the
   account), `?error=<code>`, `/register?oauthRegistration=` (signed profile, no session),
@@ -298,17 +298,17 @@ document.
 - **One identity per provider per user** (`uq_auth_identity_user_provider`). Unlinking
   locks the user's identity rows and refuses the last one (409) so two concurrent unlinks
   of different identities cannot together remove them all; the spec proves it by locking
-  the row that is *not* being deleted (locking the target would block regardless).
+  the row that is _not_ being deleted (locking the target would block regardless).
 - `route-audit.spec.ts` lets a `@Redirect()` handler declare `@ApiResponse({ status: 302 })`
   in place of a typed body.
 
-## Files *(from Phase 6 of the feature plan)*
+## Files _(from Phase 6 of the feature plan)_
 
 - **Type is decided from bytes, never names** (`files/validation/sniff-spreadsheet.ts`;
   `file-type` 22.1.1 verified: xlsx → `xlsx`, OLE → `cfb`, CSV → `undefined`, `MZ` →
   `exe`). xlsx = ZIP with spreadsheet content types; **xls = OLE2 container that holds a
   `Workbook`/`Book` stream** (`validation/cfb.ts` parses the directory — Word `.doc`
-  and `.msi` are OLE too); CSV = `file-type` finds *nothing* + valid UTF-8, no NUL/control
+  and `.msi` are OLE too); CSV = `file-type` finds _nothing_ + valid UTF-8, no NUL/control
   characters, first rows parse. Empty is rejected. The stored `mimeType` is the detected
   one. Fixtures are built in `test/support/spreadsheet-fixtures.ts` (real ZIP/OLE
   builders), not committed binaries.
@@ -316,7 +316,7 @@ document.
   `file_asset` goes `TenantScope.forCompany` → `applyFileVisibility`. An invisible file is
   **404, never 403**; someone who can see a file but isn't uploader/admin gets 403 on
   PATCH/DELETE. Phase 8's report/preview routes must use it too. Grantees are
-  *only* revealed (`grantedUserIds`) to uploader/admin and only on single-file responses.
+  _only_ revealed (`grantedUserIds`) to uploader/admin and only on single-file responses.
 - **Upload order** (`FilesService.upload`): validate → pre-check quota (no lock; skipped if
   the stored period has ended) → `storage.put` → ONE transaction holding
   `lockForUpdate` (rollForward, real quota decision, file + grants + one `UsageEvent` +
@@ -331,25 +331,25 @@ document.
   what to set). Keys are server-generated (`companies/<id>/files/<fileId>`). The harness
   swaps in a temp-dir `LocalStorageDriver` (`h.storage` — spy on it to inject failures).
 - **Idempotency** (`core/idempotency`): `@UseInterceptors(IdempotencyInterceptor)` (list it
-  *after* `FileInterceptor`). Insert-first claim (`UNIQUE (companyId, key)`), stores status,
+  _after_ `FileInterceptor`). Insert-first claim (`UNIQUE (companyId, key)`), stores status,
   body and `X-Gridline-*` headers; same key + different route/caller/body/file bytes →
   422; still running → 409; failed requests are forgotten; claims older than 10 min are
   reclaimed, records older than 24 h expire. On `POST /files` and `PATCH /subscriptions/me`.
   No janitor deletes old rows yet (Phase 14).
 - **Cursor lists**: `CursorPageOf(ItemDto)` mixin (like `OffsetPageOf`), `applyCursor(qb,
-  alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor needs an
+alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor needs an
   ordering the index covers), default newest-first. **`createdAt`/`updatedAt` are
   `timestamptz(3)` on `BaseEntity`**: Postgres `now()` is µs but a cursor is a JS Date, and
   the lost digits made every page repeat the previous page's last row.
 - **Multer decodes `filename` as Latin-1**; `decodeMultipartName` repairs UTF-8 names.
   `tsconfig` `types` includes `multer` for `Express.Multer.File` / `req.file`.
 - **Tests never rely on racing.** Quota serialisation and the 409-in-progress case hold the
-  subscription row lock in an open transaction and assert the request *waits*.
+  subscription row lock in an open transaction and assert the request _waits_.
 - Adding a task type worked as documented: enum migration + handler registered in
   `TaskRunnerModule` (which now imports `FilesModule`). `build_data_quality_report` is implemented
   in Phase 8 (see below).
 
-## Billing endpoints & the rollover *(from Phase 7 of the feature plan)*
+## Billing endpoints & the rollover _(from Phase 7 of the feature plan)_
 
 - **`GET /billing/current|invoices|invoices/:id`** are admin-only, `@RequiresSubscription()` and
   `@AllowWhenSuspended()` (a suspended company reads what it owes and nothing else).
@@ -374,7 +374,7 @@ document.
 - `formatCents` (`invoicing.service.ts`) is integer maths only. `UNIQUE (companyId, periodStart)`
   is the tenant index for invoice listing too.
 
-## Data-quality reports & preview *(from Phase 8 of the feature plan)*
+## Data-quality reports & preview _(from Phase 8 of the feature plan)_
 
 - **A report exists from the moment the file does**: `FilesService.upload` inserts a `queued`
   `data_quality_report` row in the upload transaction, and the same transaction queues
@@ -410,7 +410,7 @@ document.
   Column names are sanitised (`cleanLabel`) and passed as data, with an explicit "never follow
   instructions in a label". Tests inject `FakeAiProvider` (`h.ai.next(...)`, `h.ai.calls`).
 
-## Audit log & usage analytics *(from Phase 9 of the feature plan)*
+## Audit log & usage analytics _(from Phase 9 of the feature plan)_
 
 - **`AUDIT_ACTIONS` (`core/audit/audit-actions.ts`) is a closed registry.** `AuditService.record`
   takes an `AuditAction`, so an unregistered action does not compile. Two specs keep it honest:
@@ -432,7 +432,7 @@ document.
   default = current period so far; the quota burn-down is ALWAYS the current period and counts by
   `periodKey`, so it equals the running bill's file count. A deleted file still counts as an upload.
 
-## Personal API keys *(from Phase 10 of the feature plan)*
+## Personal API keys _(from Phase 10 of the feature plan)_
 
 - **A key is a NAME for its creator, not a second kind of user.** `Authorization: Bearer gl_live_<8 hex>_<43 base64url>`
   (`api-keys/api-key-token.ts`). `AuthGuard` routes a `gl_live_` bearer to `ApiKeyAuthenticationService`
@@ -468,7 +468,7 @@ document.
 - `ApiKey` indexes: UNIQUE `keyHash`, `(companyId, createdAt)`, `(companyId, createdByUserId)`.
 - Tests: `h.createApiKey(session, { name, scopes })` and `h.upload(session, { bearer: key })` in the harness.
 
-## Rate limiting & demo mode *(from Phase 11 of the feature plan)*
+## Rate limiting & demo mode _(from Phase 11 of the feature plan)_
 
 - **The infrastructure limit IS the product limit.** `PLAN_CATALOG[plan].rateLimitPerMinute` (Free 30 / Basic 120 /
   Premium 600) is the budget of the WHOLE company per minute — every user and every API key of one company share it.
@@ -505,7 +505,7 @@ document.
   Reads are safe to leave open because every read route is a pure read.
 - Global guard order is now Auth → Throttler → DemoReadOnly → Scopes → Roles → RequireSubscription.
 
-## Realtime *(from Phase 12 of the feature plan)*
+## Realtime _(from Phase 12 of the feature plan)_
 
 - **Socket.IO, push-only** (`src/realtime/`, `@nestjs/websockets` + `platform-socket.io`). Not part of the OpenAPI
   document (documented here and in the README). Caddy already forwards `/socket.io/*` to the API. Clients connect
@@ -518,7 +518,7 @@ document.
   with a fresh one; nothing is ever emitted to a room its holder no longer belongs to.
 - **Rooms:** `company:<id>`, `user:<id>`, `admins:<companyId>` (admins only) — helpers in `realtime-events.ts`.
 - **Events** (`ServerToClientEvents`): `file.status {fileId,status,error}` (report `queued → profiling → ready |
-  failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`),
+failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`),
   `notification.created` (Phase 15: one inbox entry, to its owner's `user:<id>` room only).
 - **The audience is decided at EMIT time from the database** (`RealtimeEmitter.audience`): a company-visible file
   goes to the company room; a restricted one ONLY to `admins`, the uploader's and each grantee's user room — the
@@ -533,7 +533,7 @@ document.
 - Tests: `app.listen(0)` + `socket.io-client` (`test/support/socket-client.ts`: `connect`, `Listener.waitFor`,
   `settle`). Negative assertions ("the third employee got nothing") wait `settle()` first.
 
-## GraphQL analytics *(from Phase 13 of the feature plan)*
+## GraphQL analytics _(from Phase 13 of the feature plan)_
 
 - **`/graphql` is READ-ONLY** (`src/graphql/`, `@nestjs/graphql` 14 + `@nestjs/apollo` 14 + Apollo Server 5 on Express 5
   via `@as-integrations/express5`). Code-first, `Query` only: the schema has no `Mutation` or `Subscription` type.
@@ -567,7 +567,7 @@ document.
   while `@nestjs/graphql` (run by Node) gets `index.js`, and graphql refuses a schema built by the other copy
   ("Cannot use GraphQLScalarType from another module or realm"). Never remove the alias.
 
-## Hardening *(from Phase 14 of the feature plan)*
+## Hardening _(from Phase 14 of the feature plan)_
 
 - **Telemetry is a seam** (`core/telemetry/`). `TelemetrySink` has two verbs (`tag`, `count`); `ObserveTelemetrySink`
   adapts Observe's `TracerService` (looked up once in `onApplicationBootstrap`; a silent no-op when the module is not
@@ -592,11 +592,11 @@ document.
   nothing forced off. The admin's first page and a keyset page use `idx_file_asset_company_live` (the PARTIAL index built
   for exactly `deletedAt IS NULL`); queries that include deleted rows use `idx_file_asset_company`; a control query
   proves a real Seq Scan is detectable. Point `DATABASE_URL` at a Neon branch to run the same assertion there.
-- **`scope-verification.integration.spec.ts`** executes SCOPE's *Verification* steps 1-11, 14 and 15 (+ 8, 9, 10) as one
+- **`scope-verification.integration.spec.ts`** executes SCOPE's _Verification_ steps 1-11, 14 and 15 (+ 8, 9, 10) as one
   ordered story against the real app. Steps 12 (Observe dashboard) and 13 (live status; `realtime.integration.spec.ts`)
   and 16 (Neon) are covered elsewhere or by hand.
 - **No CI workflow for now** (deliberately removed). The gate is run by hand: `npm run build && npm run lint && npm test &&
-  npm run test:int && npm run docs:check`. When CI is wanted, it needs a Postgres service, dummy JWT secrets and
+npm run test:int && npm run docs:check`. When CI is wanted, it needs a Postgres service, dummy JWT secrets and
   `RATE_LIMIT_ENABLED=false` is already forced by the integration config.
 - **CLI job contexts** (`billing:run-cycle`, `seed:demo`, `seed:all`) boot a SMALL module set. Anything they reach must be
   provided by `CoreModule` (which is why `TelemetryModule` lives there) or imported by the job; `standalone-jobs.integration.spec.ts`
@@ -605,10 +605,10 @@ document.
   AFTER it (gitignored; template `.env.docker.example`) so `migrate`/`api` get container-side database URLs.
 - **Docs:** `docs/ENV_SECRETS_GUIDE.md` lists every variable; `CompanyDto.isDemo` lets a client show a demo banner.
 
-## Notifications & quota alerts *(from Phase 15 of the product plan)*
+## Notifications & quota alerts _(from Phase 15 of the product plan)_
 
 - **A notification is an inbox row written inside the transaction that caused it** (`NotificationsService.notify(manager,
-  companyId, userIds, content)` / `notifyAdmins`). It exists only if the change committed. Recipients are re-checked against the
+companyId, userIds, content)` / `notifyAdmins`). It exists only if the change committed. Recipients are re-checked against the
   company and must be `active`, so a caller can neither notify another tenant nor write into a removed person's inbox. Producers:
   the upload (`quota.threshold`, `file.shared`), `FilesService.update` (`file.shared`, newly added people only, never the sharer),
   the report handler (`report.ready`/`report.failed` to the uploader; `unsupported` says nothing, a retried failure says nothing
@@ -621,7 +621,7 @@ document.
   removed: it is a name the person was allowed to see when it was written.)
 - **Quota alerts** (`QuotaAlertsService.check`, called inside `FilesService.upload` right after the `UsageEvent`): 80% and 100% of
   `filesPerPeriod` (integer maths, `thresholdsReached`). Every upload at or past a threshold tries `INSERT … ON CONFLICT DO NOTHING
-  RETURNING id` into `quota_alert` (UNIQUE `(companyId, periodKey, threshold)`), and only the insert that is not a conflict notifies
+RETURNING id` into `quota_alert` (UNIQUE `(companyId, periodKey, threshold)`), and only the insert that is not a conflict notifies
   every active admin and queues a `quota_threshold` email to `billingEmail`. It deliberately does NOT compare "before" and "after":
   the unique row is the decision, so a Premium jump from 999 to 1000 raises both alerts, and a new period (new `periodKey`) starts
   fresh. The subscription row lock already serialises uploads; the constraint keeps it true without the lock. The 100% text depends
@@ -642,10 +642,10 @@ document.
   90 days (`READ_NOTIFICATION_RETENTION_MS`); an unread one is never purged.
 - Index: `idx_notification_company_user_created (companyId, userId, createdAt, id)` (a DESC list is a backward scan of it).
 
-## Data-quality rules *(from Phase 16 of the product plan)*
+## Data-quality rules _(from Phase 16 of the product plan)_
 
 - **A rule is a check on a file's STATISTICS, never its rows.** `files/quality/rules.ts` is pure: `evaluateRules(metrics, rules,
-  uniqueness)` → results + score. `ruleSpecSchema` (a Zod discriminated union of `{ kind, params }`) is the closed vocabulary:
+uniqueness)` → results + score. `ruleSpecSchema` (a Zod discriminated union of `{ kind, params }`) is the closed vocabulary:
   `required_column`, `max_null_percent`, `type_is`, `min_value`, `max_value`, `unique`, `max_duplicate_rows` (the only one about the
   whole file: it takes no column). The stored row (`quality_rule`, `src/quality-rules/`) keeps `kind`/`severity` as text and `params`
   as `jsonb`, read back through `toDefinition` — a row that no longer parses is dropped with a warning, never fatal.
@@ -668,7 +668,7 @@ document.
   Audit: `quality_rule.created|updated|deleted`, `report.rebuild_requested`.
 - **Rebuild** (`ReportsService.rebuild`, `POST /files/:id/report/rebuild`, `files:write`): uploader or admin (`FilesService.requireManageable`:
   404 unseen, 403 seen-but-not-yours). ONE transaction flips the report to `queued` with a conditional `UPDATE … WHERE status IN
-  (ready, failed, unsupported)` and enqueues the task; `affected = 0` means a build is already queued/running (409), so it cannot be
+(ready, failed, unsupported)` and enqueues the task; `affected = 0` means a build is already queued/running (409), so it cannot be
   queued twice. The handler needs no `force`: a `queued` report is simply rebuilt.
 - **Notifications and the AI:** a failing `error`-severity rule sends `rules.failed` (rule NAMES only, plus the score) to the uploader
   and every active admin, alongside `report.ready`; a failing warning only lowers the score. The narrative prompt is given the failed
@@ -676,7 +676,7 @@ document.
   broke it. `file.status` carries `qualityScore`.
 - The demo company has three rules (`DEMO_RULES`), so its reports show a score and a failure.
 
-## File versions & change detection *(from Phase 17 of the product plan)*
+## File versions & change detection _(from Phase 17 of the product plan)_
 
 - **A version is a file.** `file_asset` gained `datasetId` (shared by every version; a first upload's is its own `id`), `version`
   (1, 2, 3…, UNIQUE per dataset, **never reused** after a delete: the next number is `max` over ALL rows, deleted ones included) and
@@ -697,7 +697,7 @@ document.
 - **Limits:** `PLAN_CATALOG[plan].maxVersionsPerDataset` (Free 5, Basic 50, Premium unlimited) counts LIVE versions. A downgrade is
   refused when any dataset exceeds the target cap; every version also consumes the file quota.
 - **Listing:** `GET /files` adds `f.isLatest = true` (so the PARTIAL index `idx_file_asset_company_live` — now `WHERE deletedAt IS NULL
-  AND isLatest` — still serves the default list); `?allVersions=true` drops it and uses a full tenant index. `GET /files/:id/versions`
+AND isLatest` — still serves the default list); `?allVersions=true` drops it and uses a full tenant index. `GET /files/:id/versions`
   lists a dataset's versions the caller may see (offset, newest first). `query-plan.integration.spec.ts` builds its query with the
   same filter: **when `FilesService.list` changes, change `planFor` with it**.
 - **Change detection is pure and stored-data-only.** `files/quality/diff.ts` `diffMetrics(from, to)`: columns matched by name ignoring
@@ -711,7 +711,7 @@ document.
 - Migration `FileVersions` is hand-edited: `datasetId` is added nullable, backfilled from `id`, then NOT NULL; the partial index is
   recreated with `AND "isLatest"`.
 
-## Stripe subscriptions *(from Phase 17.5 of the product plan)*
+## Stripe subscriptions _(from Phase 17.5 of the product plan)_
 
 - **Stripe is authoritative for paid billing.** Stripe owns paid billing cycles, proration, invoices, payment attempts and payment
   state. Gridline owns authorization, plan limits, usage records and downgrade validation. The local calculator remains an estimate
@@ -737,7 +737,7 @@ document.
 - `npm run stripe:verify-catalog` is the deployment-time network check for immutable price, meter, portal and webhook configuration.
   Ordinary application boot validates configuration shape but never depends on Stripe network availability.
 
-## CloudFront brand assets *(from Phase 17.6 of the product plan)*
+## CloudFront brand assets _(from Phase 17.6 of the product plan)_
 
 - `ASSETS_BASE_URL` is an optional public origin for **brand assets only**. Normalize trailing slashes in configuration and require
   HTTPS in production. Versioned paths live in `core/mail/brand.ts`; callers never concatenate an arbitrary object key.
@@ -749,7 +749,22 @@ document.
   private spreadsheet bucket. AWS resources are intentionally provisioned outside this repository; frontend `next/image` and CSP
   configuration are documented in `docs/CLOUDFRONT_ASSETS.md` for the frontend milestone.
 
-## Pagination & sorting *(from Phase 3)*
+## Socket token lifecycle _(from Phase 18 of the product plan)_
+
+- `AuthenticationService.authenticate` returns the verified JWT `exp`; `RealtimeGateway` stores it in `SocketData`. Do not decode a
+  token separately in the gateway or trust a client-supplied expiry.
+- `auth.refresh` accepts a replacement JWT only before the existing socket session expires, for the same user and company, while the
+  company is active. API keys, another user's token, an expired token and suspended-company tokens receive the same unauthorized
+  acknowledgement.
+- A successful refresh leaves the old identity rooms, updates socket data, and rejoins company/user/admin rooms from the live role.
+  This is what makes a demotion effective without a reconnect. Reset the one-shot expiry-warning flag at the same time.
+- `sweep(now)` is the deterministic lifecycle primitive: one `session.expiring` in the final 60 seconds, then `session.expired` and a
+  forced disconnect. Production invokes it every 15 seconds from the injected clock; automatic scheduling is disabled under tests
+  and docs generation, where specs call `sweep(now)` directly.
+- Socket message handlers are authenticated by the handshake and their own protocol checks. Mark them `@Public()` so the HTTP
+  `AuthGuard` does not reinterpret a WebSocket frame; HTTP-only throttling, demo and API-key scope guards explicitly skip `ws`.
+
+## Pagination & sorting _(from Phase 3)_
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
   never redeclared inside a domain module (Project-2's worst structural
@@ -786,7 +801,7 @@ document.
   gives `route-audit.spec.ts` a `type` to check (a bare `@ApiOkResponse({ schema })`
   would carry none). Map with `toDto(PageDto, mapPageData(page, ItemDto.from))`.
 
-## File-type validation *(deferred to Milestone 7 — do not build early)*
+## File-type validation _(deferred to Milestone 7 — do not build early)_
 
 Nest 12's built-in `FileTypeValidator` already performs real magic-byte
 detection by default (`fileTypeFromBuffer` from the `file-type` package,
@@ -831,7 +846,7 @@ Milestone 7, not as generic HTTP-kit plumbing now.
   — this is the "one shared `toPaginated()`" — leaving `meta` untouched and
   working identically for both `OffsetPage` and `CursorPage`.
 
-## Platform services *(from Phase 1 of the feature plan)*
+## Platform services _(from Phase 1 of the feature plan)_
 
 - **Time goes through `CLOCK`** (`src/core/clock/`), never `new Date()` in
   domain logic: token expiry, billing periods, proration, the task backoff.
@@ -844,7 +859,7 @@ Milestone 7, not as generic HTTP-kit plumbing now.
   dead after 5 attempts), **not an event bus**.
 - **Adding a task type**: add it to `BACKGROUND_TASK_TYPES` in
   `background-task.entity.ts` plus a migration (`ALTER TYPE
-  background_task_type ADD VALUE`), write a `TaskHandler` with a Zod payload
+background_task_type ADD VALUE`), write a `TaskHandler` with a Zod payload
   schema (the `jsonb` column is untyped by definition), and register it in
   `TaskRunnerModule`'s `TASK_HANDLERS` factory. Forgetting the last step
   parks that type's tasks as `dead` with "No handler registered".
@@ -869,7 +884,7 @@ Milestone 7, not as generic HTTP-kit plumbing now.
 
 - Colocate `*.spec.ts` next to the file under test. Suffix anything that needs a
   real database `*.integration.spec.ts` — `npm test` excludes those, `npm run
-  test:int` runs them. **There is no e2e tier**: HTTP behaviour is covered by
+test:int` runs them. **There is no e2e tier**: HTTP behaviour is covered by
   integration specs against the real database.
 - Integration specs construct the service under test directly against
   `PostgresTestContext` (see `tenant-scope.integration.spec.ts`); a
@@ -913,7 +928,7 @@ Milestone 7, not as generic HTTP-kit plumbing now.
 - `/reference` (Scalar) needs a per-request CSP nonce, not `'unsafe-inline'`,
   because Scalar's renderer embeds its bootstrap as an inline `<script>` (see
   `@scalar/client-side-rendering`'s `getScriptTags`). `main.ts` mints one nonce
-  per request into `res.locals[CSP_NONCE_LOCALS_KEY]` *before* helmet runs —
+  per request into `res.locals[CSP_NONCE_LOCALS_KEY]` _before_ helmet runs —
   helmet's `script-src` directive and `mountScalarReference`'s handler both
   read the same value back, via `docs/csp-nonce.ts`'s shared key. Passing a
   `nonce` also makes Scalar choose its single-file UMD bundle over the ESM

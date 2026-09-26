@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
-import { type ExecutionContext, HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import {
+  type ExecutionContext,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import {
   InjectThrottlerOptions,
@@ -25,7 +31,11 @@ export const RATE_LIMIT_WINDOW_MS = 60_000;
 /** What an unauthenticated address may do per window on routes without a stricter limit of their own. */
 export const ANONYMOUS_LIMIT_PER_MINUTE = 120;
 
-const NEXT_PLAN: Readonly<Record<Plan, Plan | null>> = { free: 'basic', basic: 'premium', premium: null };
+const NEXT_PLAN: Readonly<Record<Plan, Plan | null>> = {
+  free: 'basic',
+  basic: 'premium',
+  premium: null,
+};
 
 /** What a request was counted against, kept for the 429 message. */
 interface Budget {
@@ -60,7 +70,8 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     @InjectThrottlerStorage() storageService: ThrottlerStorage,
     reflector: Reflector,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
-    @InjectRepository(Subscription) private readonly subscriptions: Repository<Subscription>,
+    @InjectRepository(Subscription)
+    private readonly subscriptions: Repository<Subscription>,
   ) {
     super(options, storageService, reflector);
   }
@@ -73,8 +84,12 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     return { req: requestOf(context), res: responseOf(context) };
   }
 
-  protected override async shouldSkip(_context: ExecutionContext): Promise<boolean> {
-    return !this.config.RATE_LIMIT_ENABLED;
+  protected override async shouldSkip(
+    context: ExecutionContext,
+  ): Promise<boolean> {
+    return (
+      context.getType<string>() === 'ws' || !this.config.RATE_LIMIT_ENABLED
+    );
   }
 
   /**
@@ -83,7 +98,9 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
    * window whatever the limit later becomes, so a company that upgrades to escape a 429 must land
    * on a fresh counter for the new plan — the upgrade the message asks for has to work at once.
    */
-  protected override async getTracker(req: Record<string, unknown>): Promise<string> {
+  protected override async getTracker(
+    req: Record<string, unknown>,
+  ): Promise<string> {
     const companyId = companyIdOf(req);
     if (companyId) {
       const plan = this.budgets.get(req)?.plan;
@@ -93,12 +110,22 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
   }
 
   /** One bucket per tracker — except a strict route, whose bucket is its own. */
-  protected override generateKey(context: ExecutionContext, suffix: string, name: string): string {
-    const scope = this.isStrict(context) ? `${context.getClass().name}.${context.getHandler().name}` : 'general';
-    return createHash('sha256').update(`${name}|${scope}|${suffix}`).digest('hex');
+  protected override generateKey(
+    context: ExecutionContext,
+    suffix: string,
+    name: string,
+  ): string {
+    const scope = this.isStrict(context)
+      ? `${context.getClass().name}.${context.getHandler().name}`
+      : 'general';
+    return createHash('sha256')
+      .update(`${name}|${scope}|${suffix}`)
+      .digest('hex');
   }
 
-  protected override async handleRequest(props: ThrottlerRequest): Promise<boolean> {
+  protected override async handleRequest(
+    props: ThrottlerRequest,
+  ): Promise<boolean> {
     const { req } = this.getRequestResponse(props.context);
     const companyId = companyIdOf(req);
 
@@ -123,28 +150,41 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
 
     this.setResponseHeader(res, `${this.headerPrefix}-Limit`, detail.limit);
     this.setResponseHeader(res, `${this.headerPrefix}-Remaining`, 0);
-    this.setResponseHeader(res, `${this.headerPrefix}-Reset`, detail.timeToExpire);
+    this.setResponseHeader(
+      res,
+      `${this.headerPrefix}-Reset`,
+      detail.timeToExpire,
+    );
 
-    throw new HttpException(throttleMessage(budget, retryAfter), HttpStatus.TOO_MANY_REQUESTS);
+    throw new HttpException(
+      throttleMessage(budget, retryAfter),
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
   }
 
   private isStrict(context: ExecutionContext): boolean {
     return (
-      this.reflector.getAllAndOverride<boolean | undefined>(STRICT_THROTTLE_KEY, [
-        context.getHandler(),
-        context.getClass(),
-      ]) === true
+      this.reflector.getAllAndOverride<boolean | undefined>(
+        STRICT_THROTTLE_KEY,
+        [context.getHandler(), context.getClass()],
+      ) === true
     );
   }
 
   private async planOf(companyId: string): Promise<Plan> {
-    const subscription = await this.subscriptions.findOne({ where: { companyId }, select: { plan: true } });
+    const subscription = await this.subscriptions.findOne({
+      where: { companyId },
+      select: { plan: true },
+    });
     return subscription?.plan ?? 'free';
   }
 }
 
 /** The words a person reads on a 429: which plan, what it allows, when to retry, and the way up. */
-export function throttleMessage(budget: Budget, retryAfterSeconds: number): string {
+export function throttleMessage(
+  budget: Budget,
+  retryAfterSeconds: number,
+): string {
   if (budget.plan === null) {
     return `Too many requests. Try again in ${retryAfterSeconds} seconds.`;
   }
@@ -157,6 +197,7 @@ export function throttleMessage(budget: Budget, retryAfterSeconds: number): stri
 
 function companyIdOf(req: Record<string, unknown>): string | undefined {
   const user = req.user;
-  if (typeof user !== 'object' || user === null || !('companyId' in user)) return undefined;
+  if (typeof user !== 'object' || user === null || !('companyId' in user))
+    return undefined;
   return typeof user.companyId === 'string' ? user.companyId : undefined;
 }
