@@ -37,7 +37,7 @@ SQL Server, EF Core, clean architecture, role-based CMS workflows.
 | Pagination | **Cursor (keyset)** for `files`/`audit`, **offset** for small bounded lists |
 | Mail | **Nodemailer** + **MJML** templates |
 | Realtime | **Socket.IO** for live file-profiling status and quota |
-| GraphQL | One bounded surface: read-only analytics at `/graphql` |
+| GraphQL | One bounded surface: read-only analytics plus visible file/report dashboards at `/graphql` |
 | Auth | JWT + **Google OAuth**, on a provider-agnostic identity model (Apple dropped) |
 | Frontend | Next.js **16** App Router |
 | Architecture | **Not** event-driven, not microservices — reliable modular monolith |
@@ -451,7 +451,7 @@ prefix and introduced `/session/*` for Next's own BFF handlers.
 GraphQL does **not** replace the REST API, and Gridline does not become a
 GraphQL app. It gets exactly one job, where it genuinely beats REST:
 
-**`/graphql` is the read-only analytics surface.**
+**`/graphql` is the read-only dashboard surface: analytics plus visible file/report data.**
 
 The analytics dashboard wants many differently-shaped aggregates over the same
 few entities — files per day by uploader, quota burn-down across a period,
@@ -461,12 +461,18 @@ endpoint with fifteen query parameters, and every new chart needs backend
 work. That is the textbook case for GraphQL, and it's honest justification
 rather than résumé-driven design.
 
+The later file graph is the same idea applied to one dashboard-shaped read: a client can select a visible file's uploader,
+quality report, versions, comments, comment count, and grants without a chain of REST round trips. It reuses `FilesService.list`
+and `requireVisible`, and batches relations per request, so GraphQL does not introduce a second access policy or an N+1 query
+path.
+
 Deliberate constraints keep it from metastasising:
 
 - **Read-only.** No mutations. Every write stays REST, so there is exactly one
   path that changes state and one place permissions are enforced for writes.
-- **Analytics schema only** — it never exposes auth, billing writes, or file
-  contents.
+- **Dashboard reads only** — analytics and metadata for files the caller can already see. It never exposes auth, billing
+  writes, private file bytes, or a write operation.
+- API keys stay out of GraphQL; integrations use the scoped REST API.
 - Tenant-scoped through the **same CLS context**, so a resolver cannot see
   another company's rows even if the query asks.
 - **Depth and complexity limits** plus a cost guard, because an open query

@@ -8,6 +8,49 @@ type BurnDownPoint {
   used: Int!
 }
 
+type ColumnQualityMetrics {
+  inconsistent: Boolean!
+  inconsistentPercent: Float!
+  index: Int!
+  inferredType: ColumnType!
+  name: String!
+  nullCount: Int!
+  nullPercent: Float!
+  numeric: NumericColumnSummary
+}
+
+enum ColumnType {
+  boolean
+  date
+  empty
+  integer
+  number
+  string
+}
+
+type DataQualityMetrics {
+  columnCount: Int!
+  columns: [ColumnQualityMetrics!]!
+  duplicateRows: Int!
+  emptyRows: Int!
+  headerIssues: [String!]!
+  raggedRows: Int!
+  rowBudget: Int!
+  rowCount: Int!
+  truncated: Boolean!
+}
+
+type DataQualityReport {
+  errorMessage: String
+  fileId: ID!
+  metrics: DataQualityMetrics
+  narrative: ReportNarrative
+  profiledAt: DateTime
+  qualityScore: Int
+  ruleResults: [QualityRuleResult!]
+  status: ReportStatus!
+}
+
 """
 A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
 """
@@ -32,12 +75,96 @@ type EmployeeActivity {
   userId: String!
 }
 
+type File {
+  commentCount: Int!
+
+  """
+  A keyset-paginated comment thread. This reuses the REST comment service and its file-visibility gate.
+  """
+  comments(after: String, first: Int! = 20): FileCommentConnection!
+  createdAt: DateTime!
+  datasetId: ID!
+
+  """
+  Restricted-file grantees. Visible only to an admin or this version’s uploader.
+  """
+  grants: [FileUser!]
+  id: ID!
+  isLatest: Boolean!
+  mimeType: String!
+  originalName: String!
+  report: DataQualityReport!
+  sizeBytes: Int!
+  updatedAt: DateTime!
+  uploader: FileUser!
+  version: Int!
+  versions: [File!]!
+  visibility: FileVisibility!
+}
+
+type FileComment {
+  author: FileUser!
+  body: String
+  createdAt: DateTime!
+  deletedAt: DateTime
+  editedAt: DateTime
+  fileId: ID!
+  id: ID!
+  mentionedUsers: [FileUser!]!
+  parentId: ID
+}
+
+type FileCommentConnection {
+  nodes: [FileComment!]!
+  pageInfo: PageInfo!
+}
+
+type FileConnection {
+  nodes: [File!]!
+  pageInfo: PageInfo!
+}
+
+enum FileSort {
+  NEWEST
+  OLDEST
+}
+
+type FileUser {
+  fullName: String!
+  id: ID!
+}
+
+enum FileVisibility {
+  company
+  restricted
+}
+
+input FilesFilterInput {
+  allVersions: Boolean! = false
+  mimeType: SpreadsheetMimeType
+  uploadedAfter: DateTime
+  uploadedBefore: DateTime
+  uploaderId: ID
+  visibility: FileVisibility
+}
+
 type FilesPerDayPoint {
   """UTC day, `YYYY-MM-DD`."""
   date: String!
 
   """Files uploaded that day; 0 for a quiet day."""
   files: Int!
+}
+
+type NumericColumnSummary {
+  max: Float!
+  mean: Float!
+  min: Float!
+}
+
+type PageInfo {
+  hasMore: Boolean!
+  nextCursor: String
 }
 
 """One of free, basic, premium."""
@@ -58,7 +185,48 @@ type PlanChange {
   toPlan: Plan!
 }
 
+enum QualityRuleKind {
+  max_duplicate_rows
+  max_null_percent
+  max_value
+  min_value
+  required_column
+  type_is
+  unique
+}
+
+type QualityRuleResult {
+  columnName: String
+  kind: QualityRuleKind!
+  message: String!
+  name: String!
+  ruleId: ID!
+  severity: QualityRuleSeverity!
+  status: QualityRuleResultStatus!
+}
+
+enum QualityRuleResultStatus {
+  failed
+  passed
+  skipped
+}
+
+enum QualityRuleSeverity {
+  error
+  warning
+}
+
 type Query {
+  """
+  One visible file. An inaccessible restricted file is indistinguishable from a missing file.
+  """
+  file(id: ID!): File
+
+  """
+  Files visible to the current member, with the same filters, keyset cursor, and access rules as GET /files.
+  """
+  files(after: String, filter: FilesFilterInput, first: Int! = 20, sort: FileSort! = NEWEST): FileConnection!
+
   """
   Usage analytics for the current company: uploads per day, per employee, storage, the quota burn-down and plan history. `from` (inclusive) and `to` (exclusive) are read as UTC days; with neither it is the current billing period so far.
   """
@@ -74,6 +242,26 @@ type QuotaBurnDown {
   plan: Plan!
   points: [BurnDownPoint!]!
   used: Int!
+}
+
+type ReportNarrative {
+  model: String!
+  recommendations: [String!]!
+  summary: String!
+}
+
+enum ReportStatus {
+  failed
+  profiling
+  queued
+  ready
+  unsupported
+}
+
+enum SpreadsheetMimeType {
+  CSV
+  XLS
+  XLSX
 }
 
 type StorageUsage {

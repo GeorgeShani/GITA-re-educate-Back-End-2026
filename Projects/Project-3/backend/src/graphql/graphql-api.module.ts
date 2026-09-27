@@ -2,7 +2,12 @@ import { ApolloDriver, type ApolloDriverConfig } from '@nestjs/apollo';
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
 import { AnalyticsModule } from '#/analytics/analytics.module.js';
+import { CommentsModule } from '#/comments/comments.module.js';
+import { DatabaseModule } from '#/database/database.module.js';
+import { FilesModule } from '#/files/files.module.js';
 import { AnalyticsResolver } from './analytics.resolver.js';
+import { FilesResolver } from './files.resolver.js';
+import { GraphqlLoaderFactory } from './graphql-loaders.js';
 import { complexityLimitRule, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DEPTH } from './query-limits.js';
 
 /**
@@ -20,6 +25,9 @@ import { complexityLimitRule, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DE
 @Module({
   imports: [
     AnalyticsModule,
+    CommentsModule,
+    DatabaseModule,
+    FilesModule,
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       path: '/graphql',
@@ -31,6 +39,6 @@ import { complexityLimitRule, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DE
       playground: false,
     }),
   ],
-  providers: [AnalyticsResolver],
+  providers: [AnalyticsResolver, FilesResolver, GraphqlLoaderFactory],
 })
 export class GraphqlApiModule {}

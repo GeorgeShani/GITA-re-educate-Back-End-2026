@@ -191,8 +191,14 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 
 ### 11. GraphQL (read-only)
 
-- `POST /graphql` returns the same analytics as REST, from the same service; admins only, no mutations, depth and cost limits,
-  and a committed schema (`src/graphql/schema.gql`).
+- `POST /graphql` returns analytics from the same service as REST and a selectable file/report graph for dashboards.
+  `files` uses the REST keyset cursor and visibility policy; `file` starts from the same `requireVisible` gate. Relations for
+  uploaders, reports, versions, grants, and comment counts are batched once per request and every batch carries the tenant
+  predicate. Comments reuse the REST service and its visibility gate.
+- Admins and employees can read the file graph; analytics remains admin only. Restricted files remain absent to outsiders,
+  grants are visible only to an admin or the uploader, and API keys remain denied. There are no mutations or subscriptions.
+  Depth 6, cost 1000, and a maximum page size of 50 bound work before execution. The committed contract is
+  `src/graphql/schema.gql`.
 
 ### 12. Operations
 

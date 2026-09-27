@@ -533,7 +533,7 @@ failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `
 - Tests: `app.listen(0)` + `socket.io-client` (`test/support/socket-client.ts`: `connect`, `Listener.waitFor`,
   `settle`). Negative assertions ("the third employee got nothing") wait `settle()` first.
 
-## GraphQL analytics _(from Phase 13 of the feature plan)_
+## GraphQL read API _(from Phases 13 and 21 of the feature plan)_
 
 - **`/graphql` is READ-ONLY** (`src/graphql/`, `@nestjs/graphql` 14 + `@nestjs/apollo` 14 + Apollo Server 5 on Express 5
   via `@as-integrations/express5`). Code-first, `Query` only: the schema has no `Mutation` or `Subscription` type.
@@ -542,6 +542,14 @@ failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `
 - **Same numbers as REST, by construction.** `AnalyticsResolver.usage(from,to)` calls the SAME `AnalyticsService.usage`
   that `GET /analytics/usage` does (→ `analytics.queries.ts`). The types in `analytics.types.ts` mirror the REST DTO
   field for field, and the integration spec asserts `data.usage` `toEqual` the REST body for every field.
+- **Files reuse the REST gates, not a second policy.** `FilesResolver.files` calls `FilesService.list`; `file(id)` calls
+  `requireVisible`. The resolver is `@Roles('admin','employee')` + `@RequiresSubscription()` and still declares no scopes,
+  so API keys cannot enter GraphQL. Restricted files are 404/null to a non-viewer, and `grants` is nullable for everyone but
+  an admin or that version's uploader.
+- **Loaders are per request.** `GraphqlLoaderFactory.create()` is stored lazily on the Apollo context the first time a file
+  relation needs it. Users, reports, grants, visible versions, and comment counts batch independently; every batch reads the
+  company and viewer from `RequestContextService` and applies the tenant predicate in SQL. Never cache a loader globally.
+  The comments connection reuses `CommentsService`; its author and mention hydration is batched for the whole page.
 - **`common/http/request-of.ts` — every guard reads the request through `requestOf(context)`.** Over GraphQL,
   `switchToHttp().getRequest()` returns the resolver's ROOT OBJECT, so a guard using it would see "no user" and — being a
   guard that skips when there is nothing to check — quietly let the request through. `AuthGuard`, `RolesGuard`,
@@ -555,14 +563,16 @@ failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `
 - **Limits run at validation time, before any resolver** (`query-limits.ts`): depth ≤ `MAX_QUERY_DEPTH` (6; real queries
   are 4, introspection walks deeper; fragments followed, cycles safe) and cost ≤ `MAX_QUERY_COMPLEXITY` (1000) using
   `graphql-query-complexity` with per-field `complexity` (lists cost ×10, the root `usage` costs 50 + its children), so
-  aliasing the field six times to multiply the work is priced out. Errors say what was exceeded and the maximum
+  aliasing the field six times to multiply the work is priced out. File connections additionally price `first × child`,
+  nested versions/grants are multiplied, and `files.first` is capped at 50. Errors say what was exceeded and the maximum
   (Apollo overwrites `extensions.code` with `GRAPHQL_VALIDATION_FAILED`; our numbers survive in `extensions`).
 - **Errors:** `AllExceptionsFilter` returns the exception for GraphQL contexts (Apollo formats it) instead of writing the
   REST envelope — a GraphQL response is HTTP 200 with `errors[]`. Introspection is on outside production (Apollo default);
   the landing page is off.
 - **Schema file:** `npm run graphql:schema` regenerates `src/graphql/schema.gql` (sorted SDL, built from decorators without
   booting the app); `graphql.integration.spec.ts` fails if it differs from the running schema. Regenerate after touching
-  `analytics.types.ts` / the resolver.
+  booting the app). `schema-sdl.ts` must list every resolver class; `graphql.integration.spec.ts` fails if the committed file
+  differs from the running schema. Regenerate after touching a GraphQL type or resolver.
 - **Vitest resolves `graphql` to its CommonJS build** (alias in both vitest configs). Vite would otherwise pick `index.mjs`
   while `@nestjs/graphql` (run by Node) gets `index.js`, and graphql refuses a schema built by the other copy
   ("Cannot use GraphQLScalarType from another module or realm"). Never remove the alias.

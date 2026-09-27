@@ -170,8 +170,11 @@ password at all, so there is nothing to guess.
   file's visibility and grants; `GET /files` lists only the latest of each unless `?allVersions=true`. Deleting the latest promotes
   the previous one; version numbers are never reused. Comparing works from stored reports; a version that drops or retypes a column
   sends `dataset.schema_changed` to the uploader and admins. Limits: Free 5, Basic 50, Premium unlimited versions per file.
-- **GraphQL** (`POST /graphql`) is a read-only twin of `GET /analytics/usage` — admins only, no mutations, depth and cost
-  limits, and a committed schema (`src/graphql/schema.gql`, regenerate with `npm run graphql:schema`).
+- **GraphQL** (`POST /graphql`) is the read-only dashboard API. Admins can query the same analytics as REST; admins and
+  employees can query only the files they can already see, then select uploader, report, versions, comments, comment count,
+  and grants (grants are returned only to an admin or the uploader). Per-request DataLoaders batch relations, while depth 6,
+  cost 1000, and `first <= 50` bound work before execution. API keys and mutations are intentionally absent. The committed
+  contract is `src/graphql/schema.gql`; regenerate it with `npm run graphql:schema`.
 
 ## Testing
 

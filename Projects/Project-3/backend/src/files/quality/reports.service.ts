@@ -45,6 +45,34 @@ export interface PreviewView {
 }
 
 /**
+ * One parser for the report row, shared by REST and GraphQL. The JSON columns are
+ * untrusted even when they came from our database, so both surfaces cross the same
+ * Zod boundary and cannot quietly disagree about malformed historic data.
+ */
+export function toReportView(row: DataQualityReport): ReportView {
+  const metrics = row.metrics === null ? null : metricsSchema.parse(row.metrics);
+  const recommendations = recommendationsSchema.safeParse(row.recommendations ?? []);
+  const ruleResults = ruleResultsSchema.safeParse(row.ruleResults ?? []);
+  return {
+    fileId: row.fileId,
+    status: row.status,
+    metrics,
+    narrative: row.summaryText
+      ? {
+          summary: row.summaryText,
+          recommendations: recommendations.success ? recommendations.data : [],
+          model: row.model ?? 'unknown',
+        }
+      : null,
+    errorMessage: row.errorMessage,
+    profiledAt: row.profiledAt,
+    qualityScore: row.qualityScore,
+    ruleResults:
+      ruleResults.success && row.ruleResults !== null ? ruleResults.data : null,
+  };
+}
+
+/**
  * Reads of a file's report and preview. Both start from `FilesService.requireVisible`, so
  * the ONE visibility rule decides them: a file the caller cannot see is a 404 here too,
  * and nothing about its contents leaks through a side door.
@@ -61,26 +89,7 @@ export class ReportsService {
 
   async report(fileId: string): Promise<ReportView> {
     const row = await this.rowFor(fileId);
-
-    const metrics = row.metrics === null ? null : metricsSchema.parse(row.metrics);
-    const recommendations = recommendationsSchema.safeParse(row.recommendations ?? []);
-    const ruleResults = ruleResultsSchema.safeParse(row.ruleResults ?? []);
-    return {
-      fileId,
-      status: row.status,
-      metrics,
-      narrative: row.summaryText
-        ? {
-            summary: row.summaryText,
-            recommendations: recommendations.success ? recommendations.data : [],
-            model: row.model ?? 'unknown',
-          }
-        : null,
-      errorMessage: row.errorMessage,
-      profiledAt: row.profiledAt,
-      qualityScore: row.qualityScore,
-      ruleResults: ruleResults.success && row.ruleResults !== null ? ruleResults.data : null,
-    };
+    return toReportView(row);
   }
 
   /**

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { GraphQLSchemaBuilderModule, GraphQLSchemaFactory } from '@nestjs/graphql';
 import { lexicographicSortSchema, printSchema } from 'graphql';
 import { AnalyticsResolver } from './analytics.resolver.js';
+import { FilesResolver } from './files.resolver.js';
 
 /** Where the committed schema lives, relative to the backend root (where npm scripts run). */
 export const SCHEMA_FILE = 'src/graphql/schema.gql';
@@ -15,7 +16,9 @@ export async function buildSchemaSdl(): Promise<string> {
   const app = await NestFactory.create(GraphQLSchemaBuilderModule, { logger: false });
   try {
     await app.init();
-    const schema = await app.get(GraphQLSchemaFactory).create([AnalyticsResolver]);
+    const schema = await app
+      .get(GraphQLSchemaFactory)
+      .create([AnalyticsResolver, FilesResolver]);
     return `${printSchema(lexicographicSortSchema(schema))}\n`;
   } finally {
     await app.close();

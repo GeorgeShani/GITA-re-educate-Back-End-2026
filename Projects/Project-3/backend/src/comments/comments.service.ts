@@ -339,35 +339,46 @@ export class CommentsService {
     manager: EntityManager,
     comments: FileComment[],
   ): Promise<CommentView[]> {
-    return Promise.all(comments.map((comment) => this.view(manager, comment)));
+    if (comments.length === 0) return [];
+    const authors = await manager.find(User, {
+      where: { id: In([...new Set(comments.map((comment) => comment.authorId))]) },
+    });
+    const mentions = await manager.find(FileCommentMention, {
+      where: { commentId: In(comments.map((comment) => comment.id)) },
+      relations: { user: true },
+      order: { createdAt: 'ASC' },
+    });
+    const authorById = new Map(authors.map((author) => [author.id, author]));
+    const mentionsByComment = new Map<string, CommentUserView[]>();
+    for (const mention of mentions) {
+      if (!mention.user) continue;
+      const users = mentionsByComment.get(mention.commentId) ?? [];
+      users.push({ id: mention.user.id, fullName: mention.user.fullName });
+      mentionsByComment.set(mention.commentId, users);
+    }
+    return comments.map((comment) => {
+      const author = authorById.get(comment.authorId);
+      if (!author) throw new Error(`Comment ${comment.id} has no author.`);
+      return {
+        id: comment.id,
+        fileId: comment.fileId,
+        parentId: comment.parentId,
+        body: comment.body,
+        author: { id: author.id, fullName: author.fullName },
+        mentionedUsers: mentionsByComment.get(comment.id) ?? [],
+        editedAt: comment.editedAt,
+        deletedAt: comment.deletedAt,
+        createdAt: comment.createdAt,
+      };
+    });
   }
 
   private async view(
     manager: EntityManager,
     comment: FileComment,
   ): Promise<CommentView> {
-    const author = await manager.findOneByOrFail(User, {
-      id: comment.authorId,
-    });
-    const mentions = await manager.find(FileCommentMention, {
-      where: { commentId: comment.id },
-      relations: { user: true },
-      order: { createdAt: 'ASC' },
-    });
-    return {
-      id: comment.id,
-      fileId: comment.fileId,
-      parentId: comment.parentId,
-      body: comment.body,
-      author: { id: author.id, fullName: author.fullName },
-      mentionedUsers: mentions.flatMap((mention) =>
-        mention.user
-          ? [{ id: mention.user.id, fullName: mention.user.fullName }]
-          : [],
-      ),
-      editedAt: comment.editedAt,
-      deletedAt: comment.deletedAt,
-      createdAt: comment.createdAt,
-    };
+    const [view] = await this.views(manager, [comment]);
+    if (!view) throw new Error(`Comment ${comment.id} could not be rendered.`);
+    return view;
   }
 }
