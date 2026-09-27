@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { DataSource } from 'typeorm';
+import { DataSource, type EntityManager } from 'typeorm';
 import { z } from 'zod';
 import { AI_PROVIDER, type AiProvider } from '#/core/ai/ai-provider.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
@@ -9,6 +9,7 @@ import type { TaskHandler } from '#/core/tasks/task-handler.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { loadEnabledRules } from '#/quality-rules/rule-definitions.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
+import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAsset } from './file-asset.entity.js';
 import {
@@ -17,10 +18,17 @@ import {
   readSpreadsheet,
 } from './parsing/spreadsheet-reader.js';
 import { diffMetrics } from './quality/diff.js';
-import { type DataQualityMetrics, PROFILE_LIMITS, metricsSchema } from './quality/metrics.js';
+import {
+  type DataQualityMetrics,
+  PROFILE_LIMITS,
+  metricsSchema,
+} from './quality/metrics.js';
 import { narrativeInputFrom, profileSheet } from './quality/profile.js';
 import { evaluateRules, uniqueColumnKeys } from './quality/rules.js';
-import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from './spreadsheet-types.js';
+import {
+  SPREADSHEET_MIME_TYPES,
+  type SpreadsheetMime,
+} from './spreadsheet-types.js';
 
 const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid() });
 export type BuildDataQualityReportPayload = z.infer<typeof payloadSchema>;
@@ -37,9 +45,47 @@ interface SchemaChange {
 const MAX_LISTED_COLUMNS = 20;
 
 type ProfileOutcome =
-  | { status: 'ready'; failedErrorRules: string[]; qualityScore: number | null; schemaChange: SchemaChange | null }
+  | {
+      status: 'ready';
+      failedErrorRules: string[];
+      qualityScore: number | null;
+      schemaChange: SchemaChange | null;
+    }
   | { status: 'unsupported' }
   | { status: 'failed'; reason: string };
+
+type ReportCompletion =
+  | {
+      outcome: Extract<ProfileOutcome, { status: 'ready' }>;
+      update: {
+        status: 'ready';
+        metrics: DataQualityMetrics;
+        ruleResults: ReturnType<typeof evaluateRules>['results'] | null;
+        qualityScore: number | null;
+        previewRows: ReturnType<typeof profileSheet>['previewRows'];
+        summaryText: string | null;
+        recommendations: string[] | null;
+        model: string | null;
+        errorMessage: null;
+        profiledAt: Date;
+      };
+    }
+  | {
+      outcome: Extract<ProfileOutcome, { status: 'unsupported' }>;
+      update: {
+        status: 'unsupported';
+        errorMessage: string;
+        profiledAt: Date;
+      };
+    }
+  | {
+      outcome: Extract<ProfileOutcome, { status: 'failed' }>;
+      update: {
+        status: 'failed';
+        errorMessage: string;
+        profiledAt: Date;
+      };
+    };
 
 function isSpreadsheetMime(value: string): value is SpreadsheetMime {
   return SPREADSHEET_MIME_TYPES.some((mime) => mime === value);
@@ -75,14 +121,20 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     private readonly logger: PinoLogger,
     private readonly realtime: RealtimeEmitter,
     private readonly notifications: NotificationsService,
+    private readonly webhooks: WebhookPublisher,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     this.logger.setContext(BuildDataQualityReportHandler.name);
   }
 
-  async handle({ fileId, companyId }: BuildDataQualityReportPayload): Promise<void> {
+  async handle({
+    fileId,
+    companyId,
+  }: BuildDataQualityReportPayload): Promise<void> {
     const reports = this.dataSource.getRepository(DataQualityReport);
-    const file = await this.dataSource.getRepository(FileAsset).findOne({ where: { id: fileId, companyId } });
+    const file = await this.dataSource
+      .getRepository(FileAsset)
+      .findOne({ where: { id: fileId, companyId } });
 
     // Deleted (or never committed) before the worker got to it: nothing to profile.
     if (!file || file.deletedAt) {
@@ -91,51 +143,98 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     }
 
     const existing = await reports.findOne({ where: { fileId, companyId } });
-    if (existing && (existing.status === 'ready' || existing.status === 'unsupported')) return;
-    const reportId = existing?.id ?? (await reports.save(reports.create({ fileId, companyId, status: 'queued' }))).id;
+    if (
+      existing &&
+      (existing.status === 'ready' || existing.status === 'unsupported')
+    )
+      return;
+    const reportId =
+      existing?.id ??
+      (
+        await reports.save(
+          reports.create({ fileId, companyId, status: 'queued' }),
+        )
+      ).id;
 
-    await reports.update({ id: reportId }, { status: 'profiling', errorMessage: null });
+    await reports.update(
+      { id: reportId },
+      { status: 'profiling', errorMessage: null },
+    );
     await this.realtime.fileStatus(fileId);
 
-    let outcome: ProfileOutcome;
+    let completion: ReportCompletion;
     try {
-      outcome = await this.profile(reportId, file);
+      completion = await this.profile(file);
     } catch (error) {
       await reports.update(
         { id: reportId },
-        { status: 'failed', errorMessage: 'Profiling hit a temporary problem and will be retried.' },
+        {
+          status: 'failed',
+          errorMessage:
+            'Profiling hit a temporary problem and will be retried.',
+        },
       );
       await this.realtime.fileStatus(fileId);
       throw error;
     }
-    // Every outcome of `profile` (ready, unsupported, failed) is committed by now: announce it.
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(
+        DataQualityReport,
+        { id: reportId, companyId },
+        completion.update,
+      );
+      await this.notifyUploader(manager, file, completion.outcome);
+    });
     await this.realtime.fileStatus(fileId);
-    await this.notifyUploader(file, outcome);
   }
 
   /**
    * The uploader hears when the report is ready or has failed for good. A transient failure is
    * retried and says nothing (the retry will); `unsupported` (a legacy .xls) is not a failure of theirs.
    */
-  private async notifyUploader(file: FileAsset, outcome: ProfileOutcome): Promise<void> {
+  private async notifyUploader(
+    manager: EntityManager,
+    file: FileAsset,
+    outcome: ProfileOutcome,
+  ): Promise<void> {
     if (outcome.status === 'unsupported') return;
-    const manager = this.dataSource.manager;
-    try {
+    await this.notifications.notify(
+      manager,
+      file.companyId,
+      [file.uploaderId],
+      outcome.status === 'ready'
+        ? {
+            type: 'report.ready',
+            payload: { fileId: file.id, fileName: file.originalName },
+          }
+        : {
+            type: 'report.failed',
+            payload: {
+              fileId: file.id,
+              fileName: file.originalName,
+              reason: outcome.reason,
+            },
+          },
+    );
+    await this.webhooks.publish(
+      manager,
+      file.companyId,
+      outcome.status === 'ready' ? 'report.ready' : 'report.failed',
+      {
+        fileId: file.id,
+        reportStatus: outcome.status,
+      },
+    );
+    const admins =
+      outcome.status === 'ready'
+        ? await this.notifications.activeAdminIds(manager, file.companyId)
+        : [];
+    if (outcome.status === 'ready' && outcome.schemaChange) {
       await this.notifications.notify(
         manager,
         file.companyId,
-        [file.uploaderId],
-        outcome.status === 'ready'
-          ? { type: 'report.ready', payload: { fileId: file.id, fileName: file.originalName } }
-          : {
-              type: 'report.failed',
-              payload: { fileId: file.id, fileName: file.originalName, reason: outcome.reason },
-            },
-      );
-      const admins = outcome.status === 'ready' ? await this.notifications.activeAdminIds(manager, file.companyId) : [];
-      // A version that dropped or retyped a column its predecessor had: the uploader and the admins.
-      if (outcome.status === 'ready' && outcome.schemaChange) {
-        await this.notifications.notify(manager, file.companyId, [file.uploaderId, ...admins], {
+        [file.uploaderId, ...admins],
+        {
           type: 'dataset.schema_changed',
           payload: {
             datasetId: file.datasetId,
@@ -144,11 +243,15 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
             version: file.version,
             ...outcome.schemaChange,
           },
-        });
-      }
-      // A file that breaks an error-level rule is everyone's business: the uploader and the admins.
-      if (outcome.status === 'ready' && outcome.failedErrorRules.length > 0) {
-        await this.notifications.notify(manager, file.companyId, [file.uploaderId, ...admins], {
+        },
+      );
+    }
+    if (outcome.status === 'ready' && outcome.failedErrorRules.length > 0) {
+      await this.notifications.notify(
+        manager,
+        file.companyId,
+        [file.uploaderId, ...admins],
+        {
           type: 'rules.failed',
           payload: {
             fileId: file.id,
@@ -156,12 +259,13 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
             failedRules: outcome.failedErrorRules,
             qualityScore: outcome.qualityScore,
           },
-        });
-      }
-    } catch (error) {
-      // The report is done and committed; an inbox that cannot be written must not fail (and so
-      // retry) the whole task.
-      this.logger.warn({ err: error, fileId: file.id }, 'Could not write the report notification');
+        },
+      );
+      await this.webhooks.publish(manager, file.companyId, 'rules.failed', {
+        fileId: file.id,
+        failedRuleCount: outcome.failedErrorRules.length,
+        qualityScore: outcome.qualityScore,
+      });
     }
   }
 
@@ -183,7 +287,9 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         companyId: file.companyId,
         datasetId: file.datasetId,
       })
-      .andWhere('f.version < :version AND f."deletedAt" IS NULL', { version: file.version })
+      .andWhere('f.version < :version AND f."deletedAt" IS NULL', {
+        version: file.version,
+      })
       .orderBy('f.version', 'DESC')
       .getOne();
     if (!previous) return null;
@@ -191,10 +297,14 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     const row = await this.dataSource
       .getRepository(DataQualityReport)
       .findOne({ where: { fileId: previous.id, companyId: file.companyId } });
-    const before = row?.status === 'ready' ? metricsSchema.safeParse(row.metrics) : null;
+    const before =
+      row?.status === 'ready' ? metricsSchema.safeParse(row.metrics) : null;
     if (!row || !before?.success) return null;
 
-    const diff = diffMetrics({ metrics: before.data, qualityScore: row.qualityScore }, { metrics, qualityScore });
+    const diff = diffMetrics(
+      { metrics: before.data, qualityScore: row.qualityScore },
+      { metrics, qualityScore },
+    );
     if (!diff.schemaChanged) return null;
     return {
       previousVersion: previous.version,
@@ -204,50 +314,85 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     };
   }
 
-  private async profile(reportId: string, file: FileAsset): Promise<ProfileOutcome> {
-    const reports = this.dataSource.getRepository(DataQualityReport);
+  private async profile(file: FileAsset): Promise<ReportCompletion> {
     const bytes = await this.storage.get(file.storageKey);
 
     if (!isSpreadsheetMime(file.mimeType)) {
-      await reports.update({ id: reportId }, { status: 'failed', errorMessage: 'Unrecognised file type.' });
-      return { status: 'failed', reason: 'Unrecognised file type.' };
+      return {
+        outcome: { status: 'failed', reason: 'Unrecognised file type.' },
+        update: {
+          status: 'failed',
+          errorMessage: 'Unrecognised file type.',
+          profiledAt: this.clock.now(),
+        },
+      };
     }
 
     // The company's rules are read first: a `unique` rule needs its column's values remembered WHILE
     // the file is read, which cannot be done afterwards from aggregates.
-    const { rules, unreadable } = await loadEnabledRules(this.dataSource, file.companyId);
-    if (unreadable > 0) this.logger.warn({ companyId: file.companyId, unreadable }, 'Ignoring quality rules that no longer parse');
+    const { rules, unreadable } = await loadEnabledRules(
+      this.dataSource,
+      file.companyId,
+    );
+    if (unreadable > 0)
+      this.logger.warn(
+        { companyId: file.companyId, unreadable },
+        'Ignoring quality rules that no longer parse',
+      );
 
     let profile: ReturnType<typeof profileSheet>;
     try {
-      profile = profileSheet(await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS), {
-        uniqueColumns: uniqueColumnKeys(rules),
-      });
+      profile = profileSheet(
+        await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS),
+        {
+          uniqueColumns: uniqueColumnKeys(rules),
+        },
+      );
     } catch (error) {
       if (error instanceof UnsupportedFormatError) {
-        await reports.update({ id: reportId }, { status: 'unsupported', errorMessage: error.message, profiledAt: this.clock.now() });
-        return { status: 'unsupported' };
+        return {
+          outcome: { status: 'unsupported' },
+          update: {
+            status: 'unsupported',
+            errorMessage: error.message,
+            profiledAt: this.clock.now(),
+          },
+        };
       }
       if (error instanceof UnreadableFileError) {
-        await reports.update({ id: reportId }, { status: 'failed', errorMessage: error.message, profiledAt: this.clock.now() });
-        return { status: 'failed', reason: error.message };
+        return {
+          outcome: { status: 'failed', reason: error.message },
+          update: {
+            status: 'failed',
+            errorMessage: error.message,
+            profiledAt: this.clock.now(),
+          },
+        };
       }
       throw error;
     }
 
-    const evaluation = evaluateRules(profile.metrics, rules, profile.uniqueness);
-    const failed = evaluation.results.filter((result) => result.status === 'failed');
+    const evaluation = evaluateRules(
+      profile.metrics,
+      rules,
+      profile.uniqueness,
+    );
+    const failed = evaluation.results.filter(
+      (result) => result.status === 'failed',
+    );
 
     // The model is told WHICH rules failed (by name), never the numbers or values behind them.
     const narrative = await this.ai.generateNarrative(
       narrativeInputFrom(
         profile.metrics,
-        failed.map((result) => ({ name: result.name, severity: result.severity })),
+        failed.map((result) => ({
+          name: result.name,
+          severity: result.severity,
+        })),
       ),
     );
-    await reports.update(
-      { id: reportId },
-      {
+    return {
+      update: {
         status: 'ready',
         metrics: profile.metrics,
         ruleResults: rules.length > 0 ? evaluation.results : null,
@@ -259,12 +404,18 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         errorMessage: null,
         profiledAt: this.clock.now(),
       },
-    );
-    return {
-      status: 'ready',
-      failedErrorRules: failed.filter((result) => result.severity === 'error').map((result) => result.name),
-      qualityScore: evaluation.score,
-      schemaChange: await this.schemaChangeFrom(file, profile.metrics, evaluation.score),
+      outcome: {
+        status: 'ready',
+        failedErrorRules: failed
+          .filter((result) => result.severity === 'error')
+          .map((result) => result.name),
+        qualityScore: evaluation.score,
+        schemaChange: await this.schemaChangeFrom(
+          file,
+          profile.metrics,
+          evaluation.score,
+        ),
+      },
     };
   }
 }

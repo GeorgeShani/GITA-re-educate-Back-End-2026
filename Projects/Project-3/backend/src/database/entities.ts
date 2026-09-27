@@ -16,6 +16,8 @@ import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
 import { BillingAccount } from '#/payments/billing-account.entity.js';
 import { SeatSync } from '#/payments/seat-sync.entity.js';
 import { StripeEvent } from '#/payments/stripe-event.entity.js';
+import { WebhookDelivery } from '#/outgoing-webhooks/webhook-delivery.entity.js';
+import { WebhookEndpoint } from '#/outgoing-webhooks/webhook-endpoint.entity.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { AuthIdentity } from './entities/auth-identity.entity.js';
@@ -65,4 +67,6 @@ export const ENTITIES: (new () => object)[] = [
   SeatSync,
   FileComment,
   FileCommentMention,
+  WebhookEndpoint,
+  WebhookDelivery,
 ];

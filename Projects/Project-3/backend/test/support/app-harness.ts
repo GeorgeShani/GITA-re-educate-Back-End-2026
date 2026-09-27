@@ -14,13 +14,17 @@ import { LocalStorageDriver } from '#/core/storage/local-storage.driver.js';
 import { STORAGE_DRIVER } from '#/core/storage/storage-driver.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
 import { PasswordHasher } from '#/auth/crypto/password-hasher.js';
-import { GOOGLE_OAUTH, type OAuthProfile } from '#/auth/oauth/oauth-provider.js';
+import {
+  GOOGLE_OAUTH,
+  type OAuthProfile,
+} from '#/auth/oauth/oauth-provider.js';
 import { CLOCK } from '#/core/clock/clock.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { MAIL_TRANSPORT } from '#/core/mail/mail-transport.js';
 import { TELEMETRY_SINK } from '#/core/telemetry/telemetry-sink.js';
 import { PAYMENT_PROVIDER } from '#/payments/payment-provider.js';
+import { WEBHOOK_TRANSPORT } from '#/outgoing-webhooks/webhook-transport.js';
 import { TaskRunner } from '#/core/tasks/task-runner.service.js';
 import { RecordingTelemetry } from './recording-telemetry.js';
 import { FakeAiProvider } from './fake-ai.js';
@@ -28,6 +32,7 @@ import { FakeClock } from './fake-clock.js';
 import { FakeGoogleOAuthProvider } from './fake-oauth.js';
 import { MailCapture } from './mail-capture.js';
 import { FakePaymentProvider } from './fake-payment.js';
+import { FakeWebhookTransport } from './fake-webhook-transport.js';
 import { PostgresTestContext } from './postgres-context.js';
 
 const sessionSchema = z.object({
@@ -94,6 +99,8 @@ export class AppHarness {
     readonly telemetry: RecordingTelemetry,
     /** Stripe boundary: disabled by default so legacy calculator specs keep exercising the local development path. */
     readonly payments: FakePaymentProvider,
+    /** Captures outgoing webhook requests without DNS or network access. */
+    readonly webhooks: FakeWebhookTransport,
   ) {}
 
   /**
@@ -102,7 +109,11 @@ export class AppHarness {
    * because the other specs make far more requests per company than a Free plan allows.
    */
   static async start(
-    options: { googleConfigured?: boolean; rateLimit?: boolean; payments?: boolean } = {},
+    options: {
+      googleConfigured?: boolean;
+      rateLimit?: boolean;
+      payments?: boolean;
+    } = {},
   ): Promise<AppHarness> {
     const clock = new FakeClock(START);
     const mail = new MailCapture();
@@ -110,6 +121,7 @@ export class AppHarness {
     const ai = new FakeAiProvider();
     const telemetry = new RecordingTelemetry();
     const payments = new FakePaymentProvider(options.payments === true);
+    const webhooks = new FakeWebhookTransport();
     const storageDir = await mkdtemp(join(tmpdir(), 'gridline-storage-'));
     const storage = new LocalStorageDriver({
       root: storageDir,
@@ -136,6 +148,8 @@ export class AppHarness {
       .useValue(telemetry)
       .overrideProvider(PAYMENT_PROVIDER)
       .useValue(payments)
+      .overrideProvider(WEBHOOK_TRANSPORT)
+      .useValue(webhooks)
       .compile();
     if (previousRateLimit === undefined) delete process.env.RATE_LIMIT_ENABLED;
     else process.env.RATE_LIMIT_ENABLED = previousRateLimit;
@@ -155,6 +169,7 @@ export class AppHarness {
       await PostgresTestContext.start(),
       telemetry,
       payments,
+      webhooks,
     );
   }
 
@@ -166,6 +181,7 @@ export class AppHarness {
     this.ai.reset();
     this.telemetry.clear();
     this.payments.reset();
+    this.webhooks.reset();
     this.clock.set(START);
     await rm(this.storageDir, { recursive: true, force: true });
     await mkdir(this.storageDir, { recursive: true });
@@ -186,7 +202,9 @@ export class AppHarness {
 
   http(): ReturnType<typeof request> {
     const server = this.app.getHttpServer();
-    return this.clientAddress ? request.agent(server).set('X-Forwarded-For', this.clientAddress) : request(server);
+    return this.clientAddress
+      ? request.agent(server).set('X-Forwarded-For', this.clientAddress)
+      : request(server);
   }
 
   get dataSource(): PostgresTestContext['dataSource'] {
@@ -198,15 +216,23 @@ export class AppHarness {
     for (let pass = 0; pass < 20; pass += 1) {
       if ((await this.runner.drainOnce(50)).claimed === 0) return;
     }
-    throw new Error('Task queue did not drain after 20 passes — a task is re-queuing itself');
+    throw new Error(
+      'Task queue did not drain after 20 passes — a task is re-queuing itself',
+    );
   }
 
   /** A registration whose activation email has been "clicked". */
   async registerAndActivate(
-    overrides: Partial<{ email: string; password: string; companyName: string }> = {},
+    overrides: Partial<{
+      email: string;
+      password: string;
+      companyName: string;
+    }> = {},
   ): Promise<RegisteredAccount> {
     this.counter += 1;
-    const email = overrides.email ?? `admin-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
+    const email =
+      overrides.email ??
+      `admin-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
     const password = overrides.password ?? DEFAULT_PASSWORD;
 
     const registered = await this.http()
@@ -246,7 +272,8 @@ export class AppHarness {
     this.counter += 1;
     const status = overrides.status ?? 'active';
     const email =
-      overrides.email ?? `employee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
+      overrides.email ??
+      `employee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
     const password = overrides.password ?? DEFAULT_PASSWORD;
 
     const users = this.dataSource.getRepository(User);
@@ -284,7 +311,9 @@ export class AppHarness {
     overrides: Partial<{ email: string; fullName: string }> = {},
   ): Promise<{ email: string; fullName: string; userId: string }> {
     this.counter += 1;
-    const email = overrides.email ?? `invitee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
+    const email =
+      overrides.email ??
+      `invitee-${this.counter}-${randomUUID().slice(0, 8)}@acme.test`;
     const fullName = overrides.fullName ?? `Invitee ${this.counter}`;
 
     const response = await this.http()
@@ -294,14 +323,22 @@ export class AppHarness {
       .expect(201);
     await this.drainTasks();
 
-    return { email, fullName, userId: z.object({ id: z.uuid() }).parse(response.body).id };
+    return {
+      email,
+      fullName,
+      userId: z.object({ id: z.uuid() }).parse(response.body).id,
+    };
   }
 
   /** The whole invite flow: invite, read the emailed link, accept with a password. */
   async inviteAndAccept(
     adminSession: SessionBody,
     companyId: string,
-    overrides: Partial<{ email: string; fullName: string; password: string }> = {},
+    overrides: Partial<{
+      email: string;
+      fullName: string;
+      password: string;
+    }> = {},
   ): Promise<RegisteredAccount & { session: SessionBody }> {
     const invited = await this.inviteEmployee(adminSession, overrides);
     const password = overrides.password ?? DEFAULT_PASSWORD;
@@ -321,7 +358,10 @@ export class AppHarness {
   }
 
   /** The admin's mandatory first plan choice. */
-  async subscribe(session: SessionBody, plan: 'free' | 'basic' | 'premium'): Promise<void> {
+  async subscribe(
+    session: SessionBody,
+    plan: 'free' | 'basic' | 'premium',
+  ): Promise<void> {
     await this.http()
       .post('/subscriptions/me')
       .set(...this.bearer(session))
@@ -338,7 +378,12 @@ export class AppHarness {
     companyId: string,
     count: number,
     periodKey: string,
-    options: Partial<{ createdAt: Date; uploaderId: string; sizeBytes: number; deletedAt: Date }> = {},
+    options: Partial<{
+      createdAt: Date;
+      uploaderId: string;
+      sizeBytes: number;
+      deletedAt: Date;
+    }> = {},
   ): Promise<string[]> {
     if (count === 0) return [];
 
@@ -388,8 +433,14 @@ export class AppHarness {
       .insert({ companyId, userId, activeFrom, activeTo });
   }
 
-  async login(email: string, password: string = DEFAULT_PASSWORD): Promise<SessionBody> {
-    const response = await this.http().post('/auth/login').send({ email, password }).expect(200);
+  async login(
+    email: string,
+    password: string = DEFAULT_PASSWORD,
+  ): Promise<SessionBody> {
+    const response = await this.http()
+      .post('/auth/login')
+      .send({ email, password })
+      .expect(200);
     return sessionSchema.parse(response.body);
   }
 
@@ -399,15 +450,13 @@ export class AppHarness {
    * then hit the callback with the code, the state and the cookie. Redirects are not
    * followed — the spec reads where the API sent the browser.
    */
-  async googleFlow(
-    flow: {
-      intent: 'login' | 'register' | 'invite' | 'link';
-      profile?: Partial<OAuthProfile>;
-      inviteToken?: string;
-      /** Required for `link`: who is linking. */
-      session?: SessionBody;
-    },
-  ): Promise<GoogleFlowResult> {
+  async googleFlow(flow: {
+    intent: 'login' | 'register' | 'invite' | 'link';
+    profile?: Partial<OAuthProfile>;
+    inviteToken?: string;
+    /** Required for `link`: who is linking. */
+    session?: SessionBody;
+  }): Promise<GoogleFlowResult> {
     const start = await this.googleStart(flow);
     return this.googleCallback(start, this.google.issueCode(flow.profile));
   }
@@ -451,13 +500,16 @@ export class AppHarness {
     const request = this.http()
       .get('/auth/google/callback')
       .query({ code, state: overrides.state ?? start.state });
-    const cookie = overrides.cookie === undefined ? start.cookie : overrides.cookie;
+    const cookie =
+      overrides.cookie === undefined ? start.cookie : overrides.cookie;
     if (cookie) request.set('Cookie', cookie);
 
     const response = await request;
     const location = response.headers['location'];
     if (typeof location !== 'string') {
-      throw new Error(`The callback did not redirect (status ${response.status}): ${response.text}`);
+      throw new Error(
+        `The callback did not redirect (status ${response.status}): ${response.text}`,
+      );
     }
     return { status: response.status, location: new URL(location), start };
   }
@@ -490,7 +542,9 @@ export class AppHarness {
     }> = {},
   ) {
     this.counter += 1;
-    const content = options.content ?? `id,value
+    const content =
+      options.content ??
+      `id,value
 ${this.counter},${randomUUID()}
 `;
     const authorization: [string, string] = options.bearer
@@ -499,13 +553,15 @@ ${this.counter},${randomUUID()}
     const request = this.http()
       .post('/files')
       .set(...authorization);
-    if (options.idempotencyKey) request.set('Idempotency-Key', options.idempotencyKey);
+    if (options.idempotencyKey)
+      request.set('Idempotency-Key', options.idempotencyKey);
     request.attach('file', Buffer.from(content), {
       filename: options.name ?? `data-${this.counter}.csv`,
       contentType: options.contentType ?? 'text/csv',
     });
     if (options.visibility) request.field('visibility', options.visibility);
-    for (const userId of options.grantedUserIds ?? []) request.field('grantedUserIds', userId);
+    for (const userId of options.grantedUserIds ?? [])
+      request.field('grantedUserIds', userId);
     return request;
   }
 
@@ -517,9 +573,14 @@ ${this.counter},${randomUUID()}
     const response = await this.http()
       .post('/api-keys')
       .set(...this.bearer(session))
-      .send({ name: options.name ?? 'test key', scopes: options.scopes ?? ['files:read'] })
+      .send({
+        name: options.name ?? 'test key',
+        scopes: options.scopes ?? ['files:read'],
+      })
       .expect(201);
-    return z.object({ id: z.uuid(), key: z.string(), prefix: z.string() }).parse(response.body);
+    return z
+      .object({ id: z.uuid(), key: z.string(), prefix: z.string() })
+      .parse(response.body);
   }
 
   parseSession(body: unknown): SessionBody {

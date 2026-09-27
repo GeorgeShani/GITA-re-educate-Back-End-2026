@@ -105,6 +105,19 @@ still match Gridline's product rules without adding a Stripe network dependency 
 | `RATE_LIMIT_ENABLED` | on | `false`/`0`/`off` disables plan-tiered throttling (Free 30 / Basic 120 / Premium 600 requests a minute per company, plus tight per-address limits on sign-in and email routes). Counters are in process memory: correct for one API instance. |
 | `TRUST_PROXY` | `0` | How many reverse proxies sit in front of the API. `docker-compose.yml` sets `1` (Caddy). Too high lets a client choose its own address and dodge per-address limits; too low makes every request look like it came from the proxy. |
 
+## Signed outgoing webhooks
+
+| Variable | Default | Notes |
+|---|---|---|
+| `DATA_ENCRYPTION_KEY` 🔒 | absent | Standard base64 for exactly 32 random bytes. Gridline derives a dedicated AES-256-GCM key with HKDF and encrypts each recoverable `whsec_` endpoint secret. Required in production. Rotating it requires re-encrypting every stored endpoint first. Generate with `openssl rand -base64 32`. |
+| `WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS` | `false` | Development-only escape hatch for local receivers and plain HTTP. Production rejects `true`. Keep it false for any shared environment. |
+
+Receivers verify `HMAC-SHA256(secret, timestamp + "." + exactBody)` from the `webhook-timestamp` and
+`webhook-signature: v1=…` headers. Delivery resolves DNS immediately before each request, rejects private, loopback,
+link-local, metadata, CGNAT and IPv6 ULA addresses, then pins the validated address for that connection. Redirects are
+never followed. Five durable attempts use the normal task backoff; a terminal failure increments the endpoint once,
+twenty consecutive failed deliveries disable it, a success resets the count, and HTTP 410 disables immediately.
+
 ## Telemetry (optional) — Observe
 
 | Variable | Notes |

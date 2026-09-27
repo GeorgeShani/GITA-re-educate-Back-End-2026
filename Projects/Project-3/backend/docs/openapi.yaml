@@ -20,6 +20,223 @@ paths:
         to defeat out-of-order delivery, and then mirrors subscription or
         invoice state transactionally. Browser redirects never provision a paid
         plan. Invalid signatures return 400 and reveal no tenant information.
+  /outgoing-webhooks:
+    post:
+      operationId: WebhooksController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookEndpointDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedWebhookEndpointDto'
+      security: &ref_0
+        - bearer: []
+      tags: &ref_1
+        - outgoing-webhooks
+      summary: Register an outgoing webhook
+      description: >-
+        Registers an HTTPS receiver for selected company events. The `whsec_`
+        signing secret is returned once in this response and stored encrypted;
+        save it immediately. Only signed-in admins may manage endpoints. Active
+        endpoint limits are Free 1, Basic 5, and Premium unlimited.
+    get:
+      operationId: WebhooksController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointPageDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: List webhook endpoints
+      description: >-
+        Lists the company's endpoints newest first with offset pagination.
+        Recoverable secret material is never returned. Disabled endpoints remain
+        visible with their failure count and disabled timestamp.
+  /outgoing-webhooks/{id}:
+    patch:
+      operationId: WebhooksController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookEndpointDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Update a webhook endpoint
+      description: >-
+        Changes the endpoint name, HTTPS URL, subscribed events, or active
+        state. Re-enabling an endpoint resets its terminal failure count and is
+        rejected when the current plan's active-endpoint limit is full.
+    delete:
+      operationId: WebhooksController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Delete a webhook endpoint
+      description: >-
+        Soft-deletes and disables the endpoint while preserving its delivery
+        history. Future business events no longer create deliveries for it.
+  /outgoing-webhooks/{id}/rotate-secret:
+    post:
+      operationId: WebhooksController_rotateSecret
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotatedWebhookSecretDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Rotate a webhook signing secret
+      description: >-
+        Replaces the endpoint's AES-256-GCM encrypted secret and returns the new
+        `whsec_` value once. The old secret stops verifying all deliveries
+        created after rotation.
+  /outgoing-webhooks/{id}/ping:
+    post:
+      operationId: WebhooksController_ping
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Queue a test delivery
+      description: >-
+        Queues a signed `ping` event through the same durable retry path as
+        business events. A 202 means the delivery was persisted, not that the
+        receiver has already accepted it.
+  /outgoing-webhooks/{id}/deliveries:
+    get:
+      operationId: WebhooksController_deliveries
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryPageDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: List endpoint deliveries
+      description: >-
+        Lists delivery status, attempts, receiver status, last error, and
+        completion time newest first. Event payloads intentionally contain
+        identifiers and non-sensitive summaries; fetch full details through the
+        API.
+  /outgoing-webhooks/deliveries/{deliveryId}/redeliver:
+    post:
+      operationId: WebhooksController_redeliver
+      parameters:
+        - name: deliveryId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryDto'
+      security: *ref_0
+      tags: *ref_1
+      summary: Redeliver a completed event
+      description: >-
+        Resets a succeeded or failed delivery and queues the same immutable
+        event envelope again. Pending deliveries cannot be duplicated, and a
+        disabled endpoint must be re-enabled first.
   /files:
     post:
       operationId: FilesController_upload
@@ -45,9 +262,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: &ref_0
+      security: &ref_2
         - bearer: []
-      tags: &ref_1
+      tags: &ref_3
         - files
       summary: Upload a spreadsheet
       description: >-
@@ -160,8 +377,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FilePageDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: List files
       description: >-
         The files the caller may see: everything company-wide, plus restricted
@@ -206,8 +423,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Upload a new version of a file
       description: >-
         Adds the next version to the file `id` belongs to (any of its versions
@@ -269,8 +486,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileVersionPageDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: List a file's versions
       description: >-
         Every version of the file `id` belongs to that the caller may see,
@@ -298,8 +515,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ComparisonDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Compare two versions of a file
       description: >-
         What changed from `id` to `otherId` (normally an older version to a
@@ -333,8 +550,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Get a file
       description: >-
         A file the caller cannot see is **404**, never 403, so its existence is
@@ -361,8 +578,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Change who can see a file
       description: >-
         Uploader or admin only. `visibility` switches between `company` and
@@ -386,8 +603,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Delete a file
       description: >-
         Uploader or admin only. A soft delete: the file disappears from every
@@ -409,8 +626,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDownloadDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Get a download link
       description: >-
         Checks the caller's access, then returns a signed link that expires in
@@ -434,8 +651,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Get a file's data-quality report
       description: >-
         Every upload queues a report, so this is never a 404 for a file you can
@@ -489,8 +706,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Rebuild a file's report against today's rules
       description: >-
         Builds the report again from the same stored file, checking it against
@@ -518,8 +735,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PreviewDto'
-      security: *ref_0
-      tags: *ref_1
+      security: *ref_2
+      tags: *ref_3
       summary: Preview a file's first rows
       description: >-
         The first 50 rows of the file and the inferred type of each column, for
@@ -539,9 +756,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatementDto'
-      security: &ref_2
+      security: &ref_4
         - bearer: []
-      tags: &ref_3
+      tags: &ref_5
         - billing
       summary: The running bill for this period
       description: >-
@@ -591,8 +808,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvoicePageDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_4
+      tags: *ref_5
       summary: List invoices
       description: >-
         Finalized invoices, newest period first, offset-paginated (`page`,
@@ -615,8 +832,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvoiceDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_4
+      tags: *ref_5
       summary: Get one invoice
       description: >-
         An invoice with its line items. Invoices are immutable: what this
@@ -633,8 +850,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortalSessionDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_4
+      tags: *ref_5
       summary: Open Stripe billing management
       description: >-
         Creates a short-lived Stripe Customer Portal session for the company.
@@ -673,9 +890,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationPageDto'
-      security: &ref_4
+      security: &ref_6
         - bearer: []
-      tags: &ref_5
+      tags: &ref_7
         - notifications
       summary: List your notifications
       description: >-
@@ -718,8 +935,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/UnreadCountDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_6
+      tags: *ref_7
       summary: Count your unread notifications
       description: >-
         How many of your notifications you have not read yet — the number for a
@@ -735,8 +952,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MarkedReadDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_6
+      tags: *ref_7
       summary: Mark all your notifications as read
       description: >-
         Marks every unread notification of yours as read and says how many that
@@ -757,8 +974,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_6
+      tags: *ref_7
       summary: Mark one notification as read
       description: >-
         Marks one of your notifications as read and returns it. Idempotent:
@@ -778,7 +995,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/PlanDto'
-      tags: &ref_6
+      tags: &ref_8
         - subscriptions
       summary: List the plans
       description: >-
@@ -799,7 +1016,7 @@ paths:
                 $ref: '#/components/schemas/SubscriptionDto'
       security:
         - bearer: []
-      tags: *ref_6
+      tags: *ref_8
       summary: Get the company's subscription
       description: >-
         The current plan, its limits, usage so far this period (files,
@@ -829,7 +1046,7 @@ paths:
                 $ref: '#/components/schemas/PendingPlanDto'
       security:
         - bearer: []
-      tags: *ref_6
+      tags: *ref_8
       summary: Choose the first plan
       description: >-
         The mandatory step after activation: features that need a plan answer
@@ -872,7 +1089,7 @@ paths:
                 $ref: '#/components/schemas/PendingPlanDto'
       security:
         - bearer: []
-      tags: *ref_6
+      tags: *ref_8
       summary: Change plan
       description: >-
         Upgrade or downgrade. With Stripe configured, the request returns 202
@@ -921,7 +1138,7 @@ paths:
                     example: ok
                   info:
                     type: object
-                    example: &ref_7
+                    example: &ref_9
                       database:
                         status: up
                         responseTime: 12
@@ -962,7 +1179,7 @@ paths:
                     nullable: true
                   details:
                     type: object
-                    example: *ref_7
+                    example: *ref_9
                     additionalProperties:
                       type: object
                       required:
@@ -994,7 +1211,7 @@ paths:
                   info:
                     type: object
                     example:
-                      database: &ref_8
+                      database: &ref_10
                         status: up
                         responseTime: 12
                     additionalProperties:
@@ -1016,7 +1233,7 @@ paths:
                   error:
                     type: object
                     example:
-                      redis: &ref_9
+                      redis: &ref_11
                         status: down
                         message: Could not connect
                         responseTime: 3005
@@ -1039,8 +1256,8 @@ paths:
                   details:
                     type: object
                     example:
-                      database: *ref_8
-                      redis: *ref_9
+                      database: *ref_10
+                      redis: *ref_11
                     additionalProperties:
                       type: object
                       required:
@@ -1081,7 +1298,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RegisterCompanyResponseDto'
-      tags: &ref_10
+      tags: &ref_12
         - auth
       summary: Register a company
       description: >-
@@ -1109,7 +1326,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Activate a company
       description: >-
         Spends the single-use token from the activation email and turns the
@@ -1133,7 +1350,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Resend the activation email
       description: >-
         Issues a fresh activation link and invalidates the previous one. Always
@@ -1156,7 +1373,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Sign in with email and password
       description: >-
         Returns a 15-minute access token and a 30-day, single-use refresh token.
@@ -1179,7 +1396,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Exchange a refresh token for a new session
       description: >-
         Rotates the refresh token: the one presented is spent and a new pair is
@@ -1203,7 +1420,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Sign out
       description: >-
         Revokes the session the refresh token belongs to. Public, because the
@@ -1226,7 +1443,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Request a password reset email
       description: >-
         Emails a reset link valid for one hour to an active account. Always
@@ -1249,7 +1466,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Reset a forgotten password
       description: >-
         Sets a new password using the emailed token and signs the account out of
@@ -1271,7 +1488,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_10
+      tags: *ref_12
       summary: Accept an invitation
       description: >-
         Spends the single-use token from an invitation email, sets the
@@ -1299,7 +1516,7 @@ paths:
                 $ref: '#/components/schemas/SessionDto'
       security:
         - bearer: []
-      tags: *ref_10
+      tags: *ref_12
       summary: Change your password
       description: >-
         Requires the current password. Signs out every session, including this
@@ -1318,7 +1535,7 @@ paths:
                 $ref: '#/components/schemas/MeDto'
       security:
         - bearer: []
-      tags: *ref_10
+      tags: *ref_12
       summary: Get the signed-in user and their company
       description: >-
         The caller's own user record and company. Role and status come from the
@@ -1341,7 +1558,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthUrlDto'
-      tags: &ref_11
+      tags: &ref_13
         - auth
       summary: Start signing in, registering or accepting an invite with Google
       description: >-
@@ -1375,7 +1592,7 @@ paths:
       responses:
         '302':
           description: Redirects the browser to the web app.
-      tags: *ref_11
+      tags: *ref_13
       summary: Google redirects the browser back here
       description: >-
         Not called by API clients: Google navigates the browser to it, and it
@@ -1410,7 +1627,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionDto'
-      tags: *ref_11
+      tags: *ref_13
       summary: Trade the callback's code for a session
       description: >-
         Called by the web app's server after the redirect to
@@ -1434,7 +1651,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthRegistrationPreviewDto'
-      tags: *ref_11
+      tags: *ref_13
       summary: Read what a Google registration token prefills
       description: >-
         Decodes the `oauthRegistration` token from the redirect to `/register`
@@ -1459,7 +1676,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OAuthRegisterCompanyResponseDto'
-      tags: *ref_11
+      tags: *ref_13
       summary: Register a company with a Google account
       description: >-
         The same form as `POST /auth/register-company` minus the password
@@ -1483,7 +1700,7 @@ paths:
                 $ref: '#/components/schemas/OAuthUrlDto'
       security:
         - bearer: []
-      tags: *ref_11
+      tags: *ref_13
       summary: Start linking a Google account to the signed-in user
       description: >-
         "Settings → Linked accounts." Returns the Google URL and sets the same
@@ -1505,7 +1722,7 @@ paths:
                 $ref: '#/components/schemas/IdentityListDto'
       security:
         - bearer: []
-      tags: *ref_11
+      tags: *ref_13
       summary: List your sign-in methods
       description: >-
         The caller's own identities — password and/or Google — with the address
@@ -1529,7 +1746,7 @@ paths:
                 $ref: '#/components/schemas/MessageResponseDto'
       security:
         - bearer: []
-      tags: *ref_11
+      tags: *ref_13
       summary: Remove a sign-in method
       description: >-
         Removes one of the caller's own identities. Returns 409 when it is the
@@ -1574,9 +1791,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MemberDto'
-      security: &ref_12
+      security: &ref_14
         - bearer: []
-      tags: &ref_13
+      tags: &ref_15
         - companies
       summary: List members (names only)
       description: >-
@@ -1602,8 +1819,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CompanyDto'
-      security: *ref_12
-      tags: *ref_13
+      security: *ref_14
+      tags: *ref_15
       summary: Update your company profile
       description: >-
         Admin only; employees receive 403. Changes only the fields named:
@@ -1627,9 +1844,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: &ref_14
+      security: &ref_16
         - bearer: []
-      tags: &ref_15
+      tags: &ref_17
         - employees
       summary: Invite an employee
       description: >-
@@ -1681,8 +1898,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeePageDto'
-      security: *ref_14
-      tags: *ref_15
+      security: *ref_16
+      tags: *ref_17
       summary: List the company's people
       description: >-
         Full records, offset-paginated, oldest first. Filter with `status`
@@ -1705,8 +1922,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_14
-      tags: *ref_15
+      security: *ref_16
+      tags: *ref_17
       summary: Resend an invitation
       description: >-
         Issues a fresh link and kills the previous one. Only for someone still
@@ -1727,8 +1944,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_14
-      tags: *ref_15
+      security: *ref_16
+      tags: *ref_17
       summary: Remove an employee
       description: >-
         A soft-disable, not a delete. The employee is signed out everywhere,
@@ -1752,8 +1969,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_14
-      tags: *ref_15
+      security: *ref_16
+      tags: *ref_17
       summary: Bring a removed employee back
       description: >-
         Their login was deleted on removal, so this sends a fresh invitation:
@@ -1821,9 +2038,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommentDto'
-      security: &ref_16
+      security: &ref_18
         - bearer: []
-      tags: &ref_17
+      tags: &ref_19
         - comments
       summary: Comment on a file
       description: >-
@@ -1854,8 +2071,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommentDto'
-      security: *ref_16
-      tags: *ref_17
+      security: *ref_18
+      tags: *ref_19
       summary: Edit your comment
       description: >-
         Authors may replace the body and mention set of a live comment. Only
@@ -1876,8 +2093,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CommentDto'
-      security: *ref_16
-      tags: *ref_17
+      security: *ref_18
+      tags: *ref_19
       summary: Delete a comment
       description: >-
         Authors and company admins may delete a comment. Deletion preserves a
@@ -1910,9 +2127,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRulePageDto'
-      security: &ref_18
+      security: &ref_20
         - bearer: []
-      tags: &ref_19
+      tags: &ref_21
         - quality-rules
       summary: List the company's quality rules
       description: >-
@@ -1937,8 +2154,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_18
-      tags: *ref_19
+      security: *ref_20
+      tags: *ref_21
       summary: Create a quality rule
       description: >-
         Adds a rule that every later upload is checked against (an existing file
@@ -2001,8 +2218,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_18
-      tags: *ref_19
+      security: *ref_20
+      tags: *ref_21
       summary: Change a quality rule
       description: >-
         Changes a rule's name, column, `params` (which REPLACE the old ones and
@@ -2025,8 +2242,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_18
-      tags: *ref_19
+      security: *ref_20
+      tags: *ref_21
       summary: Delete a quality rule
       description: >-
         Removes the rule and returns it. Reports that already used it keep their
@@ -2156,6 +2373,11 @@ paths:
               - comment.created
               - comment.updated
               - comment.deleted
+              - webhook_endpoint.created
+              - webhook_endpoint.updated
+              - webhook_endpoint.deleted
+              - webhook_endpoint.secret_rotated
+              - webhook_delivery.redelivered
               - quality_rule.created
               - quality_rule.updated
               - quality_rule.deleted
@@ -2195,9 +2417,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditPageDto'
-      security: &ref_20
+      security: &ref_22
         - bearer: []
-      tags: &ref_21
+      tags: &ref_23
         - audit
       summary: List audit entries
       description: >-
@@ -2232,8 +2454,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEntryDetailDto'
-      security: *ref_20
-      tags: *ref_21
+      security: *ref_22
+      tags: *ref_23
       summary: Get one audit entry
       description: >-
         One entry with its `metadata`: the details specific to the action, such
@@ -2256,9 +2478,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatedApiKeyDto'
-      security: &ref_22
+      security: &ref_24
         - bearer: []
-      tags: &ref_23
+      tags: &ref_25
         - api-keys
       summary: Create an API key
       description: >-
@@ -2316,8 +2538,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyPageDto'
-      security: *ref_22
-      tags: *ref_23
+      security: *ref_24
+      tags: *ref_25
       summary: List API keys
       description: >-
         Newest first, paginated (`page`, `limit`). An admin sees every key in
@@ -2342,8 +2564,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyDto'
-      security: *ref_22
-      tags: *ref_23
+      security: *ref_24
+      tags: *ref_25
       summary: Revoke an API key
       description: >-
         Stops the key working immediately; it cannot be restored — create a new
@@ -2409,12 +2631,227 @@ components:
         - received
         - duplicate
         - applied
+    CreateWebhookEndpointDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          items:
+            type: string
+            enum: &ref_26
+              - report.ready
+              - report.failed
+              - rules.failed
+              - quota.threshold
+              - invoice.finalized
+              - file.uploaded
+      required:
+        - name
+        - url
+        - events
+    CreatedWebhookEndpointDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items: &ref_27
+            type: string
+            enum: *ref_26
+        active:
+          type: boolean
+        consecutiveFailures:
+          type: number
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        secret:
+          type: string
+          description: Shown once. Store it in the receiver now.
+      required:
+        - id
+        - name
+        - url
+        - events
+        - active
+        - consecutiveFailures
+        - disabledAt
+        - createdAt
+        - secret
+    WebhookEndpointDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items: *ref_27
+        active:
+          type: boolean
+        consecutiveFailures:
+          type: number
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - url
+        - events
+        - active
+        - consecutiveFailures
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    WebhookEndpointPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookEndpointDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    UpdateWebhookEndpointDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          items:
+            type: string
+            enum: *ref_26
+        active:
+          type: boolean
+    RotatedWebhookSecretDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        secret:
+          type: string
+          description: Shown once. The previous secret no longer signs deliveries.
+      required:
+        - id
+        - secret
+    WebhookDeliveryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - succeeded
+            - failed
+        attempts:
+          type: number
+        responseStatus:
+          type: number
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - eventType
+        - status
+        - attempts
+        - responseStatus
+        - lastError
+        - deliveredAt
+        - createdAt
+    WebhookDeliveryPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookDeliveryDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
     UploadFileBodyDoc:
       type: object
       properties:
         visibility:
           type: string
-          enum: &ref_24
+          enum: &ref_28
             - company
             - restricted
           default: company
@@ -2446,7 +2883,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_24
+          enum: *ref_28
         datasetId:
           type: string
           format: uuid
@@ -2495,25 +2932,6 @@ components:
           description: A CSV, XLS or XLSX file, up to 25 MB.
       required:
         - file
-    OffsetMetaDto:
-      type: object
-      properties:
-        page:
-          type: number
-          example: 1
-        limit:
-          type: number
-          example: 20
-        total:
-          type: number
-          description: Rows matching the filter across all pages.
-        totalPages:
-          type: number
-      required:
-        - page
-        - limit
-        - total
-        - totalPages
     FileVersionPageDto:
       type: object
       properties:
@@ -2547,7 +2965,7 @@ components:
           type: string
         from:
           type: string
-          enum: &ref_25
+          enum: &ref_29
             - integer
             - number
             - boolean
@@ -2556,7 +2974,7 @@ components:
             - empty
         to:
           type: string
-          enum: *ref_25
+          enum: *ref_29
       required:
         - column
         - from
@@ -2743,7 +3161,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: *ref_25
+          enum: *ref_29
           description: The dominant kind of value in the column.
         typeCounts:
           $ref: '#/components/schemas/TypeCountsDto'
@@ -2840,7 +3258,7 @@ components:
           type: string
         kind:
           type: string
-          enum: &ref_30
+          enum: &ref_34
             - required_column
             - max_null_percent
             - type_is
@@ -2853,7 +3271,7 @@ components:
           nullable: true
         severity:
           type: string
-          enum: &ref_31
+          enum: &ref_35
             - error
             - warning
         status:
@@ -2949,7 +3367,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_25
+          enum: *ref_29
       required:
         - name
         - inferredType
@@ -2989,7 +3407,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_24
+          enum: *ref_28
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -3065,7 +3483,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_26
+          enum: &ref_30
             - free
             - basic
             - premium
@@ -3111,7 +3529,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -3270,7 +3688,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         maxEmployees:
           type: number
           nullable: true
@@ -3381,7 +3799,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         billingAnchorDay:
           type: number
           minimum: 1
@@ -3409,7 +3827,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
       required:
         - plan
     PendingPlanDto:
@@ -3424,7 +3842,7 @@ components:
           format: uuid
         targetPlan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         checkoutUrl:
           type: object
           nullable: true
@@ -3442,7 +3860,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         prorationCents:
           type: number
           description: >-
@@ -3474,7 +3892,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_27
+          enum: &ref_31
             - finance
             - e-commerce
             - healthcare
@@ -3610,12 +4028,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_28
+          enum: &ref_32
             - admin
             - employee
         status:
           type: string
-          enum: &ref_29
+          enum: &ref_33
             - invited
             - active
             - disabled
@@ -3645,7 +4063,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_27
+          enum: *ref_31
         status:
           type: string
           enum:
@@ -3760,7 +4178,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_27
+          enum: *ref_31
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -3874,7 +4292,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_27
+          enum: *ref_31
         billingEmail:
           type: string
           example: nino@acme.com
@@ -3907,10 +4325,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_28
+          enum: *ref_32
         status:
           type: string
-          enum: *ref_29
+          enum: *ref_33
         activatedAt:
           type: string
           format: date-time
@@ -4050,7 +4468,7 @@ components:
           type: string
         kind:
           type: string
-          enum: *ref_30
+          enum: *ref_34
         columnName:
           type: string
           nullable: true
@@ -4060,7 +4478,7 @@ components:
           additionalProperties: true
         severity:
           type: string
-          enum: *ref_31
+          enum: *ref_35
         enabled:
           type: boolean
         createdByUserId:
@@ -4105,7 +4523,7 @@ components:
           maxLength: 80
         kind:
           type: string
-          enum: *ref_30
+          enum: *ref_34
           description: >-
             `required_column` the column must exist; `max_null_percent` at most
             that share empty; `type_is` the column is that type; `min_value` /
@@ -4131,7 +4549,7 @@ components:
             `required_column` and `unique` take `{}`.
         severity:
           type: string
-          enum: *ref_31
+          enum: *ref_35
           default: error
           description: >-
             An `error` counts double in the quality score, and a failing one
@@ -4168,7 +4586,7 @@ components:
             `{}`.
         severity:
           type: string
-          enum: *ref_31
+          enum: *ref_35
         enabled:
           type: boolean
     DayRangeDto:
@@ -4266,7 +4684,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -4300,12 +4718,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_26
+          enum: *ref_30
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -4362,7 +4780,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_32
+          enum: &ref_36
             - company.registered
             - company.activated
             - company.activation_resent
@@ -4394,6 +4812,11 @@ components:
             - comment.created
             - comment.updated
             - comment.deleted
+            - webhook_endpoint.created
+            - webhook_endpoint.updated
+            - webhook_endpoint.deleted
+            - webhook_endpoint.secret_rotated
+            - webhook_delivery.redelivered
             - quality_rule.created
             - quality_rule.updated
             - quality_rule.deleted
@@ -4454,7 +4877,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_32
+          enum: *ref_36
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -4519,7 +4942,7 @@ components:
             allows: an employee cannot grant `billing:read`.
           items:
             type: string
-            enum: &ref_33
+            enum: &ref_37
               - files:read
               - files:write
               - billing:read
@@ -4539,9 +4962,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_34
+          items: &ref_38
             type: string
-            enum: *ref_33
+            enum: *ref_37
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -4587,7 +5010,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_34
+          items: *ref_38
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.

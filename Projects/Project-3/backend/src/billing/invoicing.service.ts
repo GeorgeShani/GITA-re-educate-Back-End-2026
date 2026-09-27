@@ -5,6 +5,7 @@ import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
+import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
 import type { Subscription } from '#/subscriptions/subscription.entity.js';
@@ -33,6 +34,7 @@ export class InvoicingService {
     private readonly audit: AuditService,
     private readonly metrics: BusinessMetrics,
     private readonly notifications: NotificationsService,
+    private readonly webhooks: WebhookPublisher,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -48,7 +50,10 @@ export class InvoicingService {
   ): Promise<Invoice | null> {
     const start = subscription.currentPeriodStart;
     const end = new Date(
-      Math.min(startOfUtcDay(closeAt).getTime(), subscription.currentPeriodEnd.getTime()),
+      Math.min(
+        startOfUtcDay(closeAt).getTime(),
+        subscription.currentPeriodEnd.getTime(),
+      ),
     );
     if (end.getTime() <= start.getTime()) return null;
 
@@ -82,7 +87,10 @@ export class InvoicingService {
    * A $0 invoice (Free, or an idle Premium-less period) is audited but neither emailed nor
    * put in an inbox: nobody wants a monthly "your invoice is $0.00".
    */
-  private async announce(manager: EntityManager, invoice: Invoice): Promise<void> {
+  private async announce(
+    manager: EntityManager,
+    invoice: Invoice,
+  ): Promise<void> {
     await this.audit.record(
       {
         action: 'billing.invoice_finalized',
@@ -100,6 +108,17 @@ export class InvoicingService {
     // period forward all show up. (It happens inside the caller's transaction; a rollback after this
     // point would over-count by one, which a counter can tolerate and a later invoice corrects.)
     this.metrics.invoiceFinalized(invoice.plan);
+    await this.webhooks.publish(
+      manager,
+      invoice.companyId,
+      'invoice.finalized',
+      {
+        invoiceId: invoice.id,
+        totalCents: invoice.totalCents,
+        periodStart: invoice.periodStart.toISOString(),
+        periodEnd: invoice.periodEnd.toISOString(),
+      },
+    );
     if (invoice.totalCents <= 0) return;
 
     await this.notifications.notifyAdmins(manager, invoice.companyId, {
@@ -112,7 +131,9 @@ export class InvoicingService {
       },
     });
 
-    const company = await manager.findOneOrFail(Company, { where: { id: invoice.companyId } });
+    const company = await manager.findOneOrFail(Company, {
+      where: { id: invoice.companyId },
+    });
     await this.queue.enqueue(
       'send_email',
       {
@@ -123,7 +144,10 @@ export class InvoicingService {
           periodStart: invoice.periodStart.toISOString().slice(0, 10),
           periodEnd: invoice.periodEnd.toISOString().slice(0, 10),
           totalFormatted: formatCents(invoice.totalCents),
-          invoiceUrl: new URL(`/billing/invoices/${invoice.id}`, this.config.APP_PUBLIC_URL).toString(),
+          invoiceUrl: new URL(
+            `/billing/invoices/${invoice.id}`,
+            this.config.APP_PUBLIC_URL,
+          ).toString(),
         },
       },
       { manager },
@@ -146,7 +170,11 @@ export class InvoicingService {
     let advanced = false;
 
     while (subscription.currentPeriodEnd.getTime() <= now.getTime()) {
-      const invoice = await this.closePeriod(manager, subscription, subscription.currentPeriodEnd);
+      const invoice = await this.closePeriod(
+        manager,
+        subscription,
+        subscription.currentPeriodEnd,
+      );
       if (invoice) invoices.push(invoice);
 
       const following = nextPeriod(subscription.billingAnchorDay, {

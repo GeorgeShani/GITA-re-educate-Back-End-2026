@@ -154,6 +154,7 @@ describe('loadConfig', () => {
         SMTP_PORT: '587',
         APP_PUBLIC_URL: 'https://gridline.example.com',
         ALLOW_UNPAID_PLANS: 'true',
+        DATA_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
       }),
     );
 
@@ -184,5 +185,26 @@ describe('loadConfig', () => {
         }),
       ),
     ).toThrow(/ASSETS_BASE_URL/);
+  });
+
+  it('requires a 32-byte encryption key and forbids private webhooks in production', () => {
+    const production = validEnv({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+      JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
+      MAIL_TRANSPORT: 'smtp',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      APP_PUBLIC_URL: 'https://gridline.example.com',
+      ALLOW_UNPAID_PLANS: 'true',
+    });
+    expect(() => loadConfig(production)).toThrow(/DATA_ENCRYPTION_KEY/);
+    expect(() =>
+      loadConfig({
+        ...production,
+        DATA_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+        WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS: 'true',
+      }),
+    ).toThrow(/WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS/);
   });
 });

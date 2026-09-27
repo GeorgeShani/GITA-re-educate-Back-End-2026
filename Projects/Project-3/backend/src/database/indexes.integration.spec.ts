@@ -256,6 +256,25 @@ describe('database indexes', () => {
     expect(find('invoice', 'stripeInvoiceId')?.indexdef).toMatch(/UNIQUE/);
   });
 
+  it('indexes webhook endpoints by tenant and makes endpoint event deliveries unique', () => {
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_webhook_endpoint_company_created',
+      )?.indexdef,
+    ).toMatch(/\("companyId", "createdAt"\)/);
+    expect(
+      indexes.find(
+        (row) =>
+          row.indexname === 'idx_webhook_delivery_company_endpoint_created',
+      )?.indexdef,
+    ).toMatch(/\("companyId", "endpointId", "createdAt"\)/);
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'uq_webhook_delivery_endpoint_event',
+      )?.indexdef,
+    ).toMatch(/UNIQUE.*\("endpointId", "eventId"\)/);
+  });
+
   it('deliberately does not index invoice.lineItems', () => {
     const lineItemIndexes = indexes.filter(
       (index) =>

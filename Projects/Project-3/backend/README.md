@@ -151,6 +151,10 @@ password at all, so there is nothing to guess.
 - **Comments and presence**: visible coworkers can discuss a file in a one-level thread, mention people who already have access,
   and watch a file for deduplicated presence and rate-limited typing indicators. Comment changes are pushed after commit; file
   access changes evict unauthorized watchers immediately. API keys may read comments with `files:read` but never write them.
+- **Outgoing webhooks** let an admin subscribe an HTTPS receiver to report, rule, quota, invoice and upload events. Each endpoint
+  gets a one-time `whsec_` secret encrypted at rest; deliveries sign `timestamp.body`, reject redirects and private-network DNS,
+  and reuse the durable queue's five attempts and exponential backoff. HTTP 410 disables immediately, twenty consecutive
+  terminal failures disable automatically, and a successful delivery resets the count. Employees and API keys cannot manage them.
 - **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
 /notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after

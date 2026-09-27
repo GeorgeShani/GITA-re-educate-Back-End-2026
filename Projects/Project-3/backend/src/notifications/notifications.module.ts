@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { DatabaseModule } from '#/database/database.module.js';
+import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
 import { NotificationsController } from './notifications.controller.js';
 import { NotificationsJanitor } from './notifications-janitor.service.js';
 import { NotificationsService } from './notifications.service.js';
@@ -14,7 +15,7 @@ import { QuotaAlertsService } from './quota-alerts.service.js';
  */
 @Global()
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, WebhookPublishingModule],
   controllers: [NotificationsController],
   providers: [NotificationsService, QuotaAlertsService, NotificationsJanitor],
   exports: [NotificationsService, QuotaAlertsService],

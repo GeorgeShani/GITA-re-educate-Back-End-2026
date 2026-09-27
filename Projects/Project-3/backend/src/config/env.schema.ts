@@ -164,6 +164,11 @@ export const envSchema = z
       value?.replace(/\/+$/, ''),
     ),
 
+    /** Encrypts recoverable outgoing-webhook secrets; exactly 32 bytes, standard base64. */
+    DATA_ENCRYPTION_KEY: optionalString(),
+    /** Local integration-test escape hatch. Production may never target private networks. */
+    WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS: booleanFlag(false),
+
     /**
      * Plan-tiered request throttling (Phase 11). On by default; the test config switches
      * it off (specs make hundreds of requests per company) and the throttling specs turn it on.
@@ -220,6 +225,19 @@ export const envSchema = z
 
     if (env.NODE_ENV !== 'production') return;
 
+    if (!env.DATA_ENCRYPTION_KEY || !isBase64Key(env.DATA_ENCRYPTION_KEY)) {
+      issue(
+        'DATA_ENCRYPTION_KEY',
+        'must be a base64-encoded 32-byte key in production',
+      );
+    }
+    if (env.WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS) {
+      issue(
+        'WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS',
+        'cannot be enabled in production',
+      );
+    }
+
     if (env.MAIL_TRANSPORT !== 'smtp') {
       issue('MAIL_TRANSPORT', 'must be smtp in production');
     }
@@ -271,3 +289,8 @@ export const envSchema = z
   }));
 
 export type AppConfig = Readonly<z.infer<typeof envSchema>>;
+
+function isBase64Key(value: string): boolean {
+  if (!/^[A-Za-z0-9+/]{43}=$/.test(value)) return false;
+  return Buffer.from(value, 'base64').length === 32;
+}

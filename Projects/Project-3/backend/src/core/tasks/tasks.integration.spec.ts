@@ -28,7 +28,9 @@ describe('background task queue (integration)', () => {
   let queue: TaskQueue;
 
   /** `send_email` is the only registered type today; the handler is a stand-in. */
-  function handler(handle: (payload: TestPayload) => Promise<void>): TaskHandler<TestPayload> {
+  function handler(
+    handle: (payload: TestPayload) => Promise<void>,
+  ): TaskHandler<TestPayload> {
     return { type: 'send_email', schema: payloadSchema, handle };
   }
 
@@ -65,22 +67,34 @@ describe('background task queue (integration)', () => {
     const seen: number[] = [];
     const task = await queue.enqueue('send_email', { n: 1 });
 
-    const result = await runnerWith(handler(async (p) => void seen.push(p.n))).drainOnce();
+    const result = await runnerWith(
+      handler(async (p) => void seen.push(p.n)),
+    ).drainOnce();
 
     expect(result).toEqual({ claimed: 1, succeeded: 1, failed: 0 });
     expect(seen).toEqual([1]);
     expect((await reload(task.id)).status).toBe('succeeded');
     // Nothing left to do, so a second drain claims nothing.
-    expect((await runnerWith(handler(async () => {})).drainOnce()).claimed).toBe(0);
+    expect(
+      (await runnerWith(handler(async () => {})).drainOnce()).claimed,
+    ).toBe(0);
   });
 
   it('does not claim a task that is not due yet', async () => {
-    await queue.enqueue('send_email', { n: 1 }, { runAfter: new Date('2026-03-01T13:00:00.000Z') });
+    await queue.enqueue(
+      'send_email',
+      { n: 1 },
+      { runAfter: new Date('2026-03-01T13:00:00.000Z') },
+    );
 
-    expect((await runnerWith(handler(async () => {})).drainOnce()).claimed).toBe(0);
+    expect(
+      (await runnerWith(handler(async () => {})).drainOnce()).claimed,
+    ).toBe(0);
 
     clock.set(new Date('2026-03-01T13:00:00.000Z'));
-    expect((await runnerWith(handler(async () => {})).drainOnce()).claimed).toBe(1);
+    expect(
+      (await runnerWith(handler(async () => {})).drainOnce()).claimed,
+    ).toBe(1);
   });
 
   describe('SKIP LOCKED', () => {
@@ -155,7 +169,9 @@ describe('background task queue (integration)', () => {
         expect(after.status).toBe('pending');
         expect(after.attempts).toBe(attempt);
         expect(after.lastError).toBe('smtp down');
-        expect(after.runAfter.getTime()).toBe(clock.now().getTime() + computeBackoffMs(attempt));
+        expect(after.runAfter.getTime()).toBe(
+          clock.now().getTime() + computeBackoffMs(attempt),
+        );
 
         // Not due until the backoff has elapsed.
         expect((await runner.drainOnce()).claimed).toBe(0);
@@ -172,11 +188,50 @@ describe('background task queue (integration)', () => {
       expect((await runner.drainOnce()).claimed).toBe(0);
     });
 
+    it('calls a handler dead-letter hook exactly once after the final attempt', async () => {
+      const deadPayloads: number[] = [];
+      const failing = handler(async () => {
+        throw new Error('receiver unavailable');
+      });
+      failing.onDead = async (payload) => void deadPayloads.push(payload.n);
+      await queue.enqueue('send_email', { n: 9 });
+      const runner = runnerWith(failing);
+
+      for (let attempt = 1; attempt <= MAX_TASK_ATTEMPTS; attempt += 1) {
+        await runner.drainOnce();
+        if (attempt < MAX_TASK_ATTEMPTS)
+          clock.advance(computeBackoffMs(attempt));
+      }
+
+      expect(deadPayloads).toEqual([9]);
+    });
+
+    it('still parks a task when its dead-letter hook fails', async () => {
+      const failing = handler(async () => {
+        throw new Error('receiver unavailable');
+      });
+      failing.onDead = async () => {
+        throw new Error('dead-letter database unavailable');
+      };
+      const task = await queue.enqueue('send_email', { n: 3 });
+      const runner = runnerWith(failing);
+
+      for (let attempt = 1; attempt <= MAX_TASK_ATTEMPTS; attempt += 1) {
+        await runner.drainOnce();
+        if (attempt < MAX_TASK_ATTEMPTS)
+          clock.advance(computeBackoffMs(attempt));
+      }
+
+      expect((await reload(task.id)).status).toBe('dead');
+    });
+
     it('kills a task with an invalid payload immediately instead of retrying', async () => {
       let ran = false;
       const task = await queue.enqueue('send_email', { n: 'not-a-number' });
 
-      const result = await runnerWith(handler(async () => void (ran = true))).drainOnce();
+      const result = await runnerWith(
+        handler(async () => void (ran = true)),
+      ).drainOnce();
 
       expect(result.failed).toBe(1);
       expect(ran).toBe(false);
@@ -205,7 +260,9 @@ describe('background task queue (integration)', () => {
         lockedAt: new Date(clock.now().getTime() - 11 * 60_000),
       });
 
-      const result = await runnerWith(handler(async (p) => void seen.push(p.n))).drainOnce();
+      const result = await runnerWith(
+        handler(async (p) => void seen.push(p.n)),
+      ).drainOnce();
 
       expect(result.succeeded).toBe(1);
       expect(seen).toEqual([7]);
@@ -218,7 +275,9 @@ describe('background task queue (integration)', () => {
         lockedAt: new Date(clock.now().getTime() - 60_000),
       });
 
-      expect((await runnerWith(handler(async () => {})).drainOnce()).claimed).toBe(0);
+      expect(
+        (await runnerWith(handler(async () => {})).drainOnce()).claimed,
+      ).toBe(0);
     });
   });
 
@@ -232,7 +291,9 @@ describe('background task queue (integration)', () => {
       ).rejects.toThrow('registration failed');
 
       expect(await repository.count()).toBe(0);
-      expect((await runnerWith(handler(async () => {})).drainOnce()).claimed).toBe(0);
+      expect(
+        (await runnerWith(handler(async () => {})).drainOnce()).claimed,
+      ).toBe(0);
     });
 
     it('keeps a task enqueued inside a committed transaction', async () => {
@@ -240,7 +301,9 @@ describe('background task queue (integration)', () => {
         queue.enqueue('send_email', { n: 1 }, { manager }),
       );
 
-      expect((await runnerWith(handler(async () => {})).drainOnce()).succeeded).toBe(1);
+      expect(
+        (await runnerWith(handler(async () => {})).drainOnce()).succeeded,
+      ).toBe(1);
     });
   });
 

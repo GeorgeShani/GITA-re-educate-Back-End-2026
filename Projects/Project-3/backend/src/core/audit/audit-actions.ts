@@ -49,6 +49,12 @@ export const AUDIT_ACTIONS = [
   'comment.created',
   'comment.updated',
   'comment.deleted',
+  // Outgoing webhooks
+  'webhook_endpoint.created',
+  'webhook_endpoint.updated',
+  'webhook_endpoint.deleted',
+  'webhook_endpoint.secret_rotated',
+  'webhook_delivery.redelivered',
   // Data-quality rules and reports
   'quality_rule.created',
   'quality_rule.updated',

@@ -13,6 +13,7 @@ describe('PLAN_CATALOG', () => {
       rateLimitPerMinute: 30,
       maxQualityRules: 3,
       maxVersionsPerDataset: 5,
+      maxWebhookEndpoints: 1,
     });
   });
 
@@ -46,7 +47,15 @@ describe('PLAN_CATALOG', () => {
   });
 
   it('a higher plan never keeps fewer versions per file, and Premium has no limit', () => {
-    expect(PLANS.map((plan) => PLAN_CATALOG[plan].maxVersionsPerDataset)).toEqual([5, 50, null]);
+    expect(
+      PLANS.map((plan) => PLAN_CATALOG[plan].maxVersionsPerDataset),
+    ).toEqual([5, 50, null]);
+  });
+
+  it('a higher plan never allows fewer outgoing webhook endpoints', () => {
+    expect(PLANS.map((plan) => PLAN_CATALOG[plan].maxWebhookEndpoints)).toEqual(
+      [1, 5, null],
+    );
   });
 
   it('describes every plan', () => {
@@ -54,7 +63,9 @@ describe('PLAN_CATALOG', () => {
   });
 
   it('only Premium accepts files past the quota — the others block', () => {
-    expect(PLANS.filter((plan) => PLAN_CATALOG[plan].overagePerFileCents !== null)).toEqual(['premium']);
+    expect(
+      PLANS.filter((plan) => PLAN_CATALOG[plan].overagePerFileCents !== null),
+    ).toEqual(['premium']);
   });
 
   it('seats are admin + employees (D2)', () => {
@@ -64,6 +75,8 @@ describe('PLAN_CATALOG', () => {
   });
 
   it('a full Basic company costs at most $50', () => {
-    expect(PLAN_CATALOG.basic.maxEmployees! * PLAN_CATALOG.basic.seatPriceCents).toBe(5_000);
+    expect(
+      PLAN_CATALOG.basic.maxEmployees! * PLAN_CATALOG.basic.seatPriceCents,
+    ).toBe(5_000);
   });
 });

@@ -10,6 +10,8 @@ export interface TaskHandler<TPayload = unknown> {
   readonly type: BackgroundTaskType;
   readonly schema: ZodType<TPayload>;
   handle(payload: TPayload): Promise<void>;
+  /** Runs once after the final failed attempt, for feature-specific terminal state. */
+  onDead?(payload: TPayload, error: unknown): Promise<void>;
 }
 
 /**

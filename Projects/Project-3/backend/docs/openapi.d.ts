@@ -24,6 +24,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/outgoing-webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List webhook endpoints
+         * @description Lists the company's endpoints newest first with offset pagination. Recoverable secret material is never returned. Disabled endpoints remain visible with their failure count and disabled timestamp.
+         */
+        get: operations["WebhooksController_list"];
+        put?: never;
+        /**
+         * Register an outgoing webhook
+         * @description Registers an HTTPS receiver for selected company events. The `whsec_` signing secret is returned once in this response and stored encrypted; save it immediately. Only signed-in admins may manage endpoints. Active endpoint limits are Free 1, Basic 5, and Premium unlimited.
+         */
+        post: operations["WebhooksController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/outgoing-webhooks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a webhook endpoint
+         * @description Soft-deletes and disables the endpoint while preserving its delivery history. Future business events no longer create deliveries for it.
+         */
+        delete: operations["WebhooksController_remove"];
+        options?: never;
+        head?: never;
+        /**
+         * Update a webhook endpoint
+         * @description Changes the endpoint name, HTTPS URL, subscribed events, or active state. Re-enabling an endpoint resets its terminal failure count and is rejected when the current plan's active-endpoint limit is full.
+         */
+        patch: operations["WebhooksController_update"];
+        trace?: never;
+    };
+    "/outgoing-webhooks/{id}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate a webhook signing secret
+         * @description Replaces the endpoint's AES-256-GCM encrypted secret and returns the new `whsec_` value once. The old secret stops verifying all deliveries created after rotation.
+         */
+        post: operations["WebhooksController_rotateSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/outgoing-webhooks/{id}/ping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Queue a test delivery
+         * @description Queues a signed `ping` event through the same durable retry path as business events. A 202 means the delivery was persisted, not that the receiver has already accepted it.
+         */
+        post: operations["WebhooksController_ping"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/outgoing-webhooks/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List endpoint deliveries
+         * @description Lists delivery status, attempts, receiver status, last error, and completion time newest first. Event payloads intentionally contain identifiers and non-sensitive summaries; fetch full details through the API.
+         */
+        get: operations["WebhooksController_deliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/outgoing-webhooks/deliveries/{deliveryId}/redeliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeliver a completed event
+         * @description Resets a succeeded or failed delivery and queues the same immutable event envelope again. Pending deliveries cannot be duplicated, and a disabled endpoint must be re-enabled first.
+         */
+        post: operations["WebhooksController_redeliver"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/files": {
         parameters: {
             query?: never;
@@ -1260,6 +1388,88 @@ export interface components {
             duplicate: boolean;
             applied: boolean;
         };
+        CreateWebhookEndpointDto: {
+            name: string;
+            /** Format: uri */
+            url: string;
+            events: ("report.ready" | "report.failed" | "rules.failed" | "quota.threshold" | "invoice.finalized" | "file.uploaded")[];
+        };
+        CreatedWebhookEndpointDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uri */
+            url: string;
+            events: ("report.ready" | "report.failed" | "rules.failed" | "quota.threshold" | "invoice.finalized" | "file.uploaded")[];
+            active: boolean;
+            consecutiveFailures: number;
+            /** Format: date-time */
+            disabledAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Shown once. Store it in the receiver now. */
+            secret: string;
+        };
+        WebhookEndpointDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: uri */
+            url: string;
+            events: ("report.ready" | "report.failed" | "rules.failed" | "quota.threshold" | "invoice.finalized" | "file.uploaded")[];
+            active: boolean;
+            consecutiveFailures: number;
+            /** Format: date-time */
+            disabledAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OffsetMetaDto: {
+            /** @example 1 */
+            page: number;
+            /** @example 20 */
+            limit: number;
+            /** @description Rows matching the filter across all pages. */
+            total: number;
+            totalPages: number;
+        };
+        WebhookEndpointPageDto: {
+            data: components["schemas"]["WebhookEndpointDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
+        };
+        UpdateWebhookEndpointDto: {
+            name?: string;
+            /** Format: uri */
+            url?: string;
+            events?: ("report.ready" | "report.failed" | "rules.failed" | "quota.threshold" | "invoice.finalized" | "file.uploaded")[];
+            active?: boolean;
+        };
+        RotatedWebhookSecretDto: {
+            /** Format: uuid */
+            id: string;
+            /** @description Shown once. The previous secret no longer signs deliveries. */
+            secret: string;
+        };
+        WebhookDeliveryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            eventId: string;
+            eventType: string;
+            /** @enum {string} */
+            status: "pending" | "succeeded" | "failed";
+            attempts: number;
+            responseStatus: number | null;
+            lastError: string | null;
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WebhookDeliveryPageDto: {
+            data: components["schemas"]["WebhookDeliveryDto"][];
+            meta: components["schemas"]["OffsetMetaDto"];
+        };
         UploadFileBodyDoc: {
             /**
              * @default company
@@ -1303,15 +1513,6 @@ export interface components {
              * @description A CSV, XLS or XLSX file, up to 25 MB.
              */
             file: string;
-        };
-        OffsetMetaDto: {
-            /** @example 1 */
-            page: number;
-            /** @example 20 */
-            limit: number;
-            /** @description Rows matching the filter across all pages. */
-            total: number;
-            totalPages: number;
         };
         FileVersionPageDto: {
             data: components["schemas"]["FileDto"][];
@@ -2123,7 +2324,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "webhook_endpoint.created" | "webhook_endpoint.updated" | "webhook_endpoint.deleted" | "webhook_endpoint.secret_rotated" | "webhook_delivery.redelivered" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -2147,7 +2348,7 @@ export interface components {
              * @description What happened, `<area>.<what_happened>`.
              * @enum {string}
              */
-            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+            action: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "webhook_endpoint.created" | "webhook_endpoint.updated" | "webhook_endpoint.deleted" | "webhook_endpoint.secret_rotated" | "webhook_delivery.redelivered" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
             /** @description Who did it. Null for the system (the billing cycle) or a person since removed. */
             actorUserId: string | null;
             /** @example file */
@@ -2260,6 +2461,184 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StripeWebhookDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_list: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointPageDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebhookEndpointDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedWebhookEndpointDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWebhookEndpointDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_rotateSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RotatedWebhookSecretDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_ping: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_deliveries: {
+        parameters: {
+            query?: {
+                page?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryPageDto"];
+                };
+            };
+        };
+    };
+    WebhooksController_redeliver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                deliveryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryDto"];
                 };
             };
         };
@@ -3778,7 +4157,7 @@ export interface operations {
                 /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
                 cursor?: string;
                 limit?: number;
-                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
+                action?: "company.registered" | "company.activated" | "company.activation_resent" | "company.updated" | "user.profile_updated" | "auth.password_reset_requested" | "auth.password_reset" | "auth.password_changed" | "auth.identity_linked" | "auth.identity_unlinked" | "employee.invited" | "employee.invite_resent" | "employee.accepted_invite" | "employee.disabled" | "employee.reactivated" | "subscription.created" | "subscription.changed" | "billing.invoice_finalized" | "billing.checkout_started" | "billing.payment_failed" | "billing.payment_succeeded" | "billing.company_suspended" | "billing.company_reactivated" | "api_key.created" | "api_key.revoked" | "file.uploaded" | "file.access_changed" | "file.deleted" | "comment.created" | "comment.updated" | "comment.deleted" | "webhook_endpoint.created" | "webhook_endpoint.updated" | "webhook_endpoint.deleted" | "webhook_endpoint.secret_rotated" | "webhook_delivery.redelivered" | "quality_rule.created" | "quality_rule.updated" | "quality_rule.deleted" | "report.rebuild_requested";
                 /** @description Only what this person did. */
                 actorUserId?: string;
                 /** @description The kind of thing acted on. */

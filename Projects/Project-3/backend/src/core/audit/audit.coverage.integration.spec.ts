@@ -43,6 +43,48 @@ describe('audit coverage (integration)', () => {
     let session = await h.login(admin.email);
     await h.subscribe(session, 'basic');
 
+    // Outgoing webhook lifecycle: create, edit, rotate, deliver, redeliver, delete.
+    const webhook = await h
+      .http()
+      .post('/outgoing-webhooks')
+      .set(...h.bearer(session))
+      .send({
+        name: 'coverage webhook',
+        url: 'https://hooks.example.test/coverage',
+        events: ['file.uploaded'],
+      })
+      .expect(201);
+    const webhookId = z.object({ id: z.uuid() }).parse(webhook.body).id;
+    await h
+      .http()
+      .patch(`/outgoing-webhooks/${webhookId}`)
+      .set(...h.bearer(session))
+      .send({ name: 'coverage webhook updated' })
+      .expect(200);
+    await h
+      .http()
+      .post(`/outgoing-webhooks/${webhookId}/rotate-secret`)
+      .set(...h.bearer(session))
+      .expect(200);
+    const ping = await h
+      .http()
+      .post(`/outgoing-webhooks/${webhookId}/ping`)
+      .set(...h.bearer(session))
+      .expect(202);
+    const deliveryId = z.object({ id: z.uuid() }).parse(ping.body).id;
+    await h.drainTasks();
+    await h
+      .http()
+      .post(`/outgoing-webhooks/deliveries/${deliveryId}/redeliver`)
+      .set(...h.bearer(session))
+      .expect(202);
+    await h.drainTasks();
+    await h
+      .http()
+      .delete(`/outgoing-webhooks/${webhookId}`)
+      .set(...h.bearer(session))
+      .expect(200);
+
     // A company that never activates, to resend the activation link for.
     await h
       .http()
@@ -275,16 +317,14 @@ describe('audit coverage (integration)', () => {
     stripeInvoice.status = 'paid';
     stripeInvoice.paidAt = h.clock.now();
     h.payments.invoices.set(stripeInvoice.id, stripeInvoice);
-    await h.app
-      .get(StripeWebhookService)
-      .handle(
-        h.payments.issueWebhook({
-          ...failedEvent,
-          id: 'evt_audit_paid',
-          type: 'invoice.payment_succeeded',
-        }),
-        'valid',
-      );
+    await h.app.get(StripeWebhookService).handle(
+      h.payments.issueWebhook({
+        ...failedEvent,
+        id: 'evt_audit_paid',
+        type: 'invoice.payment_succeeded',
+      }),
+      'valid',
+    );
 
     const recorded = await recordedActions();
     const missing = AUDIT_ACTIONS.filter((action) => !recorded.has(action));

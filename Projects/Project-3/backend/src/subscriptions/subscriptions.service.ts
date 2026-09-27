@@ -1,7 +1,18 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, type EntityManager } from 'typeorm';
 import { InvoicingService } from '#/billing/invoicing.service.js';
-import { type Period, daysIn, openPeriodAt, periodKey, startOfUtcDay } from '#/billing/period.js';
+import {
+  type Period,
+  daysIn,
+  openPeriodAt,
+  periodKey,
+  startOfUtcDay,
+} from '#/billing/period.js';
 import { UsageService } from '#/billing/usage.service.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
@@ -11,19 +22,27 @@ import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation } from '#/database/pg-errors.js';
 import { TenantScope } from '#/database/tenant-scope.js';
 import { QualityRule } from '#/quality-rules/quality-rule.entity.js';
-import { BillingIntentService, type PendingBillingIntent } from '#/payments/billing-intent.service.js';
+import {
+  BillingIntentService,
+  type PendingBillingIntent,
+} from '#/payments/billing-intent.service.js';
 import { PLAN_CATALOG, type Plan, maxSeats } from './plan-catalog.js';
 import { planChangeProblems } from './plan-change.js';
 import { SubscriptionChange } from './subscription-change.entity.js';
 import { Subscription } from './subscription.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
 import { z } from 'zod';
+import { WebhookEndpoint } from '#/outgoing-webhooks/webhook-endpoint.entity.js';
 
 export interface SubscriptionView {
   plan: Plan;
   billingAnchorDay: number;
   period: Period & { key: string; days: number };
-  limits: { maxEmployees: number | null; maxSeats: number | null; filesPerPeriod: number };
+  limits: {
+    maxEmployees: number | null;
+    maxSeats: number | null;
+    filesPerPeriod: number;
+  };
   usage: { files: number; employees: number; seats: number };
   nextDueDate: Date;
 }
@@ -69,7 +88,10 @@ export class SubscriptionsService {
    * the rollover job in Phase 7 — takes this first, so they serialise per company
    * instead of interleaving.
    */
-  lockForUpdate(manager: EntityManager, companyId: string): Promise<Subscription | null> {
+  lockForUpdate(
+    manager: EntityManager,
+    companyId: string,
+  ): Promise<Subscription | null> {
     return this.tenantScope
       .forCompany(manager.getRepository(Subscription), companyId, 'sub')
       .setLock('pessimistic_write')
@@ -77,7 +99,10 @@ export class SubscriptionsService {
   }
 
   /** Employees holding a seat: invited (holds one, bills $0) and active (D4). Disabled free theirs. */
-  employeeSeatsHeld(manager: EntityManager, companyId: string): Promise<number> {
+  employeeSeatsHeld(
+    manager: EntityManager,
+    companyId: string,
+  ): Promise<number> {
     return this.tenantScope
       .forCompany(manager.getRepository(User), companyId, 'u')
       .andWhere("u.role = 'employee'")
@@ -103,10 +128,17 @@ export class SubscriptionsService {
         'This company already has a plan. Change it with PATCH /subscriptions/me.',
       );
     }
-    const activeEmployees = await this.activeEmployees(this.dataSource.manager, companyId);
+    const activeEmployees = await this.activeEmployees(
+      this.dataSource.manager,
+      companyId,
+    );
     return {
       kind: 'pending',
-      intent: await this.billingIntents.beginCheckout(companyId, plan, activeEmployees),
+      intent: await this.billingIntents.beginCheckout(
+        companyId,
+        plan,
+        activeEmployees,
+      ),
     };
   }
 
@@ -117,12 +149,16 @@ export class SubscriptionsService {
     }
 
     const companyId = this.context.requireCompanyId();
-    const subscription = await this.dataSource.getRepository(Subscription).findOne({
-      where: { companyId },
-    });
+    const subscription = await this.dataSource
+      .getRepository(Subscription)
+      .findOne({
+        where: { companyId },
+      });
     if (!subscription) throw new NotFoundException(NO_PLAN);
     if (subscription.plan === target) {
-      throw new ConflictException(`This company is already on the ${target} plan.`);
+      throw new ConflictException(
+        `This company is already on the ${target} plan.`,
+      );
     }
     await this.assertPlanChangeAllowed(subscription, target);
     if (subscription.plan === 'free' && target !== 'free') {
@@ -136,7 +172,10 @@ export class SubscriptionsService {
       };
     }
     if (target === 'free') {
-      return { kind: 'pending', intent: await this.billingIntents.beginCancellation(companyId) };
+      return {
+        kind: 'pending',
+        intent: await this.billingIntents.beginCancellation(companyId),
+      };
     }
     return {
       kind: 'pending',
@@ -148,7 +187,9 @@ export class SubscriptionsService {
     };
   }
 
-  async view(manager: EntityManager = this.dataSource.manager): Promise<SubscriptionView> {
+  async view(
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<SubscriptionView> {
     const companyId = this.context.requireCompanyId();
     const subscription = await this.tenantScope
       .forCompany(manager.getRepository(Subscription), companyId, 'sub')
@@ -213,16 +254,20 @@ export class SubscriptionsService {
    * Everything happens under the subscription row lock, so two concurrent
    * changes run one after the other and each sees the other's result.
    */
-  async change(
-    target: Plan,
-  ): Promise<{ view: SubscriptionView; previousPlan: Plan; prorationCents: number }> {
+  async change(target: Plan): Promise<{
+    view: SubscriptionView;
+    previousPlan: Plan;
+    prorationCents: number;
+  }> {
     const companyId = this.context.requireCompanyId();
 
     const changed = await this.dataSource.transaction(async (manager) => {
       const subscription = await this.lockForUpdate(manager, companyId);
       if (!subscription) throw new NotFoundException(NO_PLAN);
       if (subscription.plan === target) {
-        throw new ConflictException(`This company is already on the ${target} plan.`);
+        throw new ConflictException(
+          `This company is already on the ${target} plan.`,
+        );
       }
 
       const now = this.clock.now();
@@ -238,8 +283,13 @@ export class SubscriptionsService {
         files: await this.usage.filesInPeriod(
           manager,
           companyId,
-          periodKey({ start: subscription.currentPeriodStart, end: subscription.currentPeriodEnd }),
+          periodKey({
+            start: subscription.currentPeriodStart,
+            end: subscription.currentPeriodEnd,
+          }),
         ),
+        maxDatasetVersions: await this.maximumLiveVersions(companyId, manager),
+        webhookEndpoints: await this.activeWebhookEndpoints(companyId, manager),
       });
       if (problems.length > 0) throw new ConflictException(problems);
 
@@ -271,7 +321,9 @@ export class SubscriptionsService {
         })
         .execute();
       if (!updated.affected) {
-        throw new ConflictException('The subscription changed while this request ran. Try again.');
+        throw new ConflictException(
+          'The subscription changed while this request ran. Try again.',
+        );
       }
 
       await manager.insert(SubscriptionChange, {
@@ -290,32 +342,57 @@ export class SubscriptionsService {
         manager,
       );
 
-      const fresh = await manager.findOneOrFail(Subscription, { where: { id: subscription.id } });
-      return { view: await this.describe(manager, fresh), previousPlan, prorationCents };
+      const fresh = await manager.findOneOrFail(Subscription, {
+        where: { id: subscription.id },
+      });
+      return {
+        view: await this.describe(manager, fresh),
+        previousPlan,
+        prorationCents,
+      };
     });
     this.metrics.subscriptionChanged(target);
     return changed;
   }
 
-  private async assertPlanChangeAllowed(subscription: Subscription, target: Plan): Promise<void> {
+  private async assertPlanChangeAllowed(
+    subscription: Subscription,
+    target: Plan,
+  ): Promise<void> {
     const companyId = subscription.companyId;
     const problems = planChangeProblems(target, {
       qualityRules: await this.tenantScope
         .forCompany(this.dataSource.getRepository(QualityRule), companyId, 'r')
         .getCount(),
-      employees: await this.employeeSeatsHeld(this.dataSource.manager, companyId),
+      employees: await this.employeeSeatsHeld(
+        this.dataSource.manager,
+        companyId,
+      ),
       files: await this.usage.filesInPeriod(
         this.dataSource.manager,
         companyId,
-        periodKey({ start: subscription.currentPeriodStart, end: subscription.currentPeriodEnd }),
+        periodKey({
+          start: subscription.currentPeriodStart,
+          end: subscription.currentPeriodEnd,
+        }),
       ),
-      maxDatasetVersions: await this.maximumLiveVersions(companyId),
+      maxDatasetVersions: await this.maximumLiveVersions(
+        companyId,
+        this.dataSource.manager,
+      ),
+      webhookEndpoints: await this.activeWebhookEndpoints(
+        companyId,
+        this.dataSource.manager,
+      ),
     });
     if (problems.length > 0) throw new ConflictException(problems);
   }
 
-  private async maximumLiveVersions(companyId: string): Promise<number> {
-    const rows: unknown = await this.dataSource
+  private async maximumLiveVersions(
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<number> {
+    const rows: unknown = await manager
       .getRepository(FileAsset)
       .createQueryBuilder('f')
       .select('COUNT(*)', 'versions')
@@ -323,8 +400,20 @@ export class SubscriptionsService {
       .andWhere('f.deletedAt IS NULL')
       .groupBy('f.datasetId')
       .getRawMany();
-    const parsed = z.array(z.object({ versions: z.coerce.number().int().nonnegative() })).parse(rows);
+    const parsed = z
+      .array(z.object({ versions: z.coerce.number().int().nonnegative() }))
+      .parse(rows);
     return parsed.reduce((maximum, row) => Math.max(maximum, row.versions), 0);
+  }
+
+  private activeWebhookEndpoints(
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<number> {
+    return this.tenantScope
+      .forCompany(manager.getRepository(WebhookEndpoint), companyId, 'endpoint')
+      .andWhere('endpoint.active = true AND endpoint.deletedAt IS NULL')
+      .getCount();
   }
 
   private async describe(
@@ -338,7 +427,11 @@ export class SubscriptionsService {
     const rules = PLAN_CATALOG[subscription.plan];
 
     const [files, employees] = await Promise.all([
-      this.usage.filesInPeriod(manager, subscription.companyId, periodKey(period)),
+      this.usage.filesInPeriod(
+        manager,
+        subscription.companyId,
+        periodKey(period),
+      ),
       this.employeeSeatsHeld(manager, subscription.companyId),
     ]);
 

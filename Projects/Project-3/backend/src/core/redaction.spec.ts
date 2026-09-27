@@ -3,13 +3,34 @@ import { REDACT_KEYS, REDACT_PINO_PATHS } from './redaction.js';
 
 describe('redaction', () => {
   it('scrubs every one-time link and token an email or auth flow carries', () => {
-    for (const key of ['activationUrl', 'inviteUrl', 'resetUrl', 'inviteToken', 'resetToken', 'activationToken', 'exchangeCode']) {
+    for (const key of [
+      'activationUrl',
+      'inviteUrl',
+      'resetUrl',
+      'inviteToken',
+      'resetToken',
+      'activationToken',
+      'exchangeCode',
+    ]) {
       expect(REDACT_KEYS, key).toContain(key);
     }
   });
 
   it('still scrubs credentials in general', () => {
-    for (const key of ['password', 'refreshToken', 'accessToken', 'apiKey', 'keyHash', 'authorization', 'cookie']) {
+    for (const key of [
+      'password',
+      'refreshToken',
+      'accessToken',
+      'apiKey',
+      'keyHash',
+      'authorization',
+      'cookie',
+      'secret',
+      'encryptedSecret',
+      'secretIv',
+      'secretTag',
+      'DATA_ENCRYPTION_KEY',
+    ]) {
       expect(REDACT_KEYS, key).toContain(key);
     }
   });

@@ -179,6 +179,16 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 - A notification is written **in the same transaction as the thing that caused it**, so a rolled-back upload announces nothing,
   and it is pushed live only after that commit. Read entries are removed after 90 days.
 
+### 10c. Signed outgoing webhooks
+
+- Admins register HTTPS receivers for `file.uploaded`, report outcomes, failed rules, quota thresholds and finalized invoices.
+  The one-time `whsec_` secret is encrypted at rest and each request signs the exact `timestamp.body` bytes with HMAC-SHA256.
+- Publishing the delivery and its durable task happens in the producer's database transaction. A rollback therefore emits
+  nothing; a committed event survives restarts and receives five attempts with exponential backoff.
+- DNS is re-resolved for every attempt, private and metadata networks are rejected, the validated address is pinned for the
+  connection, and redirects are refused. HTTP 410 disables immediately; twenty consecutive terminal failures disable an endpoint.
+  _Why:_ companies can automate around Gridline without polling or giving a third party broad account credentials.
+
 ### 11. GraphQL (read-only)
 
 - `POST /graphql` returns the same analytics as REST, from the same service; admins only, no mutations, depth and cost limits,

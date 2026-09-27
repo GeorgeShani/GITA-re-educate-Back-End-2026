@@ -778,6 +778,19 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   visibility-checked `file:<id>` room; presence deduplicates user IDs across tabs. `comment.typing` is ephemeral and limited to five
   events per second per socket. File access changes re-check and evict room members immediately.
 
+## Signed outgoing webhooks _(from Phase 20 of the product plan)_
+
+- Endpoint management is admin-session-only. Secrets are `whsec_…`, shown once, and stored with AES-256-GCM under an HKDF-derived
+  key from `DATA_ENCRYPTION_KEY`. Never return `encryptedSecret`, `secretIv` or `secretTag` from a DTO or copy them into audit data.
+- Producers call `WebhookPublisher.publish(manager, …)` inside the transaction that writes the business change. Delivery rows and
+  `deliver_webhook` tasks therefore commit or roll back together. Payloads are versioned, Zod-validated, non-sensitive summaries;
+  receivers use an API key for details.
+- Delivery signs `timestamp.body` with HMAC-SHA256, resolves DNS on every attempt, rejects every private/loopback/link-local/
+  metadata/CGNAT/ULA result, pins one validated address for the connection, follows no redirects, and uses the shared task queue's
+  five attempts. Count terminal deliveries, not attempts: success resets, twenty terminal failures disable, HTTP 410 disables now.
+- Free allows one active endpoint, Basic five, Premium unlimited. Downgrades and re-enabling take the subscription row lock and
+  enforce the target/current cap. Employees and API keys cannot manage endpoints.
+
 ## Pagination & sorting _(from Phase 3)_
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -982,6 +995,8 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
 - [x] `notification` — `(companyId, userId, createdAt, id)`; `quota_alert` — UNIQUE `(companyId, periodKey, threshold)`
       (what makes each alert fire once per period, and its tenant index)
 - [x] `quality_rule` — `(companyId, createdAt)`
+- [x] `webhook_endpoint` — `(companyId, createdAt)`; `webhook_delivery` — UNIQUE `(endpointId, eventId)` plus
+      `(companyId, endpointId, createdAt)`
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

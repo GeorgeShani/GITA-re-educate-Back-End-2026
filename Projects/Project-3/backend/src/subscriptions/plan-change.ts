@@ -9,13 +9,18 @@ export interface CompanyUsage {
   qualityRules: number;
   /** Largest live version count held by any one dataset. */
   maxDatasetVersions?: number;
+  webhookEndpoints?: number;
 }
 
 function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? '' : 's'}`;
 }
 
-const LABEL: Record<Plan, string> = { free: 'Free', basic: 'Basic', premium: 'Premium' };
+const LABEL: Record<Plan, string> = {
+  free: 'Free',
+  basic: 'Basic',
+  premium: 'Premium',
+};
 
 /**
  * Why a company cannot move to `target` right now — empty when it can. Each
@@ -26,7 +31,10 @@ const LABEL: Record<Plan, string> = { free: 'Free', basic: 'Basic', premium: 'Pr
  * Basic). Premium accepts and bills overage, so a company already past 1,000
  * files can still upgrade to it.
  */
-export function planChangeProblems(target: Plan, usage: CompanyUsage): string[] {
+export function planChangeProblems(
+  target: Plan,
+  usage: CompanyUsage,
+): string[] {
   const rules = PLAN_CATALOG[target];
   const problems: string[] = [];
 
@@ -39,13 +47,19 @@ export function planChangeProblems(target: Plan, usage: CompanyUsage): string[] 
     );
   }
 
-  if (rules.overagePerFileCents === null && usage.files > rules.filesPerPeriod) {
+  if (
+    rules.overagePerFileCents === null &&
+    usage.files > rules.filesPerPeriod
+  ) {
     problems.push(
       `${LABEL[target]} allows ${plural(rules.filesPerPeriod, 'file')} per period, but ${usage.files} have already been uploaded in this one.`,
     );
   }
 
-  if (rules.maxQualityRules !== null && usage.qualityRules > rules.maxQualityRules) {
+  if (
+    rules.maxQualityRules !== null &&
+    usage.qualityRules > rules.maxQualityRules
+  ) {
     const excess = usage.qualityRules - rules.maxQualityRules;
     problems.push(
       `${LABEL[target]} allows ${plural(rules.maxQualityRules, 'quality rule')}, but the company has ${usage.qualityRules} — delete ${excess} first.`,
@@ -60,6 +74,18 @@ export function planChangeProblems(target: Plan, usage: CompanyUsage): string[] 
     problems.push(
       `${LABEL[target]} keeps up to ${plural(rules.maxVersionsPerDataset, 'version')} per file, ` +
         `but one dataset has ${usage.maxDatasetVersions} — delete old versions first.`,
+    );
+  }
+
+  if (
+    rules.maxWebhookEndpoints !== null &&
+    usage.webhookEndpoints !== undefined &&
+    usage.webhookEndpoints > rules.maxWebhookEndpoints
+  ) {
+    const excess = usage.webhookEndpoints - rules.maxWebhookEndpoints;
+    problems.push(
+      `${LABEL[target]} allows ${plural(rules.maxWebhookEndpoints, 'webhook endpoint')}, ` +
+        `but the company has ${usage.webhookEndpoints} — delete ${excess} first.`,
     );
   }
 

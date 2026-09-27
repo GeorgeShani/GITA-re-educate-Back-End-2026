@@ -11,10 +11,16 @@ export const BACKGROUND_TASK_TYPES = [
   'build_data_quality_report',
   'sync_stripe_seats',
   'report_stripe_usage',
+  'deliver_webhook',
 ] as const;
 export type BackgroundTaskType = (typeof BACKGROUND_TASK_TYPES)[number];
 
-export const BACKGROUND_TASK_STATUSES = ['pending', 'running', 'succeeded', 'dead'] as const;
+export const BACKGROUND_TASK_STATUSES = [
+  'pending',
+  'running',
+  'succeeded',
+  'dead',
+] as const;
 export type BackgroundTaskStatus = (typeof BACKGROUND_TASK_STATUSES)[number];
 
 /**
@@ -29,7 +35,11 @@ export type BackgroundTaskStatus = (typeof BACKGROUND_TASK_STATUSES)[number];
 @Entity({ name: 'background_task' })
 @Index('idx_background_task_status_run_after', ['status', 'runAfter'])
 export class BackgroundTask extends BaseEntity {
-  @Column({ type: 'enum', enum: BACKGROUND_TASK_TYPES, enumName: 'background_task_type' })
+  @Column({
+    type: 'enum',
+    enum: BACKGROUND_TASK_TYPES,
+    enumName: 'background_task_type',
+  })
   type!: BackgroundTaskType;
 
   @Column({ type: 'jsonb' })

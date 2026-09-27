@@ -13,6 +13,7 @@ import { QualityRules1790348327803 } from './1790348327803-QualityRules.js';
 import { FileVersions1790350508634 } from './1790350508634-FileVersions.js';
 import { StripeSubscriptions1790407501809 } from './1790407501809-StripeSubscriptions.js';
 import { CommentsPresence1790450821659 } from './1790450821659-CommentsPresence.js';
+import { OutgoingWebhooks1790488051110 } from './1790488051110-OutgoingWebhooks.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -39,4 +40,5 @@ export const MIGRATIONS: MixedList<Function> = [
   FileVersions1790350508634,
   StripeSubscriptions1790407501809,
   CommentsPresence1790450821659,
+  OutgoingWebhooks1790488051110,
 ];

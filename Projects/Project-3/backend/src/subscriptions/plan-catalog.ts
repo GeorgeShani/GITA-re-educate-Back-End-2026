@@ -28,6 +28,8 @@ export interface PlanRules {
   maxQualityRules: number | null;
   /** Live versions one file (dataset) may hold. `null` = unlimited. Every version still counts toward the file quota. */
   maxVersionsPerDataset: number | null;
+  /** Active outgoing webhook endpoints. `null` = unlimited. */
+  maxWebhookEndpoints: number | null;
 }
 
 /**
@@ -46,6 +48,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     rateLimitPerMinute: 30,
     maxQualityRules: 3,
     maxVersionsPerDataset: 5,
+    maxWebhookEndpoints: 1,
   },
   basic: {
     maxEmployees: 10,
@@ -56,6 +59,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     rateLimitPerMinute: 120,
     maxQualityRules: 25,
     maxVersionsPerDataset: 50,
+    maxWebhookEndpoints: 5,
   },
   premium: {
     maxEmployees: null,
@@ -66,6 +70,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     rateLimitPerMinute: 600,
     maxQualityRules: null,
     maxVersionsPerDataset: null,
+    maxWebhookEndpoints: null,
   },
 };
 

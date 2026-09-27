@@ -155,12 +155,227 @@ components:
         - received
         - duplicate
         - applied
+    CreateWebhookEndpointDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          items:
+            type: string
+            enum: &ref_2
+              - report.ready
+              - report.failed
+              - rules.failed
+              - quota.threshold
+              - invoice.finalized
+              - file.uploaded
+      required:
+        - name
+        - url
+        - events
+    CreatedWebhookEndpointDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items: &ref_3
+            type: string
+            enum: *ref_2
+        active:
+          type: boolean
+        consecutiveFailures:
+          type: number
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        secret:
+          type: string
+          description: Shown once. Store it in the receiver now.
+      required:
+        - id
+        - name
+        - url
+        - events
+        - active
+        - consecutiveFailures
+        - disabledAt
+        - createdAt
+        - secret
+    WebhookEndpointDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items: *ref_3
+        active:
+          type: boolean
+        consecutiveFailures:
+          type: number
+        disabledAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - url
+        - events
+        - active
+        - consecutiveFailures
+        - disabledAt
+        - createdAt
+    OffsetMetaDto:
+      type: object
+      properties:
+        page:
+          type: number
+          example: 1
+        limit:
+          type: number
+          example: 20
+        total:
+          type: number
+          description: Rows matching the filter across all pages.
+        totalPages:
+          type: number
+      required:
+        - page
+        - limit
+        - total
+        - totalPages
+    WebhookEndpointPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookEndpointDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
+    UpdateWebhookEndpointDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        url:
+          type: string
+          format: uri
+          maxLength: 2048
+        events:
+          type: array
+          items:
+            type: string
+            enum: *ref_2
+        active:
+          type: boolean
+    RotatedWebhookSecretDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        secret:
+          type: string
+          description: Shown once. The previous secret no longer signs deliveries.
+      required:
+        - id
+        - secret
+    WebhookDeliveryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        status:
+          type: string
+          enum:
+            - pending
+            - succeeded
+            - failed
+        attempts:
+          type: number
+        responseStatus:
+          type: number
+          nullable: true
+        lastError:
+          type: string
+          nullable: true
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - eventId
+        - eventType
+        - status
+        - attempts
+        - responseStatus
+        - lastError
+        - deliveredAt
+        - createdAt
+    WebhookDeliveryPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/WebhookDeliveryDto'
+        meta:
+          $ref: '#/components/schemas/OffsetMetaDto'
+      required:
+        - data
+        - meta
     UploadFileBodyDoc:
       type: object
       properties:
         visibility:
           type: string
-          enum: &ref_2
+          enum: &ref_4
             - company
             - restricted
           default: company
@@ -192,7 +407,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         datasetId:
           type: string
           format: uuid
@@ -241,25 +456,6 @@ components:
           description: A CSV, XLS or XLSX file, up to 25 MB.
       required:
         - file
-    OffsetMetaDto:
-      type: object
-      properties:
-        page:
-          type: number
-          example: 1
-        limit:
-          type: number
-          example: 20
-        total:
-          type: number
-          description: Rows matching the filter across all pages.
-        totalPages:
-          type: number
-      required:
-        - page
-        - limit
-        - total
-        - totalPages
     FileVersionPageDto:
       type: object
       properties:
@@ -293,7 +489,7 @@ components:
           type: string
         from:
           type: string
-          enum: &ref_3
+          enum: &ref_5
             - integer
             - number
             - boolean
@@ -302,7 +498,7 @@ components:
             - empty
         to:
           type: string
-          enum: *ref_3
+          enum: *ref_5
       required:
         - column
         - from
@@ -489,7 +685,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: *ref_3
+          enum: *ref_5
           description: The dominant kind of value in the column.
         typeCounts:
           $ref: '#/components/schemas/TypeCountsDto'
@@ -586,7 +782,7 @@ components:
           type: string
         kind:
           type: string
-          enum: &ref_8
+          enum: &ref_10
             - required_column
             - max_null_percent
             - type_is
@@ -599,7 +795,7 @@ components:
           nullable: true
         severity:
           type: string
-          enum: &ref_9
+          enum: &ref_11
             - error
             - warning
         status:
@@ -695,7 +891,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_3
+          enum: *ref_5
       required:
         - name
         - inferredType
@@ -735,7 +931,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_2
+          enum: *ref_4
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -811,7 +1007,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_4
+          enum: &ref_6
             - free
             - basic
             - premium
@@ -857,7 +1053,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -1016,7 +1212,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         maxEmployees:
           type: number
           nullable: true
@@ -1127,7 +1323,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         billingAnchorDay:
           type: number
           minimum: 1
@@ -1155,7 +1351,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
       required:
         - plan
     PendingPlanDto:
@@ -1170,7 +1366,7 @@ components:
           format: uuid
         targetPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         checkoutUrl:
           type: object
           nullable: true
@@ -1188,7 +1384,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         prorationCents:
           type: number
           description: >-
@@ -1220,7 +1416,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_5
+          enum: &ref_7
             - finance
             - e-commerce
             - healthcare
@@ -1356,12 +1552,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_6
+          enum: &ref_8
             - admin
             - employee
         status:
           type: string
-          enum: &ref_7
+          enum: &ref_9
             - invited
             - active
             - disabled
@@ -1391,7 +1587,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_7
         status:
           type: string
           enum:
@@ -1506,7 +1702,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_7
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -1620,7 +1816,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_5
+          enum: *ref_7
         billingEmail:
           type: string
           example: nino@acme.com
@@ -1653,10 +1849,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_6
+          enum: *ref_8
         status:
           type: string
-          enum: *ref_7
+          enum: *ref_9
         activatedAt:
           type: string
           format: date-time
@@ -1796,7 +1992,7 @@ components:
           type: string
         kind:
           type: string
-          enum: *ref_8
+          enum: *ref_10
         columnName:
           type: string
           nullable: true
@@ -1806,7 +2002,7 @@ components:
           additionalProperties: true
         severity:
           type: string
-          enum: *ref_9
+          enum: *ref_11
         enabled:
           type: boolean
         createdByUserId:
@@ -1851,7 +2047,7 @@ components:
           maxLength: 80
         kind:
           type: string
-          enum: *ref_8
+          enum: *ref_10
           description: >-
             `required_column` the column must exist; `max_null_percent` at most
             that share empty; `type_is` the column is that type; `min_value` /
@@ -1877,7 +2073,7 @@ components:
             `required_column` and `unique` take `{}`.
         severity:
           type: string
-          enum: *ref_9
+          enum: *ref_11
           default: error
           description: >-
             An `error` counts double in the quality score, and a failing one
@@ -1914,7 +2110,7 @@ components:
             `{}`.
         severity:
           type: string
-          enum: *ref_9
+          enum: *ref_11
         enabled:
           type: boolean
     DayRangeDto:
@@ -2012,7 +2208,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -2046,12 +2242,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_4
+          enum: *ref_6
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -2108,7 +2304,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_10
+          enum: &ref_12
             - company.registered
             - company.activated
             - company.activation_resent
@@ -2140,6 +2336,11 @@ components:
             - comment.created
             - comment.updated
             - comment.deleted
+            - webhook_endpoint.created
+            - webhook_endpoint.updated
+            - webhook_endpoint.deleted
+            - webhook_endpoint.secret_rotated
+            - webhook_delivery.redelivered
             - quality_rule.created
             - quality_rule.updated
             - quality_rule.deleted
@@ -2200,7 +2401,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_10
+          enum: *ref_12
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -2265,7 +2466,7 @@ components:
             allows: an employee cannot grant `billing:read`.
           items:
             type: string
-            enum: &ref_11
+            enum: &ref_13
               - files:read
               - files:write
               - billing:read
@@ -2285,9 +2486,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_12
+          items: &ref_14
             type: string
-            enum: *ref_11
+            enum: *ref_13
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -2333,7 +2534,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_12
+          items: *ref_14
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.

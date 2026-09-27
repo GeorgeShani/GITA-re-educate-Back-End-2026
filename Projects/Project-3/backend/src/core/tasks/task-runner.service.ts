@@ -21,7 +21,8 @@ const STALE_LOCK_MS = 10 * 60_000;
 @Injectable()
 export class TaskRunner {
   constructor(
-    @InjectRepository(BackgroundTask) private readonly repository: Repository<BackgroundTask>,
+    @InjectRepository(BackgroundTask)
+    private readonly repository: Repository<BackgroundTask>,
     @Inject(TASK_HANDLERS) private readonly handlers: TaskHandler[],
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly context: RequestContextService,
@@ -79,9 +80,14 @@ export class TaskRunner {
   }
 
   private async runOne(task: BackgroundTask): Promise<boolean> {
-    const handler = this.handlers.find((candidate) => candidate.type === task.type);
+    const handler = this.handlers.find(
+      (candidate) => candidate.type === task.type,
+    );
     if (!handler) {
-      await this.markDead(task, `No handler registered for task type "${task.type}"`);
+      await this.markDead(
+        task,
+        `No handler registered for task type "${task.type}"`,
+      );
       return false;
     }
 
@@ -101,20 +107,41 @@ export class TaskRunner {
       await this.context.runWith(task.correlationId ?? randomUUID(), () =>
         handler.handle(parsed.data),
       );
-      await this.repository.update(task.id, { status: 'succeeded', lockedAt: null });
+      await this.repository.update(task.id, {
+        status: 'succeeded',
+        lockedAt: null,
+      });
       return true;
     } catch (error) {
-      await this.retryOrDie(task, error);
+      await this.retryOrDie(task, handler, parsed.data, error);
       return false;
     }
   }
 
-  private async retryOrDie(task: BackgroundTask, error: unknown): Promise<void> {
+  private async retryOrDie<TPayload>(
+    task: BackgroundTask,
+    handler: TaskHandler<TPayload>,
+    payload: TPayload,
+    error: unknown,
+  ): Promise<void> {
     const attempts = task.attempts + 1;
     const lastError = error instanceof Error ? error.message : String(error);
 
     if (attempts >= MAX_TASK_ATTEMPTS) {
-      this.logger.error({ taskId: task.id, type: task.type, attempts }, `Task dead: ${lastError}`);
+      if (handler.onDead) {
+        try {
+          await handler.onDead(payload, error);
+        } catch (hookError) {
+          this.logger.error(
+            { err: hookError, taskId: task.id, type: task.type },
+            'Task dead-letter hook failed',
+          );
+        }
+      }
+      this.logger.error(
+        { taskId: task.id, type: task.type, attempts },
+        `Task dead: ${lastError}`,
+      );
       await this.repository.update(task.id, {
         status: 'dead',
         attempts,
@@ -124,7 +151,10 @@ export class TaskRunner {
       return;
     }
 
-    this.logger.warn({ taskId: task.id, type: task.type, attempts }, `Task failed: ${lastError}`);
+    this.logger.warn(
+      { taskId: task.id, type: task.type, attempts },
+      `Task failed: ${lastError}`,
+    );
     await this.repository.update(task.id, {
       status: 'pending',
       attempts,
@@ -134,7 +164,10 @@ export class TaskRunner {
     });
   }
 
-  private async markDead(task: BackgroundTask, lastError: string): Promise<void> {
+  private async markDead(
+    task: BackgroundTask,
+    lastError: string,
+  ): Promise<void> {
     this.logger.error({ taskId: task.id, type: task.type }, lastError);
     await this.repository.update(task.id, {
       status: 'dead',

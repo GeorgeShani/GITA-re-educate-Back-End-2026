@@ -8,6 +8,8 @@ import { FilesModule } from '#/files/files.module.js';
 import { PaymentsModule } from '#/payments/payments.module.js';
 import { ReportStripeUsageHandler } from '#/payments/report-stripe-usage.handler.js';
 import { SyncStripeSeatsHandler } from '#/payments/sync-stripe-seats.handler.js';
+import { DeliverWebhookHandler } from '#/outgoing-webhooks/deliver-webhook.handler.js';
+import { WebhooksModule } from '#/outgoing-webhooks/webhooks.module.js';
 import { TASK_HANDLERS, type TaskHandler } from './task-handler.js';
 import { TaskRunner } from './task-runner.service.js';
 import { TaskScheduler } from './task-scheduler.service.js';
@@ -20,7 +22,14 @@ import { TaskScheduler } from './task-scheduler.service.js';
  * `dead` with "No handler registered for task type …".
  */
 @Module({
-  imports: [DatabaseModule, ScheduleModule.forRoot(), MailModule, FilesModule, PaymentsModule],
+  imports: [
+    DatabaseModule,
+    ScheduleModule.forRoot(),
+    MailModule,
+    FilesModule,
+    PaymentsModule,
+    WebhooksModule,
+  ],
   providers: [
     {
       provide: TASK_HANDLERS,
@@ -29,13 +38,21 @@ import { TaskScheduler } from './task-scheduler.service.js';
         BuildDataQualityReportHandler,
         SyncStripeSeatsHandler,
         ReportStripeUsageHandler,
+        DeliverWebhookHandler,
       ],
       useFactory: (
         sendEmail: SendEmailHandler,
         buildReport: BuildDataQualityReportHandler,
         syncSeats: SyncStripeSeatsHandler,
         reportUsage: ReportStripeUsageHandler,
-      ): TaskHandler[] => [sendEmail, buildReport, syncSeats, reportUsage],
+        deliverWebhook: DeliverWebhookHandler,
+      ): TaskHandler[] => [
+        sendEmail,
+        buildReport,
+        syncSeats,
+        reportUsage,
+        deliverWebhook,
+      ],
     },
     TaskRunner,
     TaskScheduler,

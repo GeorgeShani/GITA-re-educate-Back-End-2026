@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '#/database/database.module.js';
 import { NotificationsModule } from '#/notifications/notifications.module.js';
+import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
 import { BillingController } from './billing.controller.js';
 import { BillingService } from './billing.service.js';
 import { InvoicingService } from './invoicing.service.js';
@@ -14,7 +15,7 @@ import { UsageService } from './usage.service.js';
  * rollover job needs both, so it lives one level up in `BillingCycleModule`.
  */
 @Module({
-  imports: [DatabaseModule, NotificationsModule],
+  imports: [DatabaseModule, NotificationsModule, WebhookPublishingModule],
   controllers: [BillingController],
   providers: [UsageService, StatementService, InvoicingService, BillingService],
   exports: [UsageService, StatementService, InvoicingService],

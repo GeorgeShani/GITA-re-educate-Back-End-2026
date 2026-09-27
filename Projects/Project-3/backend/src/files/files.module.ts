@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { BillingModule } from '#/billing/billing.module.js';
 import { DatabaseModule } from '#/database/database.module.js';
 import { SubscriptionsModule } from '#/subscriptions/subscriptions.module.js';
+import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
 import { BuildDataQualityReportHandler } from './build-data-quality-report.handler.js';
 import { FilesController } from './files.controller.js';
 import { FilesService } from './files.service.js';
@@ -13,7 +14,12 @@ import { ReportsService } from './quality/reports.service.js';
  * handler, which is why the handler is exported.
  */
 @Module({
-  imports: [DatabaseModule, BillingModule, SubscriptionsModule],
+  imports: [
+    DatabaseModule,
+    BillingModule,
+    SubscriptionsModule,
+    WebhookPublishingModule,
+  ],
   controllers: [FilesController],
   providers: [FilesService, ReportsService, BuildDataQualityReportHandler],
   exports: [FilesService, ReportsService, BuildDataQualityReportHandler],

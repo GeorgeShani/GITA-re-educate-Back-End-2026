@@ -41,6 +41,7 @@ import { TenantScope } from '#/database/tenant-scope.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { QuotaAlertsService } from '#/notifications/quota-alerts.service.js';
 import { BillingSyncService } from '#/payments/billing-sync.service.js';
+import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import type { QuotaUpdatedEvent } from '#/realtime/realtime-events.js';
 import { PLAN_CATALOG } from '#/subscriptions/plan-catalog.js';
@@ -139,6 +140,7 @@ export class FilesService {
     private readonly notifications: NotificationsService,
     private readonly quotaAlerts: QuotaAlertsService,
     private readonly billingSync: BillingSyncService,
+    private readonly webhooks: WebhookPublisher,
     private readonly context: RequestContextService,
     private readonly logger: PinoLogger,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -394,6 +396,11 @@ export class FilesService {
           },
           manager,
         );
+        await this.webhooks.publish(manager, companyId, 'file.uploaded', {
+          fileId,
+          datasetId,
+          version,
+        });
 
         return {
           result: {

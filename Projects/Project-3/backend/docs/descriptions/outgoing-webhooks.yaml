@@ -1,0 +1,48 @@
+WebhooksController_create:
+  summary: Register an outgoing webhook
+  description: >-
+    Registers an HTTPS receiver for selected company events. The `whsec_` signing secret is returned
+    once in this response and stored encrypted; save it immediately. Only signed-in admins may manage
+    endpoints. Active endpoint limits are Free 1, Basic 5, and Premium unlimited.
+
+WebhooksController_list:
+  summary: List webhook endpoints
+  description: >-
+    Lists the company's endpoints newest first with offset pagination. Recoverable secret material is
+    never returned. Disabled endpoints remain visible with their failure count and disabled timestamp.
+
+WebhooksController_update:
+  summary: Update a webhook endpoint
+  description: >-
+    Changes the endpoint name, HTTPS URL, subscribed events, or active state. Re-enabling an endpoint
+    resets its terminal failure count and is rejected when the current plan's active-endpoint limit is full.
+
+WebhooksController_remove:
+  summary: Delete a webhook endpoint
+  description: >-
+    Soft-deletes and disables the endpoint while preserving its delivery history. Future business events
+    no longer create deliveries for it.
+
+WebhooksController_rotateSecret:
+  summary: Rotate a webhook signing secret
+  description: >-
+    Replaces the endpoint's AES-256-GCM encrypted secret and returns the new `whsec_` value once. The old
+    secret stops verifying all deliveries created after rotation.
+
+WebhooksController_ping:
+  summary: Queue a test delivery
+  description: >-
+    Queues a signed `ping` event through the same durable retry path as business events. A 202 means the
+    delivery was persisted, not that the receiver has already accepted it.
+
+WebhooksController_deliveries:
+  summary: List endpoint deliveries
+  description: >-
+    Lists delivery status, attempts, receiver status, last error, and completion time newest first. Event
+    payloads intentionally contain identifiers and non-sensitive summaries; fetch full details through the API.
+
+WebhooksController_redeliver:
+  summary: Redeliver a completed event
+  description: >-
+    Resets a succeeded or failed delivery and queues the same immutable event envelope again. Pending deliveries
+    cannot be duplicated, and a disabled endpoint must be re-enabled first.
