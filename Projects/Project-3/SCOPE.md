@@ -414,8 +414,9 @@ name }`. The relay problem is *structurally gone* rather than special-cased,
 because nothing downstream ever compares emails. Not building Apple is a
 scheduling decision now, not an architectural one.
 
-The OAuth callback sits on the NestJS side, and Docker putting both apps on
-one origin means the session cookie is same-site with no token hand-off dance.
+The OAuth callback sits on the NestJS side. It redirects with a 60-second,
+single-use `oauth_exchange` code rather than putting access or refresh tokens
+in a URL; the frontend exchanges that code once and owns the session cookie.
 
 ---
 
@@ -433,10 +434,17 @@ because Gridline has genuinely asynchronous work the user is waiting on:
   company ticks. It makes the multi-tenancy tangible in a way no screenshot
   does.
 - **Audit log live tail** for admins.
+- **Inbox, comments, mentions and file presence.** Persisted events leave only
+  after commit; typing is ephemeral and rate-limited.
 
 Room membership respects the ACL — events about a `restricted` file are
 emitted only to granted users, not the whole company room. The tenant scope
 guard applies to sockets exactly as it does to HTTP.
+
+The handshake stores the verified access-token expiry. The server warns once
+in its final minute, disconnects at expiry, and accepts `auth.refresh` only for
+the same active user before the old session expires. Refresh also rebuilds the
+company, user and admin rooms from the person's live role.
 
 **One real gotcha, resolved:** Next.js `rewrites()` does not proxy WebSocket
 upgrades reliably. `docker-compose.yml` fronts both apps with a **Caddy**
@@ -527,8 +535,8 @@ and the bonus audit/analytics surfaces.
 ### Custom decorators
 
 - **`@CurrentUser()`** — param decorator reading the resolved
-  `{ id, companyId, role }` off the request, populated identically whether
-  `JwtAuthGuard` or `ApiKeyGuard` authenticated the call. Replaces the
+  `AuthenticatedUser` off the request, populated identically whether a JWT
+  session or API key authenticated the call. Replaces the
   untyped `request.userId` in `Datodia/nestjs-starter`'s guard with a shape
   the compiler checks.
 - **`@Public()`** — a metadata flag read by a global auth guard. Auth on
@@ -539,37 +547,30 @@ and the bonus audit/analytics surfaces.
   to forget to add.
 - **`@Roles(...)`** — already load-bearing for RBAC (see *Tenancy + RBAC*).
 - **`@RequireScopes(...)`** — the API-key analogue of `@Roles`, read by
-  `ApiKeyGuard` and composable with it, so a route can demand a role **and**
-  a scope.
+  `ScopesGuard` and composable with roles. API keys are deny-by-default: a
+  route with no declared API-key scope stays closed.
 - **`@IdempotencyKey()`** — pulls the `Idempotency-Key` header, paired with a
-  pipe that validates it's a UUID. This is the concrete mechanism behind the
+  UUID check in the decorator. This is the concrete mechanism behind the
   "idempotency keys" primitive named above: `POST /files` and
   `PATCH /subscriptions/me` store `(idempotencyKey, responseSnapshot)` and
   replay the snapshot on a retry instead of re-running the side effect.
-- **`@ApiPaginatedResponse(Dto)`** — a composed Swagger decorator
-  (`applyDecorators` wrapping `@ApiOkResponse` + `@ApiExtraModels`) so every
-  list route's OpenAPI schema shows the real `{ data, meta }` envelope
-  instead of a bare array, feeding straight into the generated-docs pipeline.
+- **Named page DTO factories** — `OffsetPageOf(Dto)` and `CursorPageOf(Dto)`
+  create concrete response classes, so every list route's OpenAPI schema shows
+  the real `{ data, meta }` envelope and item type.
 
 ### Custom pipes
 
-Two, each solving something the built-ins genuinely can't:
+The shared parsing boundary solves what generic built-ins cannot:
 
-- **A magic-byte `FileValidator`**, plugged into Nest's own
-  `ParseFilePipeBuilder`
-  (`@UploadedFile(new ParseFilePipeBuilder().addValidator(new MagicByteValidator()).build())`).
-  Nest ships a built-in `FileTypeValidator`, but it checks the *reported*
-  MIME type — trivially defeated by renaming a `.exe` to `.csv`, exactly the
-  attack the brief's "CSV, XLS, XLSX only" requirement has to survive.
-  `MagicByteValidator` reads the first bytes via `file-type` instead of
-  trusting `Content-Type`. This is where that check has always belonged: a
-  pipe validates an argument before the handler runs, and the uploaded file
-  *is* an argument.
+- **Spreadsheet byte sniffing** happens before storage. `file-type` identifies
+  ZIP/XLSX and OLE containers; the OLE directory must contain a workbook
+  stream; CSV must be plausible UTF-8 text with no binary controls and must
+  parse. The sent extension and `Content-Type` are never trusted.
 - **`ParseSortPipe`** — turns a raw `?sort=-createdAt,fileName` query string
   into a typed `{ field, direction }[]`, validated against a per-route
-  whitelist supplied via a `@SortableFields([...])` decorator. This can't be
-  a static DTO decorator because the whitelist differs per resource; it has
-  to read route metadata, which is exactly what a `PipeTransform` is for.
+  whitelist supplied to the pipe constructor. `ArgumentMetadata` has no
+  controller/method reference, so a pipe cannot read a route whitelist
+  decorator.
   The whitelist is never wider than the indexed columns below — sorting on
   an unindexed column is a correctness bug waiting to become a performance
   bug.
@@ -674,28 +675,40 @@ pipeline is usually reached for:
 
 `src/core/` holds cross-cutting infra — tenant context, tasks, mail, storage,
 ai, config. Every other top-level folder is a domain module owning its
-entities, DTOs, service, controller. All `status` / `type` / `industry`
-columns below are Postgres enums, created and altered only through
-migrations. Indexing strategy for these tables is specified once, in
+entities, DTOs, service, controller. Stable database vocabularies use
+Postgres enums; extensible notification/audit/webhook vocabularies use text
+validated by closed TypeScript/Zod registries. Indexing strategy is specified once, in
 *Request pipeline & data access* above, rather than repeated per entity.
 
 | Entity | Key fields | Notes |
 |---|---|---|
-| `Company` | name, billingEmail (unique), country, `industry`, `status`, activatedAt | The tenant. `status`: `pending_activation` \| `active` \| `suspended`. `industry`: `finance` \| `e-commerce` \| `healthcare` \| `education` \| `logistics` \| `manufacturing` \| `media` \| `real-estate` \| `technology` \| `other`. `billingEmail` is where invoices and account notices go; it defaults to the registering admin's address but is editable and independent of any `User`. |
-| `User` | companyId, email (**contact** address, unique per company), fullName, `role` (`admin`\|`employee`), `status` (`invited`\|`active`\|`disabled`), activatedAt, disabledAt | Holds **no credentials**; the invite is sent here. `invited` **occupies a seat but is not billed**; `active` is billed by the day; `disabled` frees the seat immediately. `activatedAt`/`disabledAt` are the seat interval the billing calculator reads. |
-| `AuthIdentity` | userId, `provider`, `providerUserId`, email, emailVerified, passwordHash (password provider only), lastUsedAt | `UNIQUE (provider, providerUserId)` — see the identity model below |
-| `AuthToken` | userId, `type` (`activation`\|`invite`\|`password_reset`), tokenHash, expiresAt, consumedAt | Hashed, single-use |
-| `RefreshToken` | userId, tokenHash, expiresAt, revokedAt, replacedById, userAgent, ip | Rotated on every use; presenting a consumed token revokes the **whole family** as replay defence |
-| `Subscription` | companyId (unique), `plan`, currentPeriodStart, currentPeriodEnd, `billingAnchorDay`, `@VersionColumn` | One live row per company |
-| `SubscriptionChange` | companyId, fromPlan, toPlan, effectiveAt, prorationCents | History for billing + audit |
-| `FileAsset` | companyId, uploaderId, originalName, mimeType, sizeBytes, storageKey, `visibility` (`company`\|`restricted`), deletedAt | Soft delete; CSV/XLS/XLSX only |
-| `FileAccessGrant` | fileId, userId | Who may see a `restricted` file |
-| `UsageEvent` | companyId, fileId, periodKey, createdAt | One unit per successful upload |
-| `Invoice` | companyId, periodStart, periodEnd, lineItems (jsonb), totalCents, `status`, dueDate | Finalized at rollover |
-| `AuditLogEntry` | companyId, actorUserId, action, targetType, targetId, metadata, ip | Immutable — no update/delete path exists |
-| `DataQualityReport` | fileId, companyId, `status`, metrics (jsonb), summaryText, model | Bonus |
-| `ApiKey` | companyId, createdByUserId, name, prefix, keyHash, scopes, lastUsedAt, revokedAt | Shown once, stored hashed |
-| `BackgroundTask` | type, payload, attempts, runAfter, status, lastError | Infra |
+| `Company` | name, billingEmail, country, industry, status, activatedAt, isDemo | Tenant root; `suspended` is driven by failed Stripe payment recovery. |
+| `User` | companyId, email, fullName, role, status, activatedAt, disabledAt | Holds no credentials. Invited employees reserve capacity but Basic bills only active employees. |
+| `AuthIdentity` | userId, provider, providerUserId, email, emailVerified, passwordHash, lastUsedAt | Password and Google identities; provider subject is the durable key. |
+| `AuthToken` | userId, type, tokenHash, expiresAt, consumedAt | Hashed single-use activation, invite, password-reset and `oauth_exchange` tokens. |
+| `RefreshToken` | userId, familyId, tokenHash, expiresAt, revokedAt, replacedById, userAgent, ip | Opaque rotation with family replay revocation. |
+| `Subscription` | companyId, plan, currentPeriodStart/End, billingAnchorDay, version | Gridline's live authorization and quota plan. |
+| `SubscriptionChange` | companyId, fromPlan, toPlan, effectiveAt, prorationCents | Immutable plan history; paid proration is owned by Stripe. |
+| `BillingAccount` | companyId, Stripe customer/subscription/item IDs, pending intent, status, graceEndsAt, seatRevision | Provider linkage, pending transitions and dunning state. |
+| `StripeEvent` | stripeEventId, type, stripeCreatedAt, livemode, processedAt | Webhook deduplication and ordering evidence. |
+| `SeatSync` | companyId, sequence, activeEmployees, effectiveAt, status | Ordered, retry-safe Basic seat synchronization. |
+| `Invoice` | companyId, provider, plan, period, lineItems, totalCents, status, Stripe URLs, attempts, paidAt | Legacy local snapshots plus Stripe invoice mirrors. |
+| `SeatInterval` | companyId, userId, activeFrom, activeUntil | Local running estimates and historical seat math. |
+| `FileAsset` | companyId, uploaderId, datasetId, version, isLatest, name, detected MIME, storageKey, visibility, deletedAt | CSV/XLS/XLSX, soft deletion, per-version quota and reports. |
+| `FileAccessGrant` | fileId, userId | Relational access to a restricted file version. |
+| `UsageEvent` | companyId, fileId, periodKey, createdAt | One immutable unit per successful file version; its ID is Stripe's meter-event identifier. |
+| `DataQualityReport` | fileId, companyId, status, metrics, ruleResults, qualityScore, previewRows, narrative | Deterministic profile plus optional AI narrative. |
+| `QualityRule` | companyId, name, columnName, kind, params, severity, enabled | Tenant-owned validation rules, snapshotted into reports. |
+| `FileComment` | companyId, fileId, authorId, parentId, body, editedAt, deletedAt | One-level threads with tombstone deletion. |
+| `FileCommentMention` | companyId, commentId, userId | Checked relational mentions; never an access grant. |
+| `Notification` | companyId, userId, type, payload, readAt | Personal inbox; payload is parsed through a closed Zod union. |
+| `QuotaAlert` | companyId, periodKey, threshold | Unique 80/100 percent alert decision per period. |
+| `ApiKey` | companyId, createdByUserId, name, prefix, keyHash, scopes, lastUsedAt, revokedAt | Personal act-as-user key, shown once and stored hashed. |
+| `WebhookEndpoint` | companyId, URL, events, encrypted secret fields, active, consecutiveFailures | Signed outgoing integration endpoint. |
+| `WebhookDelivery` | companyId, endpointId, eventId, envelope, status, attempts, response, deliveredAt | Durable delivery history, retained for 30 days. |
+| `IdempotencyRecord` | companyId, key, fingerprint, status, response | Request replay record with hourly expiry cleanup. |
+| `AuditLogEntry` | companyId, actorUserId, action, target, metadata, ip | Database-trigger-enforced immutable audit history. |
+| `BackgroundTask` | type, payload, attempts, runAfter, status, lock fields, lastError | Durable email, report, Stripe and outgoing-webhook work. |
 
 Plan rules live in a typed `PLAN_CATALOG` constant, not a table. **`seats =
 admin + employees`** throughout — see *Decisions on an ambiguous brief* for why
@@ -704,8 +717,8 @@ that normalisation was needed:
 | Plan | Seats | Files / period | Price |
 |---|---|---|---|
 | free | 1 — the admin, **0** employees | 10 | `$0` |
-| basic | admin + **0–10** employees (11 max) | 100 | `$5`/employee/mo, **day-prorated** → max `$50` |
-| premium | unlimited | 1000 | `$300`/mo + `$0.50` per file over 1000 |
+| basic | admin + **0–10** employees (11 max) | 100 | `$5`/active employee/month, prorated by Stripe → max `$50` |
+| premium | unlimited | 1000 | `$300`/month + Stripe-metered `$0.50` per file over 1000 |
 
 Every number above is a `PLAN_CATALOG` constant, so the rejected reading of the
 brief (10 seats *including* the admin → max `$45`) is a one-line change.
@@ -739,10 +752,11 @@ revoked on replay) · activation **24 h** · invite **7 d** · password-reset
 a dead end.
 
 **`tenancy/` + RBAC — 3 pts**
-`JwtAuthGuard` populates CLS `{ userId, companyId, role }`; `RolesGuard` +
+`AuthGuard` accepts a JWT session or a scoped personal API key and populates
+CLS `{ userId, companyId, role, apiKeyId? }`; `RolesGuard` +
 `@Roles('admin')`; a `TenantScope` helper so every tenant query is
 `companyId`-bound at one choke point rather than ad hoc `where` clauses. A
-`RequireActiveSubscriptionGuard` on `files/` and `employees/` returns **402**
+`RequireSubscriptionGuard` on `files/` and `employees/` returns **402**
 (pointing at plan selection) whenever the company has no live `Subscription`
 — the brief's *"after logging in, the company must select a plan"*, enforced
 rather than assumed.
@@ -766,17 +780,22 @@ or the Google flow that carries the token in `state` — see the identity
 model. Sets the user `active`; billing for that seat starts now, not at
 invite.
 
-**`subscriptions/` — 5 pts**
+**`subscriptions/` + `payments/` — 5 pts**
 `GET /subscriptions/me` (plan, limits, current usage, seat count, period
 window, next due date) · `POST /subscriptions/me` (the mandatory first choice
 after activation) · `PATCH /subscriptions/me` (upgrade/downgrade).
 
-A plan change **closes the current period immediately**, writes a prorated
-line for the outgoing plan up to the switch instant, and **opens a fresh
-period anchored to the switch date** — the reading that a plan change *is* a
-new subscription activation (see *Decisions*). Downgrading below the target
-plan's seat cap or the period's file count so far is rejected with the numbers
-that need to come down first.
+Free activates immediately. Choosing Basic or Premium creates a Stripe
+Checkout Session and returns **202** with its hosted URL; the local paid plan
+does not change until a signed Stripe webhook retrieves and confirms the
+provider subscription. A newer billing intent supersedes an older Checkout
+session, and a stale completed session is ignored and cancelled.
+
+Paid changes take effect immediately in Stripe, reset the provider billing
+cycle and invoice proration immediately. Paid-to-Free cancels immediately with
+final proration and the webhook applies Free locally. Downgrades still run
+Gridline's seat, usage, file-version, quality-rule and webhook-endpoint guards
+before any provider call.
 
 Enforcement hooks: seat cap checked at invite, file quota checked at upload
 (both read `PLAN_CATALOG`).
@@ -822,15 +841,13 @@ AND ( ctx.role = 'admin'
 A `restricted` file a user cannot see returns **404**, never 403 — its
 existence is not disclosed.
 
-**`billing/` — 4 pts**
-Period = `billingAnchorDay → billingAnchorDay`, clamped for short months
-(anchor 31 → the 28th–30th). A daily scheduled job (also
-`npm run billing:run-cycle`) finalizes the closing `Invoice` and opens the
-next. `GET /billing/current` (running total + line-item breakdown + seat count
-+ due date) · `GET /billing/invoices` (offset-paginated) ·
-`GET /billing/invoices/:id`. All three
-are **admin-only**; a `suspended` company keeps read access to these and
-nothing else.
+**`billing/` + `payments/` — 4 pts**
+`GET /billing/current` returns a running Gridline estimate; `GET
+/billing/invoices` and `GET /billing/invoices/:id` expose legacy local invoices
+and Stripe invoice mirrors; `POST /billing/portal-session` opens Stripe's
+hosted payment-method and invoice-history surface. These routes are admin-only.
+A suspended admin keeps billing reads and portal recovery while ordinary
+product access stays blocked.
 
 Line items:
 - **free** → none.
@@ -840,9 +857,13 @@ Line items:
   simply shortens that employee's interval.
 - **premium** → `$300 + max(0, filesThisPeriod − 1000) × $0.50`.
 
-The math is pure functions in `billing.calculator.ts`, taking **seat
-*intervals*** (not a count) and a fixed clock — the most heavily tested file
-in the repo (see *Decisions* for why intervals).
+The local calculator remains a pure estimate and regression oracle. Stripe is
+the authority for paid cycles, proration, invoices and payment state. Basic
+seat activation/disable writes an ordered durable synchronization record;
+Premium uploads publish meter events after commit using the immutable
+`UsageEvent.id` for idempotency. Failed payment starts a seven-day grace
+period, then the evaluator suspends the company; successful recovery
+reactivates it when no overdue invoice remains.
 
 **Bonus — 2 pts (both built)**
 - **AI data-quality reports.** A background task parses the file
@@ -863,9 +884,10 @@ in the repo (see *Decisions* for why intervals).
 its `prefix`) · `GET /api-keys` (offset-paginated) ·
 `DELETE /api-keys/:id` (revoke).
 
-`ApiKeyGuard` accepts `Authorization: Bearer gl_live_…`, looks the key up by
-hash, checks `revokedAt`, bumps `lastUsedAt`, and populates the **same CLS
-context** as `JwtAuthGuard` — `{ userId: createdByUserId, companyId, role }`,
+`AuthGuard` recognizes `Authorization: Bearer gl_live_…`, delegates to the API
+key authenticator, checks `revokedAt`, throttles `lastUsedAt` writes, and
+populates the **same CLS context** as JWT authentication —
+`{ userId: createdByUserId, companyId, role, apiKeyId }`,
 with `role` and the user's `status` re-read from the DB every request, never
 frozen into the key.
 
@@ -882,8 +904,8 @@ frozen into the key.
   for files that user can see, `PATCH`/`DELETE` on their own uploads,
   `GET /subscriptions/me`. Nothing under `/billing`, `/employees`, `/audit`,
   `/analytics`, `/graphql`.
-- Demote or soft-disable the creator and every key they made loses the
-  matching access on its next request — no revocation sweep.
+- Any live role/status change narrows the key on its next request; a
+  soft-disable also revokes that person's keys in the employee transaction.
 - Admins list and revoke **all** company keys; employees list and revoke
   **only their own**.
 
@@ -904,22 +926,23 @@ go missing.
 
 | # | Scoring line | Pts | Module(s) | Key routes | Proof |
 |---|---|---:|---|---|---|
-| 1 | Auth/registration + JWT + email activation | 6 | `auth/` | `POST /auth/register-company`, `GET /auth/activate`, `POST /auth/login`, `POST /auth/refresh` | e2e: register → (no login yet) → activate → login → refresh → logout |
-| 2 | Company registration & activation | 4 | `auth/`, `companies/` | `POST /auth/register-company`, `GET /auth/activate`, `POST /auth/resend-activation` | e2e: 5-field DTO rejected if incomplete; login blocked while `pending_activation`; expired token → resend works |
-| 3 | Password change + company profile update | 2 | `auth/`, `companies/`, `users/` | `PATCH /auth/password`, `POST /auth/password/forgot`+`/reset`, `PATCH /companies/me`, `PATCH /users/me` | e2e: change password invalidates old refresh family; non-admin gets 403 on `PATCH /companies/me` |
-| 4 | Subscription plans logic + change | 5 | `subscriptions/`, `billing/calculator` | `GET/POST/PATCH /subscriptions/me` | unit: proration on every up/downgrade pair; e2e: upload blocked with 402 before a plan is chosen; downgrade rejected when over cap |
-| 5 | Add/remove employees + email activation | 5 | `employees/`, `auth/` | `POST /employees`, `POST /auth/accept-invite`, `POST /employees/:id/resend-invite`, `DELETE /employees/:id` | e2e: invite → accept (password **and** Google-with-mismatched-email) → soft-disable frees the seat |
-| 6 | RBAC (admin vs employee) | 3 | `tenancy/`, `RolesGuard` | all `/employees` management, `/billing`, `/analytics`, `/audit` | e2e: employee gets 403 on each; `GET /companies/me/members` succeeds for employee but leaks only `{id, fullName}` |
-| 7 | File upload (CSV/XLS/XLSX) + storage | 4 | `files/`, `core/storage` | `POST /files`, `GET /files/:id/download` | unit: magic-byte reject of a renamed `.exe`; e2e against **S3** default: upload → object exists → presigned download |
-| 8 | File view permissions (company / restricted per user) | 3 | `files/`, `TenantScope` | `POST /files` with `grantedUserIds`, `GET /files` | e2e: employee A restricts to B; C gets 404; admin sees it; the visibility predicate has a dedicated unit test |
-| 9 | File deletion + permission change | 2 | `files/` | `PATCH /files/:id`, `DELETE /files/:id` | e2e: uploader re-grants and revokes; delete removes the object and hides the row but keeps history |
-| 10 | Billing module — current month, prices, user count | 4 | `billing/` | `GET /billing/current`, `GET /billing/invoices` | unit: seat-interval + overage math; e2e: `billing:run-cycle` finalizes an invoice with correct line items |
-| 11 | Extra feature not in the brief | 2 | `files/` (AI reports), `audit/`, `analytics/` | `GET /files/:id/report`, `GET /audit`, `GET /analytics/usage` | e2e: upload → report becomes `ready` with metrics; audit trail shows the correlated action chain |
+| 1 | Auth/registration + JWT + email activation | 6 | `auth/` | `POST /auth/register-company`, `GET /auth/activate`, `POST /auth/login`, `POST /auth/refresh` | integration: register → blocked login → activate → login → refresh rotation → logout |
+| 2 | Company registration & activation | 4 | `auth/`, `companies/` | `POST /auth/register-company`, `GET /auth/activate`, `POST /auth/resend-activation` | integration: exact five-field DTO, pending-company block, expiration and resend |
+| 3 | Password change + company profile update | 2 | `auth/`, `companies/`, `users/` | password routes, `PATCH /companies/me`, `PATCH /users/me` | integration: old credentials/families invalidated; employee company edit is 403 |
+| 4 | Subscription plans logic + change | 5 | `subscriptions/`, `payments/`, `billing/` | `GET/POST/PATCH /subscriptions/me`, Stripe webhook | unit + integration: no-plan 402, Free immediate, paid Checkout pending, webhook activation, stale intents, Stripe proration requests, downgrade guards |
+| 5 | Add/remove employees + email activation | 5 | `employees/`, `auth/`, `payments/` | employee and invite routes | integration: password and Google invite acceptance, cap locking, ordered Basic seat sync, soft-disable |
+| 6 | RBAC (admin vs employee) | 3 | global guard chain, `TenantScope` | `/employees`, `/billing`, `/analytics`, `/audit` | route audit + integration: employee 403; member projection exposes only `{id, fullName}` |
+| 7 | File upload (CSV/XLS/XLSX) + storage | 4 | `files/`, `core/storage` | `POST /files`, download route | unit + integration: byte sniffing, local provider seam, AWS driver mock and presigned URL; real S3 is a deployment smoke check |
+| 8 | File view permissions (company / restricted per user) | 3 | `files/`, `TenantScope` | upload/list/detail/report/download/GraphQL | integration: A restricts to B, C receives 404, admin sees it; all relation loaders retain tenant/visibility predicates |
+| 9 | File deletion + permission change | 2 | `files/` | `PATCH /files/:id`, `DELETE /files/:id` | integration: grant/revoke, object removal, soft-delete history and latest-version promotion |
+| 10 | Billing module — current month, prices, user count | 4 | `billing/`, `payments/` | billing reads + portal + Stripe webhook | pure calculator tests plus integration for Stripe invoice mirrors, payment failure, grace, suspension and recovery |
+| 11 | Extra feature not in the brief | 2 | reports, rules, audit, analytics, notifications, versions, comments, webhooks, GraphQL | documented REST/GraphQL/socket surfaces | integration: upload → report/rules/notification/realtime/webhook; audit action coverage and GraphQL parity |
 
-Anything under *Beyond the assignment* and the *Stack* sections (API keys,
-rate limiting, preview, demo mode, Scalar, Observe, WebSockets, GraphQL, MCP)
-earns **zero** additional marks and is cut first under time pressure — see
-*Milestones*.
+Anything under *Beyond the assignment* and the *Stack* sections earns no
+additional rubric points. API keys, throttling, preview, demo mode,
+notifications, rules, versions, Stripe, comments/presence, signed outgoing
+webhooks and the read-only GraphQL graph are implemented portfolio features.
+MCP remains a deliberate, unimplemented stretch.
 
 The pagination, sorting, filtering, aggregation, projection and indexing work
 in *Request pipeline & data access* is not separately graded either — it
@@ -952,10 +975,11 @@ everywhere; Basic is admin + 0–10 employees, billed `$5` per employee (max
 one-line `PLAN_CATALOG` switch and named in the README.
 
 **D3 — mid-cycle seat churn.** The brief bills "per added employee" but never
-says what a mid-month add-then-remove costs. *Chosen:* per-employee
-day-proration — each employee bills for their `active` days in the period.
-*Rejected:* peak-concurrent-seats (a one-day hire costs a full month) and
-count-at-close (invite ten, remove before close, pay nothing — gameable).
+says what a mid-month add-then-remove costs. *Chosen:* active employees are
+synchronized to Stripe in company sequence with the original effective time,
+and Stripe performs the immediate proration. `SeatInterval` retains a local
+estimate and regression check. *Rejected:* peak-concurrent-seats and
+count-at-close, both of which are gameable or unfair.
 
 **D4 — invited-but-not-activated users.** *Chosen:* they occupy a seat (cap
 enforced at invite, so no over-inviting) but bill `$0` until `active`.
@@ -969,11 +993,11 @@ rejected type, a failed magic-byte check or a storage error costs nothing.
 make quota depend on an async task and a possibly-absent AI provider.
 
 **D6 — billing anchor after a plan change.** The brief: payment falls on "the
-date the specific subscription was activated." *Chosen:* a plan change *is* a
-new activation, so it re-anchors to the switch date (with immediate proration
-of the old plan). *Rejected:* the original activation date anchors forever —
-defensible, but makes upgrade/downgrade proration far harder to reason about
-and to test.
+date the specific subscription was activated." *Chosen:* a paid plan change
+is a new Stripe activation, so it resets the billing cycle to the switch date
+and invoices proration immediately. The webhook-confirmed provider state then
+updates the local authorization plan. *Rejected:* preserving the original
+anchor forever.
 
 **D7 — "delete" an employee.** *Chosen:* soft-disable — `status = disabled`,
 identities/refresh tokens/API keys revoked, grants removed, seat freed and
@@ -1147,20 +1171,17 @@ request matching that prefix to `api:4000` before Next ever saw it,
 `/session/*` (`POST /session/login`, `/session/refresh`, `/session/logout`)
 is reserved for Next alone; the backend never registers anything under it.
 
-**Two dependencies not built yet, and expected to fail until they are:**
-`migrate` needs a `migration:run` script (lands with TypeORM in this
-milestone); `api`'s healthcheck needs `GET /health` (lands with
-`@nestjs/terminus`, also this milestone). Until then, `docker compose up`
-correctly fails at the `migrate` step — that's the Docker layer being ahead
-of the code that will satisfy it, not a bug in it.
+The migration runner and `/health` probe are implemented. Compose therefore
+waits for an explicit migration success and then for the API health check;
+neither startup dependency is aspirational anymore.
 
 ---
 
 ## Beyond the assignment — committed
 
-The "extra feature" line is worth 2 points and is already covered twice over
-by the AI reports and the audit log. Everything here is portfolio value rather
-than marks, and all four are **in scope**.
+The "extra feature" line is worth 2 points and is already covered many times
+over. Everything here is portfolio value rather than marks, and the backend
+features listed below are implemented and tested.
 
 **`api-keys/` — personal API keys.** Any active user (admin **or** employee)
 mints a key (`gl_live_…`, shown once, stored hashed) so files can be uploaded
@@ -1169,9 +1190,10 @@ a B2B data platform real, it makes the Scalar try-it panel genuinely usable
 against a live account, and it is the prerequisite for the MCP stretch. A key
 is **act-as-user** — it carries its creator's *live* permissions, scopes
 (`files:read`, `files:write`, `billing:read`) only ever narrow, and a key can
-never mint keys or touch identity. `ApiKeyGuard` populates the same CLS tenant
-context as `JwtAuthGuard`, so every downstream service is unaware of which one
-authenticated. Full rules in *Modules & routes → `api-keys/`*.
+never mint keys or touch identity. `AuthGuard` branches to the API-key
+authenticator and populates the same CLS tenant context, so downstream
+services do not implement a second tenancy model. Full rules in *Modules &
+routes → `api-keys/`*.
 
 **Plan-tiered rate limiting.** `@nestjs/throttler` with a custom storage keyed
 by `companyId`, and limits resolved from `PLAN_CATALOG` — Free throttled
@@ -1191,10 +1213,16 @@ the landing page that logs in a read-only demo admin. Graders and interviewers
 who won't register otherwise never see any of the work — this is the cheapest
 possible insurance against that.
 
+**Product extensions.** Personal notifications and quota alerts; reusable
+data-quality rules; immutable file versions and comparisons; Stripe
+subscriptions and payment recovery; expiring/refreshable socket sessions;
+comments, mentions and deduplicated presence; signed outgoing webhooks; and a
+read-only GraphQL file/report graph. `backend/docs/IMPLEMENTATION_AUDIT.md`
+maps each one to its contract and verification evidence.
+
 **Deferred, deliberately:** branded invoice PDFs, trash + restore, weekly
-usage digest emails. All reasonable, none worth displacing the billing engine.
-2FA, Georgian/English i18n and outbound webhooks are out — i18n in particular
-would double every piece of copy across four branded surfaces.
+usage digest emails, 2FA, Georgian/English i18n, company erasure/export,
+multi-instance Redis coordination and MCP. These are not presented as built.
 
 ---
 
@@ -1222,40 +1250,47 @@ would double every piece of copy across four branded surfaces.
    activate + resend, login/JWT with refresh rotation, **Google OAuth** with
    invite-token binding and account linking, password reset, `PATCH /users/me`
    + `PATCH /companies/me`. *(12)*
-4. **Tenancy + RBAC** — `JwtAuthGuard`, `RolesGuard`, CLS, `TenantScope`,
-   `RequireActiveSubscriptionGuard`. *(3)*
+4. **Tenancy + RBAC** — `AuthGuard`, `ScopesGuard`, `RolesGuard`, CLS,
+   `TenantScope`, `RequireSubscriptionGuard`. *(3)*
 5. **Employees** — invite / accept / **soft-disable** + seat rules + the
    `GET /companies/me/members` split. *(5)*
 6. **Subscriptions** — `PLAN_CATALOG`, the mandatory first choice, upgrade /
    downgrade with immediate proration and re-anchor. *(5)*
-7. **Files** — upload (S3 default) behind the `MagicByteValidator` pipe,
+7. **Files** — upload (S3 default) behind resource-aware byte sniffing
+   (ZIP/XLSX, OLE/XLS workbook stream, and strict CSV text parsing),
    cursor-paginated + sortable + filterable listing, the visibility
    predicate, permission edit, soft-delete. *(9)*
 8. **Billing** — usage tracking, seat-interval calculator, rollover job,
    invoices, overage. *(4)*
 9. **Bonus** — background task runner, the cursor-paginated audit log,
    aggregate analytics queries, AI reports. *(2)*
-10. **Beyond-scope backend** — API keys + `ApiKeyGuard`, plan-tiered
-    throttling, preview endpoint, demo seed.
-11. **Realtime** — Socket.IO gateway, company rooms, ACL-aware emits for
-    file-profiling status and quota.
-12. **GraphQL analytics** — read-only schema, resolvers, depth/complexity
-    limits.
-13. **Frontend** — every surface above, wired to the generated API client,
-    plus the MDX guides at `/docs/*`.
-14. **Hardening** — tests, seed script, `README`s, `.env.example`,
-    `ENV_SECRETS_GUIDE.md`, Neon branch-per-CI, `docs:check` in CI.
-15. **Docker** *(optional)* — compose behind port 3000, with Caddy if the
-    socket needs to share the origin.
-16. **Scalar Agent / MCP** *(stretch, cut first)* — only once the rest is done
-    and the API is deployed somewhere reachable.
+10. **Personal API keys** — act-as-user authentication, live role/status,
+    deny-by-default scopes and revocation. ✅
+11. **Plan throttling + demo mode** — per-company budgets and a read-only seed. ✅
+12. **Realtime core** — ACL-aware file, quota, audit and notification pushes. ✅
+13. **GraphQL analytics** — read-only aggregates with depth/cost bounds. ✅
+14. **Hardening** — telemetry, retention, seed, docs and query-plan proof. ✅
+15. **Notifications + quota alerts** — transactional inbox and threshold alerts. ✅
+16. **Data-quality rules** — plan caps, report snapshots, rebuilds and scores. ✅
+17. **File versions + change detection** — locked sequencing and comparisons. ✅
+17.5. **Stripe subscriptions** — Checkout, webhooks, proration, metering,
+      dunning, suspension and portal recovery. ✅
+17.6. **CloudFront mail branding** — global public assets with text fallback. ✅
+18. **Socket token lifecycle** — refresh, warning and expiry disconnect. ✅
+19. **Comments, mentions and presence** — relational mentions and post-commit events. ✅
+20. **Signed outgoing webhooks** — encrypted secrets, SSRF-resistant delivery,
+    retry/backoff, disable policy and 30-day retention. ✅
+21. **GraphQL files/reports graph** — visibility parity, per-request loaders
+    and cost-scaled connections. ✅
+22. **Frontend** — every surface above, wired to the generated API client,
+    plus the MDX guides at `/docs/*`. ⏳
+23. **Scalar Agent / MCP** *(stretch)* — deliberately not implemented.
 
 **Scope reality check.** This is now well past a course assignment, which is
 the point — but the ordering matters more than it did. **Milestones 3–9 are
-the entire 40 points**; everything from 10 onward is portfolio surface. If
-time compresses, cut from the bottom in this order: MCP → Docker → GraphQL →
-realtime → the beyond-scope four. Do not let an unfinished GraphQL layer cost
-marks that the billing engine was going to earn.
+the entire 40 points**; everything from 10 onward is portfolio surface.
+Backend milestones through 21 are complete. The frontend is the remaining
+product surface; MCP stays outside the committed scope.
 
 ---
 
@@ -1269,14 +1304,17 @@ marks that the billing engine was going to earn.
 | `DATABASE_URL` / `DIRECT_URL` | Neon pooled / direct | local `postgres` container |
 | `STORAGE_DRIVER` | `s3` (+ bucket, region, IAM keys) | `local` disk |
 | `MAIL_TRANSPORT` | `smtp` (+ host, user, pass) | `console` (prints the email) |
+| `APP_PUBLIC_URL` / `ASSETS_BASE_URL` | public app URL / HTTPS CloudFront origin | localhost / absent text-wordmark fallback |
 | `AI_PROVIDER` | `gemini` (+ key, model) | `off` (metrics only, no narrative) |
 | `OBSERVE_APP_KEY` / `_SECRET` | Observe service creds | unset → module not registered |
 | `GOOGLE_CLIENT_ID` / `_SECRET` / `_CALLBACK_URL` | OAuth app creds | unset (password auth only) |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | generated | generated |
+| `JWT_ACCESS_SECRET` | generated, high-entropy secret | generated local secret |
+| `PAYMENTS_PROVIDER` + `STRIPE_*` | `stripe` + catalog, meter, portal and webhook IDs | `none` only for development/tests |
+| `DATA_ENCRYPTION_KEY` | base64 32-byte key | required only when outgoing webhooks are used outside production |
 
 ```bash
 cd Projects/Project-3/backend
-cp .env.example .env             # fill DATABASE_URL, STORAGE_DRIVER=s3, MAIL_TRANSPORT=smtp for the full run
+cp .env.example .env             # fill Neon, S3, SMTP, Stripe, CloudFront and encryption values for the full run
 npm install && npm run migration:run
 npm run seed:all
 npm run dev                      # API :4000 · Scalar reference :4000/reference
@@ -1287,10 +1325,13 @@ client at `/reference` (which doubles as proof the docs are executable, not
 decorative), then again through the UI at `localhost:3000`:
 
 1. `register-company` with the 5-field DTO → try `login` → **blocked**
-   (`pending_activation`) → activation link prints to the console →
+   (`pending_activation`) → activation email arrives through SMTP →
    `activate` → login succeeds.
 2. Before choosing a plan, try `POST /files` → **402**, "select a plan".
-   Then `POST /subscriptions/me` → **basic**.
+   Choose Free and confirm immediate activation. In a fresh company choose
+   Basic: receive **202 + Checkout URL**, confirm the local plan is unchanged,
+   complete Stripe Checkout, then forward the signed webhook and confirm Basic
+   activates. Run `npm run stripe:verify-catalog` before this deployment check.
 3. Invite an employee → invite link in console → complete it with **Google**,
    using a Google account whose address deliberately does *not* match the
    invited work address. It must resolve to the invited user anyway — the
@@ -1305,15 +1346,19 @@ decorative), then again through the UI at `localhost:3000`:
    can now read it → revoke → 404 again.
 6. Rename a `.exe` to `.csv` and upload → rejected on magic bytes, **no**
    `UsageEvent` written.
-7. `GET /billing/current` → the seat line is `$5 × (active-days / period-days)`
-   for that one employee, not a flat `$5`.
-8. Upgrade to **premium**, upload past the 1000 mark → the `$0.50` overage
-   line appears and the response carried `X-Gridline-Quota-Warning`.
+7. `GET /billing/current` → the local estimate reflects the active employee;
+   Stripe's Basic subscription item quantity matches active employees only.
+8. Upgrade to **premium** → Stripe resets the billing cycle and invoices
+   proration immediately; after the webhook, upload past 1000 and confirm the
+   immutable usage-event IDs are accepted as retry-safe meter identifiers.
 9. `DELETE /employees/:id` → the user is `disabled`, drops out of
    `GET /companies/me/members`, their API keys 401, their grants are gone, but
    `FileAsset.uploaderId` and the audit rows still resolve to them.
-10. `npm run billing:run-cycle` → the closing invoice is finalized with the
-    prorated seat line ending on the disable date.
+10. Forward `invoice.finalized`, `invoice.payment_failed` and
+    `invoice.payment_succeeded`: invoice URLs/status mirror locally, grace
+    expiry suspends the company, the billing portal remains reachable, and a
+    successful recovery reactivates it. `npm run billing:run-cycle` remains a
+    regression path for legacy/local estimates, not the paid charge authority.
 11. `GET /audit` shows the correlated trail; `GET /analytics/usage` and the
     `/graphql` analytics query return the same numbers.
 12. Open the Observe dashboard: the upload trace shows the controller span,
@@ -1333,6 +1378,12 @@ decorative), then again through the UI at `localhost:3000`:
 16. `EXPLAIN ANALYZE` the tenant-scoped file-list query directly against Neon
     → an **Index Scan** on `idx_file_asset_company`, not a **Seq Scan** — the
     indexing plan above proven real, not aspirational.
+17. Create a quality rule, upload v1/v2, compare versions, comment with a
+    mention, watch presence in two tabs, register an outgoing webhook and run a
+    GraphQL `files` query. Confirm every restricted-file view agrees with REST.
+18. Let a socket token enter its final minute, observe `session.expiring`,
+    refresh it as the same user, then confirm an unrefreshed socket receives
+    `session.expired` and disconnects.
 
 ```bash
 npm run docs:generate   # regenerates docs/openapi.yaml + per-tag files
@@ -1373,17 +1424,25 @@ npm run test:int        # integration against a throwaway Neon branch
   `PLAN_CATALOG` constants and both are in the README, so a challenged number
   is a one-line change, not a refactor.
 - **AWS S3 is a graded requirement, not optional.** `STORAGE_DRIVER=s3` is the
-  documented default; a real bucket + IAM user must exist before the file
-  milestone is called done. `local` disk is dev-only and must never be the
-  configuration a grader runs.
+  documented default. Automated tests prove the storage contract with a local
+  driver and AWS SDK mocks; the graded/deployment checklist still performs one
+  real bucket upload and presigned download. `local` is development only.
 - **Observe free tier** — 300k events/month, 3-day retention, no logs. Fine for
   a demo, but the SDK must be optional — and "optional" means **not registering
   the module**, not leaving the credentials blank: it does not no-op on empty
   credentials, it 401s on every flush (see the Observe section). `AppModule`
   gates the import on both halves being present, and a module-metadata spec
   holds that. Keep `/health` on `http.ignore`.
-- **Scope** — the brand and frontend surface is large. Milestones 3–9 are the
-  40 graded points and come first; milestone 2 is deliberately early only
-  because retrofitting a design system costs more than front-loading it. The
-  cut order under time pressure is fixed in the scope reality check above:
-  MCP → Docker → GraphQL → realtime → the beyond-scope four.
+- **Single-instance coordination.** Socket rooms and throttling counters are
+  process-local. One API instance is reliable; horizontal scale needs a shared
+  Socket.IO adapter and rate-limit store.
+- **Storage crash window.** A process crash after object upload but before the
+  database commit can leave an orphaned object. Ordinary transaction failures
+  clean up; a production-scale deployment should add an object reconciliation
+  job.
+- **Legacy XLS profiling.** XLS is accepted, stored and downloadable, but only
+  CSV/XLSX are profiled because available legacy parsers carry avoidable
+  security risk.
+- **Scope** — backend milestones through 21 are complete. The remaining large
+  surface is the branded Next.js frontend; MCP stays a named stretch rather
+  than an implied backend feature.

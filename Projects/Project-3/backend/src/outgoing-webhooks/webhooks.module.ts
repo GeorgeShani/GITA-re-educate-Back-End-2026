@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { DatabaseModule } from '#/database/database.module.js';
 import { DeliverWebhookHandler } from './deliver-webhook.handler.js';
+import { WebhookDeliveriesJanitor } from './webhook-deliveries-janitor.service.js';
 import { WebhookDestinationService } from './webhook-destination.service.js';
 import { WebhookPublishingModule } from './webhook-publishing.module.js';
 import { WebhookSecretService } from './webhook-secret.service.js';
@@ -18,6 +19,7 @@ import { WebhooksService } from './webhooks.service.js';
     WebhooksService,
     WebhookSecretService,
     WebhookDestinationService,
+    WebhookDeliveriesJanitor,
     UndiciWebhookTransport,
     { provide: WEBHOOK_TRANSPORT, useExisting: UndiciWebhookTransport },
     DeliverWebhookHandler,

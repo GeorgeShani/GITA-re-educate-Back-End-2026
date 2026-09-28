@@ -273,6 +273,11 @@ describe('database indexes', () => {
         (row) => row.indexname === 'uq_webhook_delivery_endpoint_event',
       )?.indexdef,
     ).toMatch(/UNIQUE.*\("endpointId", "eventId"\)/);
+    expect(
+      indexes.find(
+        (row) => row.indexname === 'idx_webhook_delivery_created_at',
+      )?.indexdef,
+    ).toMatch(/\("createdAt"\)/);
   });
 
   it('deliberately does not index invoice.lineItems', () => {

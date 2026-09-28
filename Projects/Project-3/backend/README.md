@@ -4,6 +4,8 @@ Multi-tenant SaaS backend — NestJS 12 (ESM), TypeORM 1.x, Neon Postgres. See
 [`../SCOPE.md`](../SCOPE.md) for the full design and grading rubric, and
 [`AGENTS.md`](./AGENTS.md) for the coding conventions this codebase follows.
 **New here? Start with [`docs/OVERVIEW.md`](./docs/OVERVIEW.md)** — what the app is, every feature and why it exists.
+For a requirement-by-requirement implementation check, see
+[`docs/IMPLEMENTATION_AUDIT.md`](./docs/IMPLEMENTATION_AUDIT.md).
 
 ## Setup
 
@@ -105,6 +107,7 @@ Every environment variable, where it comes from and what breaks without it:
 override (`.env` says `localhost`): see [`.env.docker.example`](./.env.docker.example).
 Public brand assets use a separate private S3 bucket behind CloudFront OAC; see
 [`docs/CLOUDFRONT_ASSETS.md`](./docs/CLOUDFRONT_ASSETS.md). Customer spreadsheet objects are never exposed by that distribution.
+Production requires the public HTTPS asset origin; development may omit it and render the text wordmark.
 
 ## Seed data
 
@@ -155,6 +158,7 @@ password at all, so there is nothing to guess.
   gets a one-time `whsec_` secret encrypted at rest; deliveries sign `timestamp.body`, reject redirects and private-network DNS,
   and reuse the durable queue's five attempts and exponential backoff. HTTP 410 disables immediately, twenty consecutive
   terminal failures disable automatically, and a successful delivery resets the count. Employees and API keys cannot manage them.
+  Delivery history is retained for 30 days and purged daily; endpoint configuration and encrypted secrets remain.
 - **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
 /notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after

@@ -27,6 +27,7 @@ export type WebhookDeliveryStatus = (typeof WEBHOOK_DELIVERY_STATUSES)[number];
   'endpointId',
   'createdAt',
 ])
+@Index('idx_webhook_delivery_created_at', ['createdAt'])
 export class WebhookDelivery extends BaseEntity {
   @ManyToOne(() => Company, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'companyId' })

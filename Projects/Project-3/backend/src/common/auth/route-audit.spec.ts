@@ -10,7 +10,6 @@ vi.hoisted(() => {
     DATABASE_URL: 'postgres://u:p@localhost:5432/gridline',
     DIRECT_URL: 'postgres://u:p@localhost:5432/gridline',
     JWT_ACCESS_SECRET: 'a'.repeat(32),
-    JWT_REFRESH_SECRET: 'b'.repeat(32),
   };
   for (const [key, value] of Object.entries(defaults)) {
     process.env[key] ??= value;

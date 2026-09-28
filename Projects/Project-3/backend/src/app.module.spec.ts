@@ -17,7 +17,6 @@ const TIER_1_ENV = {
   DATABASE_URL: 'postgres://u:p@localhost:5432/gridline',
   DIRECT_URL: 'postgres://u:p@localhost:5432/gridline',
   JWT_ACCESS_SECRET: 'a'.repeat(32),
-  JWT_REFRESH_SECRET: 'b'.repeat(32),
 };
 
 async function importAppModuleWith(

@@ -11,13 +11,12 @@ export const INVOICE_PROVIDERS = ['local', 'stripe'] as const;
 export type InvoiceProvider = (typeof INVOICE_PROVIDERS)[number];
 
 /**
- * Immutable once written. There is no payment integration, so `finalized` is the
- * only state; `paid`/`void` would be added with one, by migration.
+ * Legacy local invoices are finalized snapshots. Stripe-owned invoices are
+ * mirrored with their provider state, hosted URLs, attempts and payment times.
  *
- * `@Unique(['companyId', 'periodStart'])` is what makes the rollover job
- * idempotent (a second run for the same period fails the constraint instead of
- * double-billing) and, leading with `companyId`, is also the tenant index for
- * listing a company's invoices.
+ * The partial unique index on `(companyId, periodStart)` for `provider = local`
+ * keeps the legacy rollover idempotent without rejecting Stripe proration
+ * invoices that legitimately share a period.
  *
  * `lineItems` is `jsonb` and deliberately unindexed: read only by primary key,
  * never queried into. What comes back is untyped, so it is parsed with

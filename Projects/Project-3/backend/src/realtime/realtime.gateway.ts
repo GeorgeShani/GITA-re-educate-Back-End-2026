@@ -61,7 +61,8 @@ const TYPING_WINDOW_MS = 1_000;
 const TYPING_EVENTS_PER_WINDOW = 5;
 
 /**
- * The Socket.IO endpoint. It is push-only: clients connect, are put in rooms, and listen.
+ * The Socket.IO endpoint. Server events are the product output; the only client commands are
+ * token refresh, visibility-checked file watch/unwatch and rate-limited typing presence.
  *
  * - **Authentication happens in a handshake middleware, before the connection exists**, with
  *   the SAME `AuthenticationService` the REST guard uses (so the user row is re-read: a

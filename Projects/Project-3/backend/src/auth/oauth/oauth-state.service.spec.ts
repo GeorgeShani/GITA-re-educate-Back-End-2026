@@ -14,7 +14,6 @@ function configWith(secret: string) {
     DATABASE_URL: 'postgres://u:p@localhost:5432/gridline',
     DIRECT_URL: 'postgres://u:p@localhost:5432/gridline',
     JWT_ACCESS_SECRET: secret,
-    JWT_REFRESH_SECRET: 'b'.repeat(32),
   });
 }
 

@@ -85,7 +85,6 @@ export const envSchema = z
     DIRECT_URL: requiredString(),
 
     JWT_ACCESS_SECRET: requiredString(16),
-    JWT_REFRESH_SECRET: requiredString(16),
 
     /**
      * Comma-separated. Only matters for local non-Docker development, where the
@@ -249,7 +248,6 @@ export const envSchema = z
     }
     for (const [key, secret] of [
       ['JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET],
-      ['JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET],
     ]) {
       if (secret.length < 32 || secret.toLowerCase().includes('change-me')) {
         issue(
@@ -264,10 +262,9 @@ export const envSchema = z
         'must be stripe in production unless ALLOW_UNPAID_PLANS=true is explicitly set',
       );
     }
-    if (
-      env.ASSETS_BASE_URL &&
-      new URL(env.ASSETS_BASE_URL).protocol !== 'https:'
-    ) {
+    if (!env.ASSETS_BASE_URL) {
+      issue('ASSETS_BASE_URL', 'is required in production');
+    } else if (new URL(env.ASSETS_BASE_URL).protocol !== 'https:') {
       issue('ASSETS_BASE_URL', 'must use https in production');
     }
   })

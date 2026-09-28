@@ -163,8 +163,6 @@ document.
 - A password login email is **globally unique** (`lower(email)` partial unique
   index on password identities); `User.email` is only unique per company. One
   login email = one account; the same person needs a different email per company.
-- `JWT_REFRESH_SECRET` is required by the env schema but currently unused:
-  refresh tokens are opaque and hashed, not JWTs. Kept so `.env` files stay valid.
 - `@RequireScopes(...)` is the API-key analogue of `@Roles`, enforced by `ScopesGuard`
   (Phase 10). A key's effective permission is `(creator's live role) ∩ (key's
 scopes)` — never wider than either. See _Personal API keys_ below.
@@ -212,9 +210,9 @@ scopes)` — never wider than either. See _Personal API keys_ below.
 - **Global guards live in `AccessControlModule`, in order:** `AuthGuard` → `PlanThrottlerGuard` →
   `DemoReadOnlyGuard` → `ScopesGuard` → `RolesGuard` → `RequireSubscriptionGuard`. Each reads what the one before
   produced. `@RequiresSubscription()` (402 with no plan) goes on `employees/` and
-  `files/`; `@AllowWhenSuspended()` marks the few routes (billing reads) a
-  suspended company may still reach. Nothing suspends a company yet — there is no
-  payment integration to fail — so suspension is set by an operator or a seed.
+  `files/`; `@AllowWhenSuspended()` marks the few routes (billing reads and the
+  Stripe portal) a suspended company may still reach. The dunning evaluator
+  suspends overdue companies; successful payment reactivates them.
 - A shared Postgres enum used by several columns (`subscription_plan`) is emitted
   by `migration:generate` once per column, which fails on the second `CREATE TYPE`.
   Hand-edit the migration to create and drop it once.
@@ -335,7 +333,7 @@ email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOO
   body and `X-Gridline-*` headers; same key + different route/caller/body/file bytes →
   422; still running → 409; failed requests are forgotten; claims older than 10 min are
   reclaimed, records older than 24 h expire. On `POST /files` and `PATCH /subscriptions/me`.
-  No janitor deletes old rows yet (Phase 14).
+  `IdempotencyJanitor` deletes expired and abandoned rows hourly.
 - **Cursor lists**: `CursorPageOf(ItemDto)` mixin (like `OffsetPageOf`), `applyCursor(qb,
 alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor needs an
   ordering the index covers), default newest-first. **`createdAt`/`updatedAt` are
@@ -507,15 +505,15 @@ alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor 
 
 ## Realtime _(from Phase 12 of the feature plan)_
 
-- **Socket.IO, push-only** (`src/realtime/`, `@nestjs/websockets` + `platform-socket.io`). Not part of the OpenAPI
+- **Socket.IO, server-led with three validated client commands** (`src/realtime/`, `@nestjs/websockets` + `platform-socket.io`). Not part of the OpenAPI
   document (documented here and in the README). Caddy already forwards `/socket.io/*` to the API. Clients connect
   with `io(url, { auth: { token } })` using the same access token the REST API takes.
 - **Auth is a handshake middleware** (`RealtimeGateway.afterInit` → `server.use`), before a connection exists, using
   the SAME `AuthenticationService` as the REST guard (user row re-read: disabled person / non-active company =
-  refused, one `Unauthorized` message). API keys are refused (an HTTP integration, not a live screen). A socket is
-  validated at connect only; an employee's REMOVAL closes their sockets (`EmployeesService.disable` →
-  `RealtimeEmitter.disconnectUser`). An expired 15-minute token does not close an open socket — the client reconnects
-  with a fresh one; nothing is ever emitted to a room its holder no longer belongs to.
+  refused, one `Unauthorized` message). API keys are refused (an HTTP integration, not a live screen). A socket stores
+  the verified JWT expiry, warns during the final minute and closes at expiry. `auth.refresh` accepts only a fresh token
+  for the same active user before the old session expires, then rebuilds room membership from the live role. Employee
+  removal still closes all of that user's sockets immediately.
 - **Rooms:** `company:<id>`, `user:<id>`, `admins:<companyId>` (admins only) — helpers in `realtime-events.ts`.
 - **Events** (`ServerToClientEvents`): `file.status {fileId,status,error}` (report `queued → profiling → ready |
 failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `audit.appended` (no `metadata`),
@@ -749,8 +747,9 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
 
 ## CloudFront brand assets _(from Phase 17.6 of the product plan)_
 
-- `ASSETS_BASE_URL` is an optional public origin for **brand assets only**. Normalize trailing slashes in configuration and require
-  HTTPS in production. Versioned paths live in `core/mail/brand.ts`; callers never concatenate an arbitrary object key.
+- `ASSETS_BASE_URL` is optional in development and required in production for **brand assets only**. Normalize trailing slashes
+  in configuration and require HTTPS in production. Versioned paths live in `core/mail/brand.ts`; callers never concatenate an
+  arbitrary object key.
 - `TemplateRenderer` owns global `appUrl`/`assetsUrl` context. Do not add branding fields to each `MailMessage` task payload: queued
   business data and deployment presentation are separate concerns.
 - Email templates compile under MJML strict validation for both modes. With an assets origin they render an accessible, fixed-width
@@ -800,6 +799,8 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   five attempts. Count terminal deliveries, not attempts: success resets, twenty terminal failures disable, HTTP 410 disables now.
 - Free allows one active endpoint, Basic five, Premium unlimited. Downgrades and re-enabling take the subscription row lock and
   enforce the target/current cap. Employees and API keys cannot manage endpoints.
+- `WebhookDeliveriesJanitor` purges delivery history after 30 days. The standalone `createdAt` index serves this global daily scan;
+  endpoint definitions and encrypted secrets are not affected.
 
 ## Pagination & sorting _(from Phase 3)_
 
@@ -838,7 +839,7 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   gives `route-audit.spec.ts` a `type` to check (a bare `@ApiOkResponse({ schema })`
   would carry none). Map with `toDto(PageDto, mapPageData(page, ItemDto.from))`.
 
-## File-type validation _(deferred to Milestone 7 — do not build early)_
+## File-type validation
 
 Nest 12's built-in `FileTypeValidator` already performs real magic-byte
 detection by default (`fileTypeFromBuffer` from the `file-type` package,
@@ -847,16 +848,18 @@ defaults to `false`). The premise for a hand-rolled `MagicByteValidator` — "th
 built-in only trusts the reported MIME type" — was true in older Nest
 versions and is **false** for this one. Do not build one.
 
-The real remaining gap: **CSV has no magic bytes at all.**
+CSV has no magic bytes at all.
 `fileTypeFromBuffer` returns `undefined` for plain text (verified: a real CSV
 buffer detects as `undefined`), so relying on the built-in validator alone
 would reject every legitimate CSV upload unless `fallbackToMimetype: true` is
 set — which reopens the exact spoofing hole (a renamed `.exe` claiming
 `Content-Type: text/csv`) this validation exists to close. Closing it
-properly needs a resource-aware heuristic (reject known binary signatures,
-confirm the buffer is plausibly UTF-8 text) that only makes sense once
-`files/`'s real MIME list and upload endpoint exist — build it there, in
-Milestone 7, not as generic HTTP-kit plumbing now.
+properly needs a resource-aware heuristic. That is implemented in
+`files/validation/sniff-spreadsheet.ts`: known binary signatures are rejected,
+the bytes must be plausible UTF-8 text with no disallowed controls, and sample
+rows must parse. XLSX and XLS receive their own container/workbook checks in
+the same boundary. Keep this domain validator; do not replace it with MIME
+fallback.
 
 ## Errors
 
@@ -904,8 +907,10 @@ background_task_type ADD VALUE`), write a `TaskHandler` with a Zod payload
   is a `MailMessage` (`core/mail/mail-message.ts` — one Zod schema per
   template, so a missing variable fails at the boundary). `MailService.send`
   is called only by `SendEmailHandler`. Templates are MJML + Handlebars held
-  as TS strings in `templates.ts` (no asset pipeline), compiled once at boot;
-  brand colors are literal hex in `brand.ts` until the Milestone 2 brand pass.
+  as TS strings in `templates.ts`, compiled once at boot under strict MJML
+  validation. `TemplateRenderer` supplies `appUrl` and the optional CloudFront
+  `assetsUrl` globally; versioned brand paths and fallback wordmark live in
+  `brand.ts`.
 - **Audit**: `AuditService.record({ action, target, metadata }, manager?)`.
   Pass the caller's `manager` so the entry commits with the change it
   describes. Flows with no authenticated request (registration, activation,
@@ -1006,7 +1011,7 @@ every `[x]` below has a corresponding assertion there, not just a claim here.
       (what makes each alert fire once per period, and its tenant index)
 - [x] `quality_rule` — `(companyId, createdAt)`
 - [x] `webhook_endpoint` — `(companyId, createdAt)`; `webhook_delivery` — UNIQUE `(endpointId, eventId)` plus
-      `(companyId, endpointId, createdAt)`
+      `(companyId, endpointId, createdAt)` and `(createdAt)` for retention
 - [x] Deliberately **not** indexed: `invoice.lineItems`,
       `background_task.payload` — opaque jsonb read only by primary key.
       The `background_task` claim index `(status, runAfter)` is infra, not

@@ -7,7 +7,6 @@ function validEnv(overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
     DATABASE_URL: 'postgres://u:p@localhost:5432/gridline',
     DIRECT_URL: 'postgres://u:p@localhost:5432/gridline',
     JWT_ACCESS_SECRET: 'a'.repeat(32),
-    JWT_REFRESH_SECRET: 'b'.repeat(32),
     ...overrides,
   };
 }
@@ -54,11 +53,11 @@ describe('loadConfig', () => {
   it('reports every problem at once, not just the first', () => {
     const env = validEnv();
     delete env.DATABASE_URL;
-    delete env.JWT_REFRESH_SECRET;
+    env.JWT_ACCESS_SECRET = 'short';
 
     const run = () => loadConfig(env);
     expect(run).toThrow(/DATABASE_URL/);
-    expect(run).toThrow(/JWT_REFRESH_SECRET/);
+    expect(run).toThrow(/JWT_ACCESS_SECRET/);
   });
 
   it('enables telemetry only when BOTH credential halves are present', () => {
@@ -129,7 +128,6 @@ describe('loadConfig', () => {
     const production = validEnv({
       NODE_ENV: 'production',
       JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
-      JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
     });
 
     expect(() => loadConfig(production)).toThrow(/MAIL_TRANSPORT/);
@@ -148,13 +146,13 @@ describe('loadConfig', () => {
       validEnv({
         NODE_ENV: 'production',
         JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
-        JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
         MAIL_TRANSPORT: 'smtp',
         SMTP_HOST: 'smtp.example.com',
         SMTP_PORT: '587',
         APP_PUBLIC_URL: 'https://gridline.example.com',
         ALLOW_UNPAID_PLANS: 'true',
         DATA_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+        ASSETS_BASE_URL: 'https://assets.gridline.example.com',
       }),
     );
 
@@ -175,7 +173,6 @@ describe('loadConfig', () => {
         validEnv({
           NODE_ENV: 'production',
           JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
-          JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
           MAIL_TRANSPORT: 'smtp',
           SMTP_HOST: 'smtp.example.com',
           SMTP_PORT: '587',
@@ -187,11 +184,28 @@ describe('loadConfig', () => {
     ).toThrow(/ASSETS_BASE_URL/);
   });
 
+  it('requires a public asset origin in production', () => {
+    expect(() =>
+      loadConfig(
+        validEnv({
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+          MAIL_TRANSPORT: 'smtp',
+          SMTP_HOST: 'smtp.example.com',
+          SMTP_PORT: '587',
+          APP_PUBLIC_URL: 'https://gridline.example.com',
+          ALLOW_UNPAID_PLANS: 'true',
+          DATA_ENCRYPTION_KEY:
+            'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+        }),
+      ),
+    ).toThrow(/ASSETS_BASE_URL/);
+  });
+
   it('requires a 32-byte encryption key and forbids private webhooks in production', () => {
     const production = validEnv({
       NODE_ENV: 'production',
       JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
-      JWT_REFRESH_SECRET: 'production-refresh-secret-that-is-long-enough',
       MAIL_TRANSPORT: 'smtp',
       SMTP_HOST: 'smtp.example.com',
       SMTP_PORT: '587',

@@ -19,7 +19,8 @@ The spreadsheet bucket contains tenant data and must remain reachable only throu
 short-lived presigned URLs.
 
 This repository does not provision AWS resources. Set `ASSETS_BASE_URL` to the CloudFront origin after the separate
-infrastructure exists. Gridline removes trailing slashes and appends the versioned brand path itself.
+infrastructure exists. Production refuses to boot without an HTTPS value; development may omit it. Gridline removes
+trailing slashes and appends the versioned brand path itself.
 
 ## Frontend milestone
 

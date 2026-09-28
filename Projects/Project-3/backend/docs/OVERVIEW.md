@@ -8,6 +8,7 @@ dashboard lives in `../frontend`.
 
 Design and grading scope: [`../../SCOPE.md`](../../SCOPE.md). Coding rules: [`../AGENTS.md`](../AGENTS.md).
 Settings: [`ENV_SECRETS_GUIDE.md`](./ENV_SECRETS_GUIDE.md).
+Implementation proof and remaining limitations: [`IMPLEMENTATION_AUDIT.md`](./IMPLEMENTATION_AUDIT.md).
 
 ## The stack, and why each piece
 
@@ -19,7 +20,8 @@ Settings: [`ENV_SECRETS_GUIDE.md`](./ENV_SECRETS_GUIDE.md).
 | API docs        | OpenAPI generated from code + hand-written prose, rendered with Scalar at `/reference` | Docs cannot drift from the code (`npm run docs:check` fails on drift).                                          |
 | Files           | S3 (or a local folder offline) behind a storage seam                                   | Private bucket, short-lived download links.                                                                     |
 | Background work | A Postgres-backed task queue (not a message broker)                                    | A handful of jobs (email, reports) that must survive a restart; enqueued in the same transaction as the change. |
-| Email           | MJML templates, SMTP or console                                                        | Console transport prints links, so no mail account is needed in development.                                    |
+| Email           | Strict MJML + Handlebars templates, SMTP or console                                   | Branded, responsive transactional mail; console remains development-only.                                       |
+| Payments        | Stripe Billing behind a provider seam                                                  | Checkout, proration, metering, invoice state and payment recovery without coupling tests to Stripe.             |
 | AI              | Gemini behind a seam, or off                                                           | The metrics never depend on an AI account.                                                                      |
 | Realtime        | Socket.IO                                                                              | Live report status and quota meters without polling.                                                            |
 | Extra read API  | GraphQL (read-only)                                                                    | One request for a whole analytics dashboard.                                                                    |
@@ -58,16 +60,19 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 | Plan    | Employees      | Files / period | Price                                              | Requests / minute |
 | ------- | -------------- | -------------- | -------------------------------------------------- | ----------------- |
 | Free    | 0 (admin only) | 10             | $0                                                 | 30                |
-| Basic   | up to 10       | 100            | $5 per employee per month, prorated by active days | 120               |
+| Basic   | up to 10       | 100            | $5 per active employee per month, Stripe-prorated  | 120               |
 | Premium | unlimited      | 1000           | $300 flat + $0.50 per file over 1000               | 600               |
 
-- **Choosing and changing plans.** The first choice is mandatory (file routes answer 402 until then). Changing plan is a
-  **new activation**: the old period is closed and invoiced for the days it ran, and a fresh period starts. A downgrade
-  the company does not fit into (too many employees or files) is refused with the numbers that must come down.
-- **Proration by the day.** An employee who joined ten days into a month pays for the days since, not a flat $5. Seat time
-  comes from `seat_interval` rows opened on accept-invite and closed on removal, so disable-then-reactivate is billed correctly.
-- **Invoices** are produced by the same calculator that shows the running bill, by a **daily rollover job**
-  (`npm run billing:run-cycle`, also scheduled) that is idempotent — running it twice bills nothing twice.
+- **Choosing and changing plans.** Free activates immediately. Basic and Premium return a hosted Stripe Checkout URL and
+  become active only after a verified webhook confirms the provider subscription. A newer intent supersedes older Checkout
+  sessions. Paid changes reset the Stripe billing cycle and invoice proration immediately; paid-to-Free cancels immediately.
+- **Seats and usage synchronize durably.** Basic tracks active employees only through ordered, retry-safe seat records.
+  Premium publishes one meter event per file version, keyed by the immutable usage-event ID.
+- **Invoices and recovery.** Stripe owns paid cycles, invoices and payment state; Gridline mirrors invoice URLs, attempts and
+  timestamps. Failed payment opens a seven-day grace period, then suspends product access. Billing reads and the Stripe portal
+  remain reachable, and successful recovery reactivates the company.
+- **The local calculator remains useful** for the current bill estimate, legacy invoice readability and regression tests, but it
+  is not the paid charge authority when Stripe is enabled.
 - **Money is integer cents** everywhere. _Why:_ no floating point in anything that is charged.
 - **The plans are one constant** (`PLAN_CATALOG`), so a reading of the brief can be changed in one line.
 
@@ -187,6 +192,7 @@ not "forbidden", it is **404**: nothing discloses that it exists.
   nothing; a committed event survives restarts and receives five attempts with exponential backoff.
 - DNS is re-resolved for every attempt, private and metadata networks are rejected, the validated address is pinned for the
   connection, and redirects are refused. HTTP 410 disables immediately; twenty consecutive terminal failures disable an endpoint.
+  Delivery history is purged after 30 days without deleting endpoint configuration.
   _Why:_ companies can automate around Gridline without polling or giving a third party broad account credentials.
 
 ### 11. GraphQL (read-only)
@@ -232,8 +238,7 @@ npm run docs:generate      # regenerate the OpenAPI documents
 ## Known limitations (on purpose, and written down)
 
 - Rate-limit counters are in memory: right for one API instance; scaling out needs a shared store.
-- A live socket is authenticated when it connects; an expired 15-minute token does not close it (removal of a person does).
 - A crash between storing a file and committing its row can leave an orphaned object; there is no sweeper yet.
 - Legacy `.xls` files are accepted and stored but not profiled (the available parsers carry security advisories).
-- No payment processor: invoices are finalized, not collected, and "suspended" is set by an operator.
+- Socket rooms and rate-limit counters are process-local; horizontal scale needs shared Redis-backed adapters.
 - No CI workflow for now; the gate is run by hand.

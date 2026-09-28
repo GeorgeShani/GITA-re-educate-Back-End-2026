@@ -25,7 +25,6 @@ Secrets are marked 🔒: never commit them, never paste them into a ticket, and 
 | `DATABASE_URL` 🔒 | — | Neon console → **pooled** connection string (`-pooler` host), or a local Postgres | What the running app uses. |
 | `DIRECT_URL` 🔒 | — | Neon console → **direct** connection string | Migrations only (`npm run migration:run`); PgBouncer's transaction pooling breaks DDL. For a local Postgres both URLs are the same. |
 | `JWT_ACCESS_SECRET` 🔒 | — | `openssl rand -base64 48` | ≥ 16 characters. Signs 15-minute access tokens (HS256, claims: `sub` only). Changing it signs everyone out. |
-| `JWT_REFRESH_SECRET` 🔒 | — | `openssl rand -base64 48` | ≥ 16 characters. Required but currently unused: refresh tokens are opaque and stored hashed. Kept so existing `.env` files stay valid. |
 | `CORS_ORIGIN` | `http://localhost:3000` | you | Comma-separated. Only matters for non-Docker dev (web on :3000 calling API on :4000). Behind Caddy everything is one origin. |
 | `APP_PUBLIC_URL` | `http://localhost:3000` | you | The browser-facing origin: links in emails (activation, invite, reset, invoice) and the OAuth redirect target. |
 
@@ -53,7 +52,7 @@ Secrets are marked 🔒: never commit them, never paste them into a ticket, and 
 
 | Variable | Default | Notes |
 |---|---|---|
-| `ASSETS_BASE_URL` | absent | Public HTTPS CloudFront origin for versioned brand assets. Trailing slashes are removed. When absent, emails render the text wordmark. |
+| `ASSETS_BASE_URL` | absent in development, required in production | Public HTTPS CloudFront origin for versioned brand assets. Trailing slashes are removed. Development falls back to the text wordmark. |
 
 This origin serves public branding only. It must use a separate private S3 bucket behind CloudFront Origin Access
 Control; never expose or reuse the tenant spreadsheet bucket. See

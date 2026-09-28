@@ -9,7 +9,6 @@ const REQUIRED_CONFIG = {
   DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
   DIRECT_URL: 'postgresql://test:test@localhost:5432/test',
   JWT_ACCESS_SECRET: 'unit-test-access-secret',
-  JWT_REFRESH_SECRET: 'unit-test-refresh-secret',
 };
 
 function destinations(allowPrivate = false): WebhookDestinationService {
