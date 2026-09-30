@@ -10,5 +10,6 @@
  */
 export const environment = {
   production: true,
-  stripePublishableKey: '',
+  stripePublishableKey:
+    'pk_test_51UD4rg8538vFr9IQPpl7Db0AuoLG9s9YfNpnm6AF6v8tRXHjLc44Qt2uCy32nMOySjx56M1nxGSPTIdb7lUwnnCh009oTscZ5d',
 };
