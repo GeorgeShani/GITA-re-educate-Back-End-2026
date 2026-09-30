@@ -142,9 +142,139 @@ function iconSvg() {
 `;
 }
 
+/**
+ * The Scalar API reference theme: the same tokens, as Scalar's own variables, for light and dark. Hex, not oklch, so the
+ * reference renders the same in every browser Scalar supports. Reading mode: a quiet page, ink text, chrome-yellow actions.
+ */
+function scalarThemeTs() {
+  const hex = (theme, role) => oklchToHex(colour(theme, role));
+  const mode = (theme) => `
+  --scalar-color-1: ${hex(theme, 'text')};
+  --scalar-color-2: ${hex(theme, 'text-muted')};
+  --scalar-color-3: ${hex(theme, 'text-subtle')};
+  --scalar-color-accent: ${hex(theme, 'action')};
+  --scalar-background-1: ${hex(theme, 'canvas')};
+  --scalar-background-2: ${hex(theme, 'surface')};
+  --scalar-background-3: ${hex(theme, 'sunken')};
+  --scalar-background-accent: ${hex(theme, 'tag-soft')};
+  --scalar-border-color: ${hex(theme, 'line')};
+  --scalar-button-1: ${hex(theme, 'tag')};
+  --scalar-button-1-hover: ${hex(theme, 'tag-hover')};
+  --scalar-button-1-color: ${hex(theme, 'on-tag')};
+  --scalar-color-green: ${hex(theme, 'pass')};
+  --scalar-color-red: ${hex(theme, 'hold')};
+  --scalar-color-orange: ${hex(theme, 'tab-orange')};
+  --scalar-color-yellow: ${hex(theme, 'caution')};
+  --scalar-color-blue: ${hex(theme, 'tab-blue')};
+  --scalar-sidebar-background-1: ${hex(theme, 'canvas')};
+  --scalar-sidebar-color-1: ${hex(theme, 'text')};
+  --scalar-sidebar-color-2: ${hex(theme, 'text-muted')};
+  --scalar-sidebar-item-hover-background: ${hex(theme, 'sunken')};
+  --scalar-sidebar-item-active-background: ${hex(theme, 'tag-soft')};
+  --scalar-sidebar-border-color: ${hex(theme, 'line')};
+  --scalar-sidebar-search-background: ${hex(theme, 'surface')};
+  --scalar-sidebar-search-border-color: ${hex(theme, 'line-strong')};
+  --scalar-sidebar-search-color: ${hex(theme, 'text-subtle')};
+  --scalar-scrollbar-color: ${hex(theme, 'line-strong')};
+  --scalar-scrollbar-color-active: ${hex(theme, 'text-subtle')};`;
+
+  const css = `@import url('https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=EB+Garamond:wght@400..800&family=Martian+Mono:wght@100..800&display=swap');
+
+:root {
+  --scalar-font: 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  --scalar-font-code: 'Martian Mono', ui-monospace, monospace;
+  --scalar-radius: 3px;
+  --scalar-radius-lg: 4px;
+  --scalar-radius-xl: 6px;
+  --scalar-border-width: 1px;
+}
+
+.light-mode {${mode('light')}
+}
+
+.dark-mode {${mode('dark')}
+}
+
+/* Section titles are condensed, heavy and uppercase, like the site's headlines. */
+h1,
+h2 {
+  font-variation-settings: 'wdth' 64;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+}
+
+/*
+ * The title block. The two pills that sat above the title are hidden, the title is much larger, and the version and
+ * OpenAPI number come back as two stamps beneath it. Their text is added per request in scalar.ts, from the served
+ * document, so it cannot go stale.
+ */
+.introduction-section .section-content > .flex.gap-1\\.5 {
+  display: none;
+}
+
+.introduction-section .section-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.introduction-section .section-header-label {
+  order: 0;
+  flex: 0 0 100%;
+  margin: 0;
+  font-size: clamp(3.5rem, 7vw, 6rem);
+  line-height: 0.9;
+}
+
+.introduction-section .section-header::before,
+.introduction-section .section-header::after {
+  order: 1;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--scalar-color-1);
+  border-radius: 2px;
+  font-family: var(--scalar-font);
+  font-size: 0.75rem;
+  font-weight: 700;
+  font-variation-settings: 'wdth' 72;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.introduction-section .section-header::before {
+  background: var(--scalar-button-1);
+  color: var(--scalar-button-1-color);
+}
+
+.introduction-section .section-header::after {
+  background: var(--scalar-background-2);
+  color: var(--scalar-color-1);
+}
+
+a {
+  text-underline-offset: 0.2em;
+}
+
+::selection {
+  background: ${hex('light', 'tag')};
+  color: ${hex('light', 'on-tag')};
+}`;
+
+  return `// ${HEADER}
+// The Scalar API reference theme (see scalar.ts). Colours and fonts come from design/tokens.json.
+export const SCALAR_CUSTOM_CSS = ${JSON.stringify(css)};
+
+/** The Gridline mark as a data URI, for the reference's browser tab. */
+export const SCALAR_FAVICON = ${JSON.stringify(`data:image/svg+xml;base64,${Buffer.from(iconSvg()).toString('base64')}`)};
+`;
+}
+
 const OUTPUTS = [
   { path: join(ROOT, 'frontend', 'src', 'styles', 'tokens.css'), content: tokensCss() },
   { path: join(ROOT, 'frontend', 'src', 'app', 'icon.svg'), content: iconSvg() },
+  { path: join(ROOT, 'backend', 'src', 'docs', 'scalar-theme.ts'), content: scalarThemeTs() },
 ];
 
 // ---------- run ----------

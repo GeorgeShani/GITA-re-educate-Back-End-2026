@@ -48,7 +48,6 @@ export function RuleList() {
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-sm text-text-muted">5 of 8 weighted points passed</p>
         <p className="text-sm text-text-muted">
-          Score{" "}
           <span className="num font-mono text-xl font-semibold text-text">
             {score}
           </span>

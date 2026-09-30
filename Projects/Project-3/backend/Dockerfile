@@ -34,6 +34,8 @@ FROM base AS runtime
 ENV NODE_ENV=production
 COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+# The API reference at /reference merges the hand-written prose in docs/descriptions/*.yaml into the served document.
+COPY --from=build /app/docs/descriptions ./docs/descriptions
 COPY package.json ./
 USER node
 EXPOSE 4000

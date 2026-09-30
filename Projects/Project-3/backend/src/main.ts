@@ -9,6 +9,7 @@ import { AppModule, ObserveInstrument } from './app.module.js';
 import { APP_CONFIG } from './config/load-config.js';
 import type { AppConfig } from './config/env.schema.js';
 import { CSP_NONCE_LOCALS_KEY } from './docs/csp-nonce.js';
+import { mergeProse } from './docs/prose.js';
 import { mountScalarReference } from './docs/scalar.js';
 import { buildOpenApiDocument } from './docs/swagger-document.js';
 
@@ -97,7 +98,20 @@ async function bootstrap(): Promise<void> {
   // Swagger UI is never mounted — @nestjs/swagger is used purely as the
   // generator here. Scalar is the renderer, mounted at /reference (never
   // /docs, reserved for the frontend's MDX guides).
-  mountScalarReference(app, buildOpenApiDocument(app));
+  // The prose in docs/descriptions/*.yaml is merged into the SERVED document as well as into the generated YAML. Without
+  // this the reference showed operations with no summary or description at all. A missing folder degrades to "no prose"
+  // with a warning rather than stopping the API.
+  const document = buildOpenApiDocument(app);
+  try {
+    mergeProse(document);
+  } catch (error) {
+    app
+      .get(Logger)
+      .warn(
+        `API reference prose could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
+      );
+  }
+  mountScalarReference(app, document);
 
   // Deliberately NO setGlobalPrefix. Caddy's `handle_path /api/*` already strips
   // that segment before forwarding, so the app serves unprefixed routes; adding
