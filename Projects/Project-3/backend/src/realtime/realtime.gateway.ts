@@ -59,6 +59,19 @@ const fileAction = z.object({ fileId: z.uuid() });
 const typingAction = z.object({ fileId: z.uuid(), isTyping: z.boolean() });
 const TYPING_WINDOW_MS = 1_000;
 const TYPING_EVENTS_PER_WINDOW = 5;
+/**
+ * `file.watch` / `file.unwatch` cost a database read and a room-wide presence broadcast each, and Socket.IO events
+ * bypass the HTTP throttler, so they are limited here: a socket may follow at most this many files, and may issue this
+ * many watch commands per window.
+ */
+export const MAX_WATCHED_FILES_PER_SOCKET = 20;
+const WATCH_WINDOW_MS = 10_000;
+const WATCH_ACTIONS_PER_WINDOW = 20;
+
+interface ActionWindow {
+  startedAt: number;
+  count: number;
+}
 
 /**
  * The Socket.IO endpoint. Server events are the product output; the only client commands are
@@ -89,10 +102,8 @@ export class RealtimeGateway
   server!: RealtimeServer;
   private sweepTimer: NodeJS.Timeout | undefined;
   private readonly watchedFiles = new Map<string, Set<string>>();
-  private readonly typingWindows = new Map<
-    string,
-    { startedAt: number; count: number }
-  >();
+  private readonly typingWindows = new Map<string, ActionWindow>();
+  private readonly watchWindows = new Map<string, ActionWindow>();
 
   constructor(
     private readonly authentication: AuthenticationService,
@@ -142,6 +153,7 @@ export class RealtimeGateway
     const watched = this.watchedFiles.get(socket.id) ?? new Set<string>();
     this.watchedFiles.delete(socket.id);
     this.typingWindows.delete(socket.id);
+    this.watchWindows.delete(socket.id);
     for (const fileId of watched) void this.emitPresence(fileId);
   }
 
@@ -219,6 +231,10 @@ export class RealtimeGateway
     @MessageBody() payload: unknown,
     @Ack() acknowledge: SocketActionAcknowledgement,
   ): Promise<void> {
+    if (!this.allowWatchAction(socket.id)) {
+      acknowledge({ ok: false, error: 'rate_limited' });
+      return;
+    }
     const parsed = fileAction.safeParse(payload);
     if (
       !parsed.success ||
@@ -236,8 +252,15 @@ export class RealtimeGateway
       if (this.isExpired(socket, this.clock.now())) this.expire(socket);
       return;
     }
-    await socket.join(fileRoom(parsed.data.fileId));
     const watched = this.watchedFiles.get(socket.id) ?? new Set<string>();
+    if (
+      !watched.has(parsed.data.fileId) &&
+      watched.size >= MAX_WATCHED_FILES_PER_SOCKET
+    ) {
+      acknowledge({ ok: false, error: 'too_many_files' });
+      return;
+    }
+    await socket.join(fileRoom(parsed.data.fileId));
     watched.add(parsed.data.fileId);
     this.watchedFiles.set(socket.id, watched);
     acknowledge({ ok: true });
@@ -251,6 +274,10 @@ export class RealtimeGateway
     @MessageBody() payload: unknown,
     @Ack() acknowledge: SocketActionAcknowledgement,
   ): Promise<void> {
+    if (!this.allowWatchAction(socket.id)) {
+      acknowledge({ ok: false, error: 'rate_limited' });
+      return;
+    }
     const parsed = fileAction.safeParse(payload);
     if (!parsed.success || this.isExpired(socket, this.clock.now())) {
       acknowledge({ ok: false, error: 'unauthorized' });
@@ -274,7 +301,13 @@ export class RealtimeGateway
       !parsed.success ||
       this.isExpired(socket, this.clock.now()) ||
       !this.watchedFiles.get(socket.id)?.has(parsed.data.fileId) ||
-      !this.allowTyping(socket.id, this.clock.now())
+      !this.allow(
+        this.typingWindows,
+        socket.id,
+        this.clock.now(),
+        TYPING_EVENTS_PER_WINDOW,
+        TYPING_WINDOW_MS,
+      )
     ) {
       return;
     }
@@ -345,13 +378,30 @@ export class RealtimeGateway
     socket.disconnect(true);
   }
 
-  private allowTyping(socketId: string, now: Date): boolean {
-    const current = this.typingWindows.get(socketId);
-    if (!current || now.getTime() - current.startedAt >= TYPING_WINDOW_MS) {
-      this.typingWindows.set(socketId, { startedAt: now.getTime(), count: 1 });
+  private allowWatchAction(socketId: string): boolean {
+    return this.allow(
+      this.watchWindows,
+      socketId,
+      this.clock.now(),
+      WATCH_ACTIONS_PER_WINDOW,
+      WATCH_WINDOW_MS,
+    );
+  }
+
+  /** A fixed window per socket: at most `limit` actions in each `windowMs`. */
+  private allow(
+    windows: Map<string, ActionWindow>,
+    socketId: string,
+    now: Date,
+    limit: number,
+    windowMs: number,
+  ): boolean {
+    const current = windows.get(socketId);
+    if (!current || now.getTime() - current.startedAt >= windowMs) {
+      windows.set(socketId, { startedAt: now.getTime(), count: 1 });
       return true;
     }
-    if (current.count >= TYPING_EVENTS_PER_WINDOW) return false;
+    if (current.count >= limit) return false;
     current.count += 1;
     return true;
   }

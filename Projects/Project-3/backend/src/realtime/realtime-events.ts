@@ -86,7 +86,8 @@ export interface PresenceChangedEvent {
 }
 
 export type SocketActionResult =
-  { ok: true } | { ok: false; error: 'unauthorized' };
+  | { ok: true }
+  | { ok: false; error: 'unauthorized' | 'rate_limited' | 'too_many_files' };
 export type SocketActionAcknowledgement = (result: SocketActionResult) => void;
 
 /** What the server pushes. The client sends nothing but its handshake. */

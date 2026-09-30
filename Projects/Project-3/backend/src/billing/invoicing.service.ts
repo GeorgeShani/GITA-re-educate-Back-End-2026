@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { EntityManager } from 'typeorm';
+import { type EntityManager, IsNull, Not } from 'typeorm';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
@@ -8,6 +8,7 @@ import { NotificationsService } from '#/notifications/notifications.service.js';
 import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
+import { BillingAccount } from '#/payments/billing-account.entity.js';
 import type { Subscription } from '#/subscriptions/subscription.entity.js';
 import { Invoice } from './invoice.entity.js';
 import { nextPeriod, startOfUtcDay } from './period.js';
@@ -48,6 +49,8 @@ export class InvoicingService {
     subscription: Subscription,
     closeAt: Date,
   ): Promise<Invoice | null> {
+    // Stripe collects for a company on a Stripe subscription, so a local invoice would be a second, uncollectable one.
+    if (await this.isStripeManaged(manager, subscription.companyId)) return null;
     const start = subscription.currentPeriodStart;
     const end = new Date(
       Math.min(
@@ -154,6 +157,13 @@ export class InvoicingService {
     );
   }
 
+  /** A company whose paid plan follows a Stripe subscription: its periods, invoices and payments belong to Stripe. */
+  isStripeManaged(manager: EntityManager, companyId: string): Promise<boolean> {
+    return manager
+      .getRepository(BillingAccount)
+      .exists({ where: { companyId, stripeSubscriptionId: Not(IsNull()) } });
+  }
+
   /**
    * Invoices and steps past every period that has already ended by `now`, one at
    * a time, leaving `subscription` on the period that contains `now`. Called
@@ -166,6 +176,9 @@ export class InvoicingService {
     subscription: Subscription,
     now: Date,
   ): Promise<Invoice[]> {
+    // The period of a Stripe-managed company is Stripe's: its webhook moves it, never this loop. Rolling it here while
+    // a webhook is late would invent a period, an invoice, an email and an `invoice.finalized` event Stripe knows nothing about.
+    if (await this.isStripeManaged(manager, subscription.companyId)) return [];
     const invoices: Invoice[] = [];
     let advanced = false;
 

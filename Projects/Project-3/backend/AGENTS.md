@@ -728,8 +728,30 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   services never import the Stripe SDK directly. `PAYMENTS_PROVIDER=none` is an explicit local-development mode, not a production
   billing implementation.
 - A paid plan request first writes a `BillingAccount.pendingIntentId`; the local plan stays unchanged until a verified Stripe webhook
-  retrieves and applies the provider's current subscription. A newer intent supersedes older Checkout sessions. A stale completed
-  session is ignored and its accidental Stripe subscription is cancelled.
+  retrieves and applies the provider's current subscription. A newer intent supersedes older Checkout sessions.
+- **Which subscription an event is about decides what it does, never the order events arrive in** (`payments/subscription-adoption.ts`,
+  pure, unit-tested for every ordering). Stripe does not order events, and `checkout.session.completed` routinely arrives AFTER
+  `customer.subscription.created` and `invoice.payment_succeeded`. The company's own (adopted) subscription is always just refreshed
+  from its status. A SECOND live subscription while one is adopted — or a completed Checkout for a session that is no longer the
+  pending one — is cancelled and never applied; its later `deleted` event and its invoices change nothing (so cancelling the stray one
+  cannot downgrade the real one or start a grace period). With nothing adopted yet, only the pending session's subscription, or one whose
+  plan matches the pending request, is adopted. A status of `incomplete` (or one this code has never seen) changes nothing;
+  `canceled`/`incomplete_expired` end the plan; `past_due`/`unpaid`/`paused` start the grace period.
+- **The cancellation of a stray subscription is a queued task** (`cancel_stripe_subscription`, `CancelStripeSubscriptionHandler`),
+  enqueued in the SAME transaction as the webhook event. It used to be a call made after that transaction, so a Stripe outage there
+  lost it for good (the retried event was a "duplicate") and the customer kept paying. It retries with backoff and is a no-op for a
+  subscription that has already ended (`ignoreIfEnded`).
+- **Stripe-managed companies are never rolled by the local engine.** `InvoicingService.rollForward`/`closePeriod` do nothing for a
+  company with a `billing_account.stripeSubscriptionId` (`isStripeManaged`), and the nightly `BillingCycleService` query excludes them. A
+  late webhook used to be enough to produce a second, uncollectable local invoice, email and `invoice.finalized` event. A company
+  whose Stripe subscription has ended (`stripeSubscriptionId` null, Free) is the local engine's again.
+- **A payment is a "recovery" only when it recovers something** (`applyPayment`): the account was `past_due` or the company suspended. Only
+  then does "payment received" go out. A past-due account is brought back ONLY by a payment (never by a subscription refresh, which
+  would erase the state the payment must see), and only when no other Stripe invoice is still overdue (`open`/`uncollectible` with
+  attempts). The same payment reported as both `invoice.paid` and `invoice.payment_succeeded` is audited and mailed once.
+- **Duplicate detection is narrow.** A redelivered event is answered before any Stripe API call; the unique index on `stripeEventId`
+  stays the authority, and ONLY a violation of that insert is a duplicate (`DuplicateStripeEvent`). Any other unique violation in the
+  transaction is a real error (500, so Stripe retries) — never a silent 200 that loses the event.
 - `POST /webhooks/stripe` is public because Stripe cannot authenticate as a Gridline user, but it verifies the signature against the
   exact Nest raw body. Processing inserts `StripeEvent` in the same transaction for deduplication, resolves the tenant from the
   stored Stripe customer ID (never metadata), and retrieves current Stripe state before applying an event so out-of-order delivery
@@ -786,6 +808,13 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
 - Persisted `comment.created|updated|deleted` events are emitted only after the transaction returns. `file.watch` joins a
   visibility-checked `file:<id>` room; presence deduplicates user IDs across tabs. `comment.typing` is ephemeral and limited to five
   events per second per socket. File access changes re-check and evict room members immediately.
+- **`file.watch`/`file.unwatch` are bounded**, because Socket.IO events bypass the HTTP throttler and each one costs a database read
+  and a room-wide presence broadcast: at most `MAX_WATCHED_FILES_PER_SOCKET` (20) files per socket and 20 watch commands per 10 s
+  window (app clock); the acknowledgement says `too_many_files` / `rate_limited`. Watching a file already followed is not a new one.
+- **A comment edit re-checks `deletedAt` AFTER taking the row lock** (409): a delete that committed while the edit waited must win, or
+  the edit writes a body back onto a deleted comment. The early check alone is only a fast path.
+- GraphQL `FileType.versions` returns at most `MAX_VERSIONS_PER_FILE` (50, newest first), the number its complexity is priced at;
+  the whole history is `GET /files/:id/versions`.
 
 ## Signed outgoing webhooks _(from Phase 20 of the product plan)_
 
@@ -795,10 +824,15 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   `deliver_webhook` tasks therefore commit or roll back together. Payloads are versioned, Zod-validated, non-sensitive summaries;
   receivers use an API key for details.
 - Delivery signs `timestamp.body` with HMAC-SHA256, resolves DNS on every attempt, rejects every private/loopback/link-local/
-  metadata/CGNAT/ULA result, pins one validated address for the connection, follows no redirects, and uses the shared task queue's
-  five attempts. Count terminal deliveries, not attempts: success resets, twenty terminal failures disable, HTTP 410 disables now.
+  metadata/CGNAT/ULA/documentation/NAT64 result, pins each validated address for its connection, follows no redirects, and uses the
+  shared task queue's five attempts. A host with several addresses (IPv6 + IPv4) is tried address by address, moving on ONLY after a
+  connection-phase failure (`sendToFirstReachable`: refused/unreachable/connect timeout) — never after a request may have reached the
+  receiver, which could then process the POST twice. One blocked address refuses the whole host. Count terminal deliveries, not attempts: success resets, twenty terminal failures disable, HTTP 410 disables now.
 - Free allows one active endpoint, Basic five, Premium unlimited. Downgrades and re-enabling take the subscription row lock and
   enforce the target/current cap. Employees and API keys cannot manage endpoints.
+- Known limits (design gaps, not bugs): a secret is not tagged with a key version, so changing `DATA_ENCRYPTION_KEY` invalidates
+  every stored secret until they are rotated; and rotating one endpoint's secret has no overlap window, so retries in flight are
+  signed with the new secret.
 - `WebhookDeliveriesJanitor` purges delivery history after 30 days. The standalone `createdAt` index serves this global daily scan;
   endpoint definitions and encrypted secrets are not affected.
 

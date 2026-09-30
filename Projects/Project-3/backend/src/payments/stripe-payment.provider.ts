@@ -118,6 +118,10 @@ export class StripePaymentProvider implements PaymentProvider {
   }
 
   async cancelSubscription(request: SubscriptionCancellationRequest): Promise<void> {
+    if (request.ignoreIfEnded) {
+      const current = await this.stripe.subscriptions.retrieve(request.subscriptionId);
+      if (current.status === 'canceled' || current.status === 'incomplete_expired') return;
+    }
     await this.stripe.subscriptions.cancel(
       request.subscriptionId,
       { invoice_now: true, prorate: true },

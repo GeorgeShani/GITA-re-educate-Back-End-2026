@@ -14,6 +14,12 @@ const lookupResultsSchema = z.array(
 
 const blocked = new BlockList();
 blocked.addSubnet('0.0.0.0', 8, 'ipv4');
+// Reserved or documentation-only: never a real receiver, and some networks route them inward.
+blocked.addSubnet('192.0.0.0', 24, 'ipv4');
+blocked.addSubnet('192.0.2.0', 24, 'ipv4');
+blocked.addSubnet('198.51.100.0', 24, 'ipv4');
+blocked.addSubnet('203.0.113.0', 24, 'ipv4');
+blocked.addSubnet('240.0.0.0', 4, 'ipv4');
 blocked.addSubnet('10.0.0.0', 8, 'ipv4');
 blocked.addSubnet('100.64.0.0', 10, 'ipv4');
 blocked.addSubnet('127.0.0.0', 8, 'ipv4');
@@ -27,6 +33,10 @@ blocked.addSubnet('::1', 128, 'ipv6');
 blocked.addSubnet('fc00::', 7, 'ipv6');
 blocked.addSubnet('fe80::', 10, 'ipv6');
 blocked.addSubnet('ff00::', 8, 'ipv6');
+blocked.addSubnet('100::', 64, 'ipv6');
+blocked.addSubnet('2001:db8::', 32, 'ipv6');
+// NAT64: an address here is an IPv4 address in disguise, which this list would otherwise never get to check.
+blocked.addSubnet('64:ff9b::', 96, 'ipv6');
 
 export interface PinnedDestination {
   url: URL;
@@ -64,10 +74,16 @@ export class WebhookDestinationService {
     return url;
   }
 
-  async resolve(value: string): Promise<PinnedDestination> {
+  /**
+   * EVERY address the host resolves to, each vetted and each pinned, in the order the resolver gave them. The caller
+   * tries them in turn (`sendToFirstReachable`): pinning only the first made a host whose first record is unreachable
+   * from here (an IPv6 address on a machine with no IPv6) fail every delivery although the host was fine.
+   * One blocked address refuses the whole host: a name that resolves partly to a private address is not trusted.
+   */
+  async resolveAll(value: string): Promise<PinnedDestination[]> {
     const url = this.parseUrl(value);
     const results = lookupResultsSchema.parse(
-      await lookup(url.hostname, { all: true, verbatim: true }),
+      await this.lookupHost(url.hostname),
     );
     if (results.length === 0)
       throw new Error('Webhook destination resolved to no addresses.');
@@ -79,19 +95,23 @@ export class WebhookDestinationService {
         'Webhook destination resolves to a private or reserved address.',
       );
     }
-    const selected = results[0];
-    if (!selected)
-      throw new Error('Webhook destination resolved to no addresses.');
-    const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
-      if (options.all) callback(null, [selected]);
-      else callback(null, selected.address, selected.family);
-    };
-    return {
-      url,
-      address: selected.address,
-      family: selected.family,
-      lookup: pinnedLookup,
-    };
+    return results.map((selected) => {
+      const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
+        if (options.all) callback(null, [selected]);
+        else callback(null, selected.address, selected.family);
+      };
+      return {
+        url,
+        address: selected.address,
+        family: selected.family,
+        lookup: pinnedLookup,
+      };
+    });
+  }
+
+  /** The resolver, as its own method so a spec can hand back an answer no real DNS name would give. */
+  protected lookupHost(hostname: string): Promise<unknown> {
+    return lookup(hostname, { all: true, verbatim: true });
   }
 }
 

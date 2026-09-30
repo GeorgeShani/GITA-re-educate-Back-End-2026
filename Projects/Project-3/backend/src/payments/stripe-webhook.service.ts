@@ -1,5 +1,11 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { DataSource, type EntityManager } from 'typeorm';
+import {
+  DataSource,
+  type EntityManager,
+  In,
+  MoreThan,
+  Not,
+} from 'typeorm';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
@@ -22,6 +28,7 @@ import {
   type VerifiedPaymentEvent,
 } from './payment-provider.js';
 import { StripeEvent } from './stripe-event.entity.js';
+import { decideSubscriptionAction } from './subscription-adoption.js';
 
 export interface StripeWebhookResult {
   duplicate: boolean;
@@ -32,6 +39,13 @@ interface RetrievedObjects {
   subscription: PaymentSubscription | null;
   invoice: PaymentInvoice | null;
 }
+
+/**
+ * Thrown when — and only when — inserting the event's own row hits its unique index: Stripe delivered this event before.
+ * Any OTHER unique violation inside the transaction is a real failure and must surface (Stripe then retries), not be
+ * mistaken for a duplicate and answered 200 with the event silently lost.
+ */
+class DuplicateStripeEvent extends Error {}
 
 @Injectable()
 export class StripeWebhookService {
@@ -56,17 +70,17 @@ export class StripeWebhookService {
       throw new BadRequestException('Invalid Stripe webhook signature.');
     }
 
+    // A redelivery is answered before any Stripe API call is made for it. The unique index below stays the
+    // authoritative guard: two concurrent deliveries of one event can both pass this read.
+    const seen = await this.dataSource
+      .getRepository(StripeEvent)
+      .exists({ where: { stripeEventId: event.id } });
+    if (seen) return { duplicate: true, applied: false };
+
     const retrieved = await this.retrieve(event);
-    let staleSubscriptionId: string | null = null;
     try {
-      const result = await this.dataSource.transaction(async (manager) => {
-        await manager.insert(StripeEvent, {
-          stripeEventId: event.id,
-          type: event.type,
-          stripeCreatedAt: event.createdAt,
-          livemode: event.livemode,
-          processedAt: this.clock.now(),
-        });
+      return await this.dataSource.transaction(async (manager) => {
+        await this.recordEvent(manager, event);
 
         const account = event.customerId
           ? await manager.findOne(BillingAccount, {
@@ -76,47 +90,90 @@ export class StripeWebhookService {
           : null;
         if (!account) return { duplicate: false, applied: false };
 
-        if (
-          event.type === 'checkout.session.completed' &&
-          event.checkoutSessionId !== account.pendingCheckoutSessionId
-        ) {
-          staleSubscriptionId = event.subscriptionId;
-          return { duplicate: false, applied: false };
-        }
-
-        let applied = false;
-        if (retrieved.subscription) {
-          if (event.type === 'customer.subscription.deleted') {
-            await this.applyFree(manager, account);
-          } else {
-            await this.applyPaid(manager, account, retrieved.subscription);
-          }
-          applied = true;
-        }
-        if (retrieved.invoice) {
-          await this.applyInvoice(
-            manager,
-            account,
-            retrieved.invoice,
-            event.type,
-          );
-          applied = true;
-        }
-        return { duplicate: false, applied };
+        return {
+          duplicate: false,
+          applied: await this.applyEvent(manager, account, event, retrieved),
+        };
       });
-
-      if (staleSubscriptionId) {
-        await this.provider.cancelSubscription({
-          subscriptionId: staleSubscriptionId,
-          effectiveAt: this.clock.now(),
-          idempotencyKey: `stale-checkout:${event.id}`,
-        });
-      }
-      return result;
     } catch (error) {
-      if (isUniqueViolation(error)) return { duplicate: true, applied: false };
+      if (error instanceof DuplicateStripeEvent)
+        return { duplicate: true, applied: false };
       throw error;
     }
+  }
+
+  private async recordEvent(
+    manager: EntityManager,
+    event: VerifiedPaymentEvent,
+  ): Promise<void> {
+    try {
+      await manager.insert(StripeEvent, {
+        stripeEventId: event.id,
+        type: event.type,
+        stripeCreatedAt: event.createdAt,
+        livemode: event.livemode,
+        processedAt: this.clock.now(),
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new DuplicateStripeEvent();
+      throw error;
+    }
+  }
+
+  /**
+   * What one verified event does to the company. Which subscription it is about decides that, never the order Stripe
+   * happened to deliver events in (`decideSubscriptionAction`); an invoice only counts when it belongs to a subscription
+   * the company follows, so a stray second subscription can neither start a grace period nor mark anything paid.
+   */
+  private async applyEvent(
+    manager: EntityManager,
+    account: BillingAccount,
+    event: VerifiedPaymentEvent,
+    retrieved: RetrievedObjects,
+  ): Promise<boolean> {
+    let applied = false;
+    let invoiceMayApply = true;
+
+    if (retrieved.subscription) {
+      const action = decideSubscriptionAction(
+        { type: event.type, checkoutSessionId: event.checkoutSessionId },
+        account,
+        retrieved.subscription,
+      );
+      switch (action.kind) {
+        case 'apply_paid':
+          await this.applyPaid(
+            manager,
+            account,
+            retrieved.subscription,
+            action.status,
+          );
+          applied = true;
+          break;
+        case 'apply_free':
+          await this.applyFree(manager, account);
+          applied = true;
+          break;
+        case 'cancel':
+          // Queued in THIS transaction: it commits with the event, and retries until Stripe accepts it.
+          await this.queue.enqueue(
+            'cancel_stripe_subscription',
+            { subscriptionId: action.subscriptionId },
+            { manager },
+          );
+          invoiceMayApply = false;
+          break;
+        case 'ignore':
+          invoiceMayApply = false;
+          break;
+      }
+    }
+
+    if (retrieved.invoice && invoiceMayApply) {
+      await this.applyInvoice(manager, account, retrieved.invoice, event.type);
+      applied = true;
+    }
+    return applied;
   }
 
   private async retrieve(
@@ -135,6 +192,7 @@ export class StripeWebhookService {
     manager: EntityManager,
     account: BillingAccount,
     external: PaymentSubscription,
+    status: 'current' | 'past_due',
   ): Promise<void> {
     let subscription = await manager.findOne(Subscription, {
       where: { companyId: account.companyId },
@@ -158,10 +216,18 @@ export class StripeWebhookService {
 
     account.stripeSubscriptionId = external.id;
     account.stripeSeatItemId = external.seatItemId;
-    account.status =
-      external.status === 'past_due' || external.status === 'unpaid'
-        ? 'past_due'
-        : 'current';
+    if (status === 'past_due') {
+      account.status = 'past_due';
+      // The grace period starts when Stripe says payment stopped, even if the invoice event has not arrived yet.
+      account.graceEndsAt ??= new Date(
+        this.clock.now().getTime() +
+          this.config.STRIPE_DUNNING_GRACE_DAYS * 86_400_000,
+      );
+    } else if (account.status !== 'past_due') {
+      account.status = 'current';
+    }
+    // An account that is past due is brought back by a PAYMENT (`applyPayment`), which alone knows whether another
+    // invoice is still overdue — never by a subscription refresh, which would erase the state that payment must see.
     account.pendingIntentId = null;
     account.pendingCheckoutSessionId = null;
     account.pendingPlan = null;
@@ -257,6 +323,23 @@ export class StripeWebhookService {
     }
   }
 
+  /** Invoices Stripe has tried to collect at least once and still has not: what keeps a company suspended. */
+  private hasOtherOverdueInvoices(
+    manager: EntityManager,
+    companyId: string,
+    exceptInvoiceId: string,
+  ): Promise<boolean> {
+    return manager.getRepository(Invoice).exists({
+      where: {
+        companyId,
+        provider: 'stripe',
+        status: In(['open', 'uncollectible']),
+        paymentAttempts: MoreThan(0),
+        id: Not(exceptInvoiceId),
+      },
+    });
+  }
+
   private async applyInvoice(
     manager: EntityManager,
     account: BillingAccount,
@@ -270,6 +353,9 @@ export class StripeWebhookService {
     let invoice = await manager.findOne(Invoice, {
       where: { stripeInvoiceId: external.id },
     });
+    // What Gridline last knew: `invoice.paid` and `invoice.payment_succeeded` both fire for one payment, and it is
+    // only the FIRST of them that is news.
+    const previousStatus = invoice?.status ?? null;
     if (!invoice) {
       invoice = manager.create(Invoice, {
         companyId: account.companyId,
@@ -381,35 +467,65 @@ export class StripeWebhookService {
       eventType === 'invoice.payment_succeeded' ||
       eventType === 'invoice.paid'
     ) {
+      await this.applyPayment(manager, account, invoice, previousStatus);
+    }
+  }
+
+  /**
+   * A payment went through. It is news — an audit entry, and "payment received" to the billing address — only when
+   * it RECOVERS something: the account was past due or the company suspended. An ordinary renewal, or the first
+   * payment at Checkout, is not a recovery and must not send one. Nothing is cleared while another invoice is
+   * still overdue, and the same payment reported by two event types is handled once.
+   */
+  private async applyPayment(
+    manager: EntityManager,
+    account: BillingAccount,
+    invoice: Invoice,
+    previousStatus: Invoice['status'] | null,
+  ): Promise<void> {
+    const company = await manager.findOneByOrFail(Company, {
+      id: account.companyId,
+    });
+    const wasPastDue = account.status === 'past_due';
+    const wasSuspended = company.status === 'suspended';
+    const firstReport = previousStatus !== 'paid';
+    const stillOverdue = await this.hasOtherOverdueInvoices(
+      manager,
+      account.companyId,
+      invoice.id,
+    );
+
+    if (wasPastDue && !stillOverdue) {
       account.status = 'current';
       account.graceEndsAt = null;
       await manager.save(account);
-      const company = await manager.findOneByOrFail(Company, {
-        id: account.companyId,
-      });
-      if (company.status === 'suspended') {
-        company.status = 'active';
-        await manager.save(company);
-        await this.audit.record(
-          {
-            action: 'billing.company_reactivated',
-            companyId: account.companyId,
-            actorUserId: null,
-            target: { type: 'company', id: company.id },
-          },
-          manager,
-        );
-      }
+    }
+    if (wasSuspended && !stillOverdue) {
+      company.status = 'active';
+      await manager.save(company);
       await this.audit.record(
         {
-          action: 'billing.payment_succeeded',
+          action: 'billing.company_reactivated',
           companyId: account.companyId,
           actorUserId: null,
-          target: { type: 'invoice', id: invoice.id },
-          metadata: { stripeInvoiceId: external.id },
+          target: { type: 'company', id: company.id },
         },
         manager,
       );
+    }
+    if (!firstReport) return;
+
+    await this.audit.record(
+      {
+        action: 'billing.payment_succeeded',
+        companyId: account.companyId,
+        actorUserId: null,
+        target: { type: 'invoice', id: invoice.id },
+        metadata: { stripeInvoiceId: invoice.stripeInvoiceId },
+      },
+      manager,
+    );
+    if ((wasPastDue || wasSuspended) && !stillOverdue) {
       await this.queue.enqueue(
         'send_email',
         {

@@ -67,7 +67,7 @@ migration is applied.
 | Notifications and quota alerts | `/notifications` + Socket.IO | Same-transaction writes, post-commit push, once-per-period 80/100 thresholds, 90-day read retention. |
 | Data-quality rules | `/quality-rules`, report rebuild | Plan caps, immutable snapshots, deterministic scores, uploader/admin failure notification. |
 | File versions | `/files/:id/versions`, compare | Dataset lock, monotonic versions, inherited visibility, per-version usage/report, schema-change notification. |
-| Stripe subscriptions | subscriptions, billing portal, `/webhooks/stripe` | Provider-authoritative paid plan, stale-intent cancellation, event dedupe/order defense, ordered seat sync, meter idempotency, grace/suspension/recovery. |
+| Stripe subscriptions | subscriptions, billing portal, `/webhooks/stripe` | Provider-authoritative paid plan; order-independent event handling (decided by which subscription, unit-tested for every ordering); stray subscriptions cancelled by a durable queued task; local engine never rolls or invoices a Stripe-managed company; narrow duplicate detection; ordered seat sync, meter idempotency, grace/suspension/recovery that waits for every overdue invoice. |
 | CloudFront mail assets | `ASSETS_BASE_URL` | Public brand bucket only, versioned path, HTTPS in production, accessible image and development fallback. |
 | Socket lifecycle | `auth.refresh`, session events | Same-user refresh only, live room rebuild, final-minute warning and expiry disconnect. |
 | Comments, mentions and presence | comment REST routes + socket events | Existing file ACL first, relational mentions, tombstones, newly-mentioned notifications, deduplicated watchers, access eviction. |

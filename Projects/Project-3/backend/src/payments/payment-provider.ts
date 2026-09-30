@@ -31,6 +31,8 @@ export interface SubscriptionCancellationRequest {
   subscriptionId: string;
   effectiveAt: Date;
   idempotencyKey: string;
+  /** Do nothing (instead of failing) when the subscription has already ended — for retried clean-ups. */
+  ignoreIfEnded?: boolean;
 }
 
 export interface SeatQuantityRequest {

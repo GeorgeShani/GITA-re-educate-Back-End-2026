@@ -12,6 +12,7 @@ export const BACKGROUND_TASK_TYPES = [
   'sync_stripe_seats',
   'report_stripe_usage',
   'deliver_webhook',
+  'cancel_stripe_subscription',
 ] as const;
 export type BackgroundTaskType = (typeof BACKGROUND_TASK_TYPES)[number];
 

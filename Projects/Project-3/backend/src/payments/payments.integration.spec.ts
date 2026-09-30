@@ -151,6 +151,8 @@ describe('Stripe subscriptions (integration)', () => {
     ).expect(200);
 
     expect(await h.dataSource.getRepository(Subscription).count()).toBe(0);
+    // The cancellation is a queued task (it retries if Stripe is down), so it happens when the queue runs.
+    await h.drainTasks();
     expect(h.payments.cancellations.at(-1)?.subscriptionId).toBe('sub_stale');
     expect(h.payments.expiredSessions).toContain(first.pendingCheckoutSessionId);
   });

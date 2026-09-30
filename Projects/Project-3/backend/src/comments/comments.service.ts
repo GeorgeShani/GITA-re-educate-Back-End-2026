@@ -149,6 +149,10 @@ export class CommentsService {
         where: { id: existing.id, companyId: existing.companyId },
         lock: { mode: 'pessimistic_write' },
       });
+      // Checked AGAIN under the lock: a delete that committed while this edit waited for it must win, or the edit
+      // would write a body back onto a comment that was just deleted.
+      if (comment.deletedAt)
+        throw new ConflictException('A deleted comment cannot be edited.');
       const current = await manager.find(FileCommentMention, {
         where: { commentId: comment.id },
       });

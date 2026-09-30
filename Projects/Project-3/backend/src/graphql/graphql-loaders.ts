@@ -16,6 +16,13 @@ const countRowsSchema = z.array(
   z.object({ fileId: z.uuid(), count: z.coerce.number().int().nonnegative() }),
 );
 
+/**
+ * The most versions one file returns through GraphQL, newest first. The cost of a `versions` field is priced as if it
+ * returned this many (`versionsComplexity`), so a Premium file with hundreds of versions must not return more than it was
+ * charged for. The full history is one paginated call away: `GET /files/:id/versions`.
+ */
+export const MAX_VERSIONS_PER_FILE = 50;
+
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)];
 }
@@ -133,7 +140,9 @@ export class GraphqlLoaderFactory {
       files.push(row);
       byDataset.set(row.datasetId, files);
     }
-    return keys.map((datasetId) => byDataset.get(datasetId) ?? []);
+    return keys.map((datasetId) =>
+      (byDataset.get(datasetId) ?? []).slice(0, MAX_VERSIONS_PER_FILE),
+    );
   }
 
   private async commentCounts(keys: readonly string[]): Promise<number[]> {

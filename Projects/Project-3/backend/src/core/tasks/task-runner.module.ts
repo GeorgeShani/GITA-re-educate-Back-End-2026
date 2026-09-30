@@ -5,6 +5,7 @@ import { MailModule } from '#/core/mail/mail.module.js';
 import { SendEmailHandler } from '#/core/mail/send-email.handler.js';
 import { BuildDataQualityReportHandler } from '#/files/build-data-quality-report.handler.js';
 import { FilesModule } from '#/files/files.module.js';
+import { CancelStripeSubscriptionHandler } from '#/payments/cancel-stripe-subscription.handler.js';
 import { PaymentsModule } from '#/payments/payments.module.js';
 import { ReportStripeUsageHandler } from '#/payments/report-stripe-usage.handler.js';
 import { SyncStripeSeatsHandler } from '#/payments/sync-stripe-seats.handler.js';
@@ -39,6 +40,7 @@ import { TaskScheduler } from './task-scheduler.service.js';
         SyncStripeSeatsHandler,
         ReportStripeUsageHandler,
         DeliverWebhookHandler,
+        CancelStripeSubscriptionHandler,
       ],
       useFactory: (
         sendEmail: SendEmailHandler,
@@ -46,12 +48,14 @@ import { TaskScheduler } from './task-scheduler.service.js';
         syncSeats: SyncStripeSeatsHandler,
         reportUsage: ReportStripeUsageHandler,
         deliverWebhook: DeliverWebhookHandler,
+        cancelSubscription: CancelStripeSubscriptionHandler,
       ): TaskHandler[] => [
         sendEmail,
         buildReport,
         syncSeats,
         reportUsage,
         deliverWebhook,
+        cancelSubscription,
       ],
     },
     TaskRunner,

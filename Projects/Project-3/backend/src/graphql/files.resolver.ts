@@ -118,7 +118,11 @@ export class FilesResolver {
     return this.loaders(context).reports.load(file.id);
   }
 
-  @ResolveField(() => [FileType], { complexity: versionsComplexity })
+  @ResolveField(() => [FileType], {
+    complexity: versionsComplexity,
+    description:
+      'The newest versions of this file you can see (at most 50, newest first). The full history is GET /files/:id/versions.',
+  })
   versions(
     @Parent() file: FileAsset,
     @Context() context: GraphqlRequestContext,

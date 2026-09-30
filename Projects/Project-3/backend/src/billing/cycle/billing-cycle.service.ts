@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { DataSource, LessThanOrEqual } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { InvoicingService } from '#/billing/invoicing.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
@@ -45,11 +45,18 @@ export class BillingCycleService {
   async runCycle(now: Date = this.clock.now()): Promise<CycleResult> {
     // A system job: it deliberately spans tenants, so it does not go through `TenantScope`.
     // Everything it WRITES is per-company, under that company's lock.
-    const due = await this.dataSource.getRepository(Subscription).find({
-      select: { id: true, companyId: true },
-      where: { currentPeriodEnd: LessThanOrEqual(now) },
-      order: { currentPeriodEnd: 'ASC', id: 'ASC' },
-    });
+    // A company on a Stripe subscription is never rolled here: Stripe owns its periods (see `isStripeManaged`).
+    const due = await this.dataSource
+      .getRepository(Subscription)
+      .createQueryBuilder('s')
+      .select(['s.id', 's.companyId'])
+      .where('s.currentPeriodEnd <= :now', { now })
+      .andWhere(
+        `NOT EXISTS (SELECT 1 FROM billing_account b WHERE b."companyId" = s."companyId" AND b."stripeSubscriptionId" IS NOT NULL)`,
+      )
+      .orderBy('s.currentPeriodEnd', 'ASC')
+      .addOrderBy('s.id', 'ASC')
+      .getMany();
 
     const result: CycleResult = { companiesRolled: 0, invoicesFinalized: 0, failures: 0 };
     for (const { companyId } of due) {

@@ -98,6 +98,10 @@ type File {
   updatedAt: DateTime!
   uploader: FileUser!
   version: Int!
+
+  """
+  The newest versions of this file you can see (at most 50, newest first). The full history is GET /files/:id/versions.
+  """
   versions: [File!]!
   visibility: FileVisibility!
 }

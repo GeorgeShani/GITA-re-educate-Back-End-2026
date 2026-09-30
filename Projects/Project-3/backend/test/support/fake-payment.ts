@@ -21,6 +21,10 @@ export class FakePaymentProvider implements PaymentProvider {
   readonly meterEvents: MeterEventRequest[] = [];
   readonly subscriptions = new Map<string, PaymentSubscription>();
   readonly invoices = new Map<string, PaymentInvoice>();
+  /** How many times the app asked Stripe for the current state: a redelivered event must ask for none. */
+  retrievals = 0;
+  /** The next `n` cancellations fail, as a Stripe outage would. */
+  cancellationFailures = 0;
   private readonly webhookEvents = new Map<string, VerifiedPaymentEvent>();
 
   constructor(readonly enabled: boolean) {}
@@ -44,6 +48,10 @@ export class FakePaymentProvider implements PaymentProvider {
 
   async cancelSubscription(request: SubscriptionCancellationRequest): Promise<void> {
     this.cancellations.push(request);
+    if (this.cancellationFailures > 0) {
+      this.cancellationFailures -= 1;
+      throw new Error('Stripe is unavailable (fake)');
+    }
   }
 
   async createPortalSession(customerId: string): Promise<string> {
@@ -51,12 +59,14 @@ export class FakePaymentProvider implements PaymentProvider {
   }
 
   async retrieveSubscription(subscriptionId: string): Promise<PaymentSubscription> {
+    this.retrievals += 1;
     const subscription = this.subscriptions.get(subscriptionId);
     if (!subscription) throw new Error(`Unknown fake subscription ${subscriptionId}`);
     return subscription;
   }
 
   async retrieveInvoice(invoiceId: string): Promise<PaymentInvoice> {
+    this.retrievals += 1;
     const invoice = this.invoices.get(invoiceId);
     if (!invoice) throw new Error(`Unknown fake invoice ${invoiceId}`);
     return invoice;
@@ -91,6 +101,8 @@ export class FakePaymentProvider implements PaymentProvider {
     this.cancellations.length = 0;
     this.seatUpdates.length = 0;
     this.meterEvents.length = 0;
+    this.retrievals = 0;
+    this.cancellationFailures = 0;
     this.subscriptions.clear();
     this.invoices.clear();
     this.webhookEvents.clear();

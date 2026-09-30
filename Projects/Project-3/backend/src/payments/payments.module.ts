@@ -10,6 +10,7 @@ import { DunningEvaluator } from './dunning-evaluator.service.js';
 import { StripeWebhookController } from './stripe-webhook.controller.js';
 import { StripeWebhookService } from './stripe-webhook.service.js';
 import { BillingSyncService } from './billing-sync.service.js';
+import { CancelStripeSubscriptionHandler } from './cancel-stripe-subscription.handler.js';
 import { ReportStripeUsageHandler } from './report-stripe-usage.handler.js';
 import { SyncStripeSeatsHandler } from './sync-stripe-seats.handler.js';
 
@@ -61,6 +62,7 @@ function paymentProvider(config: AppConfig, disabled: NullPaymentProvider): Paym
     BillingSyncService,
     SyncStripeSeatsHandler,
     ReportStripeUsageHandler,
+    CancelStripeSubscriptionHandler,
   ],
   exports: [
     PAYMENT_PROVIDER,
@@ -68,6 +70,7 @@ function paymentProvider(config: AppConfig, disabled: NullPaymentProvider): Paym
     BillingSyncService,
     SyncStripeSeatsHandler,
     ReportStripeUsageHandler,
+    CancelStripeSubscriptionHandler,
   ],
 })
 export class PaymentsModule {}
