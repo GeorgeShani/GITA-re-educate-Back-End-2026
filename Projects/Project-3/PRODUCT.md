@@ -114,6 +114,10 @@ database tools edit data but do not check each incoming file against rules or ke
   drawing and colour are decided in the visual direction.
 - **Voice:** plain, precise and calm. No hype and no exclamation marks. Numbers beat adjectives, and every claim is a real
   capability.
+- **Motion is required, not optional.** The owner wants animations and transitions throughout the marketing site and the app;
+  a static site feels dead to them. Both surfaces need a full range of motion (page and route transitions, scroll-linked and
+  entrance motion, hover and press feedback, state changes, live data updates, loading), explored from what modern sites do and
+  chosen to fit this product. Every animation still has a `prefers-reduced-motion` path.
 
 ## Evidence on Hand
 
@@ -133,8 +137,9 @@ database tools edit data but do not check each incoming file against rules or ke
 2. **Invisible, not forbidden.** Access is explicit and per person, and what someone may not see does not exist for them.
 3. **Honest numbers.** Prices, quotas, bills and scores come from the system of record, are exact to the cent, and are never
    decorative.
-4. **Quiet until it matters.** Alerts, colour and motion are reserved for states that need action: quota thresholds, failing rules,
-   schema changes, payment problems.
+4. **Quiet until it matters.** Alerts and colour are reserved for states that need action: quota thresholds, failing rules, schema
+   changes, payment problems. Motion is not reserved: it runs everywhere (see Brand Commitments), but it stays fast and purposeful
+   in the app and never competes with an alert.
 5. **One product, every surface.** The marketing site, app, emails and API reference speak with one voice.
 
 ## Accessibility & Inclusion
