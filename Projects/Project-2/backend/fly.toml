@@ -1,0 +1,28 @@
+# Fly.io app config for the NestJS API. Secrets (Mongo/Redis/JWT/Stripe/
+# Cloudinary/Resend/Gemini/…) are set separately via `fly secrets set` —
+# never committed here. See env.validation.ts for the full list.
+app = "elegant-golf-accessories-backend"
+primary_region = "fra"
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/health"
+    protocol = "http"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "4000"

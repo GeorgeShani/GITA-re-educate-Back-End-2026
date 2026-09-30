@@ -190,12 +190,20 @@ export class CartController {
 
   private maybeSetGuestCookie(res: Response, token?: string): void {
     if (!token) return;
+    // Frontend and API are deployed on separate domains (Vercel + Fly),
+    // so the browser treats this as a third-party cookie. sameSite:'none'
+    // is required for it to survive a cross-origin request at all — but
+    // browsers reject sameSite:'none' outright unless secure is also
+    // true, and secure:true breaks the cookie over plain http://localhost
+    // in dev. The two have to flip together, keyed off the same check
+    // that already decided `secure` before this cross-origin deploy.
+    const crossOrigin = process.env.NODE_ENV === 'production';
     res.cookie(GUEST_CART_COOKIE, token, {
       httpOnly: true,
       signed: true,
       maxAge: GUEST_COOKIE_MAX_AGE_MS,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: crossOrigin ? 'none' : 'lax',
+      secure: crossOrigin,
     });
   }
 }
