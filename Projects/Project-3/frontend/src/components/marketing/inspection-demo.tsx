@@ -207,7 +207,6 @@ export function InspectionDemo() {
                 : "Every rule passed."}
             </p>
             <p className="text-sm text-text-muted">
-              Score{" "}
               <span className="num font-mono text-lg font-semibold text-text">
                 {shownScore}
               </span>

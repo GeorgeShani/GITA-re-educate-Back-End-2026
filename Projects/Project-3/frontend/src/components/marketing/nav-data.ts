@@ -54,8 +54,13 @@ export const MAIN_LINKS = [
   { href: "/docs", label: "Docs" },
 ] as const;
 
-/** The API reference is served by the API itself (Caddy routes /reference there), so it is a plain link, not a Next route. */
-export const API_REFERENCE_HREF = "/reference";
+/**
+ * The API reference lives in the BACKEND (Scalar, generated from the code), so this is a plain link, never a Next route.
+ * Behind Caddy it is the same-origin path `/reference`; in local development the Next app has no such route, so
+ * `NEXT_PUBLIC_API_REFERENCE_URL` points at the API's own origin.
+ */
+export const API_REFERENCE_HREF =
+  process.env.NEXT_PUBLIC_API_REFERENCE_URL || "/reference";
 
 export const FOOTER_COLUMNS = [
   {
