@@ -1,4 +1,8 @@
+"use client";
+
 import { ChevronDown } from "lucide-react";
+import { useId, useState } from "react";
+import { cn } from "@/lib/cn";
 
 const QUESTIONS = [
   [
@@ -32,17 +36,53 @@ export function BillingFaq() {
   return (
     <div className="flex flex-col border-t border-line-strong">
       {QUESTIONS.map(([question, answer]) => (
-        <details key={question} className="group border-b border-line">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-md font-semibold marker:hidden [&::-webkit-details-marker]:hidden">
-            <h3>{question}</h3>
-            <ChevronDown
-              aria-hidden
-              className="size-4 shrink-0 transition-transform duration-(--duration-base) group-open:rotate-180"
-            />
-          </summary>
-          <p className="copy max-w-prose pb-6 text-text-muted">{answer}</p>
-        </details>
+        <Question key={question} question={question} answer={answer} />
       ))}
+    </div>
+  );
+}
+
+/**
+ * One question. The answer lives in a grid row that animates between 0fr and 1fr, so it opens and closes smoothly at
+ * whatever height its text needs, in every browser. A closed answer is inert: it cannot be tabbed into or read out.
+ */
+function Question({ question, answer }: { question: string; answer: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+
+  return (
+    <div className="border-b border-line">
+      <h3>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={id}
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center justify-between gap-4 py-5 text-left text-md font-semibold"
+        >
+          {question}
+          <ChevronDown
+            aria-hidden
+            className={cn(
+              "size-4 shrink-0 transition-transform duration-(--duration-slow) ease-(--ease-out)",
+              open && "rotate-180",
+            )}
+          />
+        </button>
+      </h3>
+      <section
+        id={id}
+        aria-label={question}
+        inert={!open}
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-(--duration-slow) ease-(--ease-out)",
+          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden">
+          <p className="copy max-w-prose pb-6 text-text-muted">{answer}</p>
+        </div>
+      </section>
     </div>
   );
 }
