@@ -1,9 +1,9 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Logo, Mark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { Stamp } from "@/components/ui/stamp";
-import { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Kit", robots: { index: false } };
 
@@ -38,9 +38,9 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
           <Mark className="size-6" title="Gridline" />
           <Mark className="size-4" title="Gridline" />
         </div>
-        <div className="flex items-center gap-4 rounded-md bg-field p-5 text-on-field">
+        <div className="flex items-center gap-4 cover rounded-md bg-cover p-5 text-on-cover">
           <Logo />
-          <span className="text-sm">on crate board</span>
+          <span className="text-sm">on the back cover</span>
         </div>
       </div>
 
@@ -63,9 +63,9 @@ function Panel({ theme }: { theme: "light" | "dark" }) {
           <Button variant="ghost">Cancel</Button>
           <Button variant="danger">Revoke key</Button>
         </div>
-        <div className="flex flex-wrap gap-2 rounded-md bg-field p-4">
-          <Button variant="onField">Explore the demo</Button>
-          <Button variant="onFieldOutline">Start free</Button>
+        <div className="flex flex-wrap gap-2 cover rounded-md bg-cover p-4">
+          <Button variant="onCover">Explore the demo</Button>
+          <Button variant="onCoverOutline">Start free</Button>
         </div>
       </div>
 

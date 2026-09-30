@@ -11,6 +11,9 @@
 @utility width-text {
   font-variation-settings: "wdth" var(--font-width-text);
 }
+@utility width-headline {
+  font-variation-settings: "wdth" var(--font-width-headline);
+}
 @utility width-display {
   font-variation-settings: "wdth" var(--font-width-display);
 }
@@ -177,4 +180,191 @@
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* ---------- Motion set (see design/motion-research.md) ---------- */
+
+/* Reveal: content is visible by default. Only elements below the fold are armed, then released as they scroll in. */
+[data-reveal] {
+  transition:
+    opacity 560ms var(--ease-out) var(--reveal-delay, 0ms),
+    transform 560ms var(--ease-out) var(--reveal-delay, 0ms);
+}
+[data-reveal="armed"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+/* Fill: a meter grows from empty when its section arrives. */
+.fill {
+  transform-origin: left center;
+  transition: transform 900ms var(--ease-out) var(--fill-delay, 0ms);
+}
+[data-reveal="armed"] .fill {
+  transform: scaleX(0);
+}
+
+/* Stagger: list items inside a reveal arrive one after another, capped by the delays the markup sets. */
+.stagger-item {
+  transition:
+    opacity 480ms var(--ease-out) var(--i, 0ms),
+    transform 480ms var(--ease-out) var(--i, 0ms);
+}
+[data-reveal="armed"] .stagger-item {
+  opacity: 0;
+  transform: translateX(-24px);
+}
+
+/* Conveyor: a new row rolls in from the side on mount. */
+@keyframes gl-conveyor {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.conveyor {
+  animation: gl-conveyor 480ms var(--ease-out) both;
+  animation-delay: var(--i, 0ms);
+}
+
+/* Print: a check line is set left to right, like a label printer. */
+.print {
+  animation: gl-print 420ms steps(18, end) both;
+}
+
+/* Stamp: the verdict lands. */
+.stamp-land {
+  animation: gl-stamp 320ms var(--ease-out) both;
+}
+
+/* Scan: a band sweeps a file while it is being inspected. */
+@keyframes gl-scan {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+.scan-band {
+  animation: gl-scan 1.5s linear infinite;
+}
+
+/* Rise: headline lines come up out of a mask. */
+@keyframes gl-rise {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.line-rise {
+  display: block;
+  animation: gl-rise 760ms var(--ease-out) both;
+  animation-delay: var(--line-delay, 0ms);
+}
+
+/* Swing: the inspection tag settles on its string. */
+@keyframes gl-swing {
+  0% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: -4deg;
+  }
+  45% {
+    rotate: 3deg;
+  }
+  70% {
+    rotate: -1.5deg;
+  }
+  100% {
+    rotate: 0deg;
+  }
+}
+.tag-swing {
+  transform-origin: 50% 0;
+}
+.tag-swing:hover,
+[data-reveal="in"] .tag-swing {
+  animation: gl-swing 1.1s var(--ease-in-out) 1;
+}
+
+/* Progress: a hairline under the header fills with the page. Browsers without scroll timelines simply do not show it. */
+.scroll-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--gl-text);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+@supports (animation-timeline: scroll()) {
+  .scroll-progress {
+    animation: gl-progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes gl-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Draw: a link's underline draws in on hover and focus. */
+@utility link-draw {
+  background:
+    linear-gradient(currentColor, currentColor) left bottom / 0 1px no-repeat;
+  transition: background-size var(--duration-base) var(--ease-out);
+  &:hover,
+  &:focus-visible {
+    background-size: 100% 1px;
+  }
+}
+
+/* ---------- The Tabbed Binder ---------- */
+
+/* Copy: the manual's text face, for long-form marketing and docs paragraphs. */
+@utility copy {
+  font-family: var(--font-serif);
+  font-size: 1.1875rem;
+  line-height: 1.6;
+}
+
+/* Headline: condensed, heavy, uppercase, like a section title printed on a divider. */
+@utility headline {
+  font-variation-settings: "wdth" var(--font-width-headline);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.005em;
+}
+
+/* A leaf: a hairline-outlined sheet with one short hard shadow on its cut side, punched at the binding. */
+@utility leaf {
+  position: relative;
+  border: 1px solid var(--gl-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--gl-surface);
+  box-shadow: 3px 3px 0 var(--gl-line);
+}
+
+/* The back cover and dark bands. Focus rings there are chrome yellow, not ink. */
+.cover :focus-visible {
+  outline-color: var(--gl-tag);
 }

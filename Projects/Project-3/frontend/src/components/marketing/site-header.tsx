@@ -35,6 +35,7 @@ export function SiteHeader() {
           <MobileMenu />
         </div>
       </div>
+      <div aria-hidden className="scroll-progress" />
     </header>
   );
 }

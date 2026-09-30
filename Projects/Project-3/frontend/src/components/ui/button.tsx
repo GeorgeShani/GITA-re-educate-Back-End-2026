@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 
 export const buttonStyles = cva(
   [
-    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium",
+    "group inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium active:translate-y-px",
     "transition-colors duration-(--duration-fast) ease-(--ease-out)",
     "disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50",
     "[&_svg]:size-4 [&_svg]:shrink-0",
@@ -13,15 +13,16 @@ export const buttonStyles = cva(
   {
     variants: {
       variant: {
-        // Ink: the one solid action on a screen.
-        primary: "bg-action text-on-action hover:bg-action-hover",
+        // Chrome yellow with an ink outline: the one primary action on a screen.
+        primary:
+          "border border-text bg-tag text-on-tag hover:bg-tag-hover active:border-2",
         // Ruled outline: every other action.
         secondary:
           "border border-line-strong bg-surface text-text hover:bg-sunken",
-        // On box-board fields (marketing): the action reads against the field.
-        onField: "bg-on-field text-canvas hover:bg-on-field-muted",
-        onFieldOutline:
-          "border border-on-field text-on-field hover:bg-field-deep",
+        // On the dark back cover.
+        onCover: "border border-on-cover bg-tag text-on-tag hover:bg-tag-hover",
+        onCoverOutline:
+          "border border-on-cover text-on-cover hover:bg-on-cover/10",
         ghost: "text-text-muted hover:bg-sunken hover:text-text",
         // Vermilion: destructive, reserved for deletes and revocations.
         danger: "border border-hold text-hold hover:bg-hold-soft",
