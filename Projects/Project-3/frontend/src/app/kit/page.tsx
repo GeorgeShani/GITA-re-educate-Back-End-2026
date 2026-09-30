@@ -3,8 +3,9 @@ import { Logo, Mark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { Stamp } from "@/components/ui/stamp";
+import { Metadata } from "next";
 
-export const metadata = { title: "Kit", robots: { index: false } };
+export const metadata: Metadata = { title: "Kit", robots: { index: false } };
 
 /** Every token and component on one page, light and dark side by side. Development only. */
 export default function KitPage() {
