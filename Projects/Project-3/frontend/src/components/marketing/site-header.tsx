@@ -1,40 +1,38 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { DemoButton } from "./demo-button";
+import { DesktopNav } from "./desktop-nav";
+import { MobileMenu } from "./mobile-menu";
 
-const LINKS = [
-  { href: "/features", label: "Features" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/compare", label: "Compare" },
-  { href: "/security", label: "Security" },
-  { href: "/docs", label: "Docs" },
-] as const;
-
+/** The public site's header: sticky, ruled, and always carrying both ways in (the demo and a free company). */
 export function SiteHeader() {
   return (
-    <header className="ruled">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-8 px-6">
-        <Link href="/" aria-label="Gridline home">
+    <header className="sticky top-0 z-30 border-b border-line bg-canvas">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-6">
+        <Link
+          href="/"
+          aria-label="Gridline home"
+          className="mr-2 rounded-md py-1"
+        >
           <Logo />
         </Link>
-        <nav aria-label="Main" className="hidden gap-6 text-base md:flex">
-          {LINKS.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-text-muted hover:text-text"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" asChild>
+
+        <DesktopNav />
+
+        <div className="ml-auto flex items-center gap-1.5">
+          <ThemeToggle className="hidden sm:inline-flex" />
+          <Button variant="ghost" className="hidden sm:inline-flex" asChild>
             <Link href="/login">Sign in</Link>
           </Button>
+          <div className="hidden sm:block">
+            <DemoButton />
+          </div>
           <Button variant="primary" asChild>
             <Link href="/register">Start free</Link>
           </Button>
+          <MobileMenu />
         </div>
       </div>
     </header>
