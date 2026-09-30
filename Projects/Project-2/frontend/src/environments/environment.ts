@@ -7,6 +7,11 @@
 export const environment = {
   production: false,
 
+  // Relative on purpose in dev — proxy.conf.json forwards /api to
+  // localhost:4000, keeping requests same-origin. See
+  // environment.production.ts for why prod needs an absolute URL instead.
+  apiBaseUrl: '/api/v1',
+
   /**
    * Publishable key (safe to ship in a client bundle by design — Stripe's
    * own docs call it "publishable" for exactly that reason). This is a

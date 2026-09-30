@@ -1,0 +1,8 @@
+{
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }],
+  "functions": {
+    "api/index.mjs": {
+      "includeFiles": "dist/3legant/**"
+    }
+  }
+}

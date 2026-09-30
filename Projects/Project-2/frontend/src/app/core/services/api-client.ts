@@ -2,15 +2,19 @@ import { HttpClient, type HttpContext } from '@angular/common/http';
 import { InjectionToken, Service, inject } from '@angular/core';
 import type { Observable } from 'rxjs';
 
+import { environment } from '@/environments/environment';
+
 /**
- * Relative on purpose. In dev, proxy.conf.json forwards /api to the API on
- * :4000, which makes requests same-origin — that is what lets the browser
- * carry the guest cart's signed httpOnly cookie, which a cross-origin
- * request with sameSite=lax would silently drop.
+ * Relative in dev (proxy.conf.json forwards /api to localhost:4000,
+ * keeping requests same-origin) but absolute in production — the
+ * frontend (Vercel) and API (Fly.io) are separate domains there, so
+ * there's no dev proxy to make a relative path resolve. See
+ * environment.production.ts and cart.controller.ts's
+ * maybeSetGuestCookie for the sameSite:'none' this pairs with.
  */
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL', {
   providedIn: 'root',
-  factory: () => '/api/v1',
+  factory: () => environment.apiBaseUrl,
 });
 
 type QueryParams = Record<string, string | number | boolean>;
