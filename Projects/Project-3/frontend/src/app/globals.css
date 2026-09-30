@@ -20,7 +20,7 @@
   font-variant-numeric: tabular-nums slashed-zero;
 }
 
-/* The register's ruling: a hairline under every row, never a shadow. */
+/* Label-stock ruling: a hairline under every row, never a shadow. */
 @utility ruled {
   border-bottom: 1px solid var(--gl-line);
 }
@@ -45,8 +45,8 @@
   }
 
   ::selection {
-    background: var(--gl-folder);
-    color: var(--gl-on-folder);
+    background: var(--gl-tag);
+    color: var(--gl-on-tag);
   }
 
   :focus-visible {
@@ -98,9 +98,13 @@
     *,
     *::before,
     *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: reduced motion must beat every component's own duration */
       animation-duration: 1ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: see above */
       animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: see above */
       transition-duration: 1ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: see above */
       scroll-behavior: auto !important;
     }
   }
@@ -122,7 +126,7 @@
   }
 }
 
-/* A register line prints: revealed left to right, like a typewriter carriage returning. */
+/* An inspection line prints: revealed left to right, like a label printer. */
 @keyframes gl-print {
   from {
     clip-path: inset(0 100% 0 0);

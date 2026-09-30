@@ -13,13 +13,15 @@ export const buttonStyles = cva(
   {
     variants: {
       variant: {
-        // Registrar's ink: the one filled action on a screen.
+        // Ink: the one solid action on a screen.
         primary: "bg-action text-on-action hover:bg-action-hover",
         // Ruled outline: every other action.
-        secondary: "border border-line-strong bg-surface text-text hover:bg-sunken",
+        secondary:
+          "border border-line-strong bg-surface text-text hover:bg-sunken",
         // On box-board fields (marketing): the action reads against the field.
-        onField: "bg-folder text-on-folder hover:bg-folder-soft",
-        onFieldOutline: "border border-on-field-muted text-on-field hover:bg-field-deep",
+        onField: "bg-on-field text-canvas hover:bg-on-field-muted",
+        onFieldOutline:
+          "border border-on-field text-on-field hover:bg-field-deep",
         ghost: "text-text-muted hover:bg-sunken hover:text-text",
         // Vermilion: destructive, reserved for deletes and revocations.
         danger: "border border-hold text-hold hover:bg-hold-soft",
@@ -36,12 +38,21 @@ export const buttonStyles = cva(
   },
 );
 
-export interface ButtonProps extends ComponentProps<"button">, VariantProps<typeof buttonStyles> {
+export interface ButtonProps
+  extends ComponentProps<"button">,
+    VariantProps<typeof buttonStyles> {
   /** Render as the child element (a Next `<Link>`, say) while keeping the button's look. */
   asChild?: boolean;
 }
 
-export function Button({ className, variant, size, asChild, type = "button", ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  size,
+  asChild,
+  type = "button",
+  ...props
+}: ButtonProps) {
   const Component = asChild ? Slot.Root : "button";
   return (
     <Component

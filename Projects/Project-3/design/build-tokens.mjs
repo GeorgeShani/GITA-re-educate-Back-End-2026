@@ -122,17 +122,22 @@ ${entries(tokens.motion)
 `;
 }
 
-/** The mark: a box-board square ruled into four cells, one cell holding the file (manila). Same geometry as components/brand/logo.tsx. */
+/**
+ * The mark: an ink tile holding a 2x2 grid of label-stock cells; the top-right cell is the hi-vis inspection tag, with
+ * its grommet hole punched. Same geometry as components/brand/logo.tsx (which takes its colours from the live theme).
+ */
 function iconSvg() {
-  const field = oklchToHex(colour('light', 'field'));
-  const rule = oklchToHex(colour('light', 'on-field'));
-  const cell = oklchToHex(colour('light', 'folder'));
+  const tile = oklchToHex(colour('light', 'text'));
+  const label = oklchToHex(colour('light', 'canvas'));
+  const tag = oklchToHex(colour('light', 'tag'));
   return `<!-- ${HEADER} -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="4" fill="${field}"/>
-  <rect x="17.5" y="5" width="9.5" height="9.5" rx="1" fill="${cell}"/>
-  <path d="M16 5v22M5 16h22" stroke="${rule}" stroke-width="2"/>
-  <rect x="5" y="5" width="22" height="22" rx="1.5" fill="none" stroke="${rule}" stroke-width="2"/>
+  <rect width="32" height="32" rx="6" fill="${tile}"/>
+  <rect x="5.5" y="5.5" width="9.5" height="9.5" rx="1.5" fill="${label}"/>
+  <rect x="17" y="5.5" width="9.5" height="9.5" rx="1.5" fill="${tag}"/>
+  <rect x="5.5" y="17" width="9.5" height="9.5" rx="1.5" fill="${label}"/>
+  <rect x="17" y="17" width="9.5" height="9.5" rx="1.5" fill="${label}"/>
+  <circle cx="21.75" cy="10.25" r="1.7" fill="${tile}"/>
 </svg>
 `;
 }

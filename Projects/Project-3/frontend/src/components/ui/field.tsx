@@ -3,23 +3,26 @@ import type { ComponentProps, ReactNode } from "react";
 import { useId } from "react";
 import { cn } from "@/lib/cn";
 
-export const inputStyles = cva(
-  [
-    "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-base text-text",
-    "placeholder:text-text-subtle",
-    "transition-colors duration-(--duration-fast)",
-    "hover:border-text-subtle focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-offset-0",
-    "disabled:cursor-not-allowed disabled:bg-sunken disabled:opacity-60",
-    "aria-invalid:border-hold aria-invalid:focus-visible:outline-hold",
-  ],
-);
+export const inputStyles = cva([
+  "h-9 w-full rounded-md border border-line-strong bg-surface px-3 text-base text-text",
+  "placeholder:text-text-subtle",
+  "transition-colors duration-(--duration-fast)",
+  "hover:border-text-subtle focus-visible:border-focus focus-visible:outline-2 focus-visible:outline-offset-0",
+  "disabled:cursor-not-allowed disabled:bg-sunken disabled:opacity-60",
+  "aria-invalid:border-hold aria-invalid:focus-visible:outline-hold",
+]);
 
 export function Input({ className, ...props }: ComponentProps<"input">) {
   return <input className={cn(inputStyles(), className)} {...props} />;
 }
 
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
-  return <textarea className={cn(inputStyles(), "h-auto min-h-24 py-2", className)} {...props} />;
+  return (
+    <textarea
+      className={cn(inputStyles(), "h-auto min-h-24 py-2", className)}
+      {...props}
+    />
+  );
 }
 
 interface FieldProps {
@@ -28,7 +31,11 @@ interface FieldProps {
   hint?: string;
   /** The problem AND the way out: "Enter the address from your invitation." */
   error?: string;
-  children: (control: { id: string; "aria-describedby": string | undefined; "aria-invalid": boolean | undefined }) => ReactNode;
+  children: (control: {
+    id: string;
+    "aria-describedby": string | undefined;
+    "aria-invalid": boolean | undefined;
+  }) => ReactNode;
   className?: string;
 }
 
@@ -49,7 +56,11 @@ export function Field({ label, hint, error, children, className }: FieldProps) {
           {hint}
         </p>
       ) : null}
-      {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
+      {children({
+        id,
+        "aria-describedby": describedBy,
+        "aria-invalid": error ? true : undefined,
+      })}
       {error ? (
         <p id={errorId} role="alert" className="text-sm font-medium text-hold">
           {error}
