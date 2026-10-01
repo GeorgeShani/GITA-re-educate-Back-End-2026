@@ -1,68 +1,62 @@
 "use client";
 
-import {
-  Bell,
-  ChartColumn,
-  Code,
-  CreditCard,
-  FileSpreadsheet,
-  LayoutDashboard,
-  ListChecks,
-  ScrollText,
-  Settings,
-  Users,
-} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Mark } from "@/components/brand/logo";
+import { HUES } from "@/components/marketing/hues";
 import { cn } from "@/lib/cn";
+import { cssVars } from "@/lib/css-vars";
+import { isActive, navFor, type Role } from "./nav";
 
-// Role-aware filtering (admin-only entries) arrives with the session work.
-const ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/files", label: "Files", icon: FileSpreadsheet },
-  { href: "/quality-rules", label: "Quality rules", icon: ListChecks },
-  { href: "/employees", label: "People", icon: Users },
-  { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/billing", label: "Billing", icon: CreditCard },
-  { href: "/analytics", label: "Analytics", icon: ChartColumn },
-  { href: "/audit", label: "Audit log", icon: ScrollText },
-  { href: "/developers/api-keys", label: "Developers", icon: Code },
-  { href: "/settings/profile", label: "Settings", icon: Settings },
-] as const;
-
-export function RailNav() {
+/**
+ * The application's navigation: grouped like the tabs of a binder, each entry carrying its division's hue as a tab edge
+ * when it is the open page. Used in the desktop rail and, unchanged, in the phone drawer (`onNavigate` closes it).
+ */
+export function NavList({
+  role,
+  onNavigate,
+}: {
+  role: Role;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  // Resolved here, in the browser bundle: a nav entry holds an icon component, which cannot cross from a server component.
+  const groups = navFor(role);
   return (
-    <nav
-      aria-label="Application"
-      className="sticky top-0 flex h-dvh w-56 shrink-0 flex-col gap-1 border-r border-line bg-surface p-3"
-    >
-      <Link
-        href="/dashboard"
-        aria-label="Gridline dashboard"
-        className="mb-3 px-2 py-2"
-      >
-        <Mark />
-      </Link>
-      {ITEMS.map(({ href, label, icon: Icon }) => {
-        const section = href.split("/")[1];
-        const active = pathname === href || pathname.startsWith(`/${section}`);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "flex h-9 items-center gap-2.5 rounded-md px-2.5 text-base text-text-muted hover:bg-sunken hover:text-text",
-              active && "bg-sunken font-semibold text-text",
-            )}
-          >
-            <Icon aria-hidden className="size-4" />
-            {label}
-          </Link>
-        );
-      })}
+    <nav aria-label="Application" className="flex flex-col gap-5">
+      {groups.map((group) => (
+        <div key={group.label} className="flex flex-col gap-0.5">
+          <p className="px-2.5 pb-1 text-xs font-semibold tracking-[0.06em] text-text-subtle uppercase">
+            {group.label}
+          </p>
+          {group.items.map((item) => {
+            const active = isActive(item, pathname);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                style={cssVars({ "--tab": `var(${HUES[item.hue].cssVar})` })}
+                className={cn(
+                  "relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-base text-text-muted transition-colors duration-(--duration-fast) hover:bg-sunken hover:text-text",
+                  active && "bg-sunken font-semibold text-text",
+                )}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute inset-y-1.5 left-0 w-[3px] rounded-full bg-(--tab) transition-transform duration-(--duration-base) ease-(--ease-out)",
+                    active ? "scale-y-100" : "scale-y-0",
+                  )}
+                />
+                <Icon aria-hidden className="size-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }
