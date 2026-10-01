@@ -22,6 +22,8 @@ declare module 'nestjs-cls' {
     role?: 'admin' | 'employee';
     /** Set when the request was made with an API key; the audit log records it. */
     apiKeyId?: string;
+    /** Set when the request came through the MCP endpoint rather than a REST route; the audit log records it. */
+    channel?: 'mcp';
     /** The inbound request's IP, for `AuditLogEntry.ip`. Absent outside HTTP. */
     ip?: string;
   }

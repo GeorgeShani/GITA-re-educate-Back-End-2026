@@ -13,6 +13,7 @@ import { AI_PROVIDER } from '#/core/ai/ai-provider.js';
 import { LocalStorageDriver } from '#/core/storage/local-storage.driver.js';
 import { STORAGE_DRIVER } from '#/core/storage/storage-driver.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
+import { installMcpBodyParser } from '#/mcp/mcp-body-parser.js';
 import { PasswordHasher } from '#/auth/crypto/password-hasher.js';
 import {
   GOOGLE_OAUTH,
@@ -155,6 +156,7 @@ export class AppHarness {
     else process.env.RATE_LIMIT_ENABLED = previousRateLimit;
 
     const app = moduleRef.createNestApplication({ rawBody: true });
+    installMcpBodyParser(app); // as main.ts does, and before init so it runs ahead of Nest's own parser
     await app.init();
 
     return new AppHarness(

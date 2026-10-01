@@ -64,7 +64,8 @@ paths:
         New entries also arrive live on the realtime connection as
         `notification.created`, and only once the change that caused them has
         committed. Read notifications are removed after 90 days; unread ones
-        stay. Signed-in sessions only: an API key cannot read the inbox.
+        stay. A signed-in session, or an API key holding the opt-in
+        `notifications:read` scope.
   /notifications/unread-count:
     get:
       operationId: NotificationsController_unreadCount
@@ -2462,13 +2463,18 @@ components:
             - files:read
           description: >-
             What the key may do. A key can never do more than its creator’s role
-            allows: an employee cannot grant `billing:read`.
+            allows: an employee cannot grant `billing:read`, `rules:write` or
+            `audit:read`.
           items:
             type: string
             enum: &ref_13
               - files:read
               - files:write
               - billing:read
+              - rules:write
+              - audit:read
+              - notifications:read
+              - mcp
       required:
         - name
         - scopes

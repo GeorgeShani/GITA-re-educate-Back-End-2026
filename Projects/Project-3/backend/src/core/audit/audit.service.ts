@@ -28,6 +28,13 @@ export interface AuditRecordInput {
  */
 @Injectable()
 export class AuditService {
+  private originOf(metadata: AuditRecordInput['metadata']): AuditRecordInput['metadata'] {
+    const origin: Record<string, string> = {};
+    if (this.context.apiKeyId) origin.apiKeyId = this.context.apiKeyId;
+    if (this.context.channel) origin.via = this.context.channel;
+    return Object.keys(origin).length > 0 ? { ...metadata, ...origin } : (metadata ?? {});
+  }
+
   constructor(
     @InjectRepository(AuditLogEntry) private readonly repository: Repository<AuditLogEntry>,
     private readonly context: RequestContextService,
@@ -44,10 +51,9 @@ export class AuditService {
         action: input.action,
         targetType: input.target?.type ?? null,
         targetId: input.target?.id ?? null,
-        // A request made with an API key says so, so the trail shows the key, not just the person.
-        metadata: this.context.apiKeyId
-          ? { ...input.metadata, apiKeyId: this.context.apiKeyId }
-          : (input.metadata ?? {}),
+        // A request made with an API key says so, so the trail shows the key, not just the person; one made through
+        // the MCP endpoint says that too, so the log shows what an agent did.
+        metadata: this.originOf(input.metadata),
         ip: this.context.ip ?? null,
         correlationId: this.context.correlationId ?? null,
       }),

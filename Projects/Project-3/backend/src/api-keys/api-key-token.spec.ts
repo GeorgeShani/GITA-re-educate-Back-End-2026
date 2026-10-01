@@ -41,9 +41,22 @@ describe('looksLikeApiKey / API_KEY_FORMAT', () => {
 });
 
 describe('scopes by role', () => {
-  it('an admin may grant everything; an employee never billing:read', () => {
-    expect(scopesAllowedFor('admin')).toEqual(['files:read', 'files:write', 'billing:read']);
-    expect(scopesAllowedFor('employee')).toEqual(['files:read', 'files:write']);
+  it('an admin may grant everything; an employee never billing, rules or audit', () => {
+    expect(scopesAllowedFor('admin')).toEqual([
+      'files:read',
+      'files:write',
+      'billing:read',
+      'rules:write',
+      'audit:read',
+      'notifications:read',
+      'mcp',
+    ]);
+    expect(scopesAllowedFor('employee')).toEqual(['files:read', 'files:write', 'notifications:read', 'mcp']);
+  });
+
+  it('drops the admin-only scopes again when the creator is no longer an admin', () => {
+    const granted = ['rules:write', 'audit:read', 'mcp'] as const;
+    expect(effectiveScopes('employee', granted)).toEqual(['mcp']);
   });
 
   it('narrows a key’s granted scopes by the creator’s CURRENT role', () => {

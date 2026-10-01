@@ -100,6 +100,20 @@ npm run docs:check      # diffs a fresh regeneration against the committed docs/
 npm run docs:types      # docs/openapi.yaml -> docs/openapi.d.ts, for a typed frontend API client
 ```
 
+## Connecting an AI agent (MCP)
+
+The API is also an MCP server, so an agent can list files, read data-quality reports and upload data for a company. In the
+app, create an API key with the `mcp` scope plus what the agent should be allowed to do (`files:read`, `files:write`, and for
+an admin `rules:write`, `audit:read`, `billing:read`; `notifications:read` for the inbox). The agent only sees the tools that
+key may use, and never more than its creator may. Behind Caddy the URL is `/api/mcp`; directly it is `/mcp`.
+
+```bash
+claude mcp add --transport http gridline http://localhost:4000/mcp --header "Authorization: Bearer gl_live_…"
+```
+
+Any MCP client that supports Streamable HTTP and a bearer header works the same way. Uploads through MCP are limited to 8 MB;
+bigger files go through `POST /files`. Revoking the key (or disabling its creator) cuts the agent off on its next call.
+
 ## Configuration
 
 Every environment variable, where it comes from and what breaks without it:
@@ -160,7 +174,7 @@ password at all, so there is nothing to guess.
   terminal failures disable automatically, and a successful delivery resets the count. Employees and API keys cannot manage them.
   Delivery history is retained for 30 days and purged daily; endpoint configuration and encrypted secrets remain.
 - **Notifications** (`GET /notifications`, `POST /notifications/read-all`, `POST /notifications/:id/read`, `GET
-/notifications/unread-count`) are each person's own inbox — session only, never another person's. They are written in the same
+/notifications/unread-count`) are each person's own inbox — a session, or an API key holding the opt-in `notifications:read` scope, never another person's. They are written in the same
   transaction as the change that caused them (a rolled-back upload announces nothing) and pushed as `notification.created` after
   the commit. **Quota alerts** fire at 80% and 100% of the file quota, once per billing period each (a unique
   `(company, period, threshold)` row decides), to every admin and by email to the billing address.

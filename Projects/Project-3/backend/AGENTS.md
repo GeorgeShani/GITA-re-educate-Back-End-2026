@@ -333,14 +333,17 @@ email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOO
   body and `X-Gridline-*` headers; same key + different route/caller/body/file bytes →
   422; still running → 409; failed requests are forgotten; claims older than 10 min are
   reclaimed, records older than 24 h expire. On `POST /files` and `PATCH /subscriptions/me`.
-  `IdempotencyJanitor` deletes expired and abandoned rows hourly.
+  `IdempotencyJanitor` deletes expired and abandoned rows hourly. The claim/complete/release bookkeeping is
+  `IdempotencyStore` (the interceptor delegates to it; the MCP upload tools use it directly with an `idempotencyKey`).
 - **Cursor lists**: `CursorPageOf(ItemDto)` mixin (like `OffsetPageOf`), `applyCursor(qb,
 alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor needs an
   ordering the index covers), default newest-first. **`createdAt`/`updatedAt` are
   `timestamptz(3)` on `BaseEntity`**: Postgres `now()` is µs but a cursor is a JS Date, and
   the lost digits made every page repeat the previous page's last row.
-- **Multer decodes `filename` as Latin-1**; `decodeMultipartName` repairs UTF-8 names.
-  `tsconfig` `types` includes `multer` for `Express.Multer.File` / `req.file`.
+- **Multer decodes `filename` as Latin-1**; `decodeMultipartName` (in `files/incoming-spreadsheet.ts`) repairs UTF-8 names.
+  `tsconfig` `types` includes `multer` for `Express.Multer.File` / `req.file`. `FilesService.upload/uploadVersion` take an
+  `IncomingSpreadsheet` (`{ buffer, name, size }`), not a Multer file: the controller converts with `fromMulterFile`, the MCP
+  tools build one from text or base64. The service sniffs the bytes either way.
 - **Tests never rely on racing.** Quota serialisation and the 409-in-progress case hold the
   subscription row lock in an open transaction and assert the request _waits_.
 - Adding a task type worked as documented: enum migration + handler registered in
@@ -449,9 +452,11 @@ alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor 
   overrides class-level (`getAllAndOverride`): `FilesController` is `files:read` with `files:write` on
   POST/PATCH/DELETE. `GET /subscriptions/me` = `files:read`; `BillingController` = `billing:read` (still
   `@Roles('admin')`). **A new route is unreachable by keys until someone adds `@RequireScopes` on purpose.**
-- **Scopes** are `API_SCOPES` in `require-scopes.decorator.ts` (`files:read`, `files:write`, `billing:read`);
-  `route-audit.spec.ts` checks every declared value against it. An employee cannot put `billing:read` on a key
-  (403 at creation), and `effectiveScopes` drops it again per request if the creator's role changes.
+- **Scopes** are `API_SCOPES` in `require-scopes.decorator.ts` (`files:read`, `files:write`, `billing:read`, and the opt-in
+  `rules:write`, `audit:read`, `notifications:read`, `mcp`); `route-audit.spec.ts` checks every declared value against it. An
+  employee cannot put `billing:read`, `rules:write` or `audit:read` on a key (`ADMIN_ONLY_SCOPES`, 403 at creation), and
+  `effectiveScopes` drops them again per request if the creator's role changes. `rules:write` is on the quality-rule
+  POST/PATCH/DELETE routes, `audit:read` on `/audit`, `notifications:read` on `/notifications`, `mcp` on `POST /mcp`.
 - **Routes** (`src/api-keys/`, `@Roles('admin','employee')`, session only, no plan needed): `POST /api-keys`
   returns the plaintext **once** (`key`; only the hash is stored — never log or audit it), `GET /api-keys`
   (offset; admin sees the company's, an employee only their own, newest first), `DELETE /api-keys/:id` (revoke;
@@ -500,7 +505,9 @@ alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor 
 - **`DemoReadOnlyGuard`** (global, right after the throttler): any request by a user whose company is a demo and
   whose method is not GET/HEAD/OPTIONS gets 403 with `DEMO_READ_ONLY_MESSAGE` — sessions and API keys alike, every
   route including ones added later. `AuthenticatedUser.isDemo` comes from the company row in both authenticators.
-  Reads are safe to leave open because every read route is a pure read.
+  Reads are safe to leave open because every read route is a pure read. The one exception is a route that is a POST only
+  because of its transport — `POST /mcp` — marked `@DemoWritesCheckedByHandler()`: the guard steps aside and each MCP tool
+  refuses a demo user's write itself (and hides write tools from them).
 - Global guard order is now Auth → Throttler → DemoReadOnly → Scopes → Roles → RequireSubscription.
 
 ## Realtime _(from Phase 12 of the feature plan)_
@@ -642,8 +649,8 @@ RETURNING id` into `quota_alert` (UNIQUE `(companyId, periodKey, threshold)`), a
   what releases the push.
 - **`NotificationsModule` is `@Global` and imported by `BillingModule` as well**, because the billing-cycle CLI boots `BillingModule`
   without `AppModule` (`standalone-jobs.integration.spec.ts` guards it).
-- **Routes** (`GET /notifications`, `/unread-count`, `POST /read-all`, `POST /:id/read`): any signed-in person, session only (no
-  `@RequireScopes`, so a key gets 403), only ever the caller's own rows (`mine()` = tenant scope + user), someone else's is a 404.
+- **Routes** (`GET /notifications`, `/unread-count`, `POST /read-all`, `POST /:id/read`): any signed-in person (a key needs the
+  opt-in `notifications:read` scope, otherwise 403), only ever the caller's own rows (`mine()` = tenant scope + user), someone else's is a 404.
   `read-all` is declared before `:id/read`. **Marking read is not audited**: it is personal inbox state, not a company action, and
   the audit log would drown in it — the one deliberate exception to "every state change writes an entry".
 - **Retention:** `NotificationsJanitor` (daily `@Cron`, off under test, `purge(now)` for specs) deletes READ notifications older than
@@ -671,7 +678,8 @@ uniqueness)` → results + score. `ruleSpecSchema` (a Zod discriminated union of
   counts) and checked under `SubscriptionsService.lockForUpdate` so two admins cannot take the last slot. `planChangeProblems` also
   refuses a downgrade that leaves more rules than the target allows (`qualityRules` in `CompanyUsage`).
 - **Routes** (`/quality-rules`, `@RequiresSubscription`): `GET` is `@Roles('admin','employee')` + `@RequireScopes('files:read')`;
-  `POST`/`PATCH`/`DELETE` are admin-only with NO scope, so an API key cannot change what every upload is held to. The kind never
+  `POST`/`PATCH`/`DELETE` are admin-only and a key needs the opt-in `rules:write` scope (an employee cannot hold it), so
+  changing what every upload is held to is a deliberate grant. The kind never
   changes (`forbidNonWhitelisted` rejects it); `params` are Zod-checked against the kind (400 naming what is wrong).
   Audit: `quality_rule.created|updated|deleted`, `report.rebuild_requested`.
 - **Rebuild** (`ReportsService.rebuild`, `POST /files/:id/report/rebuild`, `files:write`): uploader or admin (`FilesService.requireManageable`:
@@ -836,6 +844,43 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
 - `WebhookDeliveriesJanitor` purges delivery history after 30 days. The standalone `createdAt` index serves this global daily scan;
   endpoint definitions and encrypted secrets are not affected.
 
+## MCP server _(from Phase 22 of the product plan)_
+
+- **`POST /mcp` is a new doorway, not a new policy** (`src/mcp/`). Every tool calls the SAME service its REST route calls,
+  under the same auth, tenancy, visibility, quota, audit and throttling; a tool never reads a repository of its own. If a
+  rule must change, change the service, not the tool.
+- **Stateless Streamable HTTP** (`@modelcontextprotocol/sdk`): each request builds a fresh `McpServer` and a
+  `StreamableHTTPServerTransport` with `sessionIdGenerator: undefined, enableJsonResponse: true` (`McpController`). No session
+  store, so any instance answers any call; `GET`/`DELETE /mcp` are 405. The route rides the global guards like any other
+  (`AuthGuard` → throttler, one `/mcp` request = one request against the company's budget → `ScopesGuard` → `RolesGuard`) and
+  is `@ApiExcludeController()` (JSON-RPC, not REST), `@RequireScopes('mcp')`, `@DemoWritesCheckedByHandler()`.
+- **API key (or session) only; no OAuth.** A key needs the `mcp` scope AND the scope of each tool it should see. The tool list
+  is filtered per request by `refusalFor(meta, caller)` (role, scope, and demo ∧ write) and **each handler asks again** before
+  running, so a direct `tools/call` for a hidden tool cannot work. A session holds every scope (scopes are a key concept) but
+  is still narrowed by role.
+- **Adding a tool:** `defineTool(meta, zodShape, run)` in `src/mcp/tools/*.tools.ts`, then add it to that file's array
+  (`ALL_TOOLS` in `mcp-server.factory.ts` collects them). `meta.scope` is the scope the matching REST route declares;
+  `needsPlan` mirrors `@RequiresSubscription()`; `write` hides it from the demo company. Input is a loose zod shape for the
+  model, then **`validated(Dto, input)` runs the same class-validator DTO and `VALIDATION_PIPE_OPTIONS` as REST** (do not
+  re-implement validation in zod). Return the existing response DTOs (`toDto`, `mapPageData`), never an entity, so a
+  `storageKey` or secret cannot leak. A service's `HttpException` becomes `{ isError: true }` with `"<status> <message>"`;
+  anything else is logged and replaced by a generic message with the correlation id.
+- **Scopes added for it**, which reverse three earlier "session only" rules: `rules:write` (quality-rule writes), `audit:read`,
+  `notifications:read`, and `mcp`. The matching REST routes carry the same `@RequireScopes`, so a key is no stronger through MCP
+  than through REST. `rules:write`/`audit:read`/`billing:read` are admin-only (`ADMIN_ONLY_SCOPES`).
+- **Not exposed to agents, on purpose:** comment writes, employees, plans and billing changes, API keys, webhooks, deleting
+  files, changing a file's access. They stay with a signed-in person.
+- **Uploads:** `upload_file` / `upload_file_version` take `text` (CSV) or `base64`, decoded to an `IncomingSpreadsheet` and sniffed
+  like any upload (`incomingFrom`, 8 MB cap). `idempotencyKey` goes through `IdempotencyStore` (`idempotently`), with the same
+  422/409/forget-on-failure rules as REST. The body limit is raised for `/mcp` only (`installMcpBodyParser`, before
+  `app.init()`, in `main.ts` and the harness) and only for requests that carry an `Authorization` header.
+- **Audit:** `McpController` sets `channel: 'mcp'` in the CLS context; `AuditService` merges `via: 'mcp'` next to `apiKeyId` into
+  every entry that request writes. A suspended company's admin is refused at the guard (the route is not `@AllowWhenSuspended()`),
+  so billing tools are unavailable to it.
+- Tests: `tool.spec.ts` (permission matrix, each handler's own check), `uploads.spec.ts`, and `mcp.integration.spec.ts` (the SDK's
+  own `Client` over `app.listen(0)`). Mutation-checked: handler re-check, role filter, demo refusal, scope check, the route's
+  `mcp` scope and the upload idempotency claim each fail a spec when removed.
+
 ## Pagination & sorting _(from Phase 3)_
 
 - Two shapes, chosen by growth pattern, both in `src/common/pagination/` —
@@ -903,7 +948,8 @@ fallback.
   not disclosed.
 - The global filter renders every failure as
   `{ statusCode, message, correlationId, timestamp }`. Do not add per-controller
-  try/catch to reshape errors.
+  try/catch to reshape errors. An Express middleware error that marks itself safe to show (`expose`, e.g. the body parser's
+  413/400) keeps its own 4xx status instead of becoming a 500.
 
 ## Responses
 

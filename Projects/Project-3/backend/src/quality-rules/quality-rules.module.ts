@@ -9,5 +9,6 @@ import { QualityRulesService } from './quality-rules.service.js';
   imports: [DatabaseModule, SubscriptionsModule],
   controllers: [QualityRulesController],
   providers: [QualityRulesService],
+  exports: [QualityRulesService],
 })
 export class QualityRulesModule {}

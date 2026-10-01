@@ -1,5 +1,21 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { OffsetQueryDto } from '#/common/pagination/offset-query.dto.js';
@@ -17,7 +33,7 @@ import { QualityRulesService } from './quality-rules.service.js';
 /**
  * The company's data-quality rules. Anyone signed in may READ them (an employee wants to know what an
  * upload is checked against; an API key with `files:read` may too); only an admin changes them, and
- * only with a session: the write routes declare no scope, so a key cannot reach them.
+ * a key only with the opt-in `rules:write` scope (which an employee cannot put on a key).
  */
 @ApiTags('quality-rules')
 @ApiBearerAuth()
@@ -31,11 +47,15 @@ export class QualityRulesController {
   @RequireScopes('files:read')
   @ApiOkResponse({ type: QualityRulePageDto })
   async list(@Query() query: OffsetQueryDto): Promise<QualityRulePageDto> {
-    return toDto(QualityRulePageDto, mapPageData(await this.rules.list(query), QualityRuleDto.from));
+    return toDto(
+      QualityRulePageDto,
+      mapPageData(await this.rules.list(query), QualityRuleDto.from),
+    );
   }
 
   @Post()
   @Roles('admin')
+  @RequireScopes('rules:write')
   @ApiCreatedResponse({ type: QualityRuleDto })
   async create(@Body() dto: CreateQualityRuleDto): Promise<QualityRuleDto> {
     return QualityRuleDto.from(await this.rules.create(dto));
@@ -43,6 +63,7 @@ export class QualityRulesController {
 
   @Patch(':id')
   @Roles('admin')
+  @RequireScopes('rules:write')
   @ApiOkResponse({ type: QualityRuleDto })
   async update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -53,9 +74,12 @@ export class QualityRulesController {
 
   @Delete(':id')
   @Roles('admin')
+  @RequireScopes('rules:write')
   @HttpCode(200)
   @ApiOkResponse({ type: QualityRuleDto })
-  async remove(@Param('id', ParseUUIDPipe) id: string): Promise<QualityRuleDto> {
+  async remove(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<QualityRuleDto> {
     return QualityRuleDto.from(await this.rules.remove(id));
   }
 }

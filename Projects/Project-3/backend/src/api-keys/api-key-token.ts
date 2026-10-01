@@ -36,9 +36,12 @@ export function looksLikeApiKey(token: string): boolean {
   return token.startsWith(API_KEY_PREFIX);
 }
 
-/** What a role may put on a key. Billing is an admin's business; an employee's key cannot reach it. */
+/** Scopes that only an admin may put on a key: billing, changing the company's rules, and reading its audit log. */
+const ADMIN_ONLY_SCOPES: readonly ApiScope[] = ['billing:read', 'rules:write', 'audit:read'];
+
+/** What a role may put on a key. Those three are an admin's business; an employee's key cannot reach them. */
 export function scopesAllowedFor(role: UserRole): readonly ApiScope[] {
-  return role === 'admin' ? API_SCOPES : API_SCOPES.filter((scope) => scope !== 'billing:read');
+  return role === 'admin' ? API_SCOPES : API_SCOPES.filter((scope) => !ADMIN_ONLY_SCOPES.includes(scope));
 }
 
 /**

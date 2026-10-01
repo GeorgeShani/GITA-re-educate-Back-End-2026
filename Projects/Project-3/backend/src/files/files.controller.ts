@@ -39,6 +39,7 @@ import { FilesQueryDto } from './dto/files-query.dto.js';
 import { UpdateFileDto } from './dto/update-file.dto.js';
 import { UploadFileBodyDoc, UploadFileDto, UploadVersionBodyDoc, UploadVersionDto } from './dto/upload-file.dto.js';
 import { FilesService } from './files.service.js';
+import { fromMulterFile } from './incoming-spreadsheet.js';
 import { ReportsService } from './quality/reports.service.js';
 import { MAX_UPLOAD_BYTES } from './spreadsheet-types.js';
 import { SpreadsheetFileValidator } from './validation/spreadsheet-file.validator.js';
@@ -94,7 +95,7 @@ export class FilesController {
     @Body() dto: UploadFileDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<FileDto> {
-    const uploaded = await this.files.upload(file, dto);
+    const uploaded = await this.files.upload(fromMulterFile(file), dto);
     if (uploaded.quotaWarning) res.setHeader(QUOTA_WARNING_HEADER, uploaded.quotaWarning);
     return FileDto.from(uploaded.file, uploaded.grantedUserIds);
   }
@@ -126,7 +127,7 @@ export class FilesController {
     @Body() _body: UploadVersionDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<FileDto> {
-    const uploaded = await this.files.uploadVersion(id, file);
+    const uploaded = await this.files.uploadVersion(id, fromMulterFile(file));
     if (uploaded.quotaWarning) res.setHeader(QUOTA_WARNING_HEADER, uploaded.quotaWarning);
     return FileDto.from(uploaded.file, uploaded.grantedUserIds);
   }

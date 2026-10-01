@@ -20,9 +20,18 @@ ApiKeysController_create:
     - `billing:read` — the billing statements and invoices. Admin only: an employee
     cannot grant it (403), and if you stop being an admin your keys lose it.
 
+    - `rules:write` — create, edit and delete data-quality rules. Admin only, like `billing:read`.
+
+    - `audit:read` — read the audit log. Admin only, like `billing:read`.
+
+    - `notifications:read` — read your own notifications and mark them read.
+
+    - `mcp` — use the MCP endpoint (`POST /mcp`) so an AI agent can work with the company's data. The agent sees
+    only the tools your other scopes allow.
+
 
     A key can never do anything else: it cannot sign in or change credentials, manage
-    employees or plans, read the audit log or analytics, or create, list or revoke API
+    employees or plans, read analytics, or create, list or revoke API
     keys — those need a signed-in session. Disable a person and their keys stop working
     immediately.
 

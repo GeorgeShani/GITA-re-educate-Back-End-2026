@@ -11,7 +11,7 @@ QualityRulesController_create:
   summary: Create a quality rule
   description: >-
     Adds a rule that every later upload is checked against (an existing file is re-checked when its
-    report is rebuilt). Admin only, with a session.
+    report is rebuilt). Admin only; an API key needs the opt-in `rules:write` scope.
 
 
     The `kind` decides what is checked and which `params` it takes:
@@ -46,11 +46,11 @@ QualityRulesController_update:
   description: >-
     Changes a rule's name, column, `params` (which REPLACE the old ones and are checked against the
     rule's kind), severity or whether it is enabled. The kind cannot change — that is a different rule.
-    Admin only, with a session. Reports that were already built keep the rule as it was; rebuild a
+    Admin only; an API key needs the opt-in `rules:write` scope. Reports that were already built keep the rule as it was; rebuild a
     file's report to check it against the change.
 
 QualityRulesController_remove:
   summary: Delete a quality rule
   description: >-
-    Removes the rule and returns it. Reports that already used it keep their result for it. Admin only,
-    with a session.
+    Removes the rule and returns it. Reports that already used it keep their result for it. Admin only;
+    an API key needs the opt-in `rules:write` scope.

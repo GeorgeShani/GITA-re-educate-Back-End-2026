@@ -6,7 +6,7 @@ import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { IdempotencyRecord } from './idempotency-record.entity.js';
-import { IDEMPOTENCY_STALE_CLAIM_MS, IDEMPOTENCY_TTL_MS } from './idempotency.interceptor.js';
+import { IDEMPOTENCY_STALE_CLAIM_MS, IDEMPOTENCY_TTL_MS } from './idempotency-store.js';
 
 /**
  * Deletes idempotency records nobody can use any more.

@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { isGraphql, requestOf } from '#/common/http/request-of.js';
+import { DEMO_WRITES_CHECKED_KEY } from './demo-writes-checked.decorator.js';
 import type { AuthenticatedUser } from '#/common/auth/authenticated-user.interface.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -24,11 +26,16 @@ export const DEMO_READ_ONLY_MESSAGE =
  */
 @Injectable()
 export class DemoReadOnlyGuard implements CanActivate {
+  constructor(private readonly reflector: Reflector) {}
+
   canActivate(context: ExecutionContext): boolean {
     if (context.getType<string>() === 'ws') return true;
     // GraphQL here is read-only by construction (the schema has no mutations), though its transport
     // is a POST — so the method says nothing about it.
     if (isGraphql(context)) return true;
+    // A route that is a POST only because of its transport (the MCP endpoint) checks each write itself.
+    if (this.reflector.getAllAndOverride<boolean | undefined>(DEMO_WRITES_CHECKED_KEY, [context.getHandler(), context.getClass()]))
+      return true;
     const request = requestOf<{ method: string; user?: AuthenticatedUser }>(
       context,
     );

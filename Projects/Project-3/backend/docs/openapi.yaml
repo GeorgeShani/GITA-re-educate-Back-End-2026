@@ -923,7 +923,8 @@ paths:
         New entries also arrive live on the realtime connection as
         `notification.created`, and only once the change that caused them has
         committed. Read notifications are removed after 90 days; unread ones
-        stay. Signed-in sessions only: an API key cannot read the inbox.
+        stay. A signed-in session, or an API key holding the opt-in
+        `notifications:read` scope.
   /notifications/unread-count:
     get:
       operationId: NotificationsController_unreadCount
@@ -2159,7 +2160,8 @@ paths:
       summary: Create a quality rule
       description: >-
         Adds a rule that every later upload is checked against (an existing file
-        is re-checked when its report is rebuilt). Admin only, with a session.
+        is re-checked when its report is rebuilt). Admin only; an API key needs
+        the opt-in `rules:write` scope.
 
 
         The `kind` decides what is checked and which `params` it takes:
@@ -2224,9 +2226,10 @@ paths:
       description: >-
         Changes a rule's name, column, `params` (which REPLACE the old ones and
         are checked against the rule's kind), severity or whether it is enabled.
-        The kind cannot change — that is a different rule. Admin only, with a
-        session. Reports that were already built keep the rule as it was;
-        rebuild a file's report to check it against the change.
+        The kind cannot change — that is a different rule. Admin only; an API
+        key needs the opt-in `rules:write` scope. Reports that were already
+        built keep the rule as it was; rebuild a file's report to check it
+        against the change.
     delete:
       operationId: QualityRulesController_remove
       parameters:
@@ -2247,7 +2250,8 @@ paths:
       summary: Delete a quality rule
       description: >-
         Removes the rule and returns it. Reports that already used it keep their
-        result for it. Admin only, with a session.
+        result for it. Admin only; an API key needs the opt-in `rules:write`
+        scope.
   /analytics/usage:
     get:
       operationId: AnalyticsController_usage
@@ -2424,13 +2428,14 @@ paths:
       summary: List audit entries
       description: >-
         The company's audit log, newest first, cursor-paginated (`limit`, and
-        `cursor` from `meta.nextCursor` until `hasMore` is false). Admin only.
-        Every state-changing action in the app writes an entry in the same
-        transaction as the change: who did it (`actorUserId`, null for the
-        system — the billing cycle — or someone since removed), what (`action`,
-        from a closed list), what it acted on (`targetType` / `targetId`), from
-        where (`ip`), and a `correlationId` that ties together everything one
-        request wrote and matches that request's logs.
+        `cursor` from `meta.nextCursor` until `hasMore` is false). Admin only;
+        an API key needs the opt-in `audit:read` scope. Every state-changing
+        action in the app writes an entry in the same transaction as the change:
+        who did it (`actorUserId`, null for the system — the billing cycle — or
+        someone since removed), what (`action`, from a closed list), what it
+        acted on (`targetType` / `targetId`), from where (`ip`), and a
+        `correlationId` that ties together everything one request wrote and
+        matches that request's logs.
 
 
         Filters narrow the result: `action`, `actorUserId`, `targetType`, and
@@ -2503,11 +2508,22 @@ paths:
         employee cannot grant it (403), and if you stop being an admin your keys
         lose it.
 
+        - `rules:write` — create, edit and delete data-quality rules. Admin
+        only, like `billing:read`.
+
+        - `audit:read` — read the audit log. Admin only, like `billing:read`.
+
+        - `notifications:read` — read your own notifications and mark them read.
+
+        - `mcp` — use the MCP endpoint (`POST /mcp`) so an AI agent can work
+        with the company's data. The agent sees only the tools your other scopes
+        allow.
+
 
         A key can never do anything else: it cannot sign in or change
-        credentials, manage employees or plans, read the audit log or analytics,
-        or create, list or revoke API keys — those need a signed-in session.
-        Disable a person and their keys stop working immediately.
+        credentials, manage employees or plans, read analytics, or create, list
+        or revoke API keys — those need a signed-in session. Disable a person
+        and their keys stop working immediately.
 
 
         Each person can hold up to 25 active keys (409 beyond that); revoke one
@@ -4939,13 +4955,18 @@ components:
             - files:read
           description: >-
             What the key may do. A key can never do more than its creator’s role
-            allows: an employee cannot grant `billing:read`.
+            allows: an employee cannot grant `billing:read`, `rules:write` or
+            `audit:read`.
           items:
             type: string
             enum: &ref_37
               - files:read
               - files:write
               - billing:read
+              - rules:write
+              - audit:read
+              - notifications:read
+              - mcp
       required:
         - name
         - scopes

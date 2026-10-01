@@ -42,6 +42,16 @@ export class RequestContextService {
     return this.cls.isActive() ? this.cls.get('apiKeyId') : undefined;
   }
 
+  /** The doorway this request came through, when it is not a plain REST route. */
+  get channel(): 'mcp' | undefined {
+    return this.cls.isActive() ? this.cls.get('channel') : undefined;
+  }
+
+  /** Called by the MCP controller, once per request, before any tool runs. */
+  setChannel(channel: 'mcp'): void {
+    if (this.cls.isActive()) this.cls.set('channel', channel);
+  }
+
   /** The inbound request's IP; `undefined` outside HTTP (jobs, scheduled tasks). */
   get ip(): string | undefined {
     return this.cls.isActive() ? this.cls.get('ip') : undefined;

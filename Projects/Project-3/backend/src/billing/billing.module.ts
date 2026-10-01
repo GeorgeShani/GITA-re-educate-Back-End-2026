@@ -18,6 +18,6 @@ import { UsageService } from './usage.service.js';
   imports: [DatabaseModule, NotificationsModule, WebhookPublishingModule],
   controllers: [BillingController],
   providers: [UsageService, StatementService, InvoicingService, BillingService],
-  exports: [UsageService, StatementService, InvoicingService],
+  exports: [UsageService, StatementService, InvoicingService, BillingService],
 })
 export class BillingModule {}

@@ -42,20 +42,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): unknown {
     const isHttpException = exception instanceof HttpException;
+    const clientError = isHttpException ? undefined : exposedClientError(exception);
 
     const statusCode = isHttpException
       ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+      : (clientError?.status ?? HttpStatus.INTERNAL_SERVER_ERROR);
 
     const message = isHttpException
       ? extractMessage(exception.getResponse())
-      : 'Internal server error';
+      : (clientError?.message ?? 'Internal server error');
 
     // Project-2's filter logged only unhandled errors and used Nest's Logger, so
     // 4xx/5xx HttpExceptions were invisible and nothing it wrote was structured.
     // Both are fixed here: everything is logged, through pino, at a severity
     // that matches the status.
-    if (!isHttpException || statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
+    if ((!isHttpException && !clientError) || statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
       this.logger.error(
         {
           err: exception,
@@ -88,11 +89,25 @@ export class AllExceptionsFilter implements ExceptionFilter {
 }
 
 /**
+ * Express middleware (the body parser: 413 too large, 400 malformed JSON) fails with an `http-errors` object, not a
+ * Nest exception. Such an error says it is safe to show (`expose`) and carries its own 4xx status, so it is answered as
+ * that, not as a 500 "Internal server error" that blames us for the client's request.
+ */
+function exposedClientError(exception: unknown): { status: number; message: string } | undefined {
+  if (typeof exception !== 'object' || exception === null) return undefined;
+  if (!('expose' in exception) || exception.expose !== true) return undefined;
+  if (!('status' in exception) || typeof exception.status !== 'number') return undefined;
+  if (exception.status < 400 || exception.status >= 500) return undefined;
+  const message = 'message' in exception && typeof exception.message === 'string' ? exception.message : 'Request failed';
+  return { status: exception.status, message };
+}
+
+/**
  * Nest's exception bodies are inconsistent: a bare `throw new
  * NotFoundException('x')` yields `{ message: 'x' }`, while ValidationPipe yields
  * `{ message: [...] }`, and a thrown string yields the string itself.
  */
-function extractMessage(body: string | object): string | string[] {
+export function extractMessage(body: string | object): string | string[] {
   if (typeof body === 'string') return body;
 
   const message = hasMessageProperty(body) ? body.message : undefined;

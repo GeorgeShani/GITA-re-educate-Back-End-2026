@@ -21,7 +21,7 @@ export class CreateApiKeyDto {
     isArray: true,
     example: ['files:read'],
     description:
-      'What the key may do. A key can never do more than its creator’s role allows: an employee cannot grant `billing:read`.',
+      'What the key may do. A key can never do more than its creator’s role allows: an employee cannot grant `billing:read`, `rules:write` or `audit:read`.',
   })
   @IsArray()
   @ArrayNotEmpty()

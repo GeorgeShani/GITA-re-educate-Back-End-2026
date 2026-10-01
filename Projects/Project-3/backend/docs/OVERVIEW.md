@@ -141,7 +141,7 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 ### 7. Personal API keys
 
 - A person mints a key (`gl_live_…`), shown **once** and stored hashed, to upload from a script. Scopes: `files:read`,
-  `files:write`, `billing:read` (admins only).
+  `files:write`, `notifications:read`, `mcp` (anyone), and `billing:read`, `rules:write`, `audit:read` (admins only).
 - A key **acts as its creator as they are right now**; it is never more than their role and its scopes. A route that does not
   opt in with `@RequireScopes` is closed to keys, so a leaked key cannot read identity, manage people, change plans, mint more
   keys or reach GraphQL. Disabling the person kills their keys.
@@ -205,6 +205,18 @@ not "forbidden", it is **404**: nothing discloses that it exists.
   grants are visible only to an admin or the uploader, and API keys remain denied. There are no mutations or subscriptions.
   Depth 6, cost 1000, and a maximum page size of 50 bound work before execution. The committed contract is
   `src/graphql/schema.gql`.
+
+### 11b. MCP server (for AI agents)
+
+- `POST /mcp` speaks the Model Context Protocol (Streamable HTTP, stateless) so an agent such as Claude Code, Claude Desktop
+  or Cursor can work with a company's data. It is a new doorway to the same services, not a new policy: authentication, tenancy,
+  file visibility, quotas, the plan's rate limit and the audit trail are the ones REST uses.
+- It takes an API key with the `mcp` scope and offers only the tools that key may use (its other scopes, and its creator's live
+  role). Reads: files, versions, reports, previews, comparisons, comments, plan and quota, rules; admins with the scopes also
+  get billing and the audit log. Writes: upload a file or a new version (CSV as text, anything else as base64; up to 8 MB; safe
+  to retry with an `idempotencyKey`), rebuild a report, manage quality rules (`rules:write`), mark one's own notifications read.
+- Audit entries made through it say `via: "mcp"` and which key acted. The demo company's agents see no write tools.
+- Not exposed: comments, people, plans, API keys, webhooks, file deletion and access changes — those stay with a signed-in person.
 
 ### 12. Operations
 

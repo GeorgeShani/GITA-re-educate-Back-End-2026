@@ -19,6 +19,7 @@ vi.hoisted(() => {
 import { AppModule } from '#/app.module.js';
 import { ENTITIES } from '#/database/entities.js';
 import { LocalDownloadController } from '#/core/storage/local-download.controller.js';
+import { McpController } from '#/mcp/mcp.controller.js';
 import { HealthController } from '#/health/health.controller.js';
 import { API_SCOPES, REQUIRED_SCOPES_KEY } from './require-scopes.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
@@ -103,7 +104,12 @@ const AUDITED_CONTROLLERS = [...new Set(collectControllers(AppModule))];
  * exempt from the "response type is a DTO, not an entity" check by name,
  * exactly as its own doc comment says `route-audit.spec.ts` does.
  */
-const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([HealthController.name, LocalDownloadController.name]);
+const EXEMPT_FROM_RESPONSE_TYPE_CHECK = new Set<string>([
+  HealthController.name,
+  LocalDownloadController.name,
+  // JSON-RPC over one POST, excluded from the OpenAPI document; the SDK writes the response itself.
+  McpController.name,
+]);
 
 interface RouteHandle {
   controller: string;

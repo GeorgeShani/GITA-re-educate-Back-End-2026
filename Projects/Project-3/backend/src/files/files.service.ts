@@ -54,6 +54,7 @@ import { DataQualityReport } from './data-quality-report.entity.js';
 import { FileAccessGrant } from './file-access-grant.entity.js';
 import { FileAsset, type FileVisibility } from './file-asset.entity.js';
 import { type FileViewer, applyFileVisibility } from './file-visibility.js';
+import type { IncomingSpreadsheet } from './incoming-spreadsheet.js';
 import { blockedMessage, overageWarning, quotaDecision } from './quota.js';
 import { sniffSpreadsheet } from './validation/sniff-spreadsheet.js';
 
@@ -100,17 +101,6 @@ const LIST_COLUMNS = [
   'f.createdAt',
   'f.updatedAt',
 ];
-
-/**
- * Multer (busboy) reads the `filename` parameter as Latin-1, but browsers and curl
- * send it as UTF-8 bytes, so `ანგარიში.csv` arrives as `áááá…`. Re-reading those
- * bytes as UTF-8 undoes it. A name that is not valid UTF-8 when re-read (it really was
- * Latin-1) is left exactly as received.
- */
-export function decodeMultipartName(raw: string): string {
-  const repaired = Buffer.from(raw, 'latin1').toString('utf8');
-  return repaired.includes('�') ? raw : repaired;
-}
 
 /**
  * A client-supplied name, reduced to something safe to store and show: no directory
@@ -165,7 +155,7 @@ export class FilesService {
    * no quota is consumed. A rejected type, a failed check or a storage error never
    * reaches step 4's usage event.
    */
-  upload(file: Express.Multer.File, dto: UploadFileDto): Promise<UploadResult> {
+  upload(file: IncomingSpreadsheet, dto: UploadFileDto): Promise<UploadResult> {
     return this.store(file, {
       kind: 'new',
       visibility: dto.visibility,
@@ -182,7 +172,7 @@ export class FilesService {
    */
   async uploadVersion(
     baseId: string,
-    file: Express.Multer.File,
+    file: IncomingSpreadsheet,
   ): Promise<UploadResult> {
     const base = await this.requireManageable(baseId);
     return this.store(file, { kind: 'version', datasetId: base.datasetId });
@@ -190,7 +180,7 @@ export class FilesService {
 
   /** The one upload path: a brand-new file, or the next version of a dataset. */
   private async store(
-    file: Express.Multer.File,
+    file: IncomingSpreadsheet,
     target: StoreTarget,
   ): Promise<UploadResult> {
     const { companyId, viewer } = this.caller();
@@ -320,9 +310,7 @@ export class FilesService {
             id: fileId,
             companyId,
             uploaderId: viewer.userId,
-            originalName: sanitizeFileName(
-              decodeMultipartName(file.originalname),
-            ),
+            originalName: sanitizeFileName(file.name),
             mimeType,
             sizeBytes: file.size,
             storageKey,

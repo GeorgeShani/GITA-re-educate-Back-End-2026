@@ -3,7 +3,17 @@ import { SetMetadata } from '@nestjs/common';
 export const REQUIRED_SCOPES_KEY = 'requiredScopes';
 
 /** Every scope a key can hold. Add here, not by inventing a parallel type elsewhere. */
-export const API_SCOPES = ['files:read', 'files:write', 'billing:read'] as const;
+export const API_SCOPES = [
+  'files:read',
+  'files:write',
+  'billing:read',
+  // Opt-in scopes: a key never gets these by accident.
+  'rules:write',
+  'audit:read',
+  'notifications:read',
+  // May use the MCP endpoint at all. Which tools an agent sees is then decided by the scopes above.
+  'mcp',
+] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 /**

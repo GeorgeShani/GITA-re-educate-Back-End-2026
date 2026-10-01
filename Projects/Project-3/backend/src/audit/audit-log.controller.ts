@@ -1,5 +1,6 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { mapPageData } from '#/common/pagination/paginate.js';
 import { toDto } from '#/common/response/to-dto.js';
@@ -11,6 +12,7 @@ import { AuditQueryDto } from './dto/audit-query.dto.js';
 @ApiTags('audit')
 @ApiBearerAuth()
 @Roles('admin')
+@RequireScopes('audit:read')
 @Controller('audit')
 export class AuditLogController {
   constructor(private readonly log: AuditLogService) {}

@@ -25,7 +25,7 @@ NotificationsController_list:
 
     New entries also arrive live on the realtime connection as `notification.created`, and only once
     the change that caused them has committed. Read notifications are removed after 90 days; unread
-    ones stay. Signed-in sessions only: an API key cannot read the inbox.
+    ones stay. A signed-in session, or an API key holding the opt-in `notifications:read` scope.
 
 NotificationsController_unreadCount:
   summary: Count your unread notifications

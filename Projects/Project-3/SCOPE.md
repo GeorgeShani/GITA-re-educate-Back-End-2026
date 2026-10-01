@@ -246,6 +246,12 @@ a publicly reachable API, and there are already two bonus features for a
 2-point line item. **Sequence it dead last, on the deployed demo only, after
 all 40 points are locked.**
 
+*Resolved (Phase 22): built as Gridline's own MCP server instead of Scalar's
+hosted one* — `POST /mcp`, Streamable HTTP in stateless mode, authenticated by
+an API key with the `mcp` scope, calling the same services as the REST routes
+(tools are filtered by the key's scopes and its creator's live role). See
+AGENTS.md → *MCP server*.
+
 ---
 
 ## What to take from the Datodia starters
@@ -893,9 +899,10 @@ frozen into the key.
 
 **A key is act-as-user, capped by the creator's live permissions:**
 - Effective permission = *(creator's current role + ACL grants)* ∩ *(key
-  `scopes`)*. Scopes (`files:read`, `files:write`, `billing:read`) only ever
-  **narrow**. `billing:read` is not selectable by an employee — you cannot
-  grant what you do not have.
+  `scopes`)*. Scopes (`files:read`, `files:write`, `billing:read`, and from
+  Phase 22 `rules:write`, `audit:read`, `notifications:read`, `mcp`) only ever
+  **narrow**. `billing:read`, `rules:write` and `audit:read` are not selectable
+  by an employee — you cannot grant what you do not have.
 - A key can **never** mint or manage keys, and never touches auth/identity
   routes — those are session-only regardless of role, so a leaked key cannot
   establish persistence.
@@ -942,7 +949,7 @@ Anything under *Beyond the assignment* and the *Stack* sections earns no
 additional rubric points. API keys, throttling, preview, demo mode,
 notifications, rules, versions, Stripe, comments/presence, signed outgoing
 webhooks and the read-only GraphQL graph are implemented portfolio features.
-MCP remains a deliberate, unimplemented stretch.
+The MCP server (Phase 22) is implemented as Gridline's own `/mcp` endpoint.
 
 The pagination, sorting, filtering, aggregation, projection and indexing work
 in *Request pipeline & data access* is not separately graded either — it
@@ -1222,7 +1229,7 @@ maps each one to its contract and verification evidence.
 
 **Deferred, deliberately:** branded invoice PDFs, trash + restore, weekly
 usage digest emails, 2FA, Georgian/English i18n, company erasure/export,
-multi-instance Redis coordination and MCP. These are not presented as built.
+and multi-instance Redis coordination. These are not presented as built.
 
 ---
 
@@ -1284,13 +1291,16 @@ multi-instance Redis coordination and MCP. These are not presented as built.
     and cost-scaled connections. ✅
 22. **Frontend** — every surface above, wired to the generated API client,
     plus the MDX guides at `/docs/*`. ⏳
-23. **Scalar Agent / MCP** *(stretch)* — deliberately not implemented.
+23. **MCP server** *(stretch)* — built as Gridline's own server (not Scalar's
+    hosted agent): `POST /mcp`, API-key auth with the `mcp` scope, 23 tools
+    over the existing services (read, upload, rules, billing, audit,
+    notifications), every call audited with `via: "mcp"`. ✅
 
 **Scope reality check.** This is now well past a course assignment, which is
 the point — but the ordering matters more than it did. **Milestones 3–9 are
 the entire 40 points**; everything from 10 onward is portfolio surface.
 Backend milestones through 21 are complete. The frontend is the remaining
-product surface; MCP stays outside the committed scope.
+product surface; MCP (item 23) is built.
 
 ---
 
@@ -1443,6 +1453,5 @@ npm run test:int        # integration against a throwaway Neon branch
 - **Legacy XLS profiling.** XLS is accepted, stored and downloadable, but only
   CSV/XLSX are profiled because available legacy parsers carry avoidable
   security risk.
-- **Scope** — backend milestones through 21 are complete. The remaining large
-  surface is the branded Next.js frontend; MCP stays a named stretch rather
-  than an implied backend feature.
+- **Scope** — backend milestones through 22 are complete (22 is the MCP
+  server). The remaining large surface is the branded Next.js frontend.

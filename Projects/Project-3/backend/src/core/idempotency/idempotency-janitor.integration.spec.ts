@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppHarness } from '#test/support/app-harness.js';
-import { IDEMPOTENCY_STALE_CLAIM_MS, IDEMPOTENCY_TTL_MS } from './idempotency.interceptor.js';
+import { IDEMPOTENCY_STALE_CLAIM_MS, IDEMPOTENCY_TTL_MS } from './idempotency-store.js';
 import { IdempotencyJanitor } from './idempotency-janitor.service.js';
 import { IdempotencyRecord } from './idempotency-record.entity.js';
 

@@ -120,7 +120,12 @@ real deployment:
 - A process crash between object upload and database commit can leave an S3
   orphan. Ordinary failures clean up, but no bucket reconciliation job exists.
 - Legacy XLS files are accepted, stored and downloaded, but not profiled.
-- Company export/erasure, 2FA, i18n, invoice PDFs, trash/restore, weekly digests
-  and MCP are not implemented and are not presented as complete.
+- Company export/erasure, 2FA, i18n, invoice PDFs, trash/restore and weekly
+  digests are not implemented and are not presented as complete.
+- The MCP server (`POST /mcp`, Phase 22) is implemented: stateless Streamable
+  HTTP, API-key auth only (no OAuth), 23 tools over the same services as REST.
+  Uploads through it are capped at 8 MB (larger files use `POST /files`).
+  Comments, employees, plan changes, API keys, webhooks, file deletion and
+  access changes are deliberately not exposed to agents.
 - There is no repository CI workflow by user choice; the same gate is run
   locally before delivery.

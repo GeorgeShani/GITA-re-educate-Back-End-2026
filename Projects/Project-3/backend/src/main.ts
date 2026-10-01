@@ -11,6 +11,7 @@ import type { AppConfig } from './config/env.schema.js';
 import { CSP_NONCE_LOCALS_KEY } from './docs/csp-nonce.js';
 import { mergeProse } from './docs/prose.js';
 import { mountScalarReference } from './docs/scalar.js';
+import { installMcpBodyParser } from './mcp/mcp-body-parser.js';
 import { buildOpenApiDocument } from './docs/swagger-document.js';
 
 /**
@@ -51,6 +52,9 @@ async function bootstrap(): Promise<void> {
   // proxy fronts the API. Trust exactly as many hops as there are proxies, never more: an
   // untrusted hop would let a client choose its own address.
   if (config.TRUST_PROXY > 0) app.set('trust proxy', config.TRUST_PROXY);
+
+  // Room for a file inside a tool call, on `/mcp` only; must run before Nest's own body parser (registered at listen).
+  installMcpBodyParser(app);
 
   // Mints one nonce per request, before helmet computes that request's CSP
   // header — `scriptSrcNonce` below reads it back into `script-src`, and

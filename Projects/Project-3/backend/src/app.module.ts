@@ -26,6 +26,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { DemoModule } from './demo/demo.module.js';
 import { EmployeesModule } from './employees/employees.module.js';
 import { FilesModule } from './files/files.module.js';
+import { McpModule } from './mcp/mcp.module.js';
 import { NotificationsModule } from './notifications/notifications.module.js';
 import { WebhookPublishingModule } from './outgoing-webhooks/webhook-publishing.module.js';
 import { WebhooksModule } from './outgoing-webhooks/webhooks.module.js';
@@ -141,6 +142,7 @@ function observeImports(): DynamicModule[] {
     AuditLogModule,
     AnalyticsModule,
     ApiKeysModule,
+    McpModule,
     DemoModule,
     // Registers the global guards; keep it after the modules they depend on.
     AccessControlModule,

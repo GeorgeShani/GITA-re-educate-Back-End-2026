@@ -3,7 +3,6 @@ import {
   CallHandler,
   ConflictException,
   ExecutionContext,
-  Inject,
   Injectable,
   type NestInterceptor,
   UnprocessableEntityException,
@@ -11,29 +10,12 @@ import {
 import { isUUID } from 'class-validator';
 import type { Request, Response } from 'express';
 import { type Observable, catchError, from, of, switchMap, throwError } from 'rxjs';
-import { DataSource } from 'typeorm';
-import { z } from 'zod';
-import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
-import { IdempotencyRecord } from './idempotency-record.entity.js';
+import { IdempotencyStore } from './idempotency-store.js';
 import { hashRequest } from './request-hash.js';
-
-/** A key is remembered for a day; after that the same key is a new request. */
-export const IDEMPOTENCY_TTL_MS = 24 * 60 * 60_000;
-/** An `in_progress` claim older than this belongs to a request that never finished (a crash). */
-export const IDEMPOTENCY_STALE_CLAIM_MS = 10 * 60_000;
 
 /** Headers a handler may set that a replay must reproduce. */
 const REPLAYED_HEADER_PREFIX = 'x-gridline-';
-
-const storedBody = z.json();
-const storedHeaders = z.record(z.string(), z.string());
-
-type Claim =
-  | { kind: 'proceed'; recordId: string }
-  | { kind: 'replay'; statusCode: number; body: unknown; headers: Record<string, string> }
-  | { kind: 'mismatch' }
-  | { kind: 'in_progress' };
 
 /**
  * Makes a retried request safe. With an `Idempotency-Key` header, the FIRST request
@@ -47,14 +29,13 @@ type Claim =
  * - a request that FAILED is forgotten, so the retry can run again
  *
  * List it AFTER `FileInterceptor` on an upload route, so the file has been parsed
- * and can be part of "the same request".
+ * and can be part of "the same request". The claim bookkeeping lives in `IdempotencyStore`.
  */
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
   constructor(
-    private readonly dataSource: DataSource,
+    private readonly store: IdempotencyStore,
     private readonly context: RequestContextService,
-    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<unknown>> {
@@ -77,7 +58,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       file: request.file?.buffer,
     });
 
-    const claim = await this.claim(companyId, key, route, requestHash);
+    const claim = await this.store.claim(companyId, key, route, requestHash);
     switch (claim.kind) {
       case 'mismatch':
         throw new UnprocessableEntityException(
@@ -95,88 +76,25 @@ export class IdempotencyInterceptor implements NestInterceptor {
       case 'proceed':
         return next.handle().pipe(
           switchMap((body: unknown) =>
-            from(this.complete(claim.recordId, response, body).then(() => body)),
+            from(
+              this.store
+                .complete(claim.recordId, response.statusCode, body, replayedHeaders(response))
+                .then(() => body),
+            ),
           ),
           // A failed request is not remembered: the client fixes it and retries with the same key.
           catchError((error: unknown) =>
-            from(this.release(claim.recordId)).pipe(switchMap(() => throwError(() => error))),
+            from(this.store.release(claim.recordId)).pipe(switchMap(() => throwError(() => error))),
           ),
         );
     }
   }
+}
 
-  /**
-   * Insert-first: the row is the claim. `ON CONFLICT DO NOTHING` returning nothing
-   * means someone already holds this key, and then their row decides what happens.
-   */
-  private async claim(
-    companyId: string,
-    key: string,
-    route: string,
-    requestHash: string,
-  ): Promise<Claim> {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const inserted = await this.dataSource
-        .createQueryBuilder()
-        .insert()
-        .into(IdempotencyRecord)
-        .values({ companyId, key, route, requestHash, status: 'in_progress' })
-        .orIgnore()
-        .returning(['id'])
-        .execute();
-      const raw: unknown = inserted.raw[0];
-      if (typeof raw === 'object' && raw !== null && 'id' in raw && typeof raw.id === 'string') {
-        return { kind: 'proceed', recordId: raw.id };
-      }
-
-      const existing = await this.dataSource
-        .getRepository(IdempotencyRecord)
-        .findOne({ where: { companyId, key } });
-      if (!existing) continue; // released between our insert and our read: claim it now
-
-      const age = this.clock.now().getTime() - existing.createdAt.getTime();
-      const abandoned = existing.status === 'in_progress' && age > IDEMPOTENCY_STALE_CLAIM_MS;
-      if (age > IDEMPOTENCY_TTL_MS || abandoned) {
-        await this.dataSource.getRepository(IdempotencyRecord).delete({ id: existing.id });
-        continue;
-      }
-
-      if (existing.route !== route || existing.requestHash !== requestHash) {
-        return { kind: 'mismatch' };
-      }
-      if (existing.status === 'in_progress') return { kind: 'in_progress' };
-
-      const body = storedBody.safeParse(existing.responseBody);
-      const headers = storedHeaders.safeParse(existing.responseHeaders ?? {});
-      return {
-        kind: 'replay',
-        statusCode: existing.statusCode ?? 200,
-        body: body.success ? body.data : null,
-        headers: headers.success ? headers.data : {},
-      };
-    }
-    throw new ConflictException('Could not settle this Idempotency-Key. Retry shortly.');
+function replayedHeaders(response: Response): Record<string, string> {
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(response.getHeaders())) {
+    if (name.startsWith(REPLAYED_HEADER_PREFIX) && typeof value === 'string') headers[name] = value;
   }
-
-  private async complete(recordId: string, response: Response, body: unknown): Promise<void> {
-    const headers: Record<string, string> = {};
-    for (const [name, value] of Object.entries(response.getHeaders())) {
-      if (name.startsWith(REPLAYED_HEADER_PREFIX) && typeof value === 'string') headers[name] = value;
-    }
-
-    await this.dataSource.getRepository(IdempotencyRecord).update(
-      { id: recordId },
-      {
-        status: 'completed',
-        statusCode: response.statusCode,
-        // Snapshot as the client saw it: dates as ISO strings, class instances as plain data.
-        responseBody: body === undefined ? null : JSON.parse(JSON.stringify(body)),
-        responseHeaders: headers,
-      },
-    );
-  }
-
-  private async release(recordId: string): Promise<void> {
-    await this.dataSource.getRepository(IdempotencyRecord).delete({ id: recordId });
-  }
+  return headers;
 }

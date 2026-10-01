@@ -8,5 +8,6 @@ import { AuditLogService } from './audit-log.service.js';
   imports: [DatabaseModule],
   controllers: [AuditLogController],
   providers: [AuditLogService],
+  exports: [AuditLogService],
 })
 export class AuditLogModule {}

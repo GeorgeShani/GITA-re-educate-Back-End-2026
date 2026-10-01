@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { decodeMultipartName, sanitizeFileName } from './files.service.js';
+import { decodeMultipartName } from './incoming-spreadsheet.js';
+import { sanitizeFileName } from './files.service.js';
 
 /** What multer hands over for a UTF-8 `filename` it read as Latin-1. */
 const asMulterSeesIt = (name: string) => Buffer.from(name, 'utf8').toString('latin1');
