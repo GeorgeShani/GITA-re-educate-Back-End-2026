@@ -25,6 +25,9 @@
   --gl-tab-sienna: oklch(0.47 0.1 48);
   --gl-on-tab-light: oklch(0.2 0.012 80);
   --gl-on-tab-dark: oklch(0.98 0.01 92);
+  --gl-chart-1: oklch(0.5 0.18 262);
+  --gl-chart-2: oklch(0.65 0.19 48);
+  --gl-chart-3: oklch(0.62 0.11 195);
   --gl-action: oklch(0.2 0.012 80);
   --gl-action-hover: oklch(0.34 0.014 80);
   --gl-on-action: oklch(0.97 0.014 92);
@@ -65,6 +68,9 @@
   --gl-tab-sienna: oklch(0.47 0.1 48);
   --gl-on-tab-light: oklch(0.2 0.012 80);
   --gl-on-tab-dark: oklch(0.98 0.01 92);
+  --gl-chart-1: oklch(0.62 0.17 262);
+  --gl-chart-2: oklch(0.66 0.18 48);
+  --gl-chart-3: oklch(0.6 0.11 195);
   --gl-action: oklch(0.95 0.014 90);
   --gl-action-hover: oklch(0.86 0.02 88);
   --gl-on-action: oklch(0.2 0.012 80);
@@ -104,6 +110,9 @@
   --color-tab-sienna: var(--gl-tab-sienna);
   --color-on-tab-light: var(--gl-on-tab-light);
   --color-on-tab-dark: var(--gl-on-tab-dark);
+  --color-chart-1: var(--gl-chart-1);
+  --color-chart-2: var(--gl-chart-2);
+  --color-chart-3: var(--gl-chart-3);
   --color-action: var(--gl-action);
   --color-action-hover: var(--gl-action-hover);
   --color-on-action: var(--gl-on-action);
