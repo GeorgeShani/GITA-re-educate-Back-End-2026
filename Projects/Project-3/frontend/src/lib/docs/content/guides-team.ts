@@ -171,14 +171,14 @@ export const PEOPLE: Block[] = [
   steps(
     {
       title: "Open People",
-      text: "Choose **People** in the sidebar. Everyone in your company is listed with their role and whether they have joined yet.",
+      text: "Choose **People** in the sidebar. Everyone in your company is listed, marked **Admin**, **Invited** or **Removed** where that applies. The tabs above the list (**Everyone**, **Active**, **Invited**, **Removed**) narrow it.",
     },
     {
-      title: "Choose Invite",
-      text: "Enter their **email** (where the invitation goes, and the address they will sign in with) and their **full name**, as colleagues will see it.",
+      title: "Choose Invite someone",
+      text: "Enter their **full name**, as colleagues will see it, and their **email** (where the invitation goes, and the address they will sign in with).",
     },
     {
-      title: "Send",
+      title: "Choose Send invitation",
       text: "They get an email with a link. Following it, they choose a password or join with Google, and they are in.",
     },
   ),
@@ -198,7 +198,7 @@ export const PEOPLE: Block[] = [
 
   h2("Invitations that did not arrive"),
   p(
-    "Next to a person who has not joined yet, choose **Resend invitation**. A new link is sent and the old one stops working.",
+    "Next to a person who has not joined yet, choose **Resend invitation**. A new link is sent and the old one stops working. To withdraw an invitation, choose **Cancel invitation**: the link stops working, the seat is freed, and the person moves to **Removed**.",
   ),
 
   h2("Remove someone"),
