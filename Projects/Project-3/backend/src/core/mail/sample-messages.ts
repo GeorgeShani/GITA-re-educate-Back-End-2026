@@ -73,7 +73,7 @@ export const SAMPLE_MESSAGES: MailMessage[] = [
       companyName: 'Acme & Sons',
       totalFormatted: '$1,250.50',
       graceEndsAt: 'October 21, 2026',
-      billingUrl: 'https://gridline.test/settings/billing',
+      billingUrl: 'https://gridline.test/billing',
     },
   },
   {
@@ -81,7 +81,7 @@ export const SAMPLE_MESSAGES: MailMessage[] = [
     to: 'billing@acme.test',
     vars: {
       companyName: 'Acme & Sons',
-      billingUrl: 'https://gridline.test/settings/billing',
+      billingUrl: 'https://gridline.test/billing',
     },
   },
   {
@@ -89,7 +89,7 @@ export const SAMPLE_MESSAGES: MailMessage[] = [
     to: 'billing@acme.test',
     vars: {
       companyName: 'Acme & Sons',
-      billingUrl: 'https://gridline.test/settings/billing',
+      billingUrl: 'https://gridline.test/billing',
     },
   },
 ];

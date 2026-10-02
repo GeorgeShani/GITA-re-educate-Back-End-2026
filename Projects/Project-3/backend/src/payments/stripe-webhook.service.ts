@@ -417,7 +417,7 @@ export class StripeWebhookService {
               totalFormatted: formatCents(external.totalCents),
               invoiceUrl:
                 external.hostedUrl ??
-                `${this.config.APP_PUBLIC_URL}/settings/billing`,
+                `${this.config.APP_PUBLIC_URL}/billing`,
             },
           },
           { manager },
@@ -458,7 +458,7 @@ export class StripeWebhookService {
             companyName: company.name,
             totalFormatted: formatCents(external.totalCents),
             graceEndsAt: formatMailDate(account.graceEndsAt),
-            billingUrl: `${this.config.APP_PUBLIC_URL}/settings/billing`,
+            billingUrl: `${this.config.APP_PUBLIC_URL}/billing`,
           },
         },
         { manager },
@@ -534,7 +534,7 @@ export class StripeWebhookService {
           to: company.billingEmail,
           vars: {
             companyName: company.name,
-            billingUrl: `${this.config.APP_PUBLIC_URL}/settings/billing`,
+            billingUrl: `${this.config.APP_PUBLIC_URL}/billing`,
           },
         },
         { manager },

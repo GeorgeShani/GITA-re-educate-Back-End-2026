@@ -55,7 +55,7 @@ export class DunningEvaluator {
             to: company.billingEmail,
             vars: {
               companyName: company.name,
-              billingUrl: `${this.config.APP_PUBLIC_URL}/settings/billing`,
+              billingUrl: `${this.config.APP_PUBLIC_URL}/billing`,
             },
           },
           { manager },

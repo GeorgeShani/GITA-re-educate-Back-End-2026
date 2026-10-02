@@ -84,8 +84,8 @@ export class StripePaymentProvider implements PaymentProvider {
         client_reference_id: request.intentId,
         payment_method_collection: 'always',
         line_items: this.lineItems(request.plan, request.activeEmployees),
-        success_url: `${this.config.appPublicUrl}/settings/billing?checkout=success`,
-        cancel_url: `${this.config.appPublicUrl}/settings/billing?checkout=cancelled`,
+        success_url: `${this.config.appPublicUrl}/billing?checkout=success`,
+        cancel_url: `${this.config.appPublicUrl}/billing?checkout=cancelled`,
       },
       { idempotencyKey: `checkout:${request.intentId}` },
     );
@@ -133,7 +133,7 @@ export class StripePaymentProvider implements PaymentProvider {
     const session = await this.stripe.billingPortal.sessions.create({
       customer: customerId,
       configuration: this.config.portalConfigurationId,
-      return_url: `${this.config.appPublicUrl}/settings/billing`,
+      return_url: `${this.config.appPublicUrl}/billing`,
     });
     return session.url;
   }
