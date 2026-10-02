@@ -22,18 +22,19 @@ export interface UploadResult {
 }
 
 /**
- * Sends one file through this site's own door to the API (`/session/api/files`), which attaches the session. `fetch` cannot
- * report how much of an upload has gone, so this uses XMLHttpRequest, which can. The key makes a retry harmless.
+ * Sends one file through this site's own door to the API, which attaches the session. `fetch` cannot report how much of an
+ * upload has gone, so this uses XMLHttpRequest, which can. The key makes a retry harmless.
  */
-export function sendFile(
+function postFile(
+  path: string,
   file: File,
-  visibility: Visibility,
+  fields: Record<string, string>,
   idempotencyKey: string,
   onProgress: (share: number) => void,
 ): Promise<UploadResult> {
   return new Promise((resolve) => {
     const request = new XMLHttpRequest();
-    request.open("POST", "/session/api/files");
+    request.open("POST", path);
     request.setRequestHeader("Idempotency-Key", idempotencyKey);
     request.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded / event.total);
@@ -51,9 +52,43 @@ export function sendFile(
 
     const form = new FormData();
     form.append("file", file);
-    form.append("visibility", visibility);
+    for (const [name, value] of Object.entries(fields)) {
+      form.append(name, value);
+    }
     request.send(form);
   });
+}
+
+/** A new file. */
+export function sendFile(
+  file: File,
+  visibility: Visibility,
+  idempotencyKey: string,
+  onProgress: (share: number) => void,
+): Promise<UploadResult> {
+  return postFile(
+    "/session/api/files",
+    file,
+    { visibility },
+    idempotencyKey,
+    onProgress,
+  );
+}
+
+/** A new version of an existing file. It keeps the file's visibility, so only the bytes travel. */
+export function sendVersion(
+  fileId: string,
+  file: File,
+  idempotencyKey: string,
+  onProgress: (share: number) => void,
+): Promise<UploadResult> {
+  return postFile(
+    `/session/api/files/${fileId}/versions`,
+    file,
+    {},
+    idempotencyKey,
+    onProgress,
+  );
 }
 
 /** What to tell a person about a refused upload: the API's own words when it gave some. */
