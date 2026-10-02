@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { ACCESS_COOKIE, REFRESH_COOKIE } from "@/lib/session/config";
-import { refreshTokens } from "@/lib/session/refresh";
+import { refreshTokens, unavailableResponse } from "@/lib/session/refresh";
 import { forbidden, isSameOrigin } from "@/lib/session/request";
 import { clearSession, writeSession } from "@/lib/session/tokens";
 
@@ -15,16 +15,17 @@ export async function GET(request: Request) {
   let accessToken = jar.get(ACCESS_COOKIE)?.value;
   if (!accessToken) {
     const refreshToken = jar.get(REFRESH_COOKIE)?.value;
-    const tokens = refreshToken ? await refreshTokens(refreshToken) : null;
-    if (!tokens) {
+    const renewal = refreshToken ? await refreshTokens(refreshToken) : null;
+    if (renewal?.kind === "unavailable") return unavailableResponse();
+    if (renewal?.kind !== "renewed") {
       clearSession(jar);
       return Response.json(
         { statusCode: 401, message: "Your session has ended. Sign in again." },
         { status: 401 },
       );
     }
-    writeSession(jar, tokens);
-    accessToken = tokens.accessToken;
+    writeSession(jar, renewal.tokens);
+    accessToken = renewal.tokens.accessToken;
   }
   return Response.json(
     { token: accessToken },

@@ -51,9 +51,12 @@ export async function proxy(request: NextRequest) {
   }
 
   const refreshToken = request.cookies.get(REFRESH_COOKIE)?.value;
-  const tokens = refreshToken ? await refreshTokens(refreshToken) : null;
+  const renewal = refreshToken ? await refreshTokens(refreshToken) : null;
 
-  if (!tokens) {
+  // The API could not be asked (restarting, a network fault): the session may be fine, so keep it and say to try again.
+  if (renewal?.kind === "unavailable") return briefly();
+
+  if (renewal?.kind !== "renewed") {
     const login = new URL("/login", request.url);
     login.searchParams.set("next", `${pathname}${search}`);
     const response = NextResponse.redirect(login);
@@ -62,6 +65,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // The page renders in this same request, so it must see the new cookies too, not only the browser afterwards.
+  const { tokens } = renewal;
   request.cookies.set(ACCESS_COOKIE, tokens.accessToken);
   request.cookies.set(REFRESH_COOKIE, tokens.refreshToken);
   const forwarded = new Headers(headers);
@@ -69,6 +73,20 @@ export async function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: forwarded } });
   writeSession(response.cookies, tokens);
   return response;
+}
+
+/** A page that tries again by itself in a few seconds, for when the API cannot be reached. Nobody is signed out. */
+function briefly(): NextResponse {
+  return new NextResponse(
+    '<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=3><meta name=viewport content="width=device-width"><title>Gridline</title><body style="font:16px system-ui;padding:2rem"><p>Gridline is briefly unavailable. This page will try again in a moment.</p>',
+    {
+      status: 503,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Retry-After": "3",
+      },
+    },
+  );
 }
 
 export const config = {
