@@ -8,12 +8,12 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 /**
  * Sign-in, registration, activation, invitations and password reset. At wide widths the back cover of the manual stands
  * beside the form (the same dark cover the site's footer uses), with the one promise the product makes; on a phone it is
- * only the form.
+ * only the form. The cover stays put while the form side scrolls, so a short window never drags it away.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="grid flex-1 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
-      <aside className="cover hidden flex-col justify-between bg-cover p-12 text-on-cover lg:flex">
+      <aside className="cover hidden flex-col justify-between bg-cover p-12 text-on-cover lg:sticky lg:top-0 lg:flex lg:h-dvh lg:self-start">
         <Link href="/" aria-label="Gridline home" className="self-start">
           <Logo className="text-on-cover" />
         </Link>
