@@ -11,6 +11,8 @@ export type FormState =
       /** The refusal was "not activated yet": offer to send the link again. */
       needsActivation?: boolean;
     }
-  | { status: "sent"; email: string };
+  | { status: "sent"; email: string }
+  /** A settings form was saved. */
+  | { status: "saved"; message: string };
 
 export const IDLE: FormState = { status: "idle" };

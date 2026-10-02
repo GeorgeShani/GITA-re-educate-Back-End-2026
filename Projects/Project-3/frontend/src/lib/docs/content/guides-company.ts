@@ -287,8 +287,8 @@ export const ACCOUNT: Block[] = [
   h2("Your password"),
   steps(
     {
-      title: "Open Settings, then Security",
-      text: "Choose **Security** under **Settings** in the sidebar.",
+      title: "Open Settings, then Password and security",
+      text: "Choose **Password and security** among the tabs on the **Settings** page.",
     },
     {
       title: "Enter your current password",
@@ -332,7 +332,10 @@ export const ACCOUNT: Block[] = [
   ),
   h3("Linked accounts"),
   p(
-    "Under **Settings**, **Linked accounts** lists how you can sign in today (password, Google). Connect a Google account, or disconnect one. You cannot remove your **last** way to sign in.",
+    "Under **Settings**, **Linked accounts** lists how you can sign in today (password, Google). Choose **Connect Google** to add one, or **Remove** to take one away. You cannot remove your **last** way to sign in.",
+  ),
+  note(
+    "A colleague invited by email starts with a password only. They can connect their Google account here after signing in, and use either from then on.",
   ),
 
   h2("Company details"),

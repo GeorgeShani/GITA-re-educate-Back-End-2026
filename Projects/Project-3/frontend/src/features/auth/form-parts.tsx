@@ -114,7 +114,7 @@ export function PasswordField({
 }
 
 /** Google's mark in one colour, so it sits in the palette instead of importing four more. */
-function GoogleMark() {
+export function GoogleMark() {
   return (
     <svg
       viewBox="0 0 24 24"
