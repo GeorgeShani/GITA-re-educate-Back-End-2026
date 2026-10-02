@@ -2,6 +2,7 @@ import { RulesView } from "@/features/quality-rules/rules-view";
 import { fetchPlans } from "@/lib/api/plans";
 import { apiClient } from "@/lib/session/api";
 import { requireSession } from "@/lib/session/session";
+import { getSubscription } from "@/lib/session/subscription";
 
 export const metadata = { title: "Quality rules" };
 
@@ -13,7 +14,7 @@ export default async function Page() {
   const api = apiClient(session.accessToken);
   const [rules, subscription, plans] = await Promise.all([
     api.GET("/quality-rules", { params: { query: { limit: SHOWN } } }),
-    api.GET("/subscriptions/me"),
+    getSubscription(session.accessToken),
     fetchPlans(),
   ]);
 
@@ -37,7 +38,7 @@ export default async function Page() {
         <>
           <RulesView
             rules={rules.data.data}
-            canEdit={session.user.role === "admin" && !session.company.isDemo}
+            canEdit={session.user.role === "admin"}
             limit={plan?.maxQualityRules ?? null}
             total={rules.data.meta.total}
           />

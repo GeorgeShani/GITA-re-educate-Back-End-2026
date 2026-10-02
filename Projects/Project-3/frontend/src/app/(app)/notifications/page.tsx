@@ -80,7 +80,6 @@ export default async function Page({
           }}
           people={members.data ?? []}
           unreadOnly={unreadOnly}
-          canWrite={!session.company.isDemo}
         />
       ) : (
         <p

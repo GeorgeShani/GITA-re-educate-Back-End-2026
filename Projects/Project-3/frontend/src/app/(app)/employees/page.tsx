@@ -9,6 +9,7 @@ import { cn } from "@/lib/cn";
 import { exactTime, relativeTime } from "@/lib/format/time";
 import { apiClient } from "@/lib/session/api";
 import { requireSession } from "@/lib/session/session";
+import { getSubscription } from "@/lib/session/subscription";
 
 export const metadata = { title: "People" };
 
@@ -52,13 +53,12 @@ export default async function Page({ searchParams }: PageProps<"/employees">) {
         query: { page, limit: PER_PAGE, ...(status ? { status } : {}) },
       },
     }),
-    api.GET("/subscriptions/me"),
+    getSubscription(session.accessToken),
   ]);
 
   const limit = subscription.data?.limits.maxEmployees ?? null;
   const held = subscription.data?.usage.employees ?? 0;
   const full = limit !== null && held >= limit;
-  const canWrite = !session.company.isDemo;
 
   const href = (next: { status?: StatusFilter; page?: number }) => {
     const params = new URLSearchParams();
@@ -91,10 +91,10 @@ export default async function Page({ searchParams }: PageProps<"/employees">) {
             </>
           ) : null}
         </p>
-        {canWrite ? <InviteButton disabled={full} /> : null}
+        <InviteButton disabled={full} />
       </div>
 
-      {full && canWrite ? (
+      {full ? (
         <p
           role="note"
           className="rounded-md border border-caution bg-caution-soft p-3 text-caution"
@@ -158,7 +158,6 @@ export default async function Page({ searchParams }: PageProps<"/employees">) {
                   key={person.id}
                   person={person}
                   isMe={person.id === session.user.id}
-                  canWrite={canWrite}
                 />
               ))}
             </ul>
@@ -218,15 +217,7 @@ function initials(name: string): string {
   return `${first}${last}`.toUpperCase();
 }
 
-function Row({
-  person,
-  isMe,
-  canWrite,
-}: {
-  person: Person;
-  isMe: boolean;
-  canWrite: boolean;
-}) {
+function Row({ person, isMe }: { person: Person; isMe: boolean }) {
   const when =
     person.status === "active" && person.activatedAt
       ? { label: "Joined", at: person.activatedAt }
@@ -267,7 +258,7 @@ function Row({
           </time>
         </p>
       </div>
-      {canWrite && person.role === "employee" ? (
+      {person.role === "employee" ? (
         <PersonActions
           id={person.id}
           name={person.fullName}

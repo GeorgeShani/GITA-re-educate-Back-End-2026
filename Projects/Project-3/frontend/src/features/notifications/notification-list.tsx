@@ -51,14 +51,11 @@ export function NotificationList({
   initial,
   people,
   unreadOnly,
-  canWrite,
 }: {
   initial: NotificationPage;
   /** Colleagues by id, so "someone shared a file with you" can say who. */
   people: readonly { id: string; fullName: string }[];
   unreadOnly: boolean;
-  /** False in the read-only demo, where marking as read is refused. */
-  canWrite: boolean;
 }) {
   const [items, setItems] = useState<NotificationItem[]>(initial.items);
   const [cursor, setCursor] = useState<string | null>(initial.nextCursor);
@@ -84,7 +81,7 @@ export function NotificationList({
   }, []);
 
   const markRead = async (item: NotificationItem) => {
-    if (item.readAt !== null || !canWrite) return;
+    if (item.readAt !== null) return;
     setItems((current) =>
       current.map((entry) =>
         entry.id === item.id
@@ -147,7 +144,7 @@ export function NotificationList({
 
   return (
     <div className="flex flex-col gap-4">
-      {canWrite && unread > 0 ? (
+      {unread > 0 ? (
         <div className="flex justify-end">
           <Button onClick={markAll}>
             <CircleCheck aria-hidden />
@@ -175,7 +172,6 @@ export function NotificationList({
               key={item.id}
               item={item}
               names={names}
-              canWrite={canWrite}
               onRead={() => void markRead(item)}
             />
           ))}
@@ -204,12 +200,10 @@ export function NotificationList({
 function Entry({
   item,
   names,
-  canWrite,
   onRead,
 }: {
   item: NotificationItem;
   names: ReadonlyMap<string, string>;
-  canWrite: boolean;
   onRead: () => void;
 }) {
   const said = describe(item, names);
@@ -273,7 +267,7 @@ function Entry({
           ) : null}
         </p>
       </div>
-      {isUnread && canWrite ? (
+      {isUnread ? (
         <Button
           variant="ghost"
           size="sm"

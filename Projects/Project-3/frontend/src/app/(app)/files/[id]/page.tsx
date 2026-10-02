@@ -60,8 +60,20 @@ export default async function Page({
     "a former colleague";
   const isAdmin = session.user.role === "admin";
   const canManage = isAdmin || file.data.uploaderId === session.user.id;
-  const canWrite = !session.company.isDemo;
   const status = toStatus(report.data?.status) ?? "queued";
+
+  // Only people who can see the file can be mentioned. For a restricted file the uploader and an admin can tell who that
+  // is (the uploader, plus the people it is shared with); anyone else is offered everyone, and the API refuses a mention
+  // of someone who cannot see it, with a message.
+  const grants = file.data.grantedUserIds;
+  const mentionable = people.filter(
+    (person) =>
+      person.id !== session.user.id &&
+      (file.data.visibility === "company" ||
+        grants === null ||
+        person.id === file.data.uploaderId ||
+        grants.includes(person.id)),
+  );
   const latest =
     versions.data?.data.find((version) => version.isLatest) ?? null;
 
@@ -84,7 +96,6 @@ export default async function Page({
         status={status}
         score={report.data?.qualityScore ?? null}
         canManage={canManage}
-        canWrite={canWrite}
         people={people}
       />
 
@@ -114,7 +125,7 @@ export default async function Page({
             <ReportPanel
               fileId={file.data.id}
               report={report.data}
-              canManage={canManage && canWrite}
+              canManage={canManage}
               isAdmin={isAdmin}
             />
           ) : (
@@ -147,8 +158,7 @@ export default async function Page({
               more={comments.data.meta.hasMore}
               meId={session.user.id}
               isAdmin={isAdmin}
-              readOnly={!canWrite}
-              people={people.filter((person) => person.id !== session.user.id)}
+              people={mentionable}
             />
           ) : (
             <Unavailable what="the comments" />

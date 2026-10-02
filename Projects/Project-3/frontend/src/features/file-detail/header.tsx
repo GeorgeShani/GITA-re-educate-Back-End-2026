@@ -24,7 +24,6 @@ export function FileHeader({
   status,
   score,
   canManage,
-  canWrite,
   people,
 }: {
   file: FileDto;
@@ -33,8 +32,6 @@ export function FileHeader({
   score: number | null;
   /** The uploader or an admin: may share and delete. */
   canManage: boolean;
-  /** False in the read-only demo, where every change is refused, so none is offered. */
-  canWrite: boolean;
   /** Colleagues a restricted file can be shared with. */
   people: readonly Person[];
 }) {
@@ -95,8 +92,8 @@ export function FileHeader({
 
         <div className="flex flex-wrap items-center gap-2">
           <DownloadButton fileId={file.id} />
-          {canWrite ? <NewVersionButton fileId={file.id} /> : null}
-          {canManage && canWrite ? (
+          <NewVersionButton fileId={file.id} />
+          {canManage ? (
             <ShareButton
               fileId={file.id}
               visibility={file.visibility}
@@ -104,7 +101,7 @@ export function FileHeader({
               people={people.filter((person) => person.id !== file.uploaderId)}
             />
           ) : null}
-          {canManage && canWrite ? (
+          {canManage ? (
             <DeleteButton
               fileId={file.id}
               name={file.originalName}

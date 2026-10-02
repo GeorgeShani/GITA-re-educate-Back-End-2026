@@ -381,7 +381,7 @@ export const DEMO: Block[] = [
 
   h2("What it will not do"),
   p(
-    "Every change is refused, with a message that explains why: uploads, edits, invitations, plan changes, new API keys and rules. Reading is open everywhere. Buttons that would change something are hidden wherever they can be.",
+    "Every change is refused, with a message that explains why: uploads, edits, invitations, plan changes, new API keys and rules. Reading is open everywhere. Every button is still there, so you can see what each one does: choosing one shows that message instead of making the change.",
   ),
   note(
     "An API key made in the demo can read but never write, and an AI agent connected to it is not even offered the tools that write.",
