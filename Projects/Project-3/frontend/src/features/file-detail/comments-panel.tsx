@@ -11,10 +11,10 @@ import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/field";
 import { messageFor } from "@/features/files/upload";
+import { callApi, succeeded } from "@/lib/api/call";
 import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/cn";
 import { exactTime, relativeTime } from "@/lib/format/time";
-import { callApi, succeeded } from "./request";
 
 type Comment = components["schemas"]["CommentDto"];
 

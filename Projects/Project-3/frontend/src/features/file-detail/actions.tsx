@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { messageFor, problemWith, sendVersion } from "@/features/files/upload";
-import { callApi, succeeded, textOf } from "./request";
+import { callApi, succeeded, textOf } from "@/lib/api/call";
 
 /** What went wrong, under the buttons. Announced when it appears, gone when the next action starts. */
 function Problem({ text }: { text: string | null }) {

@@ -69,32 +69,36 @@ export const RULES: Block[] = [
       text: "Choose **Quality rules** in the sidebar.",
     },
     {
-      title: "Add a rule",
-      text: "Choose the button to add one and give it a name that will read well in a report, such as “Emails are filled in”. Names can be up to 80 characters.",
+      title: "Choose Add a rule",
+      text: "It is at the top right of the list, next to how many rules your plan allows, for example **3 of 25 rules on your plan**.",
+    },
+    {
+      title: "Name it",
+      text: "Pick a name that will read well in a report, such as “Emails are filled in”. Names can be up to 80 characters.",
     },
     {
       title: "Pick what to check",
-      text: "Choose one of the seven kinds above. This cannot be changed later: to change the kind, delete the rule and make a new one.",
+      text: "Under **What to check**, choose one of the seven kinds above. This cannot be changed later: to use another kind, delete the rule and add a new one.",
     },
     {
       title: "Say which column",
-      text: "Type the column's name as it appears in the file's header. Capitals do not matter. The one rule that is about the whole file needs no column.",
+      text: "Type the column's name as it appears in the file's header. Capitals do not matter. **Most repeated rows** is about the whole file, so it has no column.",
     },
     {
       title: "Set the limit",
-      text: "For example, 5 for “at most 5% empty”.",
+      text: "Each kind asks for its own number, with a hint under it. For example, 5 for “at most 5% empty”.",
     },
     {
-      title: "Choose how serious it is",
+      title: "Choose how serious a failure is",
       text: "**Error** or **Warning**: see the next section. Error is the default.",
     },
     {
-      title: "Save",
-      text: "The rule applies to every file uploaded from now on. Files already uploaded keep their old results until you choose **Check again** on their report.",
+      title: "Add the rule",
+      text: "Choose **Add rule**. It applies to every file uploaded from now on. Files already uploaded keep their old results until you choose **Check again** on their report.",
     },
   ),
   p(
-    "You can switch a rule off without deleting it. A disabled rule is kept but not checked.",
+    "Each rule in the list has three buttons: **Turn off** (or **Turn on**), **Edit** and **Delete**. A rule that is turned off is kept but not checked, and is marked **Off**. Editing shows the rule's kind but does not let you change it. Deleting asks you to confirm, and reports already built keep their result for the deleted rule.",
   ),
 
   h2("Errors and warnings"),

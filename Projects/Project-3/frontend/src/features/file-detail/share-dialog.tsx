@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import type { Visibility } from "@/features/files/types";
 import { messageFor } from "@/features/files/upload";
+import { callApi, succeeded } from "@/lib/api/call";
 import { cn } from "@/lib/cn";
-import { callApi, succeeded } from "./request";
 
 interface Person {
   id: string;

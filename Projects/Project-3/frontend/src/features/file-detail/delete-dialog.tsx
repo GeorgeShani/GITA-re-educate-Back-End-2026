@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { messageFor } from "@/features/files/upload";
-import { callApi, succeeded } from "./request";
+import { callApi, succeeded } from "@/lib/api/call";
 
 /** Deleting asks first, and says what it does and does not undo. */
 export function DeleteButton({
