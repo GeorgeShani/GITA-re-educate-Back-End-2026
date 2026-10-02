@@ -4,6 +4,7 @@ import { AppShell } from "@/components/app/app-shell";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
 import { apiClient } from "@/lib/session/api";
 import { requireSession } from "@/lib/session/session";
+import { getSubscription } from "@/lib/session/subscription";
 
 /**
  * The Application layout: the company dashboard. It is where the session is demanded (a page of this group never renders
@@ -18,7 +19,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const api = apiClient(session.accessToken);
 
   const [subscription, unread] = await Promise.all([
-    api.GET("/subscriptions/me"),
+    getSubscription(session.accessToken),
     api.GET("/notifications/unread-count"),
   ]);
   if (subscription.response.status === 404) redirect("/welcome");

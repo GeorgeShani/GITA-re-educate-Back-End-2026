@@ -2,8 +2,8 @@ import { FileSpreadsheet, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
 import { Button } from "@/components/ui/button";
-import { apiClient } from "@/lib/session/api";
 import { requireSession } from "@/lib/session/session";
+import { getSubscription } from "@/lib/session/subscription";
 
 export const metadata = { title: "Dashboard" };
 
@@ -17,9 +17,7 @@ const DUE = new Intl.DateTimeFormat("en-US", {
 /** The first page of the application: who you are working as, what this period has used, and what to do next. */
 export default async function Page() {
   const session = await requireSession();
-  const { data } = await apiClient(session.accessToken).GET(
-    "/subscriptions/me",
-  );
+  const { data } = await getSubscription(session.accessToken);
   const isAdmin = session.user.role === "admin";
   const firstName =
     session.user.fullName.split(/\s+/)[0] ?? session.user.fullName;

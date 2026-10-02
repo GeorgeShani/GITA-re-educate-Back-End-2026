@@ -17,8 +17,9 @@ export default function AppError({
         That page did not load
       </h1>
       <p className="text-text-muted">
-        Something went wrong on our side, not with anything you did. Try again;
-        if it keeps happening, quote the reference below to support.
+        Gridline may be busy for a moment, or something went wrong on our side:
+        nothing you did, and you are still signed in. Try again; if it keeps
+        happening, quote the reference below to support.
       </p>
       {error.digest ? (
         <p className="num font-mono text-sm text-text-subtle">

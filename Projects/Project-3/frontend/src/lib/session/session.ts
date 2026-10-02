@@ -17,27 +17,56 @@ export interface Session {
 }
 
 /**
- * Who is signed in, or `null`. Asks the API every time (once per request) rather than trusting a cookie's claims: a
- * disabled person or a suspended company stops working on the very next page load, which is how the API treats tokens too.
+ * How the question "who is signed in?" came out. Three answers, because they must be treated differently: someone the
+ * API does not recognise is signed out, but an API that is busy (rate-limited), restarting or unreachable has told us
+ * nothing about the person, and signing them out for that would throw away a perfectly good session.
  */
-export const getSession = cache(async (): Promise<Session | null> => {
+type Lookup =
+  | { kind: "signed-in"; session: Session }
+  | { kind: "signed-out" }
+  | { kind: "unavailable" };
+
+/**
+ * Asks the API every time (once per request) rather than trusting a cookie's claims: a disabled person or a suspended
+ * company stops working on the very next page load, which is how the API treats tokens too.
+ */
+const lookup = cache(async (): Promise<Lookup> => {
   const jar = await cookies();
   const accessToken = jar.get(ACCESS_COOKIE)?.value;
-  if (!accessToken) return null;
+  if (!accessToken) return { kind: "signed-out" };
   try {
-    const { data } = await apiClient(accessToken).GET("/auth/me");
-    return data
-      ? { user: data.user, company: data.company, accessToken }
-      : null;
+    const { data, response } = await apiClient(accessToken).GET("/auth/me");
+    if (data) {
+      return {
+        kind: "signed-in",
+        session: { user: data.user, company: data.company, accessToken },
+      };
+    }
+    // "Slow down" and server trouble say nothing about this person. Anything else the API refused is a no.
+    return response.status === 429 || response.status >= 500
+      ? { kind: "unavailable" }
+      : { kind: "signed-out" };
   } catch {
-    return null;
+    return { kind: "unavailable" };
   }
 });
 
-/** The page for signed-in people. Not signed in (or the API refused the token): clear the cookies and go to sign-in. */
+/** Who is signed in, or `null`. An API that could not be asked counts as `null` here: this is for pages that work either way. */
+export async function getSession(): Promise<Session | null> {
+  const result = await lookup();
+  return result.kind === "signed-in" ? result.session : null;
+}
+
+/**
+ * The page for signed-in people. Not signed in (or the API refused the token): clear the cookies and go to sign-in. The
+ * API being busy or down is NOT that: it shows the error page with "try again", and the session is kept.
+ */
 export async function requireSession(): Promise<Session> {
-  const session = await getSession();
-  if (session) return session;
+  const result = await lookup();
+  if (result.kind === "signed-in") return result.session;
+  if (result.kind === "unavailable") {
+    throw new Error("Gridline is busy or briefly unavailable.");
+  }
   const path = (await headers()).get(PATH_HEADER);
   redirect(
     path
