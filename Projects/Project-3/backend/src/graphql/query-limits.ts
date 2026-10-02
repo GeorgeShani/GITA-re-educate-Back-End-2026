@@ -1,13 +1,16 @@
+import type { ApolloServerPlugin } from '@apollo/server';
 import {
   type ASTNode,
+  type DocumentNode,
   type FragmentDefinitionNode,
   GraphQLError,
+  type GraphQLSchema,
   Kind,
   type SelectionSetNode,
   type ValidationContext,
   type ValidationRule,
 } from 'graphql';
-import { createComplexityRule, fieldExtensionsEstimator, simpleEstimator } from 'graphql-query-complexity';
+import { fieldExtensionsEstimator, getComplexity, simpleEstimator } from 'graphql-query-complexity';
 
 /** Deepest selection a query may nest. The real queries here are 4 deep; introspection walks far deeper. */
 export const MAX_QUERY_DEPTH = 6;
@@ -62,15 +65,52 @@ export function depthLimitRule(maximum: number): ValidationRule {
   });
 }
 
-/** Rejects a query whose priced cost exceeds `maximum`, with the actual cost in the message. */
-export function complexityLimitRule(maximum: number): ValidationRule {
-  return createComplexityRule({
-    maximumComplexity: maximum,
-    estimators: [fieldExtensionsEstimator(), simpleEstimator({ defaultComplexity: 1 })],
-    createError: (max, actual) =>
-      new GraphQLError(
-        `This query costs ${actual}; the most allowed is ${max}. Ask for fewer fields or lists at once, or split it into several queries.`,
-        { extensions: { code: 'QUERY_TOO_COMPLEX', cost: actual, maximum: max } },
-      ),
+const ESTIMATORS = [fieldExtensionsEstimator(), simpleEstimator({ defaultComplexity: 1 })];
+
+/**
+ * The priced cost of a query WITH the variables it was sent with. A list's cost is `first × what it selects`, and `first` is
+ * very often a variable (`files(first: $first)`), so pricing without the variables cannot work: graphql-query-complexity's
+ * validation rule never sees a request's variables, and refused every query that declared a required one ("Variable
+ * `$first` of required type `Int!` was not provided"). That is why the check runs as a plugin, where the request is known.
+ */
+export function complexityOf(
+  schema: GraphQLSchema,
+  document: DocumentNode,
+  variables: Record<string, unknown> | undefined,
+  operationName: string | null | undefined,
+): number {
+  return getComplexity({
+    schema,
+    query: document,
+    variables: variables ?? {},
+    ...(operationName ? { operationName } : {}),
+    estimators: ESTIMATORS,
   });
+}
+
+/** Rejects a query whose priced cost exceeds `maximum`, with the actual cost in the message, before any resolver runs. */
+export function complexityLimitPlugin(maximum: number): ApolloServerPlugin {
+  return {
+    async requestDidStart() {
+      return {
+        async didResolveOperation({ schema, document, request, operationName }) {
+          let cost: number;
+          try {
+            cost = complexityOf(schema, document, request.variables, operationName);
+          } catch (error) {
+            // A variable the query needs but the request did not send: the same 400 GraphQL itself would give.
+            throw error instanceof GraphQLError
+              ? new GraphQLError(error.message, { extensions: { code: 'BAD_USER_INPUT', http: { status: 400 } } })
+              : error;
+          }
+          if (cost > maximum) {
+            throw new GraphQLError(
+              `This query costs ${cost}; the most allowed is ${maximum}. Ask for fewer fields or lists at once, or split it into several queries.`,
+              { extensions: { code: 'QUERY_TOO_COMPLEX', cost, maximum, http: { status: 400 } } },
+            );
+          }
+        },
+      };
+    },
+  };
 }

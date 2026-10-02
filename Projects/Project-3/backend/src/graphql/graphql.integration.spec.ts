@@ -184,6 +184,25 @@ describe('GraphQL analytics (integration)', () => {
   });
 
   describe('limits', () => {
+    it('answers a query that declares REQUIRED variables, and prices a list by the `first` it was sent', async () => {
+      // Regression: the cost check once ran as a validation rule that never saw variables, so every query of this shape
+      // (which is every real client's) failed with "Variable $first of required type Int! was not provided".
+      const { session } = await march();
+      const query =
+        'query Files($first: Int!, $sort: FileSort!) { files(first: $first, sort: $sort) { nodes { id comments(first: 50) { nodes { id } } } } }';
+
+      const ok = await gql(session.accessToken, query, { first: 1, sort: 'NEWEST' });
+      expect(ok.errors, JSON.stringify(ok.errors)).toBeUndefined();
+
+      // The same query with a `first` big enough to cost more than the cap is refused, so the variable is really priced.
+      const huge = await gql(session.accessToken, query, { first: 50, sort: 'NEWEST' });
+      expect(huge.errors?.[0]?.extensions).toMatchObject({ code: 'QUERY_TOO_COMPLEX', maximum: MAX_QUERY_COMPLEXITY });
+
+      const missing = await gql(session.accessToken, query, { sort: 'NEWEST' });
+      expect(missing.status).toBe(400);
+      expect(missing.errors?.[0]?.message).toContain('$first');
+    });
+
     it('rejects a query nested past the depth limit, naming both numbers, before running anything', async () => {
       const { session } = await march();
       const response = await gql(session.accessToken, '{ __schema { types { fields { type { ofType { ofType { name } } } } } } }');

@@ -8,7 +8,7 @@ import { FilesModule } from '#/files/files.module.js';
 import { AnalyticsResolver } from './analytics.resolver.js';
 import { FilesResolver } from './files.resolver.js';
 import { GraphqlLoaderFactory } from './graphql-loaders.js';
-import { complexityLimitRule, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DEPTH } from './query-limits.js';
+import { complexityLimitPlugin, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DEPTH } from './query-limits.js';
 
 /**
  * `/graphql` — read-only analytics (Phase 13). Code-first, `Query` only: nothing in the schema
@@ -34,7 +34,9 @@ import { complexityLimitRule, depthLimitRule, MAX_QUERY_COMPLEXITY, MAX_QUERY_DE
       autoSchemaFile: true,
       sortSchema: true,
       context: ({ req, res }: { req: object; res: object }) => ({ req, res }),
-      validationRules: [depthLimitRule(MAX_QUERY_DEPTH), complexityLimitRule(MAX_QUERY_COMPLEXITY)],
+      validationRules: [depthLimitRule(MAX_QUERY_DEPTH)],
+      // Priced here, not as a validation rule: only a plugin sees the request's variables (see `complexityOf`).
+      plugins: [complexityLimitPlugin(MAX_QUERY_COMPLEXITY)],
       includeStacktraceInErrorResponses: false,
       playground: false,
     }),

@@ -565,7 +565,7 @@ failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `
   `*.resolver.ts` files on disk and asserts each is `@Roles`, not `@Public`, has no scopes, and is a provider of
   `GraphqlApiModule`. Tenant scoping comes from the CLS context the guards fill (the Cls middleware covers `/graphql`).
   The demo user may query (`DemoReadOnlyGuard` skips GraphQL: a POST that can only read).
-- **Limits run at validation time, before any resolver** (`query-limits.ts`): depth ≤ `MAX_QUERY_DEPTH` (6; real queries
+- **Limits run before any resolver** (`query-limits.ts`; depth is a validation rule, cost is an Apollo **plugin**, because only a plugin sees the request's variables — as a validation rule it refused every query that declared a required variable): depth ≤ `MAX_QUERY_DEPTH` (6; real queries
   are 4, introspection walks deeper; fragments followed, cycles safe) and cost ≤ `MAX_QUERY_COMPLEXITY` (1000) using
   `graphql-query-complexity` with per-field `complexity` (lists cost ×10, the root `usage` costs 50 + its children), so
   aliasing the field six times to multiply the work is priced out. File connections additionally price `first × child`,

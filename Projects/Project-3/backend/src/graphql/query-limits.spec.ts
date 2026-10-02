@@ -1,11 +1,11 @@
 import { buildSchema, parse, validate } from 'graphql';
 import { describe, expect, it } from 'vitest';
-import { complexityLimitRule, depthLimitRule } from './query-limits.js';
+import { complexityOf, depthLimitRule } from './query-limits.js';
 
 const schema = buildSchema(`
   type Leaf { name: String }
   type Node { name: String, child: Node, leaves: [Leaf!]! }
-  type Query { node: Node }
+  type Query { node: Node, echo(n: Int!): Node }
 `);
 
 const check = (query: string, maximum: number) =>
@@ -45,14 +45,20 @@ describe('depthLimitRule', () => {
   });
 });
 
-describe('complexityLimitRule', () => {
-  const cost = (query: string, maximum: number) =>
-    validate(schema, parse(query), [complexityLimitRule(maximum)]).map((error) => error.message);
+describe('complexityOf', () => {
+  const price = (query: string, variables?: Record<string, unknown>) => complexityOf(schema, parse(query), variables, undefined);
 
-  it('prices each field at 1 by default and refuses over the cap, with the actual cost', () => {
-    expect(cost('{ node { name } }', 2)).toEqual([]);
-    const errors = cost('{ node { name child { name } } }', 2);
-    expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatch(/costs 4; the most allowed is 2/);
+  it('prices each field at 1 by default', () => {
+    expect(price('{ node { name } }')).toBe(2);
+    expect(price('{ node { name child { name } } }')).toBe(4);
+  });
+
+  it('prices a query that declares a REQUIRED variable, using the value it was sent', () => {
+    // The validation rule this replaced refused any such query ("Variable $n of required type Int! was not provided").
+    expect(price('query ($n: Int!) { echo(n: $n) { name } }', { n: 5 })).toBe(2);
+  });
+
+  it('answers with the missing variable, as GraphQL itself would, when the request left one out', () => {
+    expect(() => price('query ($n: Int!) { echo(n: $n) { name } }', {})).toThrow(/\$n/);
   });
 });
