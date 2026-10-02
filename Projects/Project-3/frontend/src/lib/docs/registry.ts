@@ -2,7 +2,7 @@
 export interface DocPage {
   slug: string;
   title: string;
-  /** One sentence: what the guide covers. Shown under the title, in search, and when no written guide exists yet. */
+  /** One sentence: what the guide covers. Shown under the title and in search. */
   summary: string;
 }
 
@@ -12,8 +12,8 @@ export interface DocSection {
 }
 
 /**
- * The guides, in the order a reader meets them. Every entry is something the API really does; the written guide for each
- * is added as it is finished (see `lib/docs/content`), and an entry without one says so rather than pretending.
+ * The guides, in the order a reader meets them: first what Gridline is and how to try it, then each feature in plain
+ * words, then how to build on it, then the reference pages. Every entry describes something the product really does.
  */
 export const DOC_SECTIONS: readonly DocSection[] = [
   {
@@ -23,65 +23,125 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "",
         title: "Overview",
         summary:
-          "What Gridline is, how a company's data is kept apart, and where to begin.",
+          "What Gridline is, what it does for a company, and where to begin.",
       },
       {
         slug: "quickstart",
         title: "Quickstart",
         summary:
-          "Create a company, upload a spreadsheet and read its quality report.",
+          "Make a company, get an API key, upload a spreadsheet and read its quality report, in about ten minutes.",
+      },
+      {
+        slug: "concepts",
+        title: "Core concepts",
+        summary:
+          "Companies, people, files, versions, reports and rules: the seven ideas everything else is built from.",
       },
     ],
   },
   {
-    title: "Concepts",
+    title: "Using Gridline",
     pages: [
       {
         slug: "files",
-        title: "Files and versions",
+        title: "Files and uploads",
         summary:
-          "How an upload becomes a file, how later uploads become versions, and how they are compared.",
+          "What you can upload, how Gridline decides what a file really is, and how to download or delete one.",
+      },
+      {
+        slug: "versions",
+        title: "Versions and comparing",
+        summary:
+          "Upload this month's export as the next version of the same file, and see exactly what changed.",
       },
       {
         slug: "reports",
         title: "Quality reports",
         summary:
-          "What is measured about each column, the score, and why cell values are never read aloud.",
+          "What Gridline measures about every column, the score, the plain-language summary, and the preview.",
       },
       {
         slug: "rules",
-        title: "Rules",
+        title: "Quality rules",
         summary:
-          "The checks your company holds every upload to, and how a rule is weighed.",
+          "Say once what good data means for your company, and every upload is checked against it.",
       },
       {
         slug: "access",
-        title: "Access and roles",
+        title: "Sharing and access",
         summary:
           "Admins and employees, company-wide and restricted files, and why a hidden file is a 404.",
+      },
+      {
+        slug: "comments",
+        title: "Comments and mentions",
+        summary:
+          "Talk about a file where it lives, tag a colleague, and see who else is looking.",
+      },
+      {
+        slug: "notifications",
+        title: "Notifications and alerts",
+        summary:
+          "Your inbox, the quota warnings at 80% and 100%, and what each message means.",
+      },
+      {
+        slug: "people",
+        title: "People",
+        summary:
+          "Invite colleagues, what an invitation costs, and what happens when someone leaves.",
+      },
+      {
+        slug: "billing",
+        title: "Plans and billing",
+        summary:
+          "Free, Basic and Premium, how you are charged, what happens past your quota, and how payment recovery works.",
+      },
+      {
+        slug: "analytics",
+        title: "Usage analytics",
+        summary:
+          "Uploads per day, per person, storage, and whether you are on pace for your quota.",
+      },
+      {
+        slug: "audit-log",
+        title: "The audit log",
+        summary:
+          "A record of everything that changed, who did it and when, that nobody can edit.",
+      },
+      {
+        slug: "account",
+        title: "Your account and company",
+        summary:
+          "Profile, password, Google sign-in, linked accounts and company details.",
+      },
+      {
+        slug: "demo",
+        title: "The demo company",
+        summary:
+          "A populated, read-only company you can explore without signing up.",
       },
     ],
   },
   {
-    title: "The API",
+    title: "Build with the API",
     pages: [
       {
         slug: "authentication",
         title: "Authentication",
         summary:
-          "Sessions for people, API keys for programs, and what each is allowed to reach.",
+          "Sessions for people, API keys for programs, and how a token stays alive.",
       },
       {
         slug: "api-keys",
         title: "API keys and scopes",
         summary:
-          "Creating a key, the scopes it can hold, and why it is never more powerful than its owner.",
+          "Create a key, choose what it may do, and why it is never more powerful than its owner.",
       },
       {
         slug: "errors",
         title: "Errors",
         summary:
-          "The one error shape every failure uses, and the correlation id that finds it in the logs.",
+          "The one error shape every failure uses, and the status codes you will meet.",
       },
       {
         slug: "pagination",
@@ -90,44 +150,61 @@ export const DOC_SECTIONS: readonly DocSection[] = [
       },
       {
         slug: "idempotency",
-        title: "Idempotent uploads",
+        title: "Idempotent requests",
         summary:
-          "Retrying an upload safely with an Idempotency-Key, so a timeout never costs a second file.",
+          "Retry an upload or a plan change safely, so a timeout never costs you twice.",
       },
       {
         slug: "rate-limits",
         title: "Rate limits",
         summary:
-          "A budget per company per minute, shared by every person and key, and the headers that show it.",
+          "A request budget per company per minute, and the headers that show what is left.",
       },
-    ],
-  },
-  {
-    title: "Integrations",
-    pages: [
       {
         slug: "webhooks",
         title: "Webhooks",
         summary:
-          "Signed event deliveries to your own endpoint, with retries and how to verify them.",
+          "Signed events delivered to your own endpoint, with retries, and how to verify them.",
       },
       {
         slug: "realtime",
         title: "Live updates",
         summary:
-          "The Socket.IO connection that shows a report being built and a quota being used.",
+          "Watch a report being built and a quota being used over one Socket.IO connection.",
       },
       {
         slug: "graphql",
         title: "GraphQL",
         summary:
-          "A read-only graph of files, reports and usage for dashboards.",
+          "A read-only graph of files, reports and usage for dashboards, in one request.",
       },
       {
         slug: "mcp",
         title: "Connect an AI agent (MCP)",
         summary:
           "Let Claude Code, Claude Desktop or Cursor list files, read reports and upload data with an API key.",
+      },
+    ],
+  },
+  {
+    title: "Reference",
+    pages: [
+      {
+        slug: "limits",
+        title: "Limits at a glance",
+        summary: "Every number in one place: plans, sizes, lifetimes and caps.",
+      },
+      {
+        slug: "security",
+        title: "Security and privacy",
+        summary:
+          "How companies are kept apart, what Gridline never reads, and how secrets are stored.",
+      },
+      {
+        slug: "troubleshooting",
+        title: "Troubleshooting",
+        summary:
+          "The errors people hit most often, what they mean and the fix.",
       },
     ],
   },

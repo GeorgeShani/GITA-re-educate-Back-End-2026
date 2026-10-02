@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
+import { Blocks } from "@/components/docs/blocks";
 import { OnThisPage } from "@/components/docs/on-this-page";
 import { Pager } from "@/components/docs/pager";
 import { Prose } from "@/components/docs/prose";
 import { API_REFERENCE_HREF } from "@/components/marketing/nav-data";
 import { DOC_BODIES } from "@/lib/docs/content";
+import { DocsHome } from "@/lib/docs/content/home";
 import { allDocs, findDoc, neighbours, sectionOf } from "@/lib/docs/registry";
 
 const ARTICLE_ID = "doc-article";
@@ -41,15 +43,15 @@ export default async function Page({ params }: PageProps<"/docs/[[...slug]]">) {
           <h1 className="headline text-4xl leading-[0.98] sm:text-5xl">
             {page.title}
           </h1>
-          <p className="copy text-text-muted">{page.summary}</p>
+          <p className="text-lg text-text-muted">{page.summary}</p>
         </header>
 
-        {body ? (
-          page.slug === "" ? (
-            body()
-          ) : (
-            <Prose>{body()}</Prose>
-          )
+        {page.slug === "" ? (
+          <DocsHome />
+        ) : body ? (
+          <Prose>
+            <Blocks blocks={body} />
+          </Prose>
         ) : (
           <div className="leaf flex flex-col gap-2 p-5">
             <p className="font-semibold">This guide is still being written.</p>
