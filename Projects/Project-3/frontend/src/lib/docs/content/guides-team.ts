@@ -17,7 +17,7 @@ export const COMMENTS: Block[] = [
     },
     {
       title: "Mention a colleague (optional)",
-      text: "Choose **Mention colleagues** under the box and tick the people you want to tell. They get a notification. Only people who can already see the file are offered.",
+      text: "Type **@** in the box. A list of colleagues opens, narrowed as you type their name. Choose one with the arrow keys and Enter, or click it, and their name is put into your comment. They get a notification. Only people who can already see the file are offered. Delete the name from the text and they are not told.",
     },
     {
       title: "Choose Comment",
@@ -53,7 +53,7 @@ export const COMMENTS: Block[] = [
 
   h2("In the demo company"),
   p(
-    "The [demo company](/docs/demo) is read-only, so you can read its comments but not write them.",
+    "The [demo company](/docs/demo) is read-only: you can read its comments and try the buttons, but a comment you write is refused with a message that says why.",
   ),
 
   h2("From code"),

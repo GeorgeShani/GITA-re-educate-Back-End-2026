@@ -7,7 +7,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/field";
 import { messageFor } from "@/features/files/upload";
@@ -33,7 +33,6 @@ export function CommentsPanel({
   more,
   meId,
   isAdmin,
-  readOnly,
   people,
 }: {
   fileId: string;
@@ -42,8 +41,6 @@ export function CommentsPanel({
   more: boolean;
   meId: string;
   isAdmin: boolean;
-  /** The read-only demo: comments can be read but not written. */
-  readOnly: boolean;
   /** Colleagues who can be mentioned. */
   people: readonly Person[];
 }) {
@@ -59,11 +56,11 @@ export function CommentsPanel({
       key={comment.id}
       comment={comment}
       isReply={isReply}
-      canEdit={!readOnly && comment.author.id === meId}
-      canDelete={!readOnly && (comment.author.id === meId || isAdmin)}
+      canEdit={comment.author.id === meId}
+      canDelete={comment.author.id === meId || isAdmin}
       editing={editing === comment.id}
       onEdit={(on) => setEditing(on ? comment.id : null)}
-      onReply={isReply || readOnly ? null : () => setReplyingTo(comment.id)}
+      onReply={isReply ? null : () => setReplyingTo(comment.id)}
     />
   );
 
@@ -111,17 +108,15 @@ export function CommentsPanel({
         </p>
       ) : null}
 
-      {readOnly ? null : (
-        <div className="border-t border-line pt-5">
-          <Composer
-            fileId={fileId}
-            parentId={null}
-            people={people}
-            label="Add a comment"
-            submit="Comment"
-          />
-        </div>
-      )}
+      <div className="border-t border-line pt-5">
+        <Composer
+          fileId={fileId}
+          parentId={null}
+          people={people}
+          label="Add a comment"
+          submit="Comment"
+        />
+      </div>
     </div>
   );
 }
@@ -290,6 +285,19 @@ function Editor({ comment, onDone }: { comment: Comment; onDone: () => void }) {
   );
 }
 
+/** Where an unfinished `@mention` starts and what has been typed after it, when the caret is right at the end of one. */
+function openMention(
+  text: string,
+  caret: number,
+): { start: number; query: string } | null {
+  const found = /(^|\s)@([^\s@]*)$/.exec(text.slice(0, caret));
+  if (!found) return null;
+  const query = found[2] ?? "";
+  return { start: caret - query.length - 1, query };
+}
+
+const MOST_SHOWN = 6;
+
 function Composer({
   fileId,
   parentId,
@@ -311,22 +319,65 @@ function Composer({
 }) {
   const router = useRouter();
   const id = useId();
+  const field = useRef<HTMLTextAreaElement>(null);
   const [body, setBody] = useState("");
-  const [mentioned, setMentioned] = useState<ReadonlySet<string>>(new Set());
+  const [caret, setCaret] = useState(0);
+  const [chosen, setChosen] = useState<ReadonlyMap<string, string>>(new Map());
+  const [highlight, setHighlight] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+
+  // Typing "@" opens a list of colleagues, narrowed by what follows it.
+  const mention = dismissed ? null : openMention(body, caret);
+  const matches = mention
+    ? people
+        .filter((person) =>
+          person.fullName
+            .toLowerCase()
+            .split(/\s+/)
+            .concat(person.fullName.toLowerCase())
+            .some((part) => part.startsWith(mention.query.toLowerCase())),
+        )
+        .slice(0, MOST_SHOWN)
+    : [];
+  const showList = mention !== null && people.length > 0;
+  const listId = `${id}-mentions`;
+
+  const choose = (person: Person) => {
+    if (!mention) return;
+    const inserted = `@${person.fullName} `;
+    const next = body.slice(0, mention.start) + inserted + body.slice(caret);
+    const position = mention.start + inserted.length;
+    setBody(next);
+    setCaret(position);
+    setHighlight(0);
+    setChosen((current) => new Map(current).set(person.id, person.fullName));
+    // Write the text and the caret into the box now, so React finds nothing to change and the caret stays right after the name.
+    const box = field.current;
+    if (box) {
+      box.value = next;
+      box.focus();
+      box.setSelectionRange(position, position);
+    }
+  };
 
   const post = async () => {
     setBusy(true);
     setProblem(null);
+    // Only people whose @name is still in the text are told: deleting the words withdraws the mention.
+    const mentionedUserIds = [...chosen]
+      .filter(([, name]) => body.includes(`@${name}`))
+      .map(([personId]) => personId);
     const result = await callApi("POST", `/files/${fileId}/comments`, {
       body,
       ...(parentId ? { parentId } : {}),
-      mentionedUserIds: [...mentioned],
+      mentionedUserIds,
     });
     if (succeeded(result)) {
       setBody("");
-      setMentioned(new Set());
+      setCaret(0);
+      setChosen(new Map());
       onDone?.();
       router.refresh();
     } else {
@@ -335,67 +386,100 @@ function Composer({
     setBusy(false);
   };
 
-  const toggle = (userId: string, on: boolean) =>
-    setMentioned((current) => {
-      const next = new Set(current);
-      if (on) next.add(userId);
-      else next.delete(userId);
-      return next;
-    });
-
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className="text-sm font-medium">
         {label}
       </label>
-      <Textarea
-        id={id}
-        value={body}
-        maxLength={5000}
-        placeholder="Write something your team should know…"
-        onChange={(event) => setBody(event.target.value)}
-        autoFocus={autoFocus}
-      />
-
-      {people.length > 0 ? (
-        <details className="group">
-          <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-text-muted hover:text-text [&::-webkit-details-marker]:hidden">
-            <AtSign aria-hidden className="size-3.5" />
-            Mention colleagues
-            {mentioned.size > 0 ? (
-              <span className="num rounded-xs bg-sunken px-1.5 font-mono text-xs">
-                {mentioned.size}
-              </span>
-            ) : null}
-          </summary>
-          <fieldset className="mt-2">
-            <legend className="sr-only">Colleagues to notify</legend>
-            <ul className="flex max-h-44 flex-col overflow-y-auto rounded-md border border-line">
-              {people.map((person) => (
+      <div className="relative">
+        <Textarea
+          ref={field}
+          id={id}
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={showList ? listId : undefined}
+          aria-autocomplete="list"
+          aria-activedescendant={
+            showList && matches[highlight]
+              ? `${listId}-${matches[highlight].id}`
+              : undefined
+          }
+          value={body}
+          maxLength={5000}
+          placeholder="Write something your team should know…"
+          onChange={(event) => {
+            setBody(event.target.value);
+            setCaret(event.target.selectionStart);
+            setHighlight(0);
+            setDismissed(false);
+          }}
+          onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
+          onKeyDown={(event) => {
+            if (!showList) return;
+            if (event.key === "ArrowDown" && matches.length > 0) {
+              event.preventDefault();
+              setHighlight((highlight + 1) % matches.length);
+            } else if (event.key === "ArrowUp" && matches.length > 0) {
+              event.preventDefault();
+              setHighlight((highlight - 1 + matches.length) % matches.length);
+            } else if (
+              (event.key === "Enter" || event.key === "Tab") &&
+              matches[highlight]
+            ) {
+              event.preventDefault();
+              choose(matches[highlight]);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              setDismissed(true);
+            }
+          }}
+          autoFocus={autoFocus}
+        />
+        {showList ? (
+          <ul
+            id={listId}
+            // The suggestions of a combobox are a listbox; focus stays in the text box (aria-activedescendant), so the options are not focusable.
+            // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: ARIA combobox pattern
+            role="listbox"
+            aria-label="Colleagues to mention"
+            className="absolute right-0 left-0 z-20 mt-1 max-h-56 overflow-y-auto rounded-md border border-line-strong bg-surface p-1 shadow-overlay"
+          >
+            {matches.length === 0 ? (
+              <li className="px-3 py-2 text-sm text-text-muted">
+                No colleague by that name.
+              </li>
+            ) : (
+              matches.map((person, index) => (
+                // biome-ignore lint/a11y/useFocusableInteractive: ARIA combobox pattern, focus stays in the text box
                 <li
                   key={person.id}
-                  className="border-b border-line last:border-b-0"
+                  id={`${listId}-${person.id}`}
+                  // biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: ARIA combobox pattern
+                  role="option"
+                  aria-selected={index === highlight}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2 rounded-xs px-3 py-2",
+                    index === highlight && "bg-sunken",
+                  )}
+                  onMouseDown={(event) => {
+                    // Keep the caret in the box: a click must not take focus away before the name is inserted.
+                    event.preventDefault();
+                    choose(person);
+                  }}
+                  onMouseEnter={() => setHighlight(index)}
                 >
-                  <label
-                    className={cn(
-                      "flex cursor-pointer items-center gap-3 px-3 py-1.5 hover:bg-sunken",
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      className="size-4 accent-text"
-                      checked={mentioned.has(person.id)}
-                      onChange={(event) =>
-                        toggle(person.id, event.target.checked)
-                      }
-                    />
-                    <span className="truncate">{person.fullName}</span>
-                  </label>
+                  <AtSign aria-hidden className="size-3.5 text-text-muted" />
+                  <span className="truncate">{person.fullName}</span>
                 </li>
-              ))}
-            </ul>
-          </fieldset>
-        </details>
+              ))
+            )}
+          </ul>
+        ) : null}
+      </div>
+      {people.length > 0 ? (
+        <p className="text-sm text-text-subtle">
+          Type @ to mention a colleague. They get a notification.
+        </p>
       ) : null}
 
       {problem ? (
