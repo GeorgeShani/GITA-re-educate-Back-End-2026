@@ -19,7 +19,7 @@ export const QUICKSTART: Block[] = [
     "In this guide you will create a company, get an API key, upload a spreadsheet and read the quality report Gridline writes for it. It takes about ten minutes, and everything you do here is also possible from the dashboard.",
   ),
   note(
-    `Every example sends to \`${BASE}\`. Replace \`YOUR-DOMAIN\` with the address you use to open Gridline. The API is reached at \`/api\` on that same domain.`,
+    `Every example sends to \`${BASE}\`. Replace \`YOUR-DOMAIN\` with the address you use to open Gridline. The API is reached at \`/api\` on that same domain. (Running the API on your own machine without the proxy, it listens on \`http://localhost:4000\` and has **no** \`/api\` prefix: \`/health\`, \`/files\`, and so on.)`,
   ),
 
   h2("1. Create your company"),
