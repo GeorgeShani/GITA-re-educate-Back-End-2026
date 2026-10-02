@@ -30,6 +30,12 @@ import { STRICT_THROTTLE_KEY } from './strict-throttle.decorator.js';
 export const RATE_LIMIT_WINDOW_MS = 60_000;
 /** What an unauthenticated address may do per window on routes without a stricter limit of their own. */
 export const ANONYMOUS_LIMIT_PER_MINUTE = 120;
+/**
+ * What ONE signed-in person (a session, not an API key) may do per window. A person using the dashboard makes a handful
+ * of calls per page, so this is generous; it exists to stop a runaway client, not to meter a plan. It is per person, so
+ * one busy colleague cannot use up another's, and it is separate from the company's plan budget below.
+ */
+export const SESSION_LIMIT_PER_MINUTE = 300;
 
 const NEXT_PLAN: Readonly<Record<Plan, Plan | null>> = {
   free: 'basic',
@@ -47,9 +53,13 @@ interface Budget {
 /**
  * The rate limiter, with the limit taken from the caller's PLAN.
  *
- * - **Authenticated** requests are counted per COMPANY (every user and API key of one
- *   company shares one budget — a key cannot be a way around the plan) at the company's
- *   plan limit. A company with no subscription yet is treated as Free.
+ * - **API keys** are counted per COMPANY (every key of one company shares one budget — a key
+ *   cannot be a way around the plan) at the company's plan limit. A company with no
+ *   subscription yet is treated as Free.
+ * - **Sessions** (a person signed in, which is what the dashboard is) are counted per PERSON at
+ *   `SESSION_LIMIT_PER_MINUTE`, apart from the plan budget. The plan's limit is the price of
+ *   programmatic access; a person clicking around must not burn it, and a 30-a-minute Free
+ *   company could otherwise load only about eight pages a minute.
  * - **Unauthenticated** requests are counted per client address, at a generous general limit;
  *   routes marked `@StrictThrottle` get a tighter bucket of their own instead.
  *
@@ -103,6 +113,7 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
   ): Promise<string> {
     const companyId = companyIdOf(req);
     if (companyId) {
+      if (isSession(req)) return `user:${userIdOf(req)}`;
       const plan = this.budgets.get(req)?.plan;
       return plan ? `company:${companyId}:${plan}` : `company:${companyId}`;
     }
@@ -132,6 +143,11 @@ export class PlanThrottlerGuard extends ThrottlerGuard {
     if (this.isStrict(props.context) || !companyId) {
       this.budgets.set(req, { plan: null, limit: props.limit });
       return super.handleRequest(props);
+    }
+
+    if (isSession(req)) {
+      this.budgets.set(req, { plan: null, limit: SESSION_LIMIT_PER_MINUTE });
+      return super.handleRequest({ ...props, limit: SESSION_LIMIT_PER_MINUTE });
     }
 
     const plan = await this.planOf(companyId);
@@ -193,6 +209,18 @@ export function throttleMessage(
     ? ` Upgrade to the ${upgrade} plan (PATCH /subscriptions/me) for ${PLAN_CATALOG[upgrade].rateLimitPerMinute} requests per minute.`
     : '';
   return `Your company's ${budget.plan} plan allows ${budget.limit} requests per minute. Try again in ${retryAfterSeconds} seconds.${way}`;
+}
+
+/** A person signed in, as opposed to a program holding an API key. */
+function isSession(req: Record<string, unknown>): boolean {
+  const user = req.user;
+  return typeof user === 'object' && user !== null && 'authMethod' in user && user.authMethod === 'jwt';
+}
+
+function userIdOf(req: Record<string, unknown>): string | undefined {
+  const user = req.user;
+  if (typeof user !== 'object' || user === null || !('userId' in user)) return undefined;
+  return typeof user.userId === 'string' ? user.userId : undefined;
 }
 
 function companyIdOf(req: Record<string, unknown>): string | undefined {

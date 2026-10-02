@@ -527,7 +527,7 @@ export const RATE_LIMITS: Block[] = [
     ["Premium", "600"],
   ),
   p(
-    "The budget belongs to the **whole company**. Every person and every API key spends from the same pool, so a busy script and a person using the dashboard share it. A request from a visitor who is not signed in is counted per address, at 120 a minute.",
+    "The budget belongs to the **whole company**, and it is spent by **API keys**: every key of the company draws from the same pool, so two busy scripts share it. A person using the dashboard is counted separately, at 300 requests a minute for each person, so using Gridline never uses up your API budget. A request from a visitor who is not signed in is counted per address, at 120 a minute.",
   ),
   note(
     "Upgrading takes effect on the very next request. A company that was throttled gets a fresh budget the moment its plan changes.",
@@ -536,7 +536,10 @@ export const RATE_LIMITS: Block[] = [
   h2("Read your budget"),
   p("Every answer carries three headers:"),
   fields(
-    { name: "X-RateLimit-Limit", text: "Your company's requests per minute." },
+    {
+      name: "X-RateLimit-Limit",
+      text: "The requests per minute you are being counted against: your plan's budget for an API key.",
+    },
     {
       name: "X-RateLimit-Remaining",
       text: "How many you have left in this window.",

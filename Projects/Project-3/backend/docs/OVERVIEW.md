@@ -148,8 +148,9 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 
 ### 8. Rate limiting that follows the plan
 
-- The request budget is **per company** (users and keys share it) at the plan's limit, with `X-RateLimit-*` headers and a 429
-  that names the plan and the way up. Sign-in and email-sending routes have tighter per-address limits. A plan change applies
+- The request budget for **API keys** is **per company** (every key shares it) at the plan's limit, with `X-RateLimit-*`
+  headers and a 429 that names the plan and the way up. A person signed in (the dashboard) has a separate, generous
+  per-person limit of 300 a minute, so using the product never spends the plan's API budget. Sign-in and email-sending routes have tighter per-address limits. A plan change applies
   on the very next request, and the plan routes keep their own small budget so a throttled company can still upgrade.
   _Why:_ the infrastructure limit is the product limit, not a generic throttle bolted on beside the plans.
 
