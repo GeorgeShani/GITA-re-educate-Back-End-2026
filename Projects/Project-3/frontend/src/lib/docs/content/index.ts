@@ -1,5 +1,4 @@
 import type { Block } from "../blocks";
-import { ACCOUNT, AUDIT_LOG, DEMO } from "./account";
 import {
   API_KEYS,
   AUTHENTICATION,
@@ -8,13 +7,14 @@ import {
   PAGINATION,
   RATE_LIMITS,
 } from "./api-basics";
-import { COMMENTS, NOTIFICATIONS, PEOPLE } from "./collaboration";
-import { ANALYTICS, BILLING } from "./company";
-import { FILES, VERSIONS } from "./files";
+import { COMPANY_API, FILES_API, RULES_API, TEAM_API } from "./api-resources";
+import { ACCOUNT, ANALYTICS, AUDIT_LOG, BILLING, DEMO } from "./guides-company";
+import { FILES, REPORTS, VERSIONS } from "./guides-files";
+import { ACCESS, RULES } from "./guides-quality";
+import { COMMENTS, NOTIFICATIONS, PEOPLE } from "./guides-team";
 import { GRAPHQL, MCP, REALTIME, WEBHOOKS } from "./integrations";
-import { ACCESS, REPORTS, RULES } from "./quality";
 import { LIMITS, SECURITY, TROUBLESHOOTING } from "./reference";
-import { CONCEPTS, QUICKSTART } from "./start";
+import { API_QUICKSTART, CONCEPTS, QUICKSTART } from "./start";
 
 /**
  * The written guides, by slug. The docs home ("") is drawn from the registry itself, so it has no entry here. A slug that
@@ -22,6 +22,7 @@ import { CONCEPTS, QUICKSTART } from "./start";
  */
 export const DOC_BODIES: Readonly<Record<string, readonly Block[]>> = {
   quickstart: QUICKSTART,
+  "api-quickstart": API_QUICKSTART,
   concepts: CONCEPTS,
   files: FILES,
   versions: VERSIONS,
@@ -38,6 +39,10 @@ export const DOC_BODIES: Readonly<Record<string, readonly Block[]>> = {
   demo: DEMO,
   authentication: AUTHENTICATION,
   "api-keys": API_KEYS,
+  "files-api": FILES_API,
+  "rules-api": RULES_API,
+  "team-api": TEAM_API,
+  "company-api": COMPANY_API,
   errors: ERRORS,
   pagination: PAGINATION,
   idempotency: IDEMPOTENCY,

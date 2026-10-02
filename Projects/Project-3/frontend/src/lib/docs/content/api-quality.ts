@@ -15,7 +15,7 @@ import {
   warn,
 } from "../blocks";
 
-export const REPORTS: Block[] = [
+export const REPORTS_REF: Block[] = [
   p(
     "Every file you upload is inspected. The result is a **quality report**: a plain account of what is in the file and how healthy it is. You never ask for it; it starts the moment the upload is saved.",
   ),
@@ -181,7 +181,7 @@ export const REPORTS: Block[] = [
   ),
 ];
 
-export const RULES: Block[] = [
+export const RULES_REF: Block[] = [
   p(
     "A **rule** is something you decide good data must satisfy. Write it once; Gridline checks **every upload** against all your rules and tells you which failed. This is what turns a report from a description into a verdict.",
   ),
@@ -318,47 +318,13 @@ export const RULES: Block[] = [
     "Disabled rules count towards the limit. You can have at most **10** `unique` rules on any plan, because each is checked by remembering the values of its column. Going past a limit answers `409` with the reason. A downgrade that would leave you over the new plan's limit is refused until you delete some.",
   ),
   warn(
-    "Rules are checked when a report is built. After changing rules, existing reports still show their old results until you [rebuild them](/docs/reports#check-a-file-against-today-s-rules).",
+    "Rules are checked when a report is built. After changing rules, existing reports still show their old results until you [rebuild them](/docs/files-api#check-a-file-against-today-s-rules).",
   ),
 ];
 
-export const ACCESS: Block[] = [
+export const ACCESS_REF: Block[] = [
   p(
     "Gridline answers two questions about every file: **who are you?** and **may you see it?** This guide explains both, and one rule that surprises people: a file you may not see is a `404`, not a `403`.",
-  ),
-
-  h2("Two roles"),
-  p(
-    "A company has **admins** and **employees**. The person who registers the company is its first admin. Admins invite everyone else.",
-  ),
-  table(
-    ["", "Admin", "Employee"],
-    ["Upload files, read the ones they may see", "Yes", "Yes"],
-    [
-      "See every file in the company",
-      "Yes",
-      "No: company-wide files, and ones shared with them",
-    ],
-    ["Change or delete a file", "Any file", "Only their own"],
-    ["Invite and remove people", "Yes", "No"],
-    ["Create, edit and delete quality rules", "Yes", "No (read only)"],
-    ["Plans, billing, analytics and the audit log", "Yes", "No"],
-    ["Webhooks", "Yes", "No"],
-    ["Their own API keys", "Yes", "Yes (fewer scopes)"],
-  ),
-
-  h2("Who can see a file"),
-  p("Every file has one of two visibilities:"),
-  table(
-    ["Visibility", "Who sees it"],
-    ["`company`", "Everyone in the company. This is the default."],
-    [
-      "`restricted`",
-      "The person who uploaded it, every admin, and the colleagues listed in `grantedUserIds`. Nobody else.",
-    ],
-  ),
-  p(
-    "This is one rule, applied the same way everywhere: the file list, a single file, its report and preview, its download link, its comments, GraphQL, live updates, and AI agents. There is no side door.",
   ),
 
   h2("Hidden means not found"),
@@ -413,10 +379,5 @@ await fetch(\`${BASE}/files/\${fileId}\`, {
   h3("Versions"),
   p(
     "A new version starts with the same access as the file it joins, plus the person who uploaded it. After that, each version's access is its own.",
-  ),
-
-  h2("API keys cannot exceed their owner"),
-  p(
-    "An API key acts **as the person who created it, as they are right now**, narrowed to the scopes it was given. If that person is demoted or removed, their keys change with them on the very next request. See [API keys and scopes](/docs/api-keys).",
   ),
 ];

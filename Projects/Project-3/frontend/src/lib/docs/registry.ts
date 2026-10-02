@@ -29,7 +29,7 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "quickstart",
         title: "Quickstart",
         summary:
-          "Make a company, get an API key, upload a spreadsheet and read its quality report, in about ten minutes.",
+          "Make a company, upload a spreadsheet and read its quality report, in about five minutes and without code.",
       },
       {
         slug: "concepts",
@@ -46,7 +46,7 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "files",
         title: "Files and uploads",
         summary:
-          "What you can upload, how Gridline decides what a file really is, and how to download or delete one.",
+          "Upload, find, download and delete spreadsheets, and what to do when an upload is refused.",
       },
       {
         slug: "versions",
@@ -58,7 +58,7 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "reports",
         title: "Quality reports",
         summary:
-          "What Gridline measures about every column, the score, the plain-language summary, and the preview.",
+          "What the Report and Preview tabs show: the score, every column, the plain-language summary.",
       },
       {
         slug: "rules",
@@ -70,19 +70,19 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "access",
         title: "Sharing and access",
         summary:
-          "Admins and employees, company-wide and restricted files, and why a hidden file is a 404.",
+          "Admins and employees, company-wide and restricted files, how to share, and why a hidden file looks like it does not exist.",
       },
       {
         slug: "comments",
         title: "Comments and mentions",
         summary:
-          "Talk about a file where it lives, tag a colleague, and see who else is looking.",
+          "Talk about a file where it lives, reply in a thread and mention a colleague.",
       },
       {
         slug: "notifications",
         title: "Notifications and alerts",
         summary:
-          "Your inbox, the quota warnings at 80% and 100%, and what each message means.",
+          "Your inbox and bell, the quota warnings at 80% and 100%, and what each message means.",
       },
       {
         slug: "people",
@@ -94,13 +94,13 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "billing",
         title: "Plans and billing",
         summary:
-          "Free, Basic and Premium, how you are charged, what happens past your quota, and how payment recovery works.",
+          "Free, Basic and Premium, how you are charged, what happens past your allowance, and how payment recovery works.",
       },
       {
         slug: "analytics",
         title: "Usage analytics",
         summary:
-          "Uploads per day, per person, storage, and whether you are on pace for your quota.",
+          "Uploads per day, per person, storage, and whether you are on pace for your allowance.",
       },
       {
         slug: "audit-log",
@@ -112,7 +112,7 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         slug: "account",
         title: "Your account and company",
         summary:
-          "Profile, password, Google sign-in, linked accounts and company details.",
+          "Your name, password, Google sign-in, linked accounts and company details, under Settings.",
       },
       {
         slug: "demo",
@@ -126,6 +126,12 @@ export const DOC_SECTIONS: readonly DocSection[] = [
     title: "Build with the API",
     pages: [
       {
+        slug: "api-quickstart",
+        title: "API quickstart",
+        summary:
+          "Create a company, get an API key, upload a spreadsheet and read its report, all from code.",
+      },
+      {
         slug: "authentication",
         title: "Authentication",
         summary:
@@ -136,6 +142,30 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         title: "API keys and scopes",
         summary:
           "Create a key, choose what it may do, and why it is never more powerful than its owner.",
+      },
+      {
+        slug: "files-api",
+        title: "Files, versions and reports",
+        summary:
+          "Upload, list, download and share files; add versions, compare them and read reports.",
+      },
+      {
+        slug: "rules-api",
+        title: "Quality rules API",
+        summary:
+          "Create, list, change and delete rules, with every setting for each kind.",
+      },
+      {
+        slug: "team-api",
+        title: "Team and collaboration API",
+        summary:
+          "Comments, notifications and people: read, write and manage them over HTTP.",
+      },
+      {
+        slug: "company-api",
+        title: "Company and billing API",
+        summary:
+          "Plans, invoices, usage analytics, the audit log, and your account and company.",
       },
       {
         slug: "errors",

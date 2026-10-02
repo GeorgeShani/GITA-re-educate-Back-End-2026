@@ -5,33 +5,20 @@ import {
   endpoint,
   fields,
   h2,
-  h3,
   note,
   p,
-  table,
   tabs,
   tip,
   ul,
   warn,
 } from "../blocks";
 
-export const BILLING: Block[] = [
+export const BILLING_REF: Block[] = [
   p(
     "Gridline has three plans. You choose one when you start, and can change it any time. The prices and limits below are the ones the API itself enforces, so what you read here is what happens.",
   ),
 
-  h2("The plans"),
-  table(
-    ["", "Free", "Basic", "Premium"],
-    ["Price", "$0", "$5 per active employee per month", "$300 a month, flat"],
-    ["Files per billing period", "10", "100", "1,000"],
-    ["Past that quota", "Uploads stop", "Uploads stop", "$0.50 per extra file"],
-    ["Employees", "None (just you)", "Up to 10", "No limit"],
-    ["Quality rules", "3", "25", "No limit"],
-    ["Versions of one file", "5", "50", "No limit"],
-    ["Webhook endpoints", "1", "5", "No limit"],
-    ["API requests per minute", "30", "120", "600"],
-  ),
+  h2("Read the plans"),
   p(
     "The same table is available as data at `GET /subscriptions/plans`, which needs no sign-in, so a pricing page can read it directly.",
   ),
@@ -95,16 +82,7 @@ if (response.status === 202) window.location.href = result.checkoutUrl; // paid 
     "Seats are the admin plus every employee who holds one. A billing period runs from one day-of-month to the next, in UTC.",
   ),
 
-  h2("What you are charged"),
-  h3("Basic: per active employee"),
-  p(
-    "$5 a month for each employee who has **accepted** their invitation and is active. A person who is invited but has not accepted, or who has been removed, is not billed. Someone active for part of a month pays for the days they were active.",
-  ),
-  h3("Premium: a flat fee, plus overage"),
-  p(
-    "$300 a month covers 1,000 files. Each extra file costs $0.50 and your usage is reported to Stripe as files are uploaded, so your bill is never a surprise. The upload response carries an `X-Gridline-Quota-Warning` header saying the file is billed as overage.",
-  ),
-  h3("The running bill"),
+  h2("The running bill"),
   endpoint("GET", "/billing/current", "Admins. Needs billing:read for a key."),
   p(
     "Shows what the invoice **will be** if nothing changes: itemised in cents, with the seats, the plan fee and any overage, and when the period ends. It is an estimate until the period closes.",
@@ -122,22 +100,12 @@ if (response.status === 202) window.location.href = result.checkoutUrl; // paid 
     "To update your card or download receipts, `POST /billing/portal-session` returns a link to Stripe's customer portal.",
   ),
 
-  h2("If a payment fails"),
-  ul(
-    "Stripe tries the payment again. Gridline marks the account past due and **starts a grace period**, seven days by default.",
-    "When the grace period ends with the invoice still unpaid, the company is **suspended**: its people can no longer use the product.",
-    "Admins can still sign in to read billing and open the payment portal, so they can fix it.",
-    "As soon as the payment succeeds and nothing else is overdue, access is restored.",
-  ),
-  note(
-    "Everyone who matters is told along the way: admins get an inbox entry and the billing address an email when an invoice is issued.",
-  ),
   tip(
-    "Watch the `invoice.finalized` [webhook](/docs/webhooks) to feed invoices into your own finance tools.",
+    "Watch the `invoice.finalized` [webhook](/docs/webhooks) to feed invoices into your own finance tools. What happens when a payment fails is explained in [Plans and billing](/docs/billing).",
   ),
 ];
 
-export const ANALYTICS: Block[] = [
+export const ANALYTICS_REF: Block[] = [
   p(
     "Usage analytics answer three questions: who is uploading, how much, and whether you will run out of quota before the period ends. Admins read them; the dashboard draws them, and the API gives you the numbers.",
   ),

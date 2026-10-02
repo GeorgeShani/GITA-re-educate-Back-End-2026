@@ -10,11 +10,10 @@ import {
   p,
   table,
   tabs,
-  tip,
   ul,
 } from "../blocks";
 
-export const AUDIT_LOG: Block[] = [
+export const AUDIT_LOG_REF: Block[] = [
   p(
     'Every time something changes in your company, Gridline writes down who did it, what they did, to what, and when. Nobody can edit or remove those lines, not even an admin, not even us through the application. When you need to answer "who changed that?", this is the place.',
   ),
@@ -148,7 +147,7 @@ export const AUDIT_LOG: Block[] = [
   ),
 ];
 
-export const ACCOUNT: Block[] = [
+export const ACCOUNT_REF: Block[] = [
   p(
     "Your account is you: your name, how you sign in, and the company details your admin keeps up to date.",
   ),
@@ -248,43 +247,5 @@ export const ACCOUNT: Block[] = [
   h2("Activation"),
   p(
     "A new company is inactive until its admin follows the emailed link (`GET /auth/activate?token=…`). If the email did not arrive, `POST /auth/resend-activation` with the `email` sends another. It answers the same whether or not the address is registered.",
-  ),
-];
-
-export const DEMO: Block[] = [
-  p(
-    "Want to see Gridline before you sign up? The **demo company** is a fully populated company you can explore with one click. It is read-only, so nothing you do changes anything for anyone else.",
-  ),
-
-  h2("Open it"),
-  ul(
-    "On the website, choose **Explore the demo**. You are signed in as the demo company's admin, with no password.",
-    "Through the API, `POST /auth/demo` (no body) answers with a session, exactly like signing in.",
-  ),
-
-  h2("What is in it"),
-  ul(
-    "A company on the **Basic** plan with an admin and three employees.",
-    "Six CSV files with real quality reports, one of them restricted to a few people.",
-    "A few quality rules, so reports show a score and a failure.",
-    "An invoice and an audit trail.",
-  ),
-  p(
-    "The files are stored and checked by the same engine as any company's. The reports are real, not mock-ups.",
-  ),
-
-  h2("What it will not do"),
-  p(
-    "Every change is refused with a message that explains why: uploads, edits, invitations, plan changes, new API keys and rules. Reading is open everywhere.",
-  ),
-  code(
-    `{ "statusCode": 403, "message": "This is the read-only demo, so changes are turned off. Create your own company to try everything." }`,
-    "Response",
-  ),
-  note(
-    "An API key made in the demo can read but never write, and an AI agent connected to it is not even offered the tools that write.",
-  ),
-  tip(
-    "Ready to try it for real? [Create a company](/register). Free needs no card.",
   ),
 ];

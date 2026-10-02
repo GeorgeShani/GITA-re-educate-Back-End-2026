@@ -15,7 +15,7 @@ import {
   warn,
 } from "../blocks";
 
-export const FILES: Block[] = [
+export const FILES_REF: Block[] = [
   p(
     "A file is a spreadsheet you give Gridline. Upload it once and the company can find it, share it, check it, version it and talk about it. This guide covers what you can upload, how it is accepted, and how to get it back out.",
   ),
@@ -230,7 +230,7 @@ const response = await fetch("${BASE}/files", {
   ),
 ];
 
-export const VERSIONS: Block[] = [
+export const VERSIONS_REF: Block[] = [
   p(
     "Spreadsheets come back. The March export, then April's, then May's. Instead of a folder of near-identical files, upload each as the next **version** of the first. Gridline then shows you the file once, keeps the history, and can tell you exactly what changed between any two.",
   ),

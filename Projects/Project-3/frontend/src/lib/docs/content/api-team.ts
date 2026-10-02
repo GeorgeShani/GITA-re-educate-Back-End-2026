@@ -13,7 +13,7 @@ import {
   ul,
 } from "../blocks";
 
-export const COMMENTS: Block[] = [
+export const COMMENTS_REF: Block[] = [
   p(
     "Talk about a file where it lives. Anyone who can see a file can read and write its comments, so a question about a column stays next to the column, not in a chat thread nobody can find later.",
   ),
@@ -99,7 +99,7 @@ export const COMMENTS: Block[] = [
   ),
 ];
 
-export const NOTIFICATIONS: Block[] = [
+export const NOTIFICATIONS_REF: Block[] = [
   p(
     "Everyone has an inbox. Gridline writes to it when something happens that you would want to know about, and, for the one thing that is about money, also emails the billing address.",
   ),
@@ -195,7 +195,7 @@ export const NOTIFICATIONS: Block[] = [
   ),
 ];
 
-export const PEOPLE: Block[] = [
+export const PEOPLE_REF: Block[] = [
   p(
     "A company is people. The first admin invites everyone else. This guide covers inviting, what it costs, and what happens when someone leaves.",
   ),

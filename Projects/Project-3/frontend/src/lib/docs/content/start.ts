@@ -7,6 +7,7 @@ import {
   note,
   ol,
   p,
+  steps,
   table,
   tabs,
   tip,
@@ -14,9 +15,9 @@ import {
   warn,
 } from "../blocks";
 
-export const QUICKSTART: Block[] = [
+export const API_QUICKSTART: Block[] = [
   p(
-    "In this guide you will create a company, get an API key, upload a spreadsheet and read the quality report Gridline writes for it. It takes about ten minutes, and everything you do here is also possible from the dashboard.",
+    "This is the quickstart for developers. You will create a company, get an API key, upload a spreadsheet and read the quality report Gridline writes for it, all from code. It takes about ten minutes. If you would rather click than type, the [dashboard quickstart](/docs/quickstart) does the same in five.",
   ),
   note(
     `Every example sends to \`${BASE}\`. Replace \`YOUR-DOMAIN\` with the address you use to open Gridline. The API is reached at \`/api\` on that same domain. (Running the API on your own machine without the proxy, it listens on \`http://localhost:4000\` and has **no** \`/api\` prefix: \`/health\`, \`/files\`, and so on.)`,
@@ -239,6 +240,114 @@ console.log(report.status, report.qualityScore);`,
   ),
 ];
 
+export const QUICKSTART: Block[] = [
+  p(
+    "In about five minutes you will create a company, upload a spreadsheet and read the quality report Gridline writes for it. No code and no card needed. (Building something? The [API quickstart](/docs/api-quickstart) does the same from code.)",
+  ),
+
+  h2("1. Create your company"),
+  steps(
+    {
+      title: "Open the sign-up page",
+      text: "Choose **Create a company** on the home page or the sign-in page.",
+    },
+    {
+      title: "Fill in the form",
+      text: "Give your company's **name**, your **email**, a **password** of at least 8 characters, your **country** and your **industry**. Or choose **Continue with Google** and skip the password.",
+    },
+    {
+      title: "Confirm your email",
+      text: "Gridline sends an activation link. Open it, and nobody can sign in to your company until you have. If it does not arrive, ask for another from the sign-in page.",
+    },
+  ),
+
+  h2("2. Sign in and choose a plan"),
+  steps(
+    {
+      title: "Sign in",
+      text: "Use your email and password, or Google.",
+    },
+    {
+      title: "Choose Free",
+      text: "The **Welcome** screen asks for a plan before anything else. Free needs no card and turns on at once, and you can change it whenever you like. See [Plans and billing](/docs/billing).",
+    },
+  ),
+  tip(
+    "Not ready to sign up? **Explore the demo** on the sign-in page opens a populated, read-only company, so you can look at real reports first. See [The demo company](/docs/demo).",
+  ),
+
+  h2("3. Upload a spreadsheet"),
+  steps(
+    {
+      title: "Open Files",
+      text: "Choose **Files** in the sidebar.",
+    },
+    {
+      title: "Add a CSV or Excel file",
+      text: "Drag it onto the dashed box, or choose **Choose files**. Up to 25 MB.",
+    },
+    {
+      title: "Watch it appear",
+      text: "It shows up at the top of the list straight away, with a stamp that says **Queued** and then **Checking**.",
+    },
+  ),
+
+  h2("4. Read the quality report"),
+  steps(
+    {
+      title: "Open the file",
+      text: "Choose its row. After a few seconds the stamp turns into a **Checked** mark or a score out of 100, and the page fills in by itself.",
+    },
+    {
+      title: "Read the report",
+      text: "The **Report** tab shows what is in the file: rows, columns, empty cells, repeated rows, and what each column holds. The **Preview** tab shows its first rows.",
+    },
+  ),
+  p(
+    "There is no score yet because you have not told Gridline what good data means for you. That is the next step.",
+  ),
+
+  h2("5. Add a rule"),
+  steps(
+    {
+      title: "Open Quality rules",
+      text: "Choose **Quality rules** in the sidebar.",
+    },
+    {
+      title: "Add one",
+      text: "For example “at most 5% of the `email` column may be empty”. See [Quality rules](/docs/rules) for the seven kinds.",
+    },
+    {
+      title: "Upload again, or choose Check again",
+      text: "Every file from now on is checked against your rule. For the file you already uploaded, open its **Report** tab and choose **Check again**. Now it has a score and a list of which rules passed and failed.",
+    },
+  ),
+
+  h2("Where to next"),
+  cards(
+    {
+      title: "Versions",
+      text: "Upload next month's export and see what changed.",
+      href: "/docs/versions",
+    },
+    {
+      title: "Share with your team",
+      text: "Invite colleagues and choose who sees each file.",
+      href: "/docs/people",
+    },
+    {
+      title: "Build on Gridline",
+      text: "API keys, webhooks and AI agents.",
+      href: "/docs/api-quickstart",
+    },
+    {
+      title: "Core concepts",
+      text: "The seven ideas everything else is built from.",
+      href: "/docs/concepts",
+    },
+  ),
+];
+
 export const CONCEPTS: Block[] = [
   p(
     "Gridline has a small vocabulary. Learn these seven words and every other guide will read easily.",
@@ -316,7 +425,7 @@ export const OVERVIEW: Block[] = [
   cards(
     {
       title: "I want to try it",
-      text: "Make a company, upload a file and read its report.",
+      text: "Make a company, upload a file and read its report, in five minutes.",
       href: "/docs/quickstart",
     },
     {
@@ -327,7 +436,7 @@ export const OVERVIEW: Block[] = [
     {
       title: "I am building on it",
       text: "Sessions, API keys, webhooks, live updates and AI agents.",
-      href: "/docs/authentication",
+      href: "/docs/api-quickstart",
     },
     {
       title: "Something is not working",

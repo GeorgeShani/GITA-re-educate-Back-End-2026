@@ -90,3 +90,18 @@ export const fields = (...items: Field[]): Block => ({ t: "fields", items });
 
 /** The address every sample sends to. Behind the proxy the API is at /api on the same domain as the app. */
 export const BASE = "https://YOUR-DOMAIN/api";
+
+/**
+ * Folds a guide's blocks into a section of a bigger guide: its headings go down a level, so the bigger guide's own
+ * headings stay on top. A third-level heading has nowhere lower to go, so it becomes a bold line.
+ */
+export function section(title: string, blocks: readonly Block[]): Block[] {
+  return [
+    h2(title),
+    ...blocks.map((block): Block => {
+      if (block.t === "h2") return h3(block.text);
+      if (block.t === "h3") return p(`**${block.text}**`);
+      return block;
+    }),
+  ];
+}
