@@ -30,6 +30,11 @@ export const metadata: Metadata = {
     "Where a company's spreadsheets live: checked on arrival, permissioned per person, versioned, and billed by seat and volume.",
 };
 
+// Sets the theme before the first paint so a dark visitor never sees a flash of light. It is emitted as HTML inside a hidden
+// element, like the contract below: the browser runs it while parsing the page, and React never creates a <script> of its
+// own, which it warns about whenever it re-renders the layout on the client (a not-found page, for one).
+const THEME_SCRIPT = `<script>(function(){try{var t=localStorage.getItem("theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.setAttribute("data-theme",d?"dark":"light");r.style.colorScheme=d?"dark":"light"}catch(e){}})()</script>`;
+
 // The direction contract is rendered as the first child of <body> (an HTML comment), so it survives the production build.
 const DIRECTION_CONTRACT = `
 THESIS: Gridline is the company's reference manual: every division a hue-edged leaf, every file a leaf that has been checked. Refuses the gradient-hero, floating-screenshot, three-card SaaS template.
@@ -48,6 +53,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-dvh flex-col">
+        <div
+          hidden
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: a static constant that has to run before first paint
+          dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }}
+        />
         <div
           hidden
           // biome-ignore lint/security/noDangerouslySetInnerHtml: a static constant; React has no other way to emit an HTML comment
