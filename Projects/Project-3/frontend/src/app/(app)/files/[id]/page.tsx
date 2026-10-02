@@ -55,9 +55,13 @@ export default async function Page({
     throw new Error(`The file could not be loaded (${file.response.status}).`);
 
   const people = members.data ?? [];
+  // Say who it is only when it is known: the person looking, or someone on the list. If the list of colleagues could not be
+  // read (the API was busy), say so neutrally rather than claiming they have left.
   const nameOf = (userId: string) =>
-    people.find((person) => person.id === userId)?.fullName ??
-    "a former colleague";
+    userId === session.user.id
+      ? session.user.fullName
+      : (people.find((person) => person.id === userId)?.fullName ??
+        (members.data ? "a former colleague" : "a colleague"));
   const isAdmin = session.user.role === "admin";
   const canManage = isAdmin || file.data.uploaderId === session.user.id;
   const status = toStatus(report.data?.status) ?? "queued";

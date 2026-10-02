@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { DropdownMenu } from "radix-ui";
+import { useRef } from "react";
 import { cn } from "@/lib/cn";
 
 const itemStyles =
@@ -36,6 +37,7 @@ export function UserMenu({
   email: string;
   role: "admin" | "employee";
 }) {
+  const signOut = useRef<HTMLFormElement>(null);
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
@@ -83,8 +85,16 @@ export function UserMenu({
               </Link>
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="my-1.5 h-px bg-line" />
-            <form action="/session/logout" method="post">
-              <DropdownMenu.Item asChild>
+            <form ref={signOut} action="/session/logout" method="post">
+              <DropdownMenu.Item
+                asChild
+                // Choosing an item closes the menu and takes its content (this form) out of the page in the same moment, before the
+                // browser would submit it. So send the form from here, and let the page navigate away.
+                onSelect={(event) => {
+                  event.preventDefault();
+                  signOut.current?.requestSubmit();
+                }}
+              >
                 <button type="submit" className={cn(itemStyles, "text-left")}>
                   <LogOut aria-hidden className="size-4" />
                   Sign out

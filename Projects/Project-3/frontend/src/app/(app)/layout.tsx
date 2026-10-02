@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppShell } from "@/components/app/app-shell";
+import { Busy } from "@/components/app/busy";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
 import { apiClient } from "@/lib/session/api";
-import { requireSession } from "@/lib/session/session";
+import { apiIsAvailable, requireSession } from "@/lib/session/session";
 import { getSubscription } from "@/lib/session/subscription";
 
 /**
@@ -15,6 +16,8 @@ import { getSubscription } from "@/lib/session/subscription";
  * the frame are as fresh as the last full load, until the live connection updates them.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
+  // Busy or restarting is not signed out: say so, keep the session, and try again by itself.
+  if (!(await apiIsAvailable())) return <Busy />;
   const session = await requireSession();
   const api = apiClient(session.accessToken);
 

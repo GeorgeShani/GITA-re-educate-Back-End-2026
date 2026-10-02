@@ -51,6 +51,14 @@ const lookup = cache(async (): Promise<Lookup> => {
   }
 });
 
+/**
+ * Whether the API could be asked at all. A layout uses this to show a "busy" screen of its own: an error thrown by a layout
+ * is not caught by the error page beneath it.
+ */
+export async function apiIsAvailable(): Promise<boolean> {
+  return (await lookup()).kind !== "unavailable";
+}
+
 /** Who is signed in, or `null`. An API that could not be asked counts as `null` here: this is for pages that work either way. */
 export async function getSession(): Promise<Session | null> {
   const result = await lookup();
