@@ -3,7 +3,7 @@
 import { CornerDownLeft, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "radix-ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { API_REFERENCE_HREF } from "@/components/marketing/nav-data";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -28,7 +28,7 @@ export function DocSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
-  const results = useMemo(() => matches(query), [query]);
+  const results = matches(query);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {

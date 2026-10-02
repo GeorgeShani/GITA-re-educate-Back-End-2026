@@ -74,16 +74,19 @@ export const NOTIFICATIONS: Block[] = [
   steps(
     {
       title: "Open Notifications",
-      text: "Newest first. Unread ones stand out.",
+      text: "Newest first. Unread ones are marked **New** and have a yellow icon. Choose **Unread** above the list to see only those.",
     },
     {
       title: "Read one",
-      text: "Each says what happened and links to the file or page it is about.",
+      text: "Each says what happened and links to the file or page it is about. Opening it marks it as read.",
     },
     {
       title: "Mark as read",
-      text: "Mark one as read, or mark them all at once. The bell's number goes down.",
+      text: "Choose **Mark as read** beside an entry, or **Mark all as read** at the top. The bell's number goes down at once.",
     },
+  ),
+  p(
+    "New notifications appear at the top of the list, and the bell counts them, while you are working: there is no need to reload. Long lists load in pages: choose **Load more** at the bottom.",
   ),
   p(
     "You only ever see your **own** notifications. Read notifications are removed after 90 days; unread ones stay until you read them.",

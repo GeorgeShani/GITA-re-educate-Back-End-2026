@@ -1,10 +1,10 @@
-import { Bell, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Logo } from "@/components/brand/logo";
-import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/cn";
+import { LiveBell } from "./live-bell";
 import { MobileNav } from "./mobile-nav";
 import type { Role } from "./nav";
 import { SectionName } from "./page-title";
@@ -60,27 +60,7 @@ export function AppShell({
               {company.name}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            asChild
-            aria-label={
-              unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
-            }
-          >
-            <Link href="/notifications">
-              <Bell aria-hidden />
-              {unread > 0 ? (
-                <span
-                  aria-hidden
-                  className="num absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full border border-text bg-tag px-1 font-mono text-[0.625rem] font-bold text-on-tag"
-                >
-                  {unread > 99 ? "99+" : unread}
-                </span>
-              ) : null}
-            </Link>
-          </Button>
+          <LiveBell initial={unread} />
           <ThemeToggle />
           <UserMenu
             fullName={user.fullName}

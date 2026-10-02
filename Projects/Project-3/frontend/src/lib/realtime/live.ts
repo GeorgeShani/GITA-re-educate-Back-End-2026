@@ -14,9 +14,18 @@ export interface QuotaEvent {
   filesLimit: number;
 }
 
+/** A new inbox entry for this person (`notification.created`). */
+export interface NotificationEvent {
+  id: string;
+  type: string;
+  payload: Record<string, unknown>;
+  createdAt: string;
+}
+
 export interface LiveHandlers {
   onFileStatus?: (event: FileStatusEvent) => void;
   onQuota?: (event: QuotaEvent) => void;
+  onNotification?: (event: NotificationEvent) => void;
 }
 
 function toFileStatus(value: unknown): FileStatusEvent | null {
@@ -37,6 +46,19 @@ function toQuota(value: unknown): QuotaEvent | null {
     return null;
   }
   return { filesUsed, filesLimit };
+}
+
+function toNotification(value: unknown): NotificationEvent | null {
+  if (!isRecord(value)) return null;
+  const { id, type, payload, createdAt } = value;
+  if (
+    typeof id !== "string" ||
+    typeof type !== "string" ||
+    typeof createdAt !== "string"
+  ) {
+    return null;
+  }
+  return { id, type, payload: isRecord(payload) ? payload : {}, createdAt };
 }
 
 /**
@@ -93,6 +115,11 @@ async function open(): Promise<void> {
     const event = toQuota(payload);
     if (!event) return;
     for (const handler of listeners) handler.onQuota?.(event);
+  });
+  next.on("notification.created", (payload: unknown) => {
+    const event = toNotification(payload);
+    if (!event) return;
+    for (const handler of listeners) handler.onNotification?.(event);
   });
   // The token is short-lived: hand the server a new one before it ends, so the connection need not drop.
   next.on("session.expiring", async () => {

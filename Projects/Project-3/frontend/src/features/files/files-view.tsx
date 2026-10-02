@@ -2,7 +2,7 @@
 
 import { FileSearch, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { subscribeLive } from "@/lib/realtime/live";
 import { FileListHeader, FileRowView } from "./file-row";
@@ -41,9 +41,8 @@ export function FilesView({
   const [fresh, setFresh] = useState<ReadonlySet<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // A report moved on: update the row it belongs to, if it is on screen. A quota change re-reads the frame's meter.
+  // A report moved on: update the row it belongs to, if it is on screen. (The plan meter in the frame follows quota changes itself.)
   useEffect(() => {
     return subscribeLive({
       onFileStatus: (event) => {
@@ -57,12 +56,8 @@ export function FilesView({
           ),
         );
       },
-      onQuota: () => {
-        if (refreshTimer.current) clearTimeout(refreshTimer.current);
-        refreshTimer.current = setTimeout(() => router.refresh(), 600);
-      },
     });
-  }, [router]);
+  }, []);
 
   const loadMore = async () => {
     if (!cursor || loading) return;
