@@ -11,11 +11,15 @@ export async function callApi(
   method: "GET" | "POST" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
+  headers: Record<string, string> = {},
 ): Promise<UploadResult> {
   try {
     const response = await fetch(`/session/api${path}`, {
       method,
-      headers: body === undefined ? {} : { "Content-Type": "application/json" },
+      headers:
+        body === undefined
+          ? headers
+          : { ...headers, "Content-Type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       cache: "no-store",
     });
