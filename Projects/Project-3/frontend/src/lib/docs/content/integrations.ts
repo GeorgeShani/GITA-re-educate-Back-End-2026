@@ -21,6 +21,11 @@ export const WEBHOOKS: Block[] = [
     'A webhook is Gridline calling **you**. Instead of asking "is the report ready yet?" over and over, you give Gridline an address and it sends you a message the moment something happens. Webhooks are signed, so you can be sure a message really came from us.',
   ),
 
+  h2("In the dashboard"),
+  p(
+    "Admins can manage endpoints without code under **Developers → Webhooks**: add an endpoint (its signing secret is shown once), **Send a test**, pause or resume it, replace its secret, remove it, and read every delivery with its status, response code and attempts. A failed delivery has a **Send again** button.",
+  ),
+
   h2("Set one up"),
   endpoint(
     "POST",

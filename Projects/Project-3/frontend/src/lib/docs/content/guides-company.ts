@@ -55,7 +55,7 @@ export const BILLING: Block[] = [
 
   h2("Change plan"),
   p(
-    "Open **Billing** and choose a different plan. Moving to a paid plan sends you to Stripe to pay. A change between paid plans starts a new billing cycle, and the cost of the part of the old period you used is settled at once. Moving to Free cancels immediately.",
+    "Open **Billing**, find **Your plan**, and choose **Switch to** another plan. A confirmation shows the two plans side by side (the price a month at your team size, files, employees, requests a minute) before anything changes. Moving to a paid plan sends you to Stripe to pay. A change between paid plans starts a new billing cycle, and the cost of the part of the old period you used is settled at once. Moving to Free cancels immediately.",
   ),
   warn(
     "A change is **refused** if your company would be over the new plan's limits: more employees, rules or versions than it allows, or (leaving Premium) more files this period than the target includes. The message lists what to reduce first, so a plan change can never leave you in a state the new plan does not permit.",
@@ -85,10 +85,10 @@ export const BILLING: Block[] = [
 
   h2("Invoices"),
   p(
-    "Past invoices are listed under **Billing**, newest first. Open one to see its line items, Stripe's hosted invoice page, and a PDF. An invoice is **draft**, **open**, **paid**, **uncollectible** or **void**.",
+    "Past invoices are listed under **Billing**, newest first. Open one to see its line items and, when Stripe issued it, a link to Stripe's hosted invoice page and a PDF. An invoice is marked **Issued**, **Due**, **Paid**, **Unpaid** or **Void**.",
   ),
   p(
-    "To update your card or download receipts, choose the button that opens Stripe's customer portal.",
+    "To update your card or download receipts, choose **Payment details**: it opens Stripe's customer portal.",
   ),
 
   h2("If a payment fails"),
@@ -124,7 +124,7 @@ export const ANALYTICS: Block[] = [
     },
     {
       title: "Pick the days",
-      text: "By default you see the current billing period so far. Choose another range to look at an earlier one. A range can span up to a year, and days are UTC days.",
+      text: "By default you see the current billing period so far. Above the charts, choose **7 days**, **30 days** or **90 days** to look further back. Everything below changes together, so the numbers always agree, and days are UTC days.",
     },
   ),
 
@@ -136,7 +136,7 @@ export const ANALYTICS: Block[] = [
       "How many files were uploaded each day. A quiet day shows as zero, so the chart has no gaps.",
     ],
     [
-      "**By person**",
+      "**Who uploads**",
       "Who uploaded: each person's files, bytes and last upload, most active first. People who have since been removed are still counted.",
     ],
     [
@@ -151,6 +151,10 @@ export const ANALYTICS: Block[] = [
       "**Plan history**",
       "Plan changes, newest first: what changed, when, and what the outgoing plan's part-period cost.",
     ],
+  ),
+
+  p(
+    "Hover or tab to a bar or a point to see its exact value. Under each chart, **Show as a table** lists the same numbers for anyone who prefers to read them.",
   ),
 
   h2("Are you on pace?"),
@@ -180,7 +184,7 @@ export const AUDIT_LOG: Block[] = [
     },
     {
       title: "Narrow it down",
-      text: "Filter by the kind of event (for example a file was deleted), by the person who did it, by the kind of thing it was done to, or by a time window.",
+      text: "Choose **What happened** (for example “File deleted”), **Who did it**, and a **From** and **To** day, then **Apply filters**. The address of a filtered log can be bookmarked or sent to a colleague. Choose **Older entries** at the bottom to go further back.",
     },
     {
       title: "Open an entry",

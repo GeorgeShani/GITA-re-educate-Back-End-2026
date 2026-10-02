@@ -137,6 +137,11 @@ export const API_KEYS: Block[] = [
     "An API key lets a program act as you. It is the right tool for scripts, servers, integrations and AI agents. This guide shows how to make one, what it can be allowed to do, and how it stays safe.",
   ),
 
+  h2("In the dashboard"),
+  p(
+    "Open **Developers → API keys** and choose **Create a key**: name it, tick what it may do, and copy the key from the next screen. It is shown **once**; Gridline keeps only a fingerprint. The list shows each key's name, what it may do, who made it (admins see everyone's), when it was last used, and a **Revoke** button.",
+  ),
+
   h2("Create a key"),
   endpoint("POST", "/api-keys", "Needs a session. A key cannot make keys."),
   fields(

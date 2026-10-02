@@ -34,21 +34,24 @@ export function AppShell({
 }: ShellProps) {
   return (
     <div className="flex min-h-dvh flex-1">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-6 overflow-y-auto scrollbar-none border-r border-line bg-surface p-3 lg:flex">
-        <Link
-          href="/dashboard"
-          aria-label="Gridline dashboard"
-          className="rounded-md px-2.5 py-2"
-        >
-          <Logo />
-        </Link>
-        <NavList role={user.role} />
-        <div className="mt-auto flex flex-col gap-3">
-          {plan ? (
-            <PlanMeter plan={plan} canManage={user.role === "admin"} />
-          ) : null}
-        </div>
-      </aside>
+      {/* The column runs the full height of the page, so its background and rule never stop short on a long page; the rail inside it stays pinned to the window. */}
+      <div className="hidden w-60 shrink-0 border-r border-line bg-surface lg:block">
+        <aside className="sticky top-0 flex h-dvh flex-col gap-6 overflow-y-auto scrollbar-none p-3">
+          <Link
+            href="/dashboard"
+            aria-label="Gridline dashboard"
+            className="rounded-md px-2.5 py-2"
+          >
+            <Logo />
+          </Link>
+          <NavList role={user.role} />
+          <div className="mt-auto flex flex-col gap-3">
+            {plan ? (
+              <PlanMeter plan={plan} canManage={user.role === "admin"} />
+            ) : null}
+          </div>
+        </aside>
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <Banners company={company} role={user.role} />
