@@ -76,7 +76,7 @@ describe('notifications: the inbox, quota alerts and their producers (integratio
   const uploadOk = async (session: SessionBody, options: Parameters<AppHarness['upload']>[1] = {}) =>
     z.object({ id: z.uuid() }).parse((await h.upload(session, options).expect(201)).body);
 
-  const quotaEmails = (address: string) => h.mail.to(address).filter((mail) => /file quota/.test(mail.subject));
+  const quotaEmails = (address: string) => h.mail.to(address).filter((mail) => /of your files (are|is) used|all of your files are used/.test(mail.subject));
 
   // ---- quota alerts ----------------------------------------------------------
 
@@ -115,7 +115,7 @@ describe('notifications: the inbox, quota alerts and their producers (integratio
       expect(all.map((row) => (z.object({ threshold: z.number() }).parse(row.payload)).threshold)).toEqual([80, 100]);
       const emails = quotaEmails(admin.email);
       expect(emails).toHaveLength(2);
-      expect(emails[1]?.text).toContain('Uploads stop until 2026-04-01');
+      expect(emails[1]?.text).toContain('Uploads stop until April 1, 2026');
       expect(emails[1]?.text).toContain('basic');
     });
 

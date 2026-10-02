@@ -35,6 +35,22 @@ export const mailMessageSchema = z.discriminatedUnion('template', [
     vars: z.object({ fullName: z.string() }),
   }),
   z.object({
+    template: z.literal('sign_in_method_changed'),
+    to: z.email(),
+    vars: z.object({
+      fullName: z.string(),
+      /** What was linked or removed, as a person would say it: "Google". */
+      provider: z.string(),
+      /** True when the method was added, false when it was removed. */
+      added: z.boolean(),
+    }),
+  }),
+  z.object({
+    template: z.literal('company_suspended'),
+    to: z.email(),
+    vars: z.object({ companyName: z.string(), billingUrl: httpUrl }),
+  }),
+  z.object({
     template: z.literal('payment_failed'),
     to: z.email(),
     vars: z.object({

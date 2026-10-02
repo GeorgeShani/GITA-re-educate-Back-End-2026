@@ -1,75 +1,16 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type MailMessage, mailMessageSchema } from './mail-message.js';
+import {
+  SAMPLE_MESSAGES,
+  SAMPLE_QUOTA_FULL,
+  SAMPLE_SIGN_IN_REMOVED,
+} from './sample-messages.js';
 import { TemplateRenderer } from './template-renderer.js';
 
 const MESSAGES: MailMessage[] = [
-  {
-    template: 'activation',
-    to: 'admin@acme.test',
-    vars: {
-      companyName: 'Acme & Sons',
-      activationUrl: 'https://gridline.test/activate?token=abc123',
-    },
-  },
-  {
-    template: 'invite',
-    to: 'new@acme.test',
-    vars: {
-      fullName: 'Nino Beridze',
-      companyName: 'Acme',
-      inviteUrl: 'https://gridline.test/accept-invite?token=inv456',
-    },
-  },
-  {
-    template: 'password_reset',
-    to: 'user@acme.test',
-    vars: {
-      fullName: 'Nino',
-      resetUrl: 'https://gridline.test/reset?token=rst789',
-    },
-  },
-  {
-    template: 'password_changed',
-    to: 'user@acme.test',
-    vars: { fullName: 'Nino' },
-  },
-  {
-    template: 'payment_failed',
-    to: 'billing@acme.test',
-    vars: {
-      companyName: 'Acme',
-      totalFormatted: '$50.00',
-      graceEndsAt: '2026-03-08',
-      billingUrl: 'https://gridline.test/billing',
-    },
-  },
-  {
-    template: 'payment_recovered',
-    to: 'billing@acme.test',
-    vars: { companyName: 'Acme', billingUrl: 'https://gridline.test/billing' },
-  },
-  {
-    template: 'invoice_finalized',
-    to: 'billing@acme.test',
-    vars: {
-      companyName: 'Acme',
-      periodStart: '2026-03-01',
-      periodEnd: '2026-03-31',
-      totalFormatted: '$50.00',
-      invoiceUrl: 'https://gridline.test/billing/invoices/1',
-    },
-  },
-  {
-    template: 'quota_threshold',
-    to: 'billing@acme.test',
-    vars: {
-      companyName: 'Acme',
-      threshold: 80,
-      headline: 'You are approaching your quota.',
-      detail: '80 of 100 files have been processed.',
-      billingUrl: 'https://gridline.test/billing',
-    },
-  },
+  ...SAMPLE_MESSAGES,
+  SAMPLE_QUOTA_FULL,
+  SAMPLE_SIGN_IN_REMOVED,
 ];
 
 describe('TemplateRenderer', () => {
@@ -154,7 +95,7 @@ describe('TemplateRenderer', () => {
       'https://assets.gridline.test/brand/v1/logo.png',
     );
     expect(email.html).toMatch(/alt="Gridline"/);
-    expect(email.html).toMatch(/width="160"/);
+    expect(email.html).toMatch(/width="150"/);
   });
 
   it('renders the text wordmark when no public asset origin is configured', () => {

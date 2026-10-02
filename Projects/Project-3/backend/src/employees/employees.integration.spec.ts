@@ -131,7 +131,7 @@ describe('employees: invite, accept, disable, reactivate (integration)', () => {
       await h.inviteEmployee(adminSession, { email: 'nino@acme.test', fullName: 'Nino' });
 
       const email = h.mail.latestTo('nino@acme.test');
-      expect(email?.subject).toMatch(/invited to .* on Gridline/);
+      expect(email?.subject).toMatch(/invited you to Gridline$/);
       expect(h.mail.latestLinkTo('nino@acme.test').pathname).toBe('/accept-invite');
       expect(email?.text).toContain('Hi Nino');
     });

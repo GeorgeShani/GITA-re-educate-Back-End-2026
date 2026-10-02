@@ -1,8 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { DataSource, LessThanOrEqual } from 'typeorm';
+import type { AppConfig } from '#/config/env.schema.js';
+import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
 import { BillingAccount } from './billing-account.entity.js';
 
@@ -11,6 +14,8 @@ export class DunningEvaluator {
   constructor(
     private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly queue: TaskQueue,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
@@ -41,6 +46,19 @@ export class DunningEvaluator {
             target: { type: 'company', id: company.id },
           },
           manager,
+        );
+        // Everyone is locked out from now on, so the one address that can fix it must be told, in the same step.
+        await this.queue.enqueue(
+          'send_email',
+          {
+            template: 'company_suspended',
+            to: company.billingEmail,
+            vars: {
+              companyName: company.name,
+              billingUrl: `${this.config.APP_PUBLIC_URL}/settings/billing`,
+            },
+          },
+          { manager },
         );
         return 1;
       });

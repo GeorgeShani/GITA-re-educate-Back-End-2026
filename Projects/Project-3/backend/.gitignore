@@ -61,3 +61,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Files stored by the development storage driver (used when no S3 bucket is configured)
 .local-storage/
+
+# Rendered email previews (npm run mail:preview)
+.mail-preview/

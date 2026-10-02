@@ -361,6 +361,8 @@ describe('Stripe event ordering, recovery and duplicates (integration)', () => {
       h.clock.advance(8 * DAY);
       expect(await h.app.get(DunningEvaluator).evaluate()).toBe(1);
       expect(await companyStatus()).toBe('suspended');
+      await h.drainTasks();
+      expect(h.mail.to(admin.email).filter((mail) => mail.subject.endsWith('is suspended until payment is made'))).toHaveLength(1);
 
       remember({ ...first, status: 'paid', paidAt: h.clock.now() });
       await send(event('invoice.payment_succeeded', { customerId, subscriptionId: external.id, invoiceId: 'in_one' })).expect(200);

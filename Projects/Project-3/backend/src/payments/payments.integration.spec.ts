@@ -209,6 +209,9 @@ describe('Stripe subscriptions (integration)', () => {
     h.clock.advance(8 * 86_400_000);
     expect(await h.app.get(DunningEvaluator).evaluate()).toBe(1);
     expect((await h.dataSource.getRepository(Company).findOneByOrFail({ id: admin.companyId })).status).toBe('suspended');
+    // Everyone is locked out now, so the billing address is told in the same step.
+    await h.drainTasks();
+    expect(h.mail.to(admin.email).some((email) => email.subject.endsWith('is suspended until payment is made'))).toBe(true);
     const suspendedSession = await h.login(admin.email);
     const portal = await h.http().post('/billing/portal-session').set(...h.bearer(suspendedSession)).expect(200);
     expect(portal.body.url).toContain(account.stripeCustomerId);

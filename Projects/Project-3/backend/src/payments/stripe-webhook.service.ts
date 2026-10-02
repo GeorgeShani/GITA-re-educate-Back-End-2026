@@ -9,6 +9,7 @@ import {
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
+import { formatMailDate } from '#/core/mail/format-mail-date.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { Company } from '#/database/entities/company.entity.js';
@@ -411,8 +412,8 @@ export class StripeWebhookService {
             to: company.billingEmail,
             vars: {
               companyName: company.name,
-              periodStart: external.periodStart.toISOString().slice(0, 10),
-              periodEnd: external.periodEnd.toISOString().slice(0, 10),
+              periodStart: formatMailDate(external.periodStart),
+              periodEnd: formatMailDate(external.periodEnd),
               totalFormatted: formatCents(external.totalCents),
               invoiceUrl:
                 external.hostedUrl ??
@@ -456,7 +457,7 @@ export class StripeWebhookService {
           vars: {
             companyName: company.name,
             totalFormatted: formatCents(external.totalCents),
-            graceEndsAt: account.graceEndsAt.toISOString(),
+            graceEndsAt: formatMailDate(account.graceEndsAt),
             billingUrl: `${this.config.APP_PUBLIC_URL}/settings/billing`,
           },
         },

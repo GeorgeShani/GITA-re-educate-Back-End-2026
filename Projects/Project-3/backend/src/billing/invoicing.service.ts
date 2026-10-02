@@ -3,6 +3,7 @@ import { type EntityManager, IsNull, Not } from 'typeorm';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
+import { formatMailDate } from '#/core/mail/format-mail-date.js';
 import { BusinessMetrics } from '#/core/telemetry/business-metrics.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
@@ -144,8 +145,8 @@ export class InvoicingService {
         to: company.billingEmail,
         vars: {
           companyName: company.name,
-          periodStart: invoice.periodStart.toISOString().slice(0, 10),
-          periodEnd: invoice.periodEnd.toISOString().slice(0, 10),
+          periodStart: formatMailDate(invoice.periodStart),
+          periodEnd: formatMailDate(invoice.periodEnd),
           totalFormatted: formatCents(invoice.totalCents),
           invoiceUrl: new URL(
             `/billing/invoices/${invoice.id}`,

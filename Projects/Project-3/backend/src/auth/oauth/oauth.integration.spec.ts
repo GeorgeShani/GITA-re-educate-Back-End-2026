@@ -519,6 +519,9 @@ describe('Google sign-in and linked accounts (integration)', () => {
       const identity = await h.dataSource.getRepository(AuthIdentity).findOneByOrFail({ provider: 'google', userId: admin.userId });
       expect(identity.providerUserId).toBe('g-boss');
       expect(await actionsFor(admin.companyId)).toContain('auth.identity_linked');
+      // A new way into the account appeared without the person asking: they are told.
+      await h.drainTasks();
+      expect(h.mail.latestTo('boss@acme.test')?.subject).toBe('Google was added to your Gridline account');
     });
 
     it('does NOT link an UNVERIFIED matching address — that is how accounts get taken over', async () => {
@@ -843,6 +846,11 @@ describe('Google sign-in and linked accounts (integration)', () => {
       expect(await identitiesOf(session)).toHaveLength(1);
       const result = await h.googleFlow({ intent: 'login', profile: { providerUserId: 'g-bye' } });
       expect(result.location.pathname).toBe(REGISTER_PAGE);
+      // Linking and unlinking are each announced to the person, in case it was not them.
+      await h.drainTasks();
+      const subjects = h.mail.sent.map((email) => email.subject);
+      expect(subjects).toContain('Google was added to your Gridline account');
+      expect(subjects).toContain('Google was removed from your Gridline account');
     });
 
     it('refuses to remove the last way to sign in', async () => {

@@ -1,7 +1,10 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AuditService } from '#/core/audit/audit.service.js';
+import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
+import { User } from '#/database/entities/user.entity.js';
+import { providerLabel } from './provider-label.js';
 
 /** "Settings → Linked accounts": how the signed-in user can prove who they are. */
 @Injectable()
@@ -9,6 +12,7 @@ export class IdentitiesService {
   constructor(
     private readonly dataSource: DataSource,
     private readonly audit: AuditService,
+    private readonly queue: TaskQueue,
   ) {}
 
   list(userId: string): Promise<AuthIdentity[]> {
@@ -51,6 +55,23 @@ export class IdentitiesService {
         },
         manager,
       );
+      // A way into the account was taken away: tell the person, in case it was not them.
+      const user = await manager.findOne(User, { where: { id: userId } });
+      if (user) {
+        await this.queue.enqueue(
+          'send_email',
+          {
+            template: 'sign_in_method_changed',
+            to: user.email,
+            vars: {
+              fullName: user.fullName,
+              provider: providerLabel(target.provider),
+              added: false,
+            },
+          },
+          { manager },
+        );
+      }
     });
   }
 }

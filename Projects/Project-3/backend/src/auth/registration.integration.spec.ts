@@ -110,7 +110,7 @@ describe('company registration and activation (integration)', () => {
       await h.drainTasks();
 
       const email = h.mail.latestTo('boss@acme.test');
-      expect(email?.subject).toBe('Activate your Gridline account');
+      expect(email?.subject).toMatch(/^Activate .+ on Gridline$/);
       expect(h.mail.latestLinkTo('boss@acme.test').pathname).toBe('/activate');
     });
 

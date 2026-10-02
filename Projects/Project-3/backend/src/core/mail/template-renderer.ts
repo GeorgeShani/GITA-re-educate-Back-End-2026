@@ -24,6 +24,8 @@ interface CompiledTemplate {
  */
 export class TemplateRenderer {
   private readonly compiled = new Map<MailTemplateName, CompiledTemplate>();
+  // Its own Handlebars, so the helper below is registered for these templates and nothing else in the process.
+  private readonly handlebars = Handlebars.create();
 
   constructor(
     private readonly globals: {
@@ -37,6 +39,8 @@ export class TemplateRenderer {
     // import would make merely importing AppModule (docs generation, specs)
     // pay for it even when no email is ever rendered.
     const { default: mjml2html } = await import('mjml');
+
+    this.handlebars.registerHelper('eq', (left: unknown, right: unknown) => left === right);
 
     const templates = createTemplates({ assetsUrl: this.globals.assetsUrl });
     for (const [name, definition] of Object.entries(templates)) {
@@ -52,9 +56,9 @@ export class TemplateRenderer {
 
       this.compiled.set(name, {
         // A subject and a plain-text body are not HTML: no entity escaping.
-        subject: Handlebars.compile(definition.subject, { noEscape: true }),
-        text: Handlebars.compile(definition.text, { noEscape: true }),
-        html: Handlebars.compile(html),
+        subject: this.handlebars.compile(definition.subject, { noEscape: true }),
+        text: this.handlebars.compile(definition.text, { noEscape: true }),
+        html: this.handlebars.compile(html),
       });
     }
   }

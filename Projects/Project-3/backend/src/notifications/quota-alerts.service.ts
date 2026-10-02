@@ -3,6 +3,7 @@ import type { EntityManager } from 'typeorm';
 import { z } from 'zod';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
+import { formatMailDate } from '#/core/mail/format-mail-date.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { Company } from '#/database/entities/company.entity.js';
 import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
@@ -107,7 +108,7 @@ export class QuotaAlertsService {
       threshold,
       filesUsed,
       filesLimit,
-      resetsOn: usage.periodEnd.toISOString().slice(0, 10),
+      resetsOn: formatMailDate(usage.periodEnd),
     });
     await this.queue.enqueue(
       'send_email',

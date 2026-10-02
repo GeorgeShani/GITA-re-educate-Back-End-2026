@@ -14,6 +14,7 @@ import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { AuditService } from '#/core/audit/audit.service.js';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
+import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { AuthIdentity } from '#/database/entities/auth-identity.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { isUniqueViolation, uniqueViolationConstraint } from '#/database/pg-errors.js';
@@ -30,6 +31,7 @@ import {
   resolveOAuth,
 } from './oauth-resolution.js';
 import { type OAuthState, OAuthStateService } from './oauth-state.service.js';
+import { providerLabel } from './provider-label.js';
 import { contactFromProfile } from './relay-address.js';
 
 /** Where the browser lands. The Next app owns these pages; the API only builds the links. */
@@ -71,6 +73,7 @@ export class OAuthService {
     private readonly authTokens: AuthTokenService,
     private readonly sessions: SessionService,
     private readonly audit: AuditService,
+    private readonly queue: TaskQueue,
     private readonly billingSync: BillingSyncService,
     private readonly logger: PinoLogger,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
@@ -242,6 +245,7 @@ export class OAuthService {
             },
             manager,
           );
+          await this.announceLinked(manager, user);
         } else {
           await manager.update(
             AuthIdentity,
@@ -254,6 +258,19 @@ export class OAuthService {
     } catch (error) {
       return this.refusedOnUniqueViolation(error, SESSION_PAGE);
     }
+  }
+
+  /** A new way into the account appeared (the person's own choice, or Google vouching for their address): tell them. */
+  private async announceLinked(manager: EntityManager, user: User): Promise<void> {
+    await this.queue.enqueue(
+      'send_email',
+      {
+        template: 'sign_in_method_changed',
+        to: user.email,
+        vars: { fullName: user.fullName, provider: providerLabel('google'), added: true },
+      },
+      { manager },
+    );
   }
 
   private async link(userId: string, profile: OAuthProfile, alreadyLinked: boolean): Promise<OAuthCallbackResult> {
@@ -280,6 +297,7 @@ export class OAuthService {
           },
           manager,
         );
+        await this.announceLinked(manager, user);
       });
     } catch (error) {
       return this.refusedOnUniqueViolation(error, LINK_PAGE);

@@ -271,10 +271,43 @@ export const SCALAR_FAVICON = ${JSON.stringify(`data:image/svg+xml;base64,${Buff
 `;
 }
 
+/**
+ * The transactional emails' palette, as literal hex (email clients do not support CSS variables). Light only: the emails
+ * have no dark mode for now. Only the roles an email uses. Fonts are the site's,
+ * with the safe fallbacks mail clients need: Archivo loads where web fonts do, and degrades to Arial Narrow / Arial.
+ */
+function mailBrandTs() {
+  const roleNames = [
+    'canvas', 'surface', 'sunken', 'line', 'line-strong', 'text', 'text-muted', 'text-subtle',
+    'cover', 'on-cover', 'tag', 'tag-soft', 'on-tag',
+    'pass', 'pass-soft', 'hold', 'hold-soft', 'caution', 'caution-soft',
+    'tab-orange', 'tab-grass', 'tab-teal', 'tab-blue', 'tab-sienna',
+  ];
+  const camel = (role) => role.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+  const palette = roleNames
+    .map((role) => `  ${camel(role)}: '${oklchToHex(colour('light', role))}',`)
+    .join('\n');
+  return `// ${HEADER}
+// The transactional emails' palette (see templates.ts). Literal hex: email HTML cannot use CSS variables.
+export const BRAND = {
+${palette}
+  /** Archivo where the client loads web fonts (Apple Mail, iOS, Thunderbird); Arial Narrow / Arial everywhere else. */
+  fontSans: "'Archivo', Arial, Helvetica, sans-serif",
+  fontHeadline: "'Archivo', 'Arial Narrow', Arial, Helvetica, sans-serif",
+  fontMono: "'Martian Mono', 'Courier New', Courier, monospace",
+  fontUrl:
+    'https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Martian+Mono:wght@400..700&display=swap',
+  /** The mark as a PNG on the brand-assets origin, when one is configured. */
+  logoPath: '/brand/v1/logo.png',
+} as const;
+`;
+}
+
 const OUTPUTS = [
   { path: join(ROOT, 'frontend', 'src', 'styles', 'tokens.css'), content: tokensCss() },
   { path: join(ROOT, 'frontend', 'src', 'app', 'icon.svg'), content: iconSvg() },
   { path: join(ROOT, 'backend', 'src', 'docs', 'scalar-theme.ts'), content: scalarThemeTs() },
+  { path: join(ROOT, 'backend', 'src', 'core', 'mail', 'brand.ts'), content: mailBrandTs() },
 ];
 
 // ---------- run ----------

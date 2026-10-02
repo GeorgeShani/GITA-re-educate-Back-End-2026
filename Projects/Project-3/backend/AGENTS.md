@@ -474,10 +474,13 @@ alias, cursor, 'ASC'|'DESC')`. `GET /files` sorts by `createdAt` only (a cursor 
 ## Rate limiting & demo mode _(from Phase 11 of the feature plan)_
 
 - **The infrastructure limit IS the product limit.** `PLAN_CATALOG[plan].rateLimitPerMinute` (Free 30 / Basic 120 /
-  Premium 600) is the budget of the WHOLE company per minute — every user and every API key of one company share it.
+  Premium 600) is the budget of the WHOLE company per minute — every API key of one company shares it.
   `throttling/PlanThrottlerGuard` extends `@nestjs/throttler`'s `ThrottlerGuard`; it is a global guard right after
-  `AuthGuard` (it needs the tenant). Authenticated requests are counted per company at the plan's limit (no
-  subscription = Free); unauthenticated ones per client address at a general 120/min. Counts are **in process
+  `AuthGuard` (it needs the tenant). **API-key** requests are counted per company at the plan's limit (no
+  subscription = Free); **session** requests (a person signed in, which is the dashboard) are counted per PERSON at
+  `SESSION_LIMIT_PER_MINUTE` (300), a separate bucket that neither spends nor shares the plan budget — otherwise a
+  Free company's dashboard could load only about eight pages a minute (each page is 3–4 API calls); unauthenticated
+  ones per client address at a general 120/min. Counts are **in process
   memory** (single instance; `ThrottlerStorage` is the seam if that ever changes).
 - **The plan is part of the counter's key.** A throttler counter that has been exceeded stays blocked for the rest
   of its window whatever the limit later becomes, so upgrading would not end a 429. Keying by `company:<id>:<plan>`
@@ -989,8 +992,18 @@ background_task_type ADD VALUE`), write a `TaskHandler` with a Zod payload
   is called only by `SendEmailHandler`. Templates are MJML + Handlebars held
   as TS strings in `templates.ts`, compiled once at boot under strict MJML
   validation. `TemplateRenderer` supplies `appUrl` and the optional CloudFront
-  `assetsUrl` globally; versioned brand paths and fallback wordmark live in
-  `brand.ts`.
+  `assetsUrl` globally (and an isolated Handlebars with an `eq` helper).
+- **The ten emails** (`templates.ts`): `activation`, `invite`, `password_reset`, `password_changed`, `sign_in_method_changed`
+  (Google linked or removed: by the person, by a verified-email auto-link, or by unlinking), `invoice_finalized`,
+  `quota_threshold`, `payment_failed`, `company_suspended` (the dunning evaluator, in the same transaction as the
+  suspension) and `payment_recovered`. Each is a leaf with a hue tab, a status stamp where there is a status, the one
+  chrome-yellow button, a plain-text twin, a preview line and a one-sentence reason it was sent. A new email needs a
+  schema in `mail-message.ts`, a template, an entry in `sample-messages.ts` (the spec fails without one) and its trigger.
+  **The first URL in the plain-text part must be the action link**: specs read it with `mail.latestLinkTo`.
+- **The look is generated.** `core/mail/brand.ts` is written by `node design/build-tokens.mjs` from `design/tokens.json`
+  (hex for the light and the dark theme: email has no CSS variables). Dark mode is a `prefers-color-scheme` block for the
+  clients that honour it. Dates in emails go through `formatMailDate` ("March 8, 2026", UTC), never a raw ISO string.
+  `npm run mail:preview` renders every email to `.mail-preview/` (git-ignored) with an index to look at them.
 - **Audit**: `AuditService.record({ action, target, metadata }, manager?)`.
   Pass the caller's `manager` so the entry commits with the change it
   describes. Flows with no authenticated request (registration, activation,

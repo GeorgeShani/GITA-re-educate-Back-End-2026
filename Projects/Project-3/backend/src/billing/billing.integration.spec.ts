@@ -371,7 +371,7 @@ describe('billing (integration)', () => {
       await h.drainTasks();
 
       const mail = h.mail.latestTo(paying.admin.email);
-      expect(mail?.subject).toBe('Your Gridline invoice for 2026-03-01 – 2026-04-01');
+      expect(mail?.subject).toBe('Your Gridline invoice for March 1, 2026 to April 1, 2026');
       expect(mail?.text).toContain('$3.39');
       const [invoice] = await invoices(paying.companyId);
       expect(mail?.text).toContain(`/billing/invoices/${invoice?.id}`);
@@ -471,7 +471,7 @@ describe('billing (integration)', () => {
       await h.drainTasks();
 
       const mail = h.mail.latestTo(admin.email);
-      expect(mail?.subject).toContain('2026-03-01 – 2026-03-21');
+      expect(mail?.subject).toContain('March 1, 2026 to March 21, 2026');
       expect(await h.dataSource.getRepository(AuditLogEntry).count({ where: { companyId, action: 'billing.invoice_finalized' } })).toBe(1);
     });
 
