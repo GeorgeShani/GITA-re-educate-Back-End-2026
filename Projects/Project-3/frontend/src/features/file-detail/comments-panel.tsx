@@ -7,7 +7,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/field";
 import { messageFor } from "@/features/files/upload";
@@ -15,6 +15,7 @@ import { callApi, succeeded } from "@/lib/api/call";
 import type { components } from "@/lib/api/schema";
 import { cn } from "@/lib/cn";
 import { exactTime, relativeTime } from "@/lib/format/time";
+import { sendTyping, subscribeLive, watchFile } from "@/lib/realtime/live";
 
 type Comment = components["schemas"]["CommentDto"];
 
@@ -44,8 +45,49 @@ export function CommentsPanel({
   /** Colleagues who can be mentioned. */
   people: readonly Person[];
 }) {
+  const router = useRouter();
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [typing, setTyping] = useState<ReadonlyMap<string, number>>(new Map());
+
+  // A colleague's comment appears without a reload, and a colleague who is writing one is named. Your own changes are
+  // already shown (each is sent, then the page is drawn again), so only other people's cause a redraw.
+  useEffect(() => {
+    let redraw: ReturnType<typeof setTimeout> | null = null;
+    const stop = subscribeLive({
+      onComment: (event) => {
+        if (event.fileId !== fileId || event.authorId === meId) return;
+        if (redraw) clearTimeout(redraw);
+        redraw = setTimeout(() => router.refresh(), 400);
+      },
+      onTyping: (event) => {
+        if (event.fileId !== fileId || event.userId === meId) return;
+        setTyping((now) => {
+          const next = new Map(now);
+          if (event.isTyping) next.set(event.userId, Date.now() + 5000);
+          else next.delete(event.userId);
+          return next;
+        });
+      },
+    });
+    const leave = watchFile(fileId);
+    // Somebody who stops without saying so (a closed tab) is forgotten after a few seconds.
+    const sweep = setInterval(() => {
+      setTyping((now) => {
+        const live = [...now].filter(([, until]) => until > Date.now());
+        return live.length === now.size ? now : new Map(live);
+      });
+    }, 1500);
+    return () => {
+      if (redraw) clearTimeout(redraw);
+      clearInterval(sweep);
+      leave();
+      stop();
+    };
+  }, [fileId, meId, router]);
+  const typingNames = [...typing.keys()].map(
+    (id) => people.find((person) => person.id === id)?.fullName ?? "Someone",
+  );
 
   const topLevel = comments.filter((comment) => comment.parentId === null);
   const repliesTo = (id: string) =>
@@ -109,6 +151,13 @@ export function CommentsPanel({
       ) : null}
 
       <div className="border-t border-line pt-5">
+        <p aria-live="polite" className="mb-2 min-h-5 text-sm text-text-muted">
+          {typingNames.length === 0
+            ? ""
+            : typingNames.length === 1
+              ? `${typingNames[0]} is writing a comment…`
+              : `${typingNames.join(", ")} are writing comments…`}
+        </p>
         <Composer
           fileId={fileId}
           parentId={null}
@@ -327,6 +376,30 @@ function Composer({
   const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const typingSince = useRef(0);
+  const typingStop = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Tells colleagues looking at the file that a comment is being written: at most every few seconds while keys are
+  // pressed, and once more to say it stopped. Nothing of what is typed is sent.
+  const announceTyping = () => {
+    const now = Date.now();
+    if (now - typingSince.current > 2500) {
+      typingSince.current = now;
+      sendTyping(fileId, true);
+    }
+    if (typingStop.current) clearTimeout(typingStop.current);
+    typingStop.current = setTimeout(() => {
+      typingSince.current = 0;
+      sendTyping(fileId, false);
+    }, 3000);
+  };
+  useEffect(
+    () => () => {
+      if (typingStop.current) clearTimeout(typingStop.current);
+      sendTyping(fileId, false);
+    },
+    [fileId],
+  );
 
   // Typing "@" opens a list of colleagues, narrowed by what follows it.
   const mention = dismissed ? null : openMention(body, caret);
@@ -412,6 +485,7 @@ function Composer({
             setCaret(event.target.selectionStart);
             setHighlight(0);
             setDismissed(false);
+            announceTyping();
           }}
           onSelect={(event) => setCaret(event.currentTarget.selectionStart)}
           onKeyDown={(event) => {

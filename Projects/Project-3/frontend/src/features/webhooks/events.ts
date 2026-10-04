@@ -14,6 +14,12 @@ export const EVENTS: readonly {
     description: "A new file or a new version has arrived.",
   },
   {
+    id: "file.sensitive_data_found",
+    label: "A file holds personal data",
+    description:
+      "A report found a column that looks like emails, phone numbers, card numbers or other personal or secret data.",
+  },
+  {
     id: "report.ready",
     label: "A report is ready",
     description: "A file's data-quality report finished.",

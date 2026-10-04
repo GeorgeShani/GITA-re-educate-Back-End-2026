@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { inputStyles } from "@/components/ui/field";
 import { cn } from "@/lib/cn";
@@ -11,6 +11,7 @@ import {
   NO_FILTERS,
   paramsOf,
   toFileType,
+  toSearch,
 } from "./filters";
 import { toVisibility } from "./types";
 
@@ -36,6 +37,7 @@ export function FilterBar({
   const router = useRouter();
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
+  const [typed, setTyped] = useState(filters.search ?? "");
 
   const go = (next: FileFilters) => {
     const query = paramsOf(next).toString();
@@ -52,6 +54,33 @@ export function FilterBar({
       className="m-0 flex min-w-0 flex-wrap items-center gap-2 border-0 p-0"
     >
       <legend className="sr-only">Filter files</legend>
+      <search className="contents">
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            go({ ...filters, search: toSearch(typed) });
+          }}
+        >
+          <label className="sr-only" htmlFor="filter-search">
+            Search by file name
+          </label>
+          <input
+            id="filter-search"
+            type="search"
+            value={typed}
+            maxLength={100}
+            placeholder="Search by name"
+            className={cn(inputStyles(), "h-8 w-44 text-sm")}
+            onChange={(event) => setTyped(event.target.value)}
+            onBlur={() => {
+              if (toSearch(typed) !== filters.search) {
+                go({ ...filters, search: toSearch(typed) });
+              }
+            }}
+          />
+        </form>
+      </search>
       <label className="sr-only" htmlFor="filter-type">
         Type
       </label>
@@ -133,6 +162,30 @@ export function FilterBar({
         <input
           type="checkbox"
           className="size-4 accent-text"
+          checked={filters.needsAttention}
+          onChange={(event) =>
+            go({ ...filters, needsAttention: event.target.checked })
+          }
+        />
+        Needs a look
+      </label>
+
+      <label className="flex h-8 items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-text"
+          checked={filters.hasSensitiveData}
+          onChange={(event) =>
+            go({ ...filters, hasSensitiveData: event.target.checked })
+          }
+        />
+        Has personal data
+      </label>
+
+      <label className="flex h-8 items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          className="size-4 accent-text"
           checked={filters.allVersions}
           onChange={(event) =>
             go({ ...filters, allVersions: event.target.checked })
@@ -145,7 +198,10 @@ export function FilterBar({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => go({ ...NO_FILTERS, sort: filters.sort })}
+          onClick={() => {
+            setTyped("");
+            go({ ...NO_FILTERS, sort: filters.sort });
+          }}
         >
           Clear filters
         </Button>

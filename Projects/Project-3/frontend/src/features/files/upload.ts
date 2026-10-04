@@ -149,5 +149,6 @@ export function rowFromUpload(
     uploaderName,
     status: "queued",
     score: null,
+    sensitiveColumns: 0,
   };
 }

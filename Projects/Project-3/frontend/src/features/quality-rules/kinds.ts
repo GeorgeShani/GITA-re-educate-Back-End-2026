@@ -1,3 +1,4 @@
+import { sensitiveLabel } from "@/features/file-detail/sensitive";
 import type { components } from "@/lib/api/schema";
 
 export type Rule = components["schemas"]["QualityRuleDto"];
@@ -55,6 +56,12 @@ export const KINDS: readonly KindInfo[] = [
     kind: "max_duplicate_rows",
     label: "Most repeated rows",
     help: "At most this many whole rows may repeat. This one is about the whole file.",
+    needsColumn: false,
+  },
+  {
+    kind: "no_sensitive_data",
+    label: "No personal data",
+    help: "The file must not hold emails, phone numbers, card numbers or other personal or secret data. This one is about the whole file.",
     needsColumn: false,
   },
 ];
@@ -116,6 +123,13 @@ export function describeRule(rule: Rule): string {
     }
     case "unique":
       return `Every value in ${column} is different.`;
+    case "no_sensitive_data": {
+      const kind =
+        typeof rule.params.kind === "string" ? rule.params.kind : "any";
+      return kind === "any"
+        ? "The file holds no personal or secret data."
+        : `The file holds no ${sensitiveLabel(kind)}.`;
+    }
     case "max_duplicate_rows": {
       const max = numberOf(rule.params, "max");
       if (max === 0) return "No row may repeat.";
@@ -137,6 +151,8 @@ export interface RuleForm {
   min: string;
   columnKind: ColumnKind;
   slack: string;
+  /** For "No personal data": any, or one kind of it. */
+  sensitiveKind: string;
 }
 
 export const EMPTY_FORM: RuleForm = {
@@ -149,6 +165,7 @@ export const EMPTY_FORM: RuleForm = {
   min: "",
   columnKind: "string",
   slack: "0",
+  sensitiveKind: "any",
 };
 
 export function formFromRule(rule: Rule): RuleForm {
@@ -165,6 +182,8 @@ export function formFromRule(rule: Rule): RuleForm {
     min: min === null ? "" : String(min),
     columnKind: toColumnKind(rule.params.type) ?? "string",
     slack: slack === null ? "0" : String(slack),
+    sensitiveKind:
+      typeof rule.params.kind === "string" ? rule.params.kind : "any",
   };
 }
 
@@ -252,6 +271,9 @@ export function buildRule(form: RuleForm): Built {
       params.max = max;
       break;
     }
+    case "no_sensitive_data":
+      params.kind = form.sensitiveKind;
+      break;
     case "required_column":
     case "unique":
       break;

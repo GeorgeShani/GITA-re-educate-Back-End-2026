@@ -22,10 +22,34 @@ export interface NotificationEvent {
   createdAt: string;
 }
 
+/** Who is looking at a file right now (`presence.changed`), by user id. */
+export interface PresenceEvent {
+  fileId: string;
+  userIds: string[];
+}
+
+/** A comment on a file was added, edited or removed (`comment.created` / `updated` / `deleted`). */
+export interface CommentEvent {
+  kind: "created" | "updated" | "deleted";
+  fileId: string;
+  commentId: string;
+  authorId: string | null;
+}
+
+/** Somebody started or stopped typing a comment (`comment.typing`). */
+export interface TypingEvent {
+  fileId: string;
+  userId: string;
+  isTyping: boolean;
+}
+
 export interface LiveHandlers {
   onFileStatus?: (event: FileStatusEvent) => void;
   onQuota?: (event: QuotaEvent) => void;
   onNotification?: (event: NotificationEvent) => void;
+  onPresence?: (event: PresenceEvent) => void;
+  onComment?: (event: CommentEvent) => void;
+  onTyping?: (event: TypingEvent) => void;
 }
 
 function toFileStatus(value: unknown): FileStatusEvent | null {
@@ -46,6 +70,41 @@ function toQuota(value: unknown): QuotaEvent | null {
     return null;
   }
   return { filesUsed, filesLimit };
+}
+
+function toPresence(value: unknown): PresenceEvent | null {
+  if (!isRecord(value)) return null;
+  const { fileId, userIds } = value;
+  if (typeof fileId !== "string" || !Array.isArray(userIds)) return null;
+  return {
+    fileId,
+    userIds: userIds.filter((id): id is string => typeof id === "string"),
+  };
+}
+
+function toComment(
+  kind: CommentEvent["kind"],
+  value: unknown,
+): CommentEvent | null {
+  if (!isRecord(value)) return null;
+  const { id, fileId, author } = value;
+  if (typeof id !== "string" || typeof fileId !== "string") return null;
+  const authorId =
+    isRecord(author) && typeof author.id === "string" ? author.id : null;
+  return { kind, fileId, commentId: id, authorId };
+}
+
+function toTyping(value: unknown): TypingEvent | null {
+  if (!isRecord(value)) return null;
+  const { fileId, userId, isTyping } = value;
+  if (
+    typeof fileId !== "string" ||
+    typeof userId !== "string" ||
+    typeof isTyping !== "boolean"
+  ) {
+    return null;
+  }
+  return { fileId, userId, isTyping };
 }
 
 function toNotification(value: unknown): NotificationEvent | null {
@@ -70,6 +129,8 @@ const listeners = new Set<LiveHandlers>();
 let socket: Socket | null = null;
 let retry: ReturnType<typeof setTimeout> | null = null;
 let failures = 0;
+/** Files this tab is looking at: joined again after every reconnect, because the server forgets them with the socket. */
+const watched = new Map<string, number>();
 
 async function freshToken(): Promise<string | null> {
   try {
@@ -105,6 +166,24 @@ async function open(): Promise<void> {
 
   next.on("connect", () => {
     failures = 0;
+    for (const fileId of watched.keys()) next.emit("file.watch", { fileId });
+  });
+  next.on("presence.changed", (payload: unknown) => {
+    const event = toPresence(payload);
+    if (!event) return;
+    for (const handler of listeners) handler.onPresence?.(event);
+  });
+  for (const kind of ["created", "updated", "deleted"] as const) {
+    next.on(`comment.${kind}`, (payload: unknown) => {
+      const event = toComment(kind, payload);
+      if (!event) return;
+      for (const handler of listeners) handler.onComment?.(event);
+    });
+  }
+  next.on("comment.typing", (payload: unknown) => {
+    const event = toTyping(payload);
+    if (!event) return;
+    for (const handler of listeners) handler.onTyping?.(event);
   });
   next.on("file.status", (payload: unknown) => {
     const event = toFileStatus(payload);
@@ -159,4 +238,29 @@ export function subscribeLive(handlers: LiveHandlers): () => void {
     socket?.disconnect();
     socket = null;
   };
+}
+
+/**
+ * Says "I am looking at this file", so colleagues see it and this tab hears their typing and comments. Returns the function
+ * that says "I have left". Several parts of one page may ask for the same file; it is joined once and left with the last.
+ */
+export function watchFile(fileId: string): () => void {
+  watched.set(fileId, (watched.get(fileId) ?? 0) + 1);
+  if (watched.get(fileId) === 1 && socket?.connected) {
+    socket.emit("file.watch", { fileId });
+  }
+  return () => {
+    const left = (watched.get(fileId) ?? 1) - 1;
+    if (left > 0) {
+      watched.set(fileId, left);
+      return;
+    }
+    watched.delete(fileId);
+    if (socket?.connected) socket.emit("file.unwatch", { fileId });
+  };
+}
+
+/** Tells the people looking at this file that this person started or stopped typing a comment. */
+export function sendTyping(fileId: string, isTyping: boolean): void {
+  if (socket?.connected) socket.emit("comment.typing", { fileId, isTyping });
 }

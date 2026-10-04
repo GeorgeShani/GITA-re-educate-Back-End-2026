@@ -33,6 +33,8 @@ export interface FileRow {
   status: ReportStatus;
   /** 0 to 100; `null` until the report is ready, or when no rule applied. */
   score: number | null;
+  /** How many columns look like they hold personal or secret data. */
+  sensitiveColumns: number;
 }
 
 /** "CSV", "XLS" or "XLSX", from the MIME type Gridline stored (which it read from the file's bytes). */
@@ -88,6 +90,10 @@ export function toRow(value: unknown): FileRow | null {
       report && typeof report.qualityScore === "number"
         ? report.qualityScore
         : null,
+    sensitiveColumns:
+      report && typeof report.sensitiveColumns === "number"
+        ? report.sensitiveColumns
+        : 0,
   };
 }
 

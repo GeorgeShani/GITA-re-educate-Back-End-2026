@@ -19,7 +19,7 @@ query Files($first: Int!, $after: String, $filter: FilesFilterInput, $sort: File
       visibility
       createdAt
       uploader { fullName }
-      report { status qualityScore }
+      report { status qualityScore sensitiveColumns }
     }
     pageInfo { hasMore nextCursor }
   }
@@ -34,6 +34,9 @@ export function variablesFor(
   if (filters.type) filter.mimeType = filters.type;
   if (filters.visibility) filter.visibility = filters.visibility;
   if (filters.uploaderId) filter.uploaderId = filters.uploaderId;
+  if (filters.search) filter.search = filters.search;
+  if (filters.needsAttention) filter.needsAttention = true;
+  if (filters.hasSensitiveData) filter.hasSensitiveData = true;
   return {
     first: PAGE_SIZE,
     after,

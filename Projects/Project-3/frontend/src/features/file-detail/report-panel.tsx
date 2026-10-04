@@ -1,4 +1,4 @@
-import { ListChecks, Sparkles } from "lucide-react";
+import { ListChecks, ShieldAlert, Sparkles } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Stamp } from "@/components/ui/stamp";
@@ -9,6 +9,8 @@ import { relativeTime } from "@/lib/format/time";
 import { RebuildButton } from "./actions";
 import { COLUMN_TYPE_LABEL, count, percent, statistic } from "./labels";
 import { LiveRefresh } from "./live-refresh";
+import { sensitiveLabel } from "./sensitive";
+import { SheetPicker } from "./sheet-picker";
 
 type Report = components["schemas"]["ReportDto"];
 type RuleResult = components["schemas"]["RuleResultDto"];
@@ -23,11 +25,14 @@ export function ReportPanel({
   report,
   canManage,
   isAdmin,
+  visibility,
 }: {
   fileId: string;
   report: Report;
   canManage: boolean;
   isAdmin: boolean;
+  /** Who may open the file: personal data matters most when the answer is "everyone". */
+  visibility: "company" | "restricted";
 }) {
   const building = report.status === "queued" || report.status === "profiling";
   return (
@@ -59,12 +64,22 @@ export function ReportPanel({
         </output>
       ) : null}
 
+      {report.status === "ready" &&
+      report.sensitiveColumns > 0 &&
+      report.metrics ? (
+        <SensitiveSection metrics={report.metrics} visibility={visibility} />
+      ) : null}
+
       {report.status === "ready" ? (
         <RuleResults results={report.ruleResults} isAdmin={isAdmin} />
       ) : null}
 
       {report.status === "ready" && report.metrics ? (
-        <MetricsSection metrics={report.metrics} />
+        <MetricsSection
+          metrics={report.metrics}
+          fileId={fileId}
+          canManage={canManage}
+        />
       ) : null}
     </div>
   );
@@ -229,7 +244,15 @@ function ResultStamp({ result }: { result: RuleResult }) {
   );
 }
 
-function MetricsSection({ metrics }: { metrics: Metrics }) {
+function MetricsSection({
+  metrics,
+  fileId,
+  canManage,
+}: {
+  metrics: Metrics;
+  fileId: string;
+  canManage: boolean;
+}) {
   const stats: { label: string; value: number; bad?: boolean }[] = [
     { label: "Rows", value: metrics.rowCount },
     { label: "Columns", value: metrics.columnCount },
@@ -254,6 +277,15 @@ function MetricsSection({ metrics }: { metrics: Metrics }) {
       <h2 id="found-heading" className="text-lg font-semibold">
         What is in the file
       </h2>
+
+      {metrics.sheet && metrics.sheet.others.length > 0 ? (
+        <SheetPicker
+          fileId={fileId}
+          current={metrics.sheet.name}
+          others={metrics.sheet.others}
+          canManage={canManage}
+        />
+      ) : null}
 
       {metrics.truncated ? (
         <p
@@ -324,6 +356,15 @@ function MetricsSection({ metrics }: { metrics: Metrics }) {
                   {column.name || (
                     <span className="text-text-subtle">(no name)</span>
                   )}
+                  {column.sensitive ? (
+                    <Stamp
+                      tone="caution"
+                      className="ml-2 align-middle"
+                      icon={<ShieldAlert aria-hidden />}
+                    >
+                      Personal data
+                    </Stamp>
+                  ) : null}
                 </td>
                 <td className="px-4 py-2.5 text-text-muted">
                   {COLUMN_TYPE_LABEL[column.inferredType]}
@@ -332,9 +373,14 @@ function MetricsSection({ metrics }: { metrics: Metrics }) {
                   {percent(column.nullPercent)}
                 </Num>
                 <Num bad={column.inconsistent}>
-                  {column.inconsistent
-                    ? percent(column.inconsistentPercent)
-                    : "—"}
+                  {column.inconsistent ? (
+                    <span className="flex flex-col items-end gap-1">
+                      {percent(column.inconsistentPercent)}
+                      <TypeMix counts={column.typeCounts} />
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </Num>
                 <Num>
                   {column.numeric ? statistic(column.numeric.min) : "—"}
@@ -380,5 +426,111 @@ function Num({ children, bad }: { children: ReactNode; bad?: boolean }) {
     >
       {children}
     </td>
+  );
+}
+
+type TypeCounts = Metrics["columns"][number]["typeCounts"];
+
+const MIX: {
+  key: string;
+  label: string;
+  bar: string;
+  pick: (c: TypeCounts) => number;
+}[] = [
+  {
+    key: "numbers",
+    label: "numbers",
+    bar: "bg-chart-1",
+    pick: (c) => c.integer + c.number,
+  },
+  { key: "text", label: "text", bar: "bg-chart-2", pick: (c) => c.string },
+  { key: "dates", label: "dates", bar: "bg-chart-3", pick: (c) => c.date },
+  {
+    key: "yesno",
+    label: "yes / no",
+    bar: "bg-text-subtle",
+    pick: (c) => c.boolean,
+  },
+];
+
+/**
+ * What a mixed column is mixed OF, as a small bar and, for anyone who cannot see colour, the same figures in words. The
+ * report always had these counts; a person who sees "12% mixed" next wants to know "with what".
+ */
+function TypeMix({ counts }: { counts: TypeCounts }) {
+  const parts = MIX.map((part) => ({
+    ...part,
+    value: part.pick(counts),
+  })).filter((part) => part.value > 0);
+  const total = parts.reduce((sum, part) => sum + part.value, 0);
+  if (total === 0) return null;
+  const words = parts
+    .map((part) => `${count(part.value)} ${part.label}`)
+    .join(", ");
+  return (
+    <span className="flex flex-col items-end gap-0.5" title={words}>
+      <span
+        aria-hidden
+        className="flex h-1.5 w-24 gap-px overflow-hidden rounded-full"
+      >
+        {parts.map((part) => (
+          <span
+            key={part.key}
+            className={cn("h-full", part.bar)}
+            style={{ width: `${(part.value / total) * 100}%` }}
+          />
+        ))}
+      </span>
+      <span className="text-xs font-normal text-text-subtle">{words}</span>
+    </span>
+  );
+}
+
+/**
+ * Columns that look like personal or secret data, found by patterns and checksums (never by a model), with only the kind and
+ * share kept. When the file is open to the whole company this is a decision waiting to be made, so it says what to do.
+ */
+function SensitiveSection({
+  metrics,
+  visibility,
+}: {
+  metrics: Metrics;
+  visibility: "company" | "restricted";
+}) {
+  const found = metrics.columns.filter((column) => column.sensitive !== null);
+  return (
+    <section
+      aria-labelledby="sensitive-heading"
+      className="flex flex-col gap-3 rounded-md border border-caution bg-caution-soft p-4 text-caution"
+    >
+      <h2
+        id="sensitive-heading"
+        className="flex items-center gap-2 text-lg font-semibold"
+      >
+        <ShieldAlert aria-hidden className="size-5" />
+        This file looks like it holds personal or secret data
+      </h2>
+      <ul className="flex flex-col gap-1 pl-5">
+        {found.map((column) =>
+          column.sensitive ? (
+            <li key={column.index} className="list-disc">
+              <strong>{column.name}</strong>:{" "}
+              {sensitiveLabel(column.sensitive.kind)}
+              <span className="text-sm">
+                {" "}
+                ({percent(column.sensitive.matchPercent)} of its values)
+              </span>
+            </li>
+          ) : null,
+        )}
+      </ul>
+      <p className="text-sm">
+        {visibility === "company"
+          ? "Everyone in your company can open this file. Use Share, above the tabs, to limit it to the people who need it."
+          : "Only the people you chose can open this file."}{" "}
+        Gridline found this by pattern, not by reading meaning, so a column can
+        be flagged by mistake or missed.
+      </p>
+    </section>
   );
 }

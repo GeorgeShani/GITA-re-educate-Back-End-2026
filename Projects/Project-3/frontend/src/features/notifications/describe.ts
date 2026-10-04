@@ -1,3 +1,4 @@
+import { sensitiveLabel } from "@/features/file-detail/sensitive";
 import { formatCents } from "@/lib/format/money";
 import { type NotificationItem, number, strings, text } from "./types";
 
@@ -73,6 +74,26 @@ export function describe(
         detail:
           `${failed.length > 0 ? `${list(failed)}. ` : ""}${score === null ? "" : `Quality score ${score}.`}`.trim() ||
           null,
+        href: file,
+      };
+    }
+    case "file.sensitive_data": {
+      const columns = Array.isArray(payload.columns)
+        ? payload.columns.flatMap((entry) =>
+            typeof entry === "object" &&
+            entry !== null &&
+            "name" in entry &&
+            "kind" in entry &&
+            typeof entry.name === "string" &&
+            typeof entry.kind === "string"
+              ? [`${sensitiveLabel(entry.kind)} in “${entry.name}”`]
+              : [],
+          )
+        : [];
+      return {
+        glyph: "alert",
+        title: `${fileName} looks like it holds personal or secret data, and the whole company can see it.`,
+        detail: columns.length > 0 ? `${list(columns)}.` : null,
         href: file,
       };
     }

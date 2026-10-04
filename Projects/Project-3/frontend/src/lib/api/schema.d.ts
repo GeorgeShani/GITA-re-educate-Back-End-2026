@@ -571,7 +571,7 @@ export interface paths {
      *
      *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
      *
-     *     **Rate limits.** Every plan has a request budget shared by the whole company (its users and its API keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan catalog). The current budget is on every response in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan change applies from the very next request, and this route (and choosing a first plan) keeps a small budget of its own, so a company that has used up its requests can still upgrade.
+     *     **Rate limits.** Every plan has a request budget for API keys, shared by the whole company (all of its keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan catalog). A person signed in to the dashboard is not counted against it: each person has a separate limit of 300 requests per minute. The current budget is on every response in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan change applies from the very next request, and this route (and choosing a first plan) keeps a small budget of its own, so a company that has used up its requests can still upgrade.
      */
     patch: operations["SubscriptionsController_change"];
     trace?: never;
@@ -1403,6 +1403,7 @@ export interface components {
         | "quota.threshold"
         | "invoice.finalized"
         | "file.uploaded"
+        | "file.sensitive_data_found"
       )[];
     };
     CreatedWebhookEndpointDto: {
@@ -1418,6 +1419,7 @@ export interface components {
         | "quota.threshold"
         | "invoice.finalized"
         | "file.uploaded"
+        | "file.sensitive_data_found"
       )[];
       active: boolean;
       consecutiveFailures: number;
@@ -1441,6 +1443,7 @@ export interface components {
         | "quota.threshold"
         | "invoice.finalized"
         | "file.uploaded"
+        | "file.sensitive_data_found"
       )[];
       active: boolean;
       consecutiveFailures: number;
@@ -1473,6 +1476,7 @@ export interface components {
         | "quota.threshold"
         | "invoice.finalized"
         | "file.uploaded"
+        | "file.sensitive_data_found"
       )[];
       active?: boolean;
     };
@@ -1615,6 +1619,12 @@ export interface components {
        */
       expiresAt: string;
     };
+    SheetInfoDto: {
+      /** @description The worksheet that was profiled. */
+      name: string;
+      /** @description The other worksheets that have rows. They are stored with the file but not profiled; choose one with `POST /files/{id}/report/rebuild`. */
+      others: string[];
+    };
     TypeCountsDto: {
       integer: number;
       number: number;
@@ -1626,6 +1636,22 @@ export interface components {
       min: number;
       max: number;
       mean: number;
+    };
+    SensitiveDto: {
+      /**
+       * @description What the column looks like it holds.
+       * @enum {string}
+       */
+      kind:
+        | "email"
+        | "phone"
+        | "card_number"
+        | "iban"
+        | "ip_address"
+        | "secret"
+        | "birth_date";
+      /** @description Share of the column's checked, non-empty values that look like this, 0–100. */
+      matchPercent: number;
     };
     ColumnMetricsDto: {
       index: number;
@@ -1652,6 +1678,8 @@ export interface components {
       inconsistentPercent: number;
       /** @description Over the numeric cells; null if there are none. */
       numeric: components["schemas"]["NumericStatsDto"] | null;
+      /** @description Set when the column looks like it holds personal or secret data (found by patterns and checksums, never by a model). Only the kind and share are kept, never a value. */
+      sensitive: components["schemas"]["SensitiveDto"] | null;
     };
     MetricsDto: {
       /** @description Data rows profiled, header excluded. */
@@ -1668,6 +1696,8 @@ export interface components {
       rowBudget: number;
       /** @description Problems with the header row (blank or repeated names). */
       headerIssues: string[];
+      /** @description Which worksheet of a workbook this report covers. Null for a CSV. */
+      sheet: components["schemas"]["SheetInfoDto"] | null;
       columns: components["schemas"]["ColumnMetricsDto"][];
     };
     NarrativeDto: {
@@ -1688,7 +1718,8 @@ export interface components {
         | "min_value"
         | "max_value"
         | "unique"
-        | "max_duplicate_rows";
+        | "max_duplicate_rows"
+        | "no_sensitive_data";
       columnName: string | null;
       /** @enum {string} */
       severity: "error" | "warning";
@@ -1720,6 +1751,15 @@ export interface components {
       qualityScore: number | null;
       /** @description One result per rule the company had when this report was built, each carrying the rule as it was then (rules can be edited later). Null when the company had no rules. Rebuild the report to check against today’s rules. */
       ruleResults: components["schemas"]["RuleResultDto"][] | null;
+      /** @description How many columns look like they hold personal or secret data (see `metrics.columns[].sensitive`). 0 until the report is ready. */
+      sensitiveColumns: number;
+    };
+    RebuildReportDto: {
+      /**
+       * @description For a workbook with several worksheets: the one to profile. It must be one of the sheets the report names (`metrics.sheet`). Omit to keep the sheet already chosen.
+       * @example Sales
+       */
+      sheet?: string;
     };
     PreviewColumnDto: {
       name: string;
@@ -1863,6 +1903,7 @@ export interface components {
         | "report.ready"
         | "report.failed"
         | "rules.failed"
+        | "file.sensitive_data"
         | "dataset.schema_changed"
         | "file.shared"
         | "invoice.finalized"
@@ -2281,7 +2322,8 @@ export interface components {
         | "min_value"
         | "max_value"
         | "unique"
-        | "max_duplicate_rows";
+        | "max_duplicate_rows"
+        | "no_sensitive_data";
       /** @description Null for a rule about the whole file. */
       columnName: string | null;
       params: {
@@ -2305,7 +2347,7 @@ export interface components {
       /** @example Emails are filled in */
       name: string;
       /**
-       * @description `required_column` the column must exist; `max_null_percent` at most that share empty; `type_is` the column is that type; `min_value` / `max_value` numeric bounds; `unique` no value repeats; `max_duplicate_rows` (whole file, no column) at most that many repeated rows.
+       * @description `required_column` the column must exist; `max_null_percent` at most that share empty; `type_is` the column is that type; `min_value` / `max_value` numeric bounds; `unique` no value repeats; `max_duplicate_rows` (whole file, no column) at most that many repeated rows; `no_sensitive_data` (whole file, no column) the file must hold no personal or secret data (emails, phone numbers, card numbers, IBANs, IP addresses, keys, birth dates).
        * @enum {string}
        */
       kind:
@@ -2315,13 +2357,14 @@ export interface components {
         | "min_value"
         | "max_value"
         | "unique"
-        | "max_duplicate_rows";
+        | "max_duplicate_rows"
+        | "no_sensitive_data";
       /**
-       * @description The column it applies to, matched to a file’s header case-insensitively. Required for every kind but `max_duplicate_rows`, which takes none. A file without that column skips the rule (use `required_column` to demand one).
+       * @description The column it applies to, matched to a file’s header case-insensitively. Required for every kind but `max_duplicate_rows` and `no_sensitive_data`, which take none. A file without that column skips the rule (use `required_column` to demand one).
        * @example email
        */
       columnName?: string;
-      /** @description The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`. `required_column` and `unique` take `{}`. */
+      /** @description The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`; `no_sensitive_data` `{ kind?: any | email | phone | card_number | iban | ip_address | secret | birth_date }` (default `any`). `required_column` and `unique` take `{}`. */
       params?: {
         [key: string]: unknown;
       };
@@ -2341,7 +2384,7 @@ export interface components {
       name?: string;
       /** @description Only for a rule that is about a column. */
       columnName?: string;
-      /** @description REPLACES the rule’s numbers. The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`. `required_column` and `unique` take `{}`. */
+      /** @description REPLACES the rule’s numbers. The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`; `no_sensitive_data` `{ kind?: any | email | phone | card_number | iban | ip_address | secret | birth_date }` (default `any`). `required_column` and `unique` take `{}`. */
       params?: {
         [key: string]: unknown;
       };
@@ -2880,6 +2923,12 @@ export interface operations {
           | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         visibility?: "company" | "restricted";
         uploaderId?: string;
+        /** @description Files whose name contains this text, ignoring case. */
+        search?: string;
+        /** @description Only files worth a second look: their report failed, or it finished with a score under 80. */
+        needsAttention?: boolean;
+        /** @description Only files whose report found a column that looks like personal or secret data. */
+        hasSensitiveData?: boolean;
         /** @description Uploaded at or after this instant. */
         uploadedAfter?: string;
         /** @description Uploaded before this instant. */
@@ -3121,7 +3170,11 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RebuildReportDto"];
+      };
+    };
     responses: {
       200: {
         headers: {

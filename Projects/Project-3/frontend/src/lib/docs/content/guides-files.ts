@@ -388,6 +388,27 @@ export const REPORTS: Block[] = [
     "What the AI sees",
   ),
 
+  h2("Personal and secret data"),
+  p(
+    "Gridline looks at each column and says when it **looks like personal or secret data**: email addresses, phone numbers, payment card numbers, bank account numbers (IBAN), IP addresses, keys and tokens, and columns of birth dates. It does this with patterns and checksums, not with an AI model, so it is predictable, and a real card number has to pass the card checksum to count.",
+  ),
+  ul(
+    "A flagged column carries a **Personal data** stamp in the table below, and the file gets one in **Files**. Use **Has personal data** in the filters to list them.",
+    "If the file is **open to the whole company**, the uploader and every admin are told, because that is the moment to decide whether to restrict it. Restricting it is **Share**, above the tabs. If you open a file that holds personal data to everyone later, the same notice follows.",
+    "Only the **kind** of data and **how much of the column** it covers are stored. The values themselves are never kept in the report and never sent to the AI.",
+  ),
+  note(
+    "This is a pattern check, not a guarantee. It can flag a column by mistake (a column of version numbers can look like IP addresses) and it will miss personal data it has no pattern for, such as names. Treat it as a second pair of eyes.",
+  ),
+  tip(
+    "To refuse such files outright, add a **No personal data** rule. It fails the file's report and tells the uploader and the admins.",
+  ),
+
+  h2("Workbooks with several sheets"),
+  p(
+    "A report covers **one sheet** of a workbook: the first one that has data. The report says which sheet it covers and lists the others. The uploader or an admin can choose **Check instead** to check another sheet; the choice is kept the next time the file is checked. Other sheets stay in the stored file and in downloads.",
+  ),
+
   h2("Preview the first rows"),
   p(
     "Choose the **Preview** tab to glance at the file without downloading it. It shows the first 50 rows and 50 columns, with each column's type under its name. Long cells are cut at 200 characters and dates are shown in a standard form. The preview is saved when the report is built, so opening it never reads the file again.",

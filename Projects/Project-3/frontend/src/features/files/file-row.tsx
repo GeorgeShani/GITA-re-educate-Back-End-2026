@@ -1,5 +1,6 @@
-import { FileSpreadsheet, FileText, Lock } from "lucide-react";
+import { FileSpreadsheet, FileText, Lock, ShieldAlert } from "lucide-react";
 import Link from "next/link";
+import { Stamp } from "@/components/ui/stamp";
 import { cn } from "@/lib/cn";
 import { formatBytes } from "@/lib/format/bytes";
 import { exactTime, relativeTime } from "@/lib/format/time";
@@ -49,8 +50,13 @@ export function FileRowView({ row, fresh }: { row: FileRow; fresh?: boolean }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pl-8 md:contents">
-        <div className="flex items-center">
+        <div className="flex flex-wrap items-center gap-1.5">
           <ReportStamp status={row.status} score={row.score} />
+          {row.sensitiveColumns > 0 ? (
+            <Stamp tone="caution" icon={<ShieldAlert aria-hidden />}>
+              Personal data
+            </Stamp>
+          ) : null}
         </div>
         <p className="num font-mono text-sm text-text-muted">
           {formatBytes(row.sizeBytes)}

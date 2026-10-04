@@ -16,7 +16,7 @@ export const RULES: Block[] = [
     "A **rule** is something you decide good data must satisfy. Write it once; Gridline checks **every upload** against all your rules and tells you which failed. This is what turns a report from a description into a verdict.",
   ),
 
-  h2("The seven kinds of rule"),
+  h2("The eight kinds of rule"),
   table(
     ["Kind", "In plain words", "For example"],
     [
@@ -54,9 +54,14 @@ export const RULES: Block[] = [
       "At most this many whole rows may repeat. This one is about the whole file, so it needs no column.",
       "No repeated rows at all.",
     ],
+    [
+      "No personal data",
+      "The file must not hold personal or secret data: email addresses, phone numbers, card numbers, bank account numbers (IBAN), IP addresses, keys and tokens, or dates of birth. You can look for any of them or for just one kind. This one is about the whole file, so it needs no column.",
+      "No file with card numbers in it is ever shared.",
+    ],
   ),
   p(
-    "Rules look at a file's **statistics**, never its rows. They are about the shape and health of the data, so checking them never needs to read cell values.",
+    "Rules look at a file's **statistics**, never its rows. They are about the shape and health of the data, so checking them never needs to read cell values. **No personal data** works from the same statistics: the report keeps only what kind of data a column looks like, never a value.",
   ),
 
   h2("Add a rule"),

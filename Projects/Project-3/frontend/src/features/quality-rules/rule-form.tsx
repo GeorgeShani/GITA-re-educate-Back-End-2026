@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, Input, inputStyles } from "@/components/ui/field";
+import { SENSITIVE_LABEL } from "@/features/file-detail/sensitive";
 import { messageFor } from "@/features/files/upload";
 import { callApi, succeeded } from "@/lib/api/call";
 import { cn } from "@/lib/cn";
@@ -243,6 +244,29 @@ export function RuleDialog({
                 placeholder="0"
                 onChange={(event) => set("max", event.target.value)}
               />
+            )}
+          </Field>
+        ) : null}
+
+        {form.kind === "no_sensitive_data" ? (
+          <Field
+            label="What to look for"
+            hint="Found by patterns and checksums, never by reading meaning, so it can miss a column or flag one by mistake."
+          >
+            {(control) => (
+              <select
+                {...control}
+                className={selectStyles}
+                value={form.sensitiveKind}
+                onChange={(event) => set("sensitiveKind", event.target.value)}
+              >
+                <option value="any">Any personal or secret data</option>
+                {Object.entries(SENSITIVE_LABEL).map(([kind, label]) => (
+                  <option key={kind} value={kind}>
+                    Only {label}
+                  </option>
+                ))}
+              </select>
             )}
           </Field>
         ) : null}

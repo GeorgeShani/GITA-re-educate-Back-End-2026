@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CommentsPanel } from "@/features/file-detail/comments-panel";
 import { FileHeader } from "@/features/file-detail/header";
+import { PresenceBar } from "@/features/file-detail/presence-bar";
 import { PreviewPanel } from "@/features/file-detail/preview-panel";
 import { ReportPanel } from "@/features/file-detail/report-panel";
 import { DetailTabs, toTab } from "@/features/file-detail/tabs";
@@ -103,6 +104,12 @@ export default async function Page({
         people={people}
       />
 
+      <PresenceBar
+        fileId={file.data.id}
+        meId={session.user.id}
+        people={people}
+      />
+
       {file.data.isLatest || !latest ? null : (
         <p
           role="note"
@@ -128,6 +135,7 @@ export default async function Page({
           report.data ? (
             <ReportPanel
               fileId={file.data.id}
+              visibility={file.data.visibility}
               report={report.data}
               canManage={canManage}
               isAdmin={isAdmin}
