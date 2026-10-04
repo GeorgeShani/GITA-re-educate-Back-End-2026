@@ -187,6 +187,12 @@ describe('MetricsAccumulator', () => {
     });
   });
 
+  it('long cells that differ only past the 200th character are not duplicates', () => {
+    const base = 'x'.repeat(250);
+    expect(profile(['a'], [[`${base}1`], [`${base}2`]]).duplicateRows).toBe(0);
+    expect(profile(['a'], [[`${base}1`], [`${base}1`]]).duplicateRows).toBe(1);
+  });
+
   describe('uniqueness tracking (for a unique rule)', () => {
     const track = (header: CellValue[], rows: CellValue[][], columns: string[]) => {
       const accumulator = new MetricsAccumulator(header, { uniqueColumns: new Set(columns) });
@@ -209,6 +215,14 @@ describe('MetricsAccumulator', () => {
 
     it('compares values as text, trimmed, case-sensitively', () => {
       expect(track(['v'], [['A'], ['a'], [' A ']], ['v'])).toEqual({ v: 1 });
+    });
+
+    it('does not call two long values a repeat when they differ only past the 200th character', () => {
+      const base = 'y'.repeat(250);
+      const accumulator = new MetricsAccumulator(['id'], { uniqueColumns: new Set(['id']) });
+      accumulator.addRow([`${base}1`]);
+      accumulator.addRow([`${base}2`]);
+      expect(accumulator.uniqueness()).toEqual({ id: 0 });
     });
 
     it('tracks only the columns asked for', () => {
@@ -254,6 +268,21 @@ describe('MetricsAccumulator', () => {
 
     expect(metrics.columnCount).toBe(PROFILE_LIMITS.maxColumns);
     expect(metrics.headerIssues.join(' ')).toMatch(/only the first 200/);
+  });
+
+  it('says so when the reader already cut a wide file (the header it hands over is the short one)', () => {
+    const cut = Array.from({ length: PROFILE_LIMITS.maxColumns }, (_, i) => `c${i}`);
+    const accumulator = new MetricsAccumulator(cut, { fullColumnCount: 260 });
+    const metrics = accumulator.finish();
+
+    expect(metrics.columnCount).toBe(PROFILE_LIMITS.maxColumns);
+    expect(metrics.headerIssues.join(' ')).toMatch(/has 260 columns; only the first 200/);
+  });
+
+  it('a file exactly as wide as the budget has nothing to say about it', () => {
+    const exact = Array.from({ length: PROFILE_LIMITS.maxColumns }, (_, i) => `c${i}`);
+    const metrics = new MetricsAccumulator(exact, { fullColumnCount: PROFILE_LIMITS.maxColumns }).finish();
+    expect(metrics.headerIssues).toEqual([]);
   });
 
   it('produces JSON that round-trips exactly (it is stored as jsonb)', () => {

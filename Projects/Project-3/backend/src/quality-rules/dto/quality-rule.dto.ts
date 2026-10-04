@@ -12,7 +12,8 @@ const trim = ({ value }: { value: unknown }): unknown => (typeof value === 'stri
 const PARAMS_DOC =
   'The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer | number | ' +
   'boolean | date | string, maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min }`; `max_value` ' +
-  '`{ max }`; `max_duplicate_rows` `{ max }`. `required_column` and `unique` take `{}`.';
+  '`{ max }`; `max_duplicate_rows` `{ max }`; `no_sensitive_data` `{ kind?: any | email | phone | card_number | iban | ' +
+  'ip_address | secret | birth_date }` (default `any`). `required_column` and `unique` take `{}`.';
 
 export class CreateQualityRuleDto {
   @ApiProperty({ example: 'Emails are filled in', minLength: 1, maxLength: 80 })
@@ -27,7 +28,8 @@ export class CreateQualityRuleDto {
     description:
       '`required_column` the column must exist; `max_null_percent` at most that share empty; `type_is` the column is ' +
       'that type; `min_value` / `max_value` numeric bounds; `unique` no value repeats; `max_duplicate_rows` (whole file, ' +
-      'no column) at most that many repeated rows.',
+      'no column) at most that many repeated rows; `no_sensitive_data` (whole file, no column) the file must hold no ' +
+      'personal or secret data (emails, phone numbers, card numbers, IBANs, IP addresses, keys, birth dates).',
   })
   @IsIn(RULE_KINDS)
   kind!: (typeof RULE_KINDS)[number];
@@ -36,7 +38,7 @@ export class CreateQualityRuleDto {
     example: 'email',
     description:
       'The column it applies to, matched to a file’s header case-insensitively. Required for every kind but ' +
-      '`max_duplicate_rows`, which takes none. A file without that column skips the rule (use `required_column` to demand one).',
+      '`max_duplicate_rows` and `no_sensitive_data`, which take none. A file without that column skips the rule (use `required_column` to demand one).',
   })
   @IsOptional()
   @Transform(trim)

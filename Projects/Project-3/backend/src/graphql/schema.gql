@@ -17,6 +17,9 @@ type ColumnQualityMetrics {
   nullCount: Int!
   nullPercent: Float!
   numeric: NumericColumnSummary
+
+  """Set when the column looks like it holds personal or secret data."""
+  sensitive: SensitiveColumnFinding
 }
 
 enum ColumnType {
@@ -48,6 +51,9 @@ type DataQualityReport {
   profiledAt: DateTime
   qualityScore: Int
   ruleResults: [QualityRuleResult!]
+
+  """How many columns look like they hold personal or secret data."""
+  sensitiveColumns: Int!
   status: ReportStatus!
 }
 
@@ -145,7 +151,16 @@ enum FileVisibility {
 
 input FilesFilterInput {
   allVersions: Boolean! = false
+
+  """Only files whose report found personal or secret data."""
+  hasSensitiveData: Boolean
   mimeType: SpreadsheetMimeType
+
+  """Only files whose report failed or finished with a score under 80."""
+  needsAttention: Boolean
+
+  """Files whose name contains this text, ignoring case."""
+  search: String
   uploadedAfter: DateTime
   uploadedBefore: DateTime
   uploaderId: ID
@@ -194,6 +209,7 @@ enum QualityRuleKind {
   max_null_percent
   max_value
   min_value
+  no_sensitive_data
   required_column
   type_is
   unique
@@ -260,6 +276,12 @@ enum ReportStatus {
   queued
   ready
   unsupported
+}
+
+type SensitiveColumnFinding {
+  """email, phone, card_number, iban, ip_address, secret or birth_date."""
+  kind: String!
+  matchPercent: Float!
 }
 
 enum SpreadsheetMimeType {

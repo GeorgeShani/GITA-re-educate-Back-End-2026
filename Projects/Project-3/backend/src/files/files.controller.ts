@@ -34,6 +34,7 @@ import { toDto } from '#/common/response/to-dto.js';
 import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
 import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
 import { FileDownloadDto, FileDto, FilePageDto, FileVersionPageDto } from './dto/file.dto.js';
+import { RebuildReportDto } from './dto/rebuild-report.dto.js';
 import { ComparisonDto, PreviewDto, ReportDto } from './dto/report.dto.js';
 import { FilesQueryDto } from './dto/files-query.dto.js';
 import { UpdateFileDto } from './dto/update-file.dto.js';
@@ -180,8 +181,8 @@ export class FilesController {
   @HttpCode(200)
   @RequireScopes('files:write')
   @ApiOkResponse({ type: ReportDto })
-  async rebuildReport(@Param('id', ParseUUIDPipe) id: string): Promise<ReportDto> {
-    return toDto(ReportDto, await this.reports.rebuild(id));
+  async rebuildReport(@Param('id', ParseUUIDPipe) id: string, @Body() body: RebuildReportDto = new RebuildReportDto()): Promise<ReportDto> {
+    return toDto(ReportDto, await this.reports.rebuild(id, body.sheet));
   }
 
   @Get(':id/preview')

@@ -7,6 +7,7 @@ export const SUBSCRIBABLE_WEBHOOK_EVENTS = [
   'quota.threshold',
   'invoice.finalized',
   'file.uploaded',
+  'file.sensitive_data_found',
 ] as const;
 export type SubscribableWebhookEvent =
   (typeof SUBSCRIBABLE_WEBHOOK_EVENTS)[number];

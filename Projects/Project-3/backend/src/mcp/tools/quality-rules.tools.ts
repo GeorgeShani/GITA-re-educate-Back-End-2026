@@ -18,7 +18,8 @@ const params = z
   .describe(
     'The rule’s numbers, by kind: max_null_percent { max: 0–100 }; type_is { type: integer | number | boolean | ' +
       'date | string, maxInconsistentPercent?: 0–100 }; min_value { min }; max_value { max }; max_duplicate_rows ' +
-      '{ max }. required_column and unique take {}.',
+      '{ max }; no_sensitive_data { kind?: any | email | phone | card_number | iban | ip_address | secret | birth_date }. ' +
+      'required_column and unique take {}.',
   );
 
 export const QUALITY_RULE_TOOLS: readonly Tool[] = [
@@ -60,7 +61,7 @@ export const QUALITY_RULE_TOOLS: readonly Tool[] = [
     {
       name: z.string().min(1).max(80),
       kind: z.enum(RULE_KINDS),
-      columnName: z.string().min(1).max(200).optional().describe('The column, for every kind but max_duplicate_rows.'),
+      columnName: z.string().min(1).max(200).optional().describe('The column, for every kind but max_duplicate_rows and no_sensitive_data.'),
       params,
       severity: z.enum(RULE_SEVERITIES).optional(),
       enabled: z.boolean().optional(),

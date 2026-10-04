@@ -87,6 +87,9 @@ export class FilesResolver {
       uploadedAfter: args.filter?.uploadedAfter,
       uploadedBefore: args.filter?.uploadedBefore,
       allVersions: args.filter?.allVersions,
+      search: args.filter?.search,
+      needsAttention: args.filter?.needsAttention,
+      hasSensitiveData: args.filter?.hasSensitiveData,
     });
     return { nodes: page.data, pageInfo: page.meta };
   }

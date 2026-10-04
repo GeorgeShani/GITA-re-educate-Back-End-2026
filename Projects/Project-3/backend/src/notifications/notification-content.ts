@@ -46,6 +46,17 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
     }),
   }),
   z.object({
+    type: z.literal('file.sensitive_data'),
+    payload: z.object({
+      fileId: z.uuid(),
+      fileName: z.string(),
+      /** Which columns look like personal or secret data and what kind; never a value. */
+      columns: z.array(z.object({ name: z.string(), kind: z.string() })).max(20),
+      /** The file is visible to the whole company, which is why this is worth saying. */
+      visibility: z.enum(['company', 'restricted']),
+    }),
+  }),
+  z.object({
     type: z.literal('dataset.schema_changed'),
     payload: z.object({
       datasetId: z.uuid(),

@@ -20,6 +20,7 @@ const columnSchema = z
     inconsistent: z.boolean(),
     inconsistentPercent: z.number(),
     numeric: z.object({ min: z.number(), max: z.number(), mean: z.number() }).strict().nullable(),
+    sensitive: z.object({ kind: z.string(), matchPercent: z.number() }).strict().nullable(),
   })
   .strict();
 const metricsSchema = z
@@ -32,6 +33,7 @@ const metricsSchema = z
     truncated: z.boolean(),
     rowBudget: z.number(),
     headerIssues: z.array(z.string()),
+    sheet: z.object({ name: z.string(), others: z.array(z.string()) }).strict().nullable(),
     columns: z.array(columnSchema),
   })
   .strict();
@@ -45,6 +47,7 @@ const reportSchema = z
     profiledAt: z.string().nullable(),
     qualityScore: z.number().nullable(),
     ruleResults: z.array(z.unknown()).nullable(),
+    sensitiveColumns: z.number(),
   })
   .strict();
 const previewSchema = z
@@ -123,6 +126,7 @@ describe('data-quality reports and preview (integration)', () => {
         profiledAt: null,
         qualityScore: null,
         ruleResults: null,
+        sensitiveColumns: 0,
       });
     });
 
@@ -564,6 +568,122 @@ describe('data-quality reports and preview (integration)', () => {
       await h.dataSource.getRepository(DataQualityReport).delete({ fileId: id });
 
       await getReport(session, id).expect(404);
+    });
+  });
+
+  // ---- personal and secret data ---------------------------------------------
+
+  describe('personal and secret data', () => {
+    const CONTACTS = ['id,contact,note', '1,ada@example.com,hello', '2,grace@example.com,world', '3,alan@example.com,'].join('\n');
+
+    const notificationsOf = (userId: string, type: string) =>
+      h.dataSource.query('SELECT payload FROM notification WHERE "userId" = $1 AND type = $2', [userId, type]);
+
+    it('flags a column that looks like email addresses, and stores no address', async () => {
+      const { session } = await company();
+      const id = await profiled(session, CONTACTS, 'contacts.csv');
+
+      const body = await report(session, id);
+      expect(body.sensitiveColumns).toBe(1);
+      expect(body.metrics?.columns.map((column) => column.sensitive)).toEqual([null, { kind: 'email', matchPercent: 100 }, null]);
+
+      const stored = await h.dataSource.getRepository(DataQualityReport).findOneByOrFail({ fileId: id });
+      expect(JSON.stringify(stored.metrics)).not.toContain('example.com');
+    });
+
+    it('tells the uploader and the admin when such a file is open to the whole company, and no one for a restricted one', async () => {
+      const { session, companyId, admin } = await company();
+      const member = await h.inviteAndAccept(session, companyId);
+
+      const open = await upload(member.session, { content: CONTACTS, name: 'open.csv' });
+      await upload(member.session, { content: CONTACTS, name: 'private.csv', visibility: 'restricted' });
+      await h.drainTasks();
+
+      for (const userId of [member.userId, admin.userId]) {
+        const rows = await notificationsOf(userId, 'file.sensitive_data');
+        expect(rows).toHaveLength(1);
+        expect(rows[0]?.payload).toMatchObject({ fileId: open, fileName: 'open.csv', visibility: 'company', columns: [{ name: 'contact', kind: 'email' }] });
+        expect(JSON.stringify(rows[0]?.payload)).not.toContain('example.com');
+      }
+    });
+
+    it('says so again when a file with such a report is opened up to everyone', async () => {
+      const { session, companyId, admin } = await company();
+      const member = await h.inviteAndAccept(session, companyId);
+      const id = await upload(member.session, { content: CONTACTS, name: 'later.csv', visibility: 'restricted' });
+      await h.drainTasks();
+      expect(await notificationsOf(admin.userId, 'file.sensitive_data')).toHaveLength(0);
+
+      await h.http().patch(`/files/${id}`).set(...h.bearer(member.session)).send({ visibility: 'company' }).expect(200);
+
+      expect(await notificationsOf(admin.userId, 'file.sensitive_data')).toHaveLength(1);
+      expect(await notificationsOf(member.userId, 'file.sensitive_data')).toHaveLength(1);
+    });
+
+    it('a no_sensitive_data rule fails a file that holds some, naming the column, and passes a clean one', async () => {
+      const { session } = await company();
+      await h.http().post('/quality-rules').set(...h.bearer(session)).send({ name: 'No personal data', kind: 'no_sensitive_data', params: {}, severity: 'error' }).expect(201);
+
+      const dirty = await profiled(session, CONTACTS, 'dirty.csv');
+      const clean = await profiled(session, PEOPLE_CSV, 'clean.csv');
+
+      const [bad] = (await report(session, dirty)).ruleResults ?? [];
+      expect(bad).toMatchObject({ kind: 'no_sensitive_data', columnName: null, status: 'failed' });
+      expect(z.object({ message: z.string() }).parse(bad).message).toContain('email addresses in "contact"');
+      const [good] = (await report(session, clean)).ruleResults ?? [];
+      expect(good).toMatchObject({ status: 'passed' });
+    });
+
+    it('a rule can look for one kind only', async () => {
+      const { session } = await company();
+      await h.http().post('/quality-rules').set(...h.bearer(session)).send({ name: 'No card numbers', kind: 'no_sensitive_data', params: { kind: 'card_number' }, severity: 'error' }).expect(201);
+      const id = await profiled(session, CONTACTS, 'contacts.csv');
+      expect(((await report(session, id)).ruleResults ?? [])[0]).toMatchObject({ status: 'passed' });
+      await h.http().post('/quality-rules').set(...h.bearer(session)).send({ name: 'Bad', kind: 'no_sensitive_data', params: { kind: 'dna' }, severity: 'error' }).expect(400);
+    });
+
+    it('lists only the files with personal data when asked', async () => {
+      const { session } = await company();
+      const dirty = await profiled(session, CONTACTS, 'dirty.csv');
+      await profiled(session, PEOPLE_CSV, 'clean.csv');
+
+      const page = z.object({ data: z.array(z.object({ id: z.uuid() })) }).parse((await h.http().get('/files').query({ hasSensitiveData: true }).set(...h.bearer(session)).expect(200)).body);
+      expect(page.data.map((row) => row.id)).toEqual([dirty]);
+    });
+  });
+
+  // ---- worksheets -----------------------------------------------------------
+
+  describe('worksheets', () => {
+    it('says which sheet was profiled and which others there are', async () => {
+      const { session } = await company();
+      const id = await profiled(session, await realXlsxBytes([['a'], [1]], { extraSheets: true }), 'two-sheets.xlsx');
+      expect((await report(session, id)).metrics?.sheet).toEqual({ name: 'Data', others: ['Second'] });
+    });
+
+    it('profiles the sheet the uploader chooses, and keeps it on later rebuilds', async () => {
+      const { session } = await company();
+      const id = await profiled(session, await realXlsxBytes([['a'], [1]], { extraSheets: true }), 'two-sheets.xlsx');
+
+      await h.http().post(`/files/${id}/report/rebuild`).set(...h.bearer(session)).send({ sheet: 'Second' }).expect(200);
+      await h.drainTasks();
+      const chosen = await report(session, id);
+      expect(chosen.metrics?.sheet).toEqual({ name: 'Second', others: ['Data'] });
+      expect(chosen.metrics?.columns.map((column) => column.name)).toEqual(['not this one']);
+
+      await h.http().post(`/files/${id}/report/rebuild`).set(...h.bearer(session)).send({}).expect(200);
+      await h.drainTasks();
+      expect((await report(session, id)).metrics?.sheet?.name).toBe('Second');
+    });
+
+    it('refuses a sheet the workbook does not have, and a sheet for a CSV', async () => {
+      const { session } = await company();
+      const book = await profiled(session, await realXlsxBytes([['a'], [1]], { extraSheets: true }), 'two-sheets.xlsx');
+      const csv = await profiled(session);
+
+      const nope = await h.http().post(`/files/${book}/report/rebuild`).set(...h.bearer(session)).send({ sheet: 'Nope' }).expect(422);
+      expect(JSON.stringify(nope.body)).toContain('Choose one of: Data, Second');
+      await h.http().post(`/files/${csv}/report/rebuild`).set(...h.bearer(session)).send({ sheet: 'Data' }).expect(422);
     });
   });
 });

@@ -26,6 +26,8 @@ export interface ReportView {
   qualityScore: number | null;
   /** One result per rule the company had when the report was built; null when it had none. */
   ruleResults: RuleResult[] | null;
+  /** How many columns look like they hold personal or secret data. */
+  sensitiveColumns: number;
 }
 
 export interface ComparedFile {
@@ -69,6 +71,7 @@ export function toReportView(row: DataQualityReport): ReportView {
     qualityScore: row.qualityScore,
     ruleResults:
       ruleResults.success && row.ruleResults !== null ? ruleResults.data : null,
+    sensitiveColumns: metrics ? metrics.columns.filter((column) => column.sensitive !== null).length : 0,
   };
 }
 
@@ -98,8 +101,9 @@ export class ReportsService {
    * build is already queued or running; the flip to `queued` and the task are one transaction, so two
    * requests cannot queue it twice.
    */
-  async rebuild(fileId: string): Promise<ReportView> {
+  async rebuild(fileId: string, sheet?: string): Promise<ReportView> {
     const file = await this.files.requireManageable(fileId);
+    if (sheet !== undefined) await this.requireKnownSheet(file, sheet);
 
     await this.dataSource.transaction(async (manager) => {
       const flipped = await manager
@@ -114,14 +118,30 @@ export class ReportsService {
       if (!flipped.affected) {
         throw new ConflictException('This report is already being built. Try again when it has finished.');
       }
-      await this.queue.enqueue('build_data_quality_report', { fileId: file.id, companyId: file.companyId }, { manager });
+      await this.queue.enqueue(
+        'build_data_quality_report',
+        { fileId: file.id, companyId: file.companyId, ...(sheet === undefined ? {} : { sheet }) },
+        { manager },
+      );
       await this.audit.record(
-        { action: 'report.rebuild_requested', target: { type: 'file', id: file.id }, metadata: { originalName: file.originalName } },
+        { action: 'report.rebuild_requested', target: { type: 'file', id: file.id }, metadata: { originalName: file.originalName, ...(sheet === undefined ? {} : { sheet }) } },
         manager,
       );
     });
     await this.realtime.fileStatus(file.id);
     return this.report(file.id);
+  }
+
+  /** A sheet can be chosen only from the ones the last report named: nothing else is known to exist in the workbook. */
+  private async requireKnownSheet(file: { id: string; companyId: string }, sheet: string): Promise<void> {
+    const row = await this.dataSource.getRepository(DataQualityReport).findOne({ where: { fileId: file.id, companyId: file.companyId } });
+    const parsed = row?.metrics ? metricsSchema.safeParse(row.metrics) : null;
+    const known = parsed?.success && parsed.data.sheet ? [parsed.data.sheet.name, ...parsed.data.sheet.others] : [];
+    if (!known.includes(sheet)) {
+      throw new UnprocessableEntityException(
+        known.length > 0 ? `This workbook has no sheet "${sheet}". Choose one of: ${known.join(', ')}.` : 'Only a workbook with several worksheets can have a sheet chosen.',
+      );
+    }
   }
 
   /**

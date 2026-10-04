@@ -28,12 +28,13 @@ export function previewCell(cell: CellValue | undefined): PreviewCell {
 
 /** Runs the metrics over a parsed sheet and keeps its first rows for the preview. */
 export function profileSheet(sheet: ParsedSheet, options: AccumulatorOptions = {}): Profile {
-  const accumulator = new MetricsAccumulator(sheet.header, options);
+  const accumulator = new MetricsAccumulator(sheet.header, { fullColumnCount: sheet.columnCount, ...options });
   for (const row of sheet.rows) accumulator.addRow(row);
   const metrics = accumulator.finish();
 
   // The accumulator notes a cut header itself; the reader knows if ROWS were cut.
   if (sheet.truncated) metrics.truncated = true;
+  metrics.sheet = sheet.sheet;
 
   const previewRows = sheet.rows
     .slice(0, PREVIEW_LIMITS.rows)

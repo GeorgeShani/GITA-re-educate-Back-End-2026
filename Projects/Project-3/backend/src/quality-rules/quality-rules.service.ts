@@ -32,7 +32,7 @@ export function parseSpec(kind: string, params: unknown): RuleSpec {
   return parsed.data;
 }
 
-/** Every kind but `max_duplicate_rows` is about a column and must name it; that one must not. */
+/** Every kind but the whole-file ones (`max_duplicate_rows`, `no_sensitive_data`) is about a column and must name it; those must not. */
 function checkColumnName(spec: RuleSpec, columnName: string | null): void {
   if (isColumnRule(spec.kind) && columnName === null) {
     throw new BadRequestException(`A \`${spec.kind}\` rule is about one column: provide \`columnName\`.`);

@@ -818,7 +818,7 @@ describe('files (integration)', () => {
   // ---- listing -----------------------------------------------------------
 
   describe('GET /files', () => {
-    const list = async (session: SessionBody, query: Record<string, string | number> = {}) =>
+    const list = async (session: SessionBody, query: Record<string, string | number | boolean> = {}) =>
       pageSchema.parse((await h.http().get('/files').set(...h.bearer(session)).query(query).expect(200)).body);
 
     async function walk(session: SessionBody, query: Record<string, string | number>) {
@@ -891,6 +891,41 @@ describe('files (integration)', () => {
 
       expect((await list(session, { uploadedAfter: cut })).data.map((r) => r.id)).toEqual([late.id]);
       expect((await list(session, { uploadedBefore: cut })).data.map((r) => r.id)).toEqual([early.id]);
+    });
+
+    it('searches by name: any part, any case, and a % or _ typed by a person means itself', async () => {
+      const t = await team();
+      const q1 = await uploaded(t.a.session, { name: 'Sales Q1 2026.csv' });
+      await uploaded(t.a.session, { name: 'payroll.csv' });
+      const pct = await uploaded(t.a.session, { name: 'growth_100%.csv' });
+      const secret = await uploaded(t.a.session, { name: 'sales-secret.csv', visibility: 'restricted', grantedUserIds: [t.c.userId] });
+
+      expect((await list(t.session, { search: 'SALES' })).data.map((r) => r.id).sort()).toEqual([q1.id, secret.id].sort());
+      expect((await list(t.session, { search: 'q1 2026' })).data.map((r) => r.id)).toEqual([q1.id]);
+      expect((await list(t.session, { search: '100%' })).data.map((r) => r.id)).toEqual([pct.id]);
+      // A lone percent sign is not "match everything", and an underscore is not "any character".
+      expect((await list(t.session, { search: '%' })).data.map((r) => r.id)).toEqual([pct.id]);
+      expect((await list(t.session, { search: 'growth-100' })).data).toEqual([]);
+      // Searching never widens what a person may see.
+      expect((await list(t.b.session, { search: 'secret' })).data).toEqual([]);
+    });
+
+    it('needsAttention keeps the files whose report failed or scored under 80, and no others', async () => {
+      const { session, companyId } = await company('premium');
+      const healthy = await uploaded(session, { name: 'healthy.csv' });
+      const weak = await uploaded(session, { name: 'weak.csv' });
+      const broken = await uploaded(session, { name: 'broken.csv' });
+      const unscored = await uploaded(session, { name: 'unscored.csv' });
+      const set = (id: string, status: string, score: number | null) =>
+        h.dataSource.query('UPDATE data_quality_report SET status = $2, "qualityScore" = $3 WHERE "fileId" = $1 AND "companyId" = $4', [id, status, score, companyId]);
+      await set(healthy.id, 'ready', 95);
+      await set(weak.id, 'ready', 79);
+      await set(broken.id, 'failed', null);
+      await set(unscored.id, 'ready', null);
+
+      const flagged = (await list(session, { needsAttention: true })).data.map((r) => r.id).sort();
+      expect(flagged).toEqual([weak.id, broken.id].sort());
+      expect((await list(session, { needsAttention: false })).data).toHaveLength(4);
     });
 
     it.each([

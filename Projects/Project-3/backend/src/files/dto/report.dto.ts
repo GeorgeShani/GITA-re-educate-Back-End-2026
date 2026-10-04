@@ -3,6 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { COLUMN_TYPES, type ColumnType } from '../quality/metrics.js';
 import { REPORT_STATUSES, type ReportStatus } from '../data-quality-report.entity.js';
 import { RULE_KINDS, RULE_SEVERITIES } from '../quality/rules.js';
+import { SENSITIVE_KINDS, type SensitiveKind } from '../quality/sensitive.js';
 
 class TypeCountsDto {
   @ApiProperty() @Expose() integer!: number;
@@ -16,6 +17,13 @@ class NumericStatsDto {
   @ApiProperty() @Expose() min!: number;
   @ApiProperty() @Expose() max!: number;
   @ApiProperty() @Expose() mean!: number;
+}
+
+export class SensitiveDto {
+  @ApiProperty({ enum: SENSITIVE_KINDS, description: 'What the column looks like it holds.' }) @Expose() kind!: SensitiveKind;
+  @ApiProperty({ description: 'Share of the column\'s checked, non-empty values that look like this, 0–100.' })
+  @Expose()
+  matchPercent!: number;
 }
 
 export class ColumnMetricsDto {
@@ -44,6 +52,22 @@ export class ColumnMetricsDto {
   @Expose()
   @Type(() => NumericStatsDto)
   numeric!: NumericStatsDto | null;
+  @ApiProperty({
+    type: () => SensitiveDto,
+    nullable: true,
+    description:
+      'Set when the column looks like it holds personal or secret data (found by patterns and checksums, never by a model). Only the kind and share are kept, never a value.',
+  })
+  @Expose()
+  @Type(() => SensitiveDto)
+  sensitive!: SensitiveDto | null;
+}
+
+export class SheetInfoDto {
+  @ApiProperty({ description: 'The worksheet that was profiled.' }) @Expose() name!: string;
+  @ApiProperty({ type: [String], description: 'The other worksheets that have rows. They are stored with the file but not profiled; choose one with `POST /files/{id}/report/rebuild`.' })
+  @Expose()
+  others!: string[];
 }
 
 export class MetricsDto {
@@ -59,6 +83,10 @@ export class MetricsDto {
   @ApiProperty({ type: [String], description: 'Problems with the header row (blank or repeated names).' })
   @Expose()
   headerIssues!: string[];
+  @ApiProperty({ type: () => SheetInfoDto, nullable: true, description: 'Which worksheet of a workbook this report covers. Null for a CSV.' })
+  @Expose()
+  @Type(() => SheetInfoDto)
+  sheet!: SheetInfoDto | null;
   @ApiProperty({ type: () => [ColumnMetricsDto] })
   @Expose()
   @Type(() => ColumnMetricsDto)
@@ -147,6 +175,10 @@ export class ReportDto {
   @Expose()
   @Type(() => RuleResultDto)
   ruleResults!: RuleResultDto[] | null;
+
+  @ApiProperty({ description: 'How many columns look like they hold personal or secret data (see `metrics.columns[].sensitive`). 0 until the report is ready.' })
+  @Expose()
+  sensitiveColumns!: number;
 }
 
 class ComparedFileDto {

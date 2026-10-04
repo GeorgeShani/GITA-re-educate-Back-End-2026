@@ -56,6 +56,8 @@ import { FileAsset, type FileVisibility } from './file-asset.entity.js';
 import { type FileViewer, applyFileVisibility } from './file-visibility.js';
 import type { IncomingSpreadsheet } from './incoming-spreadsheet.js';
 import { blockedMessage, overageWarning, quotaDecision } from './quota.js';
+import { HEALTHY_SCORE } from './quality/rules.js';
+import { announceSensitiveData, sensitiveColumnsOf } from './quality/sensitive-announcement.js';
 import { sniffSpreadsheet } from './validation/sniff-spreadsheet.js';
 
 const NO_PLAN =
@@ -442,6 +444,24 @@ export class FilesService {
       qb.andWhere('f.createdAt >= :after', { after: query.uploadedAfter });
     if (query.uploadedBefore)
       qb.andWhere('f.createdAt < :before', { before: query.uploadedBefore });
+    if (query.search) {
+      // `%`, `_` and `\` in what a person typed mean themselves, not "anything".
+      const escaped = query.search.replace(/[\\%_]/g, (character) => `\\${character}`);
+      qb.andWhere(`f.originalName ILIKE :search ESCAPE '\\'`, { search: `%${escaped}%` });
+    }
+    if (query.hasSensitiveData) {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM data_quality_report r WHERE r."fileId" = f.id AND r."companyId" = f."companyId"
+           AND r.status = 'ready' AND jsonb_path_exists(r.metrics, '$.columns[*] ? (@.sensitive != null)'))`,
+      );
+    }
+    if (query.needsAttention) {
+      qb.andWhere(
+        `EXISTS (SELECT 1 FROM data_quality_report r WHERE r."fileId" = f.id AND r."companyId" = f."companyId"
+           AND (r.status = 'failed' OR (r.status = 'ready' AND r."qualityScore" < :healthy)))`,
+        { healthy: HEALTHY_SCORE },
+      );
+    }
 
     applyCursor(
       qb,
@@ -555,6 +575,15 @@ export class FilesService {
       }
       if (next !== file.visibility) {
         await manager.update(FileAsset, { id: file.id }, { visibility: next });
+        // Opening a file to everyone is the moment personal data in it becomes everyone's to see.
+        if (next === 'company') {
+          await announceSensitiveData(
+            { notifications: this.notifications, webhooks: this.webhooks },
+            manager,
+            { ...file, visibility: next },
+            await sensitiveColumnsOf(manager, file),
+          );
+        }
       }
       await this.notifyShared(manager, file, added, viewer.userId);
 

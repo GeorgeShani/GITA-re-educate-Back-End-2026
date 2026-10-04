@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { COLUMN_TYPES, type ColumnMetrics, type DataQualityMetrics, columnKey } from './metrics.js';
+import { SENSITIVE_KINDS, SENSITIVE_LABELS } from './sensitive.js';
 
 export const RULE_SEVERITIES = ['error', 'warning'] as const;
 export type RuleSeverity = (typeof RULE_SEVERITIES)[number];
@@ -28,13 +29,21 @@ export const ruleSpecSchema = z.discriminatedUnion('kind', [
     kind: z.literal('max_duplicate_rows'),
     params: z.object({ max: z.number().int().min(0) }).strict(),
   }),
+  z.object({
+    kind: z.literal('no_sensitive_data'),
+    /** `any`, or one kind of personal or secret data to look for. */
+    params: z.object({ kind: z.enum(['any', ...SENSITIVE_KINDS]).default('any') }).strict(),
+  }),
 ]);
 export type RuleSpec = z.infer<typeof ruleSpecSchema>;
 export type RuleKind = RuleSpec['kind'];
+/** A report scoring below this is worth a second look. The dashboard, the files filter and the report words agree on it. */
+export const HEALTHY_SCORE = 80;
+
 export const RULE_KINDS = ruleSpecSchema.options.map((option) => option.shape.kind.value);
 
 /** Every kind but this one is about ONE column, so it names it. */
-export const FILE_LEVEL_RULE_KINDS: readonly RuleKind[] = ['max_duplicate_rows'];
+export const FILE_LEVEL_RULE_KINDS: readonly RuleKind[] = ['max_duplicate_rows', 'no_sensitive_data'];
 export const isColumnRule = (kind: RuleKind): boolean => !FILE_LEVEL_RULE_KINDS.includes(kind);
 
 /** A rule as the evaluator needs it (a stored row, once its `params` has been parsed). */
@@ -86,6 +95,18 @@ function evaluateOne(
     return found <= max
       ? pass(`${found} duplicate ${found === 1 ? 'row' : 'rows'}; at most ${max} allowed.`)
       : fail(`${found} duplicate ${found === 1 ? 'row' : 'rows'}; at most ${max} allowed.`);
+  }
+
+  if (rule.kind === 'no_sensitive_data') {
+    const wantedKind = rule.params.kind;
+    const found = metrics.columns.filter((candidate) => candidate.sensitive && (wantedKind === 'any' || candidate.sensitive.kind === wantedKind));
+    const what = wantedKind === 'any' ? 'personal or secret data' : SENSITIVE_LABELS[wantedKind];
+    if (found.length === 0) return pass(`No ${what} found.`);
+    const listed = found
+      .slice(0, 5)
+      .map((candidate) => `${candidate.sensitive ? SENSITIVE_LABELS[candidate.sensitive.kind] : ''} in "${candidate.name}"`)
+      .join('; ');
+    return fail(`Found ${listed}${found.length > 5 ? `; and ${found.length - 5} more` : ''}.`);
   }
 
   const wanted = rule.columnName === null ? '' : columnKey(rule.columnName);

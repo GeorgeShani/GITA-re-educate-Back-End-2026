@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsDate, IsIn, IsOptional, IsUUID } from 'class-validator';
+import { IsBoolean, IsDate, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { toBoolean } from '#/common/http/query-boolean.js';
 import { CursorQueryDto } from '#/common/pagination/cursor-query.dto.js';
 import { FILE_VISIBILITIES, type FileVisibility } from '../file-asset.entity.js';
@@ -39,6 +39,34 @@ export class FilesQueryDto extends CursorQueryDto {
   @IsOptional()
   @IsUUID()
   uploaderId?: string;
+
+  @ApiPropertyOptional({ description: 'Files whose name contains this text, ignoring case.', maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  search?: string;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    default: false,
+    description:
+      'Only files worth a second look: their report failed, or it finished with a score under 80.',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  needsAttention?: boolean;
+
+  @ApiPropertyOptional({
+    type: Boolean,
+    default: false,
+    description: 'Only files whose report found a column that looks like personal or secret data.',
+  })
+  @IsOptional()
+  @Transform(toBoolean)
+  @IsBoolean()
+  hasSensitiveData?: boolean;
 
   @ApiPropertyOptional({
     type: String,

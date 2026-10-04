@@ -25,12 +25,13 @@ import {
 } from './quality/metrics.js';
 import { narrativeInputFrom, profileSheet } from './quality/profile.js';
 import { evaluateRules, uniqueColumnKeys } from './quality/rules.js';
+import { announceSensitiveData } from './quality/sensitive-announcement.js';
 import {
   SPREADSHEET_MIME_TYPES,
   type SpreadsheetMime,
 } from './spreadsheet-types.js';
 
-const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid() });
+const payloadSchema = z.object({ fileId: z.uuid(), companyId: z.uuid(), sheet: z.string().min(1).max(100).optional() });
 export type BuildDataQualityReportPayload = z.infer<typeof payloadSchema>;
 
 /** What a new version did to its predecessor's columns: only worth telling anyone when something was removed or retyped. */
@@ -50,6 +51,7 @@ type ProfileOutcome =
       failedErrorRules: string[];
       qualityScore: number | null;
       schemaChange: SchemaChange | null;
+      sensitiveColumns: Array<{ name: string; kind: string }>;
     }
   | { status: 'unsupported' }
   | { status: 'failed'; reason: string };
@@ -130,6 +132,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
   async handle({
     fileId,
     companyId,
+    sheet,
   }: BuildDataQualityReportPayload): Promise<void> {
     const reports = this.dataSource.getRepository(DataQualityReport);
     const file = await this.dataSource
@@ -164,7 +167,9 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
 
     let completion: ReportCompletion;
     try {
-      completion = await this.profile(file);
+      // A rebuild with no sheet named keeps the one chosen before; a first build takes the first sheet.
+      const previous = existing?.metrics ? metricsSchema.safeParse(existing.metrics) : null;
+      completion = await this.profile(file, sheet ?? (previous?.success ? previous.data.sheet?.name : undefined));
     } catch (error) {
       await reports.update(
         { id: reportId },
@@ -267,6 +272,9 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         qualityScore: outcome.qualityScore,
       });
     }
+    if (outcome.status === 'ready' && outcome.sensitiveColumns.length > 0) {
+      await announceSensitiveData({ notifications: this.notifications, webhooks: this.webhooks }, manager, file, outcome.sensitiveColumns);
+    }
   }
 
   /**
@@ -314,7 +322,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     };
   }
 
-  private async profile(file: FileAsset): Promise<ReportCompletion> {
+  private async profile(file: FileAsset, sheet?: string): Promise<ReportCompletion> {
     const bytes = await this.storage.get(file.storageKey);
 
     if (!isSpreadsheetMime(file.mimeType)) {
@@ -343,7 +351,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     let profile: ReturnType<typeof profileSheet>;
     try {
       profile = profileSheet(
-        await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS),
+        await readSpreadsheet(bytes, file.mimeType, PROFILE_LIMITS, sheet === undefined ? {} : { sheet }),
         {
           uniqueColumns: uniqueColumnKeys(rules),
         },
@@ -414,6 +422,9 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
           file,
           profile.metrics,
           evaluation.score,
+        ),
+        sensitiveColumns: profile.metrics.columns.flatMap((column) =>
+          column.sensitive ? [{ name: column.name, kind: column.sensitive.kind }] : [],
         ),
       },
     };

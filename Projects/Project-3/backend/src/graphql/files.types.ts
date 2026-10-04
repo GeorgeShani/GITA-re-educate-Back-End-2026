@@ -8,7 +8,7 @@ import {
   ObjectType,
   registerEnumType,
 } from '@nestjs/graphql';
-import { IsBoolean, IsDate, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsDate, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength } from 'class-validator';
 import { FILE_SORTS, type FileSort } from '#/files/dto/files-query.dto.js';
 import { FILE_VISIBILITIES, type FileVisibility } from '#/files/file-asset.entity.js';
 import type { ColumnType } from '#/files/quality/metrics.js';
@@ -52,6 +52,7 @@ const RULE_KIND_VALUES: Record<RuleKind, RuleKind> = {
   max_value: 'max_value',
   unique: 'unique',
   max_duplicate_rows: 'max_duplicate_rows',
+  no_sensitive_data: 'no_sensitive_data',
 };
 const RULE_SEVERITY_VALUES: Record<RuleSeverity, RuleSeverity> = {
   error: 'error',
@@ -103,6 +104,23 @@ export class FilesFilterInput {
   @IsOptional()
   @IsBoolean()
   allVersions: boolean = false;
+
+  @Field(() => String, { nullable: true, description: 'Files whose name contains this text, ignoring case.' })
+  @IsOptional()
+  @IsString()
+  @MinLength(1)
+  @MaxLength(100)
+  search?: string;
+
+  @Field(() => Boolean, { nullable: true, description: 'Only files whose report failed or finished with a score under 80.' })
+  @IsOptional()
+  @IsBoolean()
+  needsAttention?: boolean;
+
+  @Field(() => Boolean, { nullable: true, description: 'Only files whose report found personal or secret data.' })
+  @IsOptional()
+  @IsBoolean()
+  hasSensitiveData?: boolean;
 }
 
 @ArgsType()
@@ -147,6 +165,12 @@ export class NumericColumnSummaryType {
   @Field(() => Float) mean!: number;
 }
 
+@ObjectType('SensitiveColumnFinding')
+export class SensitiveFindingType {
+  @Field(() => String, { description: 'email, phone, card_number, iban, ip_address, secret or birth_date.' }) kind!: string;
+  @Field(() => Float) matchPercent!: number;
+}
+
 @ObjectType('ColumnQualityMetrics')
 export class ColumnQualityMetricsType {
   @Field(() => Int) index!: number;
@@ -157,6 +181,8 @@ export class ColumnQualityMetricsType {
   @Field(() => Boolean) inconsistent!: boolean;
   @Field(() => Float) inconsistentPercent!: number;
   @Field(() => NumericColumnSummaryType, { nullable: true }) numeric!: NumericColumnSummaryType | null;
+  @Field(() => SensitiveFindingType, { nullable: true, description: 'Set when the column looks like it holds personal or secret data.' })
+  sensitive!: SensitiveFindingType | null;
 }
 
 @ObjectType('DataQualityMetrics')
@@ -200,6 +226,7 @@ export class DataQualityReportType {
   @Field(() => Date, { nullable: true }) profiledAt!: Date | null;
   @Field(() => Int, { nullable: true }) qualityScore!: number | null;
   @Field(() => [QualityRuleResultType], { nullable: true }) ruleResults!: QualityRuleResultType[] | null;
+  @Field(() => Int, { description: 'How many columns look like they hold personal or secret data.' }) sensitiveColumns!: number;
 }
 
 @ObjectType('FileComment')

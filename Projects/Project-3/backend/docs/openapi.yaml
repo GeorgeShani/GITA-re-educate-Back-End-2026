@@ -347,6 +347,31 @@ paths:
           schema:
             format: uuid
             type: string
+        - name: search
+          required: false
+          in: query
+          description: Files whose name contains this text, ignoring case.
+          schema:
+            maxLength: 100
+            type: string
+        - name: needsAttention
+          required: false
+          in: query
+          description: >-
+            Only files worth a second look: their report failed, or it finished
+            with a score under 80.
+          schema:
+            default: false
+            type: boolean
+        - name: hasSensitiveData
+          required: false
+          in: query
+          description: >-
+            Only files whose report found a column that looks like personal or
+            secret data.
+          schema:
+            default: false
+            type: boolean
         - name: uploadedAfter
           required: false
           in: query
@@ -699,6 +724,12 @@ paths:
           in: path
           schema:
             type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RebuildReportDto'
       responses:
         '200':
           description: ''
@@ -2670,6 +2701,7 @@ components:
               - quota.threshold
               - invoice.finalized
               - file.uploaded
+              - file.sensitive_data_found
       required:
         - name
         - url
@@ -3131,6 +3163,22 @@ components:
       required:
         - url
         - expiresAt
+    SheetInfoDto:
+      type: object
+      properties:
+        name:
+          type: string
+          description: The worksheet that was profiled.
+        others:
+          description: >-
+            The other worksheets that have rows. They are stored with the file
+            but not profiled; choose one with `POST /files/{id}/report/rebuild`.
+          type: array
+          items:
+            type: string
+      required:
+        - name
+        - others
     TypeCountsDto:
       type: object
       properties:
@@ -3163,6 +3211,28 @@ components:
         - min
         - max
         - mean
+    SensitiveDto:
+      type: object
+      properties:
+        kind:
+          type: string
+          enum:
+            - email
+            - phone
+            - card_number
+            - iban
+            - ip_address
+            - secret
+            - birth_date
+          description: What the column looks like it holds.
+        matchPercent:
+          type: number
+          description: >-
+            Share of the column's checked, non-empty values that look like this,
+            0–100.
+      required:
+        - kind
+        - matchPercent
     ColumnMetricsDto:
       type: object
       properties:
@@ -3194,6 +3264,15 @@ components:
           type: object
           allOf:
             - $ref: '#/components/schemas/NumericStatsDto'
+        sensitive:
+          nullable: true
+          description: >-
+            Set when the column looks like it holds personal or secret data
+            (found by patterns and checksums, never by a model). Only the kind
+            and share are kept, never a value.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SensitiveDto'
       required:
         - index
         - name
@@ -3204,6 +3283,7 @@ components:
         - inconsistent
         - inconsistentPercent
         - numeric
+        - sensitive
     MetricsDto:
       type: object
       properties:
@@ -3233,6 +3313,12 @@ components:
           type: array
           items:
             type: string
+        sheet:
+          nullable: true
+          description: Which worksheet of a workbook this report covers. Null for a CSV.
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/SheetInfoDto'
         columns:
           type: array
           items:
@@ -3246,6 +3332,7 @@ components:
         - truncated
         - rowBudget
         - headerIssues
+        - sheet
         - columns
     NarrativeDto:
       type: object
@@ -3283,6 +3370,7 @@ components:
             - max_value
             - unique
             - max_duplicate_rows
+            - no_sensitive_data
         columnName:
           type: string
           nullable: true
@@ -3368,6 +3456,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/RuleResultDto'
+        sensitiveColumns:
+          type: number
+          description: >-
+            How many columns look like they hold personal or secret data (see
+            `metrics.columns[].sensitive`). 0 until the report is ready.
       required:
         - fileId
         - status
@@ -3377,6 +3470,17 @@ components:
         - profiledAt
         - qualityScore
         - ruleResults
+        - sensitiveColumns
+    RebuildReportDto:
+      type: object
+      properties:
+        sheet:
+          type: string
+          description: >-
+            For a workbook with several worksheets: the one to profile. It must
+            be one of the sheets the report names (`metrics.sheet`). Omit to
+            keep the sheet already chosen.
+          example: Sales
     PreviewColumnDto:
       type: object
       properties:
@@ -3643,6 +3747,7 @@ components:
             - report.ready
             - report.failed
             - rules.failed
+            - file.sensitive_data
             - dataset.schema_changed
             - file.shared
             - invoice.finalized
@@ -4546,14 +4651,16 @@ components:
             that share empty; `type_is` the column is that type; `min_value` /
             `max_value` numeric bounds; `unique` no value repeats;
             `max_duplicate_rows` (whole file, no column) at most that many
-            repeated rows.
+            repeated rows; `no_sensitive_data` (whole file, no column) the file
+            must hold no personal or secret data (emails, phone numbers, card
+            numbers, IBANs, IP addresses, keys, birth dates).
         columnName:
           type: string
           example: email
           description: >-
             The column it applies to, matched to a file’s header
-            case-insensitively. Required for every kind but
-            `max_duplicate_rows`, which takes none. A file without that column
+            case-insensitively. Required for every kind but `max_duplicate_rows`
+            and `no_sensitive_data`, which take none. A file without that column
             skips the rule (use `required_column` to demand one).
         params:
           type: object
@@ -4562,7 +4669,9 @@ components:
             The rule’s numbers, by `kind`: `max_null_percent` `{ max: 0–100 }`;
             `type_is` `{ type: integer | number | boolean | date | string,
             maxInconsistentPercent?: 0–100 (default 0) }`; `min_value` `{ min
-            }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`.
+            }`; `max_value` `{ max }`; `max_duplicate_rows` `{ max }`;
+            `no_sensitive_data` `{ kind?: any | email | phone | card_number |
+            iban | ip_address | secret | birth_date }` (default `any`).
             `required_column` and `unique` take `{}`.
         severity:
           type: string
@@ -4599,7 +4708,9 @@ components:
             `max_null_percent` `{ max: 0–100 }`; `type_is` `{ type: integer |
             number | boolean | date | string, maxInconsistentPercent?: 0–100
             (default 0) }`; `min_value` `{ min }`; `max_value` `{ max }`;
-            `max_duplicate_rows` `{ max }`. `required_column` and `unique` take
+            `max_duplicate_rows` `{ max }`; `no_sensitive_data` `{ kind?: any |
+            email | phone | card_number | iban | ip_address | secret |
+            birth_date }` (default `any`). `required_column` and `unique` take
             `{}`.
         severity:
           type: string

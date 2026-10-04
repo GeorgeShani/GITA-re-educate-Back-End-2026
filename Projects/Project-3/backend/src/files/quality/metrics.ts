@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { SENSITIVE_SAMPLE, type SensitiveKind, classifyColumn, detectCell, isBirthDateName, sensitiveSchema } from './sensitive.js';
 
 /** A cell, once normalised: what a reader hands the profiler, whatever the file format. */
 export type CellValue = string | number | boolean | Date | null;
@@ -32,6 +33,8 @@ const columnMetricsSchema = z.object({
   /** Share of non-empty cells that disagree with the dominant type. */
   inconsistentPercent: z.number(),
   numeric: z.object({ min: z.number(), max: z.number(), mean: z.number() }).nullable(),
+  /** Personal or secret data this column looks like it holds; null when it looks like nothing in particular. */
+  sensitive: sensitiveSchema.nullable().default(null),
 });
 
 /**
@@ -49,6 +52,8 @@ export const metricsSchema = z.object({
   truncated: z.boolean(),
   rowBudget: z.number().int().positive(),
   headerIssues: z.array(z.string()),
+  /** The worksheet that was profiled and the others that have rows; null for a CSV (and for reports from before it was recorded). */
+  sheet: z.object({ name: z.string(), others: z.array(z.string()) }).nullable().default(null),
   columns: z.array(columnMetricsSchema),
 });
 export type DataQualityMetrics = z.infer<typeof metricsSchema>;
@@ -88,10 +93,21 @@ function numericValue(cell: CellValue | undefined, kind: CellKind): number | nul
   return Number.isFinite(value) ? value : null;
 }
 
+/** A cell as text, cut short: for header names, which are shown to people, never for comparing values. */
 function comparable(cell: CellValue | undefined): string {
   if (cell === null || cell === undefined) return '';
   if (cell instanceof Date) return cell.toISOString();
   return String(cell).trim().slice(0, 200);
+}
+
+/**
+ * A cell as text, whole: what two cells are compared by. It must not be cut, or two long values that differ only
+ * after the cut would be called the same, and a row that is not a duplicate would be reported as one.
+ */
+function exactText(cell: CellValue | undefined): string {
+  if (cell === null || cell === undefined) return '';
+  if (cell instanceof Date) return cell.toISOString();
+  return String(cell).trim();
 }
 
 // ---- the accumulator ----------------------------------------------------------
@@ -104,6 +120,9 @@ interface ColumnState {
   min: number;
   max: number;
   sum: number;
+  /** Non-empty values looked at for personal data (at most `SENSITIVE_SAMPLE`), and what each looked like. */
+  sampled: number;
+  hits: Partial<Record<Exclude<SensitiveKind, 'birth_date'>, number>>;
 }
 
 /** How a column is looked up by a rule: case-insensitive and trimmed, like a person naming it. */
@@ -116,6 +135,11 @@ export interface AccumulatorOptions {
    * is capped (`MAX_UNIQUE_RULES`).
    */
   uniqueColumns?: ReadonlySet<string>;
+  /**
+   * How wide the file really was, before the reader cut it to the column budget. The header handed in is already cut,
+   * so without this the "too many columns" note could never be written.
+   */
+  fullColumnCount?: number;
 }
 
 /** `name` cleaned up: blanks and duplicates get stable, distinct names, and each fix is reported. */
@@ -163,9 +187,10 @@ export class MetricsAccumulator {
     const limited = header.slice(0, PROFILE_LIMITS.maxColumns);
     const { names, issues } = normaliseHeader(limited);
     this.headerIssues = issues;
-    if (header.length > PROFILE_LIMITS.maxColumns) {
+    const declared = Math.max(header.length, options.fullColumnCount ?? 0);
+    if (declared > PROFILE_LIMITS.maxColumns) {
       this.headerIssues.push(
-        `The file has ${header.length} columns; only the first ${PROFILE_LIMITS.maxColumns} were profiled.`,
+        `The file has ${declared} columns; only the first ${PROFILE_LIMITS.maxColumns} were profiled.`,
       );
     }
     this.columns = names.map((name) => ({
@@ -176,6 +201,8 @@ export class MetricsAccumulator {
       min: Number.POSITIVE_INFINITY,
       max: Number.NEGATIVE_INFINITY,
       sum: 0,
+      sampled: 0,
+      hits: {},
     }));
     this.columns.forEach((column, index) => {
       if (options.uniqueColumns?.has(columnKey(column.name))) {
@@ -200,7 +227,7 @@ export class MetricsAccumulator {
       const cell = cells[index];
       const kind = classify(cell);
       // Length-prefixed, so no cell content can imitate the boundary between two cells.
-      const text = comparable(cell);
+      const text = exactText(cell);
       parts.push(`${text.length}:${text}`);
       if (kind === 'null') {
         column.nulls += 1;
@@ -208,6 +235,11 @@ export class MetricsAccumulator {
       }
       anyValue = true;
       column.counts[kind] += 1;
+      if (column.sampled < SENSITIVE_SAMPLE) {
+        column.sampled += 1;
+        const found = detectCell(text, column.name);
+        if (found) column.hits[found] = (column.hits[found] ?? 0) + 1;
+      }
 
       const seen = this.seenValues.get(index);
       if (seen) {
@@ -256,6 +288,7 @@ export class MetricsAccumulator {
       truncated: this.truncated,
       rowBudget: PROFILE_LIMITS.maxRows,
       headerIssues: this.headerIssues,
+      sheet: null,
       columns: this.columns.map((column, index) => this.columnMetrics(column, index)),
     };
   }
@@ -293,6 +326,12 @@ export class MetricsAccumulator {
         column.numericCount > 0
           ? { min: column.min, max: column.max, mean: column.sum / column.numericCount }
           : null,
+      sensitive:
+        classifyColumn(column.hits, column.sampled) ??
+        // A date is only a birth date because of what the column is called.
+        (isBirthDateName(column.name) && nonNull > 0 && date / nonNull >= 0.5
+          ? { kind: 'birth_date' as const, matchPercent: percent(date, nonNull) }
+          : null),
     };
   }
 }

@@ -32,6 +32,13 @@ export interface ParsedSheet {
   truncated: boolean;
   /** How wide the header really was, before the column cut. */
   columnCount: number;
+  /** The sheet that was read, and the other sheets that have rows. A CSV has neither. */
+  sheet: { name: string; others: string[] } | null;
+}
+
+/** Which sheet of a workbook to read: by name. Absent, the first sheet that has rows. */
+export interface ReadChoice {
+  sheet?: string;
 }
 
 /**
@@ -47,12 +54,13 @@ export async function readSpreadsheet(
   bytes: Uint8Array,
   mime: SpreadsheetMime,
   limits: ReadLimits,
+  choice: ReadChoice = {},
 ): Promise<ParsedSheet> {
   switch (mime) {
     case CSV_MIME:
       return readCsv(bytes, limits);
     case XLSX_MIME:
-      return readXlsx(bytes, limits);
+      return readXlsx(bytes, limits, choice);
     case XLS_MIME:
       throw new UnsupportedFormatError(
         'Legacy .xls files cannot be profiled. Save the file as .xlsx or .csv and upload it again.',
@@ -119,6 +127,7 @@ function readCsv(bytes: Uint8Array, limits: ReadLimits): ParsedSheet {
     rows: rest.slice(0, limits.maxRows).map((row) => row.slice(0, limits.maxColumns)),
     truncated,
     columnCount: header.length,
+    sheet: null,
   };
 }
 
@@ -162,7 +171,7 @@ export function normaliseExcelCell(value: unknown, depth = 0): CellValue {
   return null;
 }
 
-async function readXlsx(bytes: Uint8Array, limits: ReadLimits): Promise<ParsedSheet> {
+async function readXlsx(bytes: Uint8Array, limits: ReadLimits, choice: ReadChoice): Promise<ParsedSheet> {
   const summary = summariseZip(bytes);
   if (!summary) throw new UnreadableFileError('The file is not a readable .xlsx archive.');
   if (summary.uncompressedBytes > MAX_UNCOMPRESSED_XLSX_BYTES) {
@@ -181,7 +190,9 @@ async function readXlsx(bytes: Uint8Array, limits: ReadLimits): Promise<ParsedSh
     );
   }
 
-  const sheet = workbook.worksheets.find((candidate) => candidate.actualRowCount > 0);
+  const withRows = workbook.worksheets.filter((candidate) => candidate.actualRowCount > 0);
+  // A sheet that was asked for and is gone (the file was replaced, say) falls back to the first one, never to an error.
+  const sheet = withRows.find((candidate) => candidate.name === choice.sheet) ?? withRows[0];
   if (!sheet) throw new UnreadableFileError('The workbook has no rows.');
 
   const width = Math.min(sheet.columnCount, limits.maxColumns);
@@ -203,5 +214,6 @@ async function readXlsx(bytes: Uint8Array, limits: ReadLimits): Promise<ParsedSh
     rows: rest.slice(0, limits.maxRows),
     truncated: sheet.rowCount > limits.maxRows + 1,
     columnCount: sheet.columnCount,
+    sheet: { name: sheet.name, others: withRows.filter((other) => other !== sheet).map((other) => other.name) },
   };
 }

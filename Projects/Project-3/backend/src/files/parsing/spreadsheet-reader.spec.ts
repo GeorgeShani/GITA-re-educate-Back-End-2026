@@ -21,6 +21,7 @@ describe('CSV', () => {
       rows: [['1', 'Ada'], ['2', 'Grace']],
       truncated: false,
       columnCount: 2,
+      sheet: null,
     });
   });
 
@@ -122,6 +123,25 @@ describe('XLSX', () => {
   it('reads the first sheet that has data, ignoring later ones', async () => {
     const sheet = await readSpreadsheet(await realXlsxBytes([['a'], [1]], { extraSheets: true }), XLSX_MIME, LIMITS);
     expect(sheet.header).toEqual(['a']);
+  });
+
+  it('says which sheet it read and which others have rows, so nobody is left thinking the whole workbook was checked', async () => {
+    const sheet = await readSpreadsheet(await realXlsxBytes([['a'], [1]], { extraSheets: true }), XLSX_MIME, LIMITS);
+    expect(sheet.sheet).toEqual({ name: 'Data', others: ['Second'] });
+  });
+
+  it('reads the sheet it is asked for, and falls back to the first when that sheet is gone', async () => {
+    const bytes = await realXlsxBytes([['a'], [1]], { extraSheets: true });
+    const chosen = await readSpreadsheet(bytes, XLSX_MIME, LIMITS, { sheet: 'Second' });
+    expect(chosen.header).toEqual(['not this one']);
+    expect(chosen.sheet).toEqual({ name: 'Second', others: ['Data'] });
+
+    const missing = await readSpreadsheet(bytes, XLSX_MIME, LIMITS, { sheet: 'Gone' });
+    expect(missing.sheet?.name).toBe('Data');
+  });
+
+  it('a CSV has no sheet', () => {
+    return readSpreadsheet(csvBytes(), CSV_MIME, LIMITS).then((sheet) => expect(sheet.sheet).toBeNull());
   });
 
   it('turns formulas, hyperlinks, rich text and errors into plain cells', async () => {

@@ -4,6 +4,7 @@ import { IdempotencyModule } from '#/core/idempotency/idempotency.module.js';
 import { DatabaseModule } from '#/database/database.module.js';
 import { SubscriptionsModule } from '#/subscriptions/subscriptions.module.js';
 import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
+import { OrphanedObjectsJanitor } from './orphaned-objects-janitor.service.js';
 import { BuildDataQualityReportHandler } from './build-data-quality-report.handler.js';
 import { FilesController } from './files.controller.js';
 import { FilesService } from './files.service.js';
@@ -23,7 +24,7 @@ import { ReportsService } from './quality/reports.service.js';
     WebhookPublishingModule,
   ],
   controllers: [FilesController],
-  providers: [FilesService, ReportsService, BuildDataQualityReportHandler],
+  providers: [FilesService, ReportsService, BuildDataQualityReportHandler, OrphanedObjectsJanitor],
   exports: [FilesService, ReportsService, BuildDataQualityReportHandler],
 })
 export class FilesModule {}
