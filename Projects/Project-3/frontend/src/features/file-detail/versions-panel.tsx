@@ -59,6 +59,9 @@ export function VersionsPanel({
                     <span className="num font-mono">{version.version}</span>
                   </Link>
                   {version.isLatest ? <Stamp tone="pass">Latest</Stamp> : null}
+                  {version.derivedFromFileId ? (
+                    <Stamp tone="idle">Cleaned</Stamp>
+                  ) : null}
                   {isHere ? <Stamp tone="idle">You are here</Stamp> : null}
                 </p>
                 <p className="text-sm text-text-muted">
@@ -66,7 +69,9 @@ export function VersionsPanel({
                     {formatBytes(version.sizeBytes)}
                   </span>
                   {" · "}
-                  {nameOf(version.uploaderId)}
+                  {version.derivedFromFileId
+                    ? `Cleaned by ${nameOf(version.uploaderId)}`
+                    : nameOf(version.uploaderId)}
                   {" · "}
                   <time
                     dateTime={version.createdAt}

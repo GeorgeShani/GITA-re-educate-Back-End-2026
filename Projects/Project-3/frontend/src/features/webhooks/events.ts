@@ -20,6 +20,18 @@ export const EVENTS: readonly {
       "A report found a column that looks like emails, phone numbers, card numbers or other personal or secret data.",
   },
   {
+    id: "dataset.changed",
+    label: "A new version differs from the last",
+    description:
+      "A version was compared row by row with the one before it: how many rows were added, removed and changed. Needs the file's key columns to be saved.",
+  },
+  {
+    id: "dataset.schema_changed",
+    label: "A new version changed the columns",
+    description:
+      "A version dropped a column, or a column now holds a different kind of value.",
+  },
+  {
     id: "report.ready",
     label: "A report is ready",
     description: "A file's data-quality report finished.",

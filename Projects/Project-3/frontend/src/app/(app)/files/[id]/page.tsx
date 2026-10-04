@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ExplorePanel } from "@/features/explore/explore-panel";
 import { CommentsPanel } from "@/features/file-detail/comments-panel";
 import { FileHeader } from "@/features/file-detail/header";
 import { PresenceBar } from "@/features/file-detail/presence-bar";
@@ -82,7 +83,7 @@ export default async function Page({
   const latest =
     versions.data?.data.find((version) => version.isLatest) ?? null;
 
-  const [preview, comments] = await Promise.all([
+  const [preview, comments, allowance] = await Promise.all([
     tab === "preview"
       ? api.GET("/files/{id}/preview", { params: { path } })
       : null,
@@ -90,6 +91,9 @@ export default async function Page({
       ? api.GET("/files/{id}/comments", {
           params: { path, query: { limit: COMMENTS_LOADED } },
         })
+      : null,
+    tab === "explore"
+      ? api.GET("/files/{id}/ask/allowance", { params: { path } })
       : null,
   ]);
 
@@ -147,6 +151,25 @@ export default async function Page({
 
         {tab === "preview" ? (
           <PreviewPanel preview={preview?.data ?? null} />
+        ) : null}
+
+        {tab === "explore" ? (
+          report.data?.status === "ready" && report.data.metrics ? (
+            <ExplorePanel
+              fileId={file.data.id}
+              columns={report.data.metrics.columns.map((column) => ({
+                name: column.name,
+                type: column.inferredType,
+              }))}
+              aiAvailable={allowance?.data?.aiAvailable ?? false}
+              questionsUsed={allowance?.data?.questionsUsed ?? 0}
+              questionsLimit={allowance?.data?.questionsLimit ?? 0}
+            />
+          ) : (
+            <p className="text-text-muted">
+              Questions can be asked once the report is ready.
+            </p>
+          )
         ) : null}
 
         {tab === "versions" ? (

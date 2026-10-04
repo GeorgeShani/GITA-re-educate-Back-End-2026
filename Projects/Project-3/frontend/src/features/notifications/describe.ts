@@ -77,6 +77,26 @@ export function describe(
         href: file,
       };
     }
+    case "file.cleaned": {
+      const changed = number(payload, "changed");
+      const auto = text(payload, "trigger") === "auto";
+      return {
+        glyph: "check",
+        title: `A cleaned version of ${fileName} is ready.`,
+        detail:
+          changed === null
+            ? null
+            : `${changed.toLocaleString("en-US")} ${changed === 1 ? "cell or row" : "cells and rows"} changed${auto ? ", automatically" : ""}.`,
+        href: file,
+      };
+    }
+    case "cleaning.failed":
+      return {
+        glyph: "alert",
+        title: `${fileName} could not be cleaned.`,
+        detail: text(payload, "reason"),
+        href: file,
+      };
     case "file.sensitive_data": {
       const columns = Array.isArray(payload.columns)
         ? payload.columns.flatMap((entry) =>
@@ -94,6 +114,23 @@ export function describe(
         glyph: "alert",
         title: `${fileName} looks like it holds personal or secret data, and the whole company can see it.`,
         detail: columns.length > 0 ? `${list(columns)}.` : null,
+        href: file,
+      };
+    }
+    case "dataset.changed": {
+      const version = number(payload, "version");
+      const parts = (["added", "removed", "changed"] as const).flatMap(
+        (field) => {
+          const value = number(payload, field);
+          return value === null || value === 0
+            ? []
+            : [`${value.toLocaleString("en-US")} ${field}`];
+        },
+      );
+      return {
+        glyph: "check",
+        title: `${version === null ? "A new version" : `Version ${version}`} of ${fileName} differs from the one before it.`,
+        detail: parts.length > 0 ? `${list(parts)}.` : null,
         href: file,
       };
     }

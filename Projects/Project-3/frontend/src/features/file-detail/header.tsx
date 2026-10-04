@@ -1,5 +1,12 @@
-import { ArrowLeft, FileSpreadsheet, FileText, Lock } from "lucide-react";
+import {
+  ArrowLeft,
+  FileSpreadsheet,
+  FileText,
+  Lock,
+  Sparkles,
+} from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Stamp } from "@/components/ui/stamp";
 import { ReportStamp } from "@/features/files/report-stamp";
 import { type ReportStatus, typeLabel } from "@/features/files/types";
@@ -93,6 +100,14 @@ export function FileHeader({
         <div className="flex flex-wrap items-center gap-2">
           <DownloadButton fileId={file.id} />
           <NewVersionButton fileId={file.id} />
+          {canManage && status === "ready" ? (
+            <Button asChild>
+              <Link href={`/files/${file.id}/clean`}>
+                <Sparkles aria-hidden />
+                Clean
+              </Link>
+            </Button>
+          ) : null}
           {canManage ? (
             <ShareButton
               fileId={file.id}

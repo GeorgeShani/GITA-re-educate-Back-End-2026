@@ -21,6 +21,10 @@ const ROWS: Row[] = [
     value: (plan) => limit(plan.maxVersionsPerDataset),
   },
   {
+    label: "Questions to the AI assistant a billing period",
+    value: (plan) => plan.questionsPerPeriod.toLocaleString("en-US"),
+  },
+  {
     label: "API requests a minute, shared by everyone",
     value: (plan) => plan.rateLimitPerMinute.toLocaleString("en-US"),
   },

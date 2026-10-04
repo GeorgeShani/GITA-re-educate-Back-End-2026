@@ -8,7 +8,7 @@ export type { UploadResult as ApiResult };
  * renews it once if it ran out. Never throws: a network fault is status `0`, so the caller has one shape to handle.
  */
 export async function callApi(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   body?: unknown,
   headers: Record<string, string> = {},

@@ -12,6 +12,7 @@ export interface Plan {
   rateLimitPerMinute: number;
   maxQualityRules: number | null;
   maxVersionsPerDataset: number | null;
+  questionsPerPeriod: number;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -40,6 +41,7 @@ function toPlan(value: unknown): Plan | null {
     rateLimitPerMinute,
     maxQualityRules,
     maxVersionsPerDataset,
+    questionsPerPeriod,
   } = value;
   if (
     !isPlanName(plan) ||
@@ -51,7 +53,8 @@ function toPlan(value: unknown): Plan | null {
     !isNumberOrNull(overagePerFileCents) ||
     typeof rateLimitPerMinute !== "number" ||
     !isNumberOrNull(maxQualityRules) ||
-    !isNumberOrNull(maxVersionsPerDataset)
+    !isNumberOrNull(maxVersionsPerDataset) ||
+    typeof questionsPerPeriod !== "number"
   ) {
     return null;
   }
@@ -66,6 +69,7 @@ function toPlan(value: unknown): Plan | null {
     rateLimitPerMinute,
     maxQualityRules,
     maxVersionsPerDataset,
+    questionsPerPeriod,
   };
 }
 

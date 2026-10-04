@@ -62,6 +62,11 @@ export const ACTIONS: Record<AuditAction, { label: string; group: string }> = {
   "file.uploaded": { label: "File uploaded", group: "Files" },
   "file.access_changed": { label: "File access changed", group: "Files" },
   "file.deleted": { label: "File deleted", group: "Files" },
+  "file.cleaned": { label: "File cleaned", group: "Files" },
+  "dataset.settings_updated": {
+    label: "File settings saved",
+    group: "Files",
+  },
   "comment.created": { label: "Comment added", group: "Files" },
   "comment.updated": { label: "Comment edited", group: "Files" },
   "comment.deleted": { label: "Comment deleted", group: "Files" },

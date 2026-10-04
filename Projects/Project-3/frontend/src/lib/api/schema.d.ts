@@ -350,6 +350,194 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/files/{id}/clean/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Preview what a cleaning recipe would change
+     * @description Counts what each step of the recipe would do across the **whole** file and returns the first rows that change, each cell before and after. Nothing is written. Steps run in order; a step about a column the file does not have is skipped, not refused. A file over 100,000 rows or 200 columns, or a legacy `.xls`, answers 422. The uploader or an admin only; a file you cannot see is a 404. Needs the `files:write` scope for an API key.
+     */
+    post: operations["CleaningController_preview"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/clean": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Clean a file as its next version
+     * @description Queues the recipe. It answers **202** with a job to poll; the work runs in the background and ends as the **next version** of the file's dataset, shared with the same people and given a report of its own. The original is never touched. A cleaned version is not an upload: it uses no file quota, but it counts towards the plan's versions-per-dataset cap and appears in the audit log as `file.cleaned`. `saveRecipe` keeps the recipe for the dataset; `autoClean` (which needs `saveRecipe`, and a Basic or Premium plan, else 402) cleans every new version automatically. A cleaned version is never cleaned again.
+     */
+    post: operations["CleaningController_clean"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/clean/jobs/{jobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a cleaning job
+     * @description The job's `status` (`queued`, `running`, `succeeded` or `failed`), what each step did, the rows before and after, and, once it has succeeded, `resultFileId` (the new version) or, if it failed, the reason.
+     */
+    get: operations["CleaningController_job"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/datasets/{datasetId}/settings": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read a dataset's saved settings
+     * @description The saved cleaning recipe, whether every new version is cleaned, and whether the plan offers that (`autoCleanAvailable`). A dataset with nothing saved answers with the defaults. Visible to anyone who can see the dataset.
+     */
+    get: operations["CleaningController_settings"];
+    /**
+     * Save a dataset's settings
+     * @description Saves the cleaning recipe, whether to clean every new version, and/or the columns that identify a row. Any of them may be sent alone. The uploader of the latest version or an admin only. `autoClean` needs a saved recipe and a Basic or Premium plan (402 otherwise).
+     */
+    put: operations["CleaningController_saveSettings"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/compare/{otherId}/rows": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Read the row-by-row comparison of two versions
+     * @description What changed between two versions of one file **row by row**: rows added, removed, changed and unchanged, which columns changed most, and the first 500 changes with the old and the new value of each changed cell. Rows are matched by the dataset's key columns (`keyColumns`), ignoring case and surrounding spaces; columns are matched by name, so a reordered file does not look changed. `status` is `none` until a comparison has been asked for, `queued` or `running` while it is made, then `ready` or `failed` (with the reason in `errorMessage`). `suggestedKeyColumns` offers the columns whose names say they identify a row. Either order of the two ids names the older version first. Both versions must be visible to the caller (else 404) and belong to one dataset (else 422).
+     */
+    get: operations["RowDiffController_view"];
+    put?: never;
+    /**
+     * Compare two versions row by row
+     * @description Queues the comparison with the given `keyColumns` (up to 10), or with the ones saved for the dataset when none are given. Answers **202** with the comparison as it stands (`queued`); read it again with `GET` until it is `ready`. Asking again replaces the earlier result; asking while one is being made answers 409. A key column that one of the versions lacks makes the comparison fail with the reason. Files over 100,000 rows or 200 columns cannot be compared. Once the dataset has saved key columns every new version is compared with the one before it automatically, and the uploader and the admins are told (`dataset.changed`).
+     */
+    post: operations["RowDiffController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/compare/{otherId}/rows.csv": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download every change as a CSV file
+     * @description Every added, removed and changed row, not only the first 500: a `change` column, the key columns, each column's value and, for a changed row, what each changed cell was before. Answers 409 until the comparison is `ready`.
+     */
+    get: operations["RowDiffController_csv"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/explore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Run a query over a file's rows
+     * @description Filters, groups and totals **every row** of the file (up to 100,000 rows and 200 columns) on the server, without downloading it. Group by up to 2 columns; compute up to 4 measures per group (`count`, `sum`, `average`, `min`, `max`, `distinct`); filter with `equals`, `contains`, `greater`, `less`, `empty` and `not_empty`; sort and limit the groups. Columns are found by name, ignoring case and spaces. A sum, average, lowest or highest skips cells that are not numbers and says how many in `notes`. A column the file does not have, or a number asked of a column of text, answers 422 with the reason. Free: it does not use the plan's questions. A file whose report is still being built answers 409. Needs the `files:read` scope for an API key.
+     */
+    post: operations["ExploreController_run"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/ask": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Ask a file a question in words
+     * @description Turns a sentence such as "total revenue by region, highest first" into the same query `explore` takes, and runs it. The AI assistant is shown **only the question and each column's name and type, never a value**; the server validates the query it plans and runs it itself, and the answer is never sent back to the model. The response carries the planned query (`spec`), so it can be checked and adjusted, and the result. Counts against the plan's questions per billing period (Free 20, Basic 300, Premium 3,000): **402** once used up, pointing to `explore`, which is free. A question the assistant cannot answer from these columns is 422 with its reason, and an assistant that is switched off or does not answer is 503; neither is counted.
+     */
+    post: operations["ExploreController_ask"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/files/{id}/ask/allowance": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * How many questions are left this period
+     * @description Whether the AI assistant is available on this server (`aiAvailable`) and how many of the plan's questions the company has used this billing period. The query builder works either way.
+     */
+    get: operations["ExploreController_allowance"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/billing/current": {
     parameters: {
       query?: never;
@@ -1404,6 +1592,8 @@ export interface components {
         | "invoice.finalized"
         | "file.uploaded"
         | "file.sensitive_data_found"
+        | "dataset.changed"
+        | "dataset.schema_changed"
       )[];
     };
     CreatedWebhookEndpointDto: {
@@ -1420,6 +1610,8 @@ export interface components {
         | "invoice.finalized"
         | "file.uploaded"
         | "file.sensitive_data_found"
+        | "dataset.changed"
+        | "dataset.schema_changed"
       )[];
       active: boolean;
       consecutiveFailures: number;
@@ -1444,6 +1636,8 @@ export interface components {
         | "invoice.finalized"
         | "file.uploaded"
         | "file.sensitive_data_found"
+        | "dataset.changed"
+        | "dataset.schema_changed"
       )[];
       active: boolean;
       consecutiveFailures: number;
@@ -1477,6 +1671,8 @@ export interface components {
         | "invoice.finalized"
         | "file.uploaded"
         | "file.sensitive_data_found"
+        | "dataset.changed"
+        | "dataset.schema_changed"
       )[];
       active?: boolean;
     };
@@ -1538,6 +1734,11 @@ export interface components {
       /** @description The newest version. A default list shows only these. */
       isLatest: boolean;
       uploaderId: string;
+      /**
+       * Format: uuid
+       * @description For a version made by cleaning: the version it was cleaned from. Null for an upload.
+       */
+      derivedFromFileId: string | null;
       /** @description Who a restricted file is shared with. Shown only to the uploader and admins, and only on single-file responses; null everywhere else. */
       grantedUserIds: string[] | null;
       /** Format: date-time */
@@ -1791,6 +1992,242 @@ export interface components {
       /** @example If that account exists, an email is on its way. */
       message: string;
     };
+    CleanPreviewDto: {
+      /** @description The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, { "step": "standardise_dates", "column": "when", "order": "dmy" } ] }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`, `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`, `replace_values`, `fill_empty`, `change_case`, `rename_column`, `drop_column`, `mask_column`. A step about a column the file does not have is skipped, not refused. */
+      recipe: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description For a workbook with several sheets: the one to clean. Omit for the sheet the report covers.
+       * @example Sales
+       */
+      sheet?: string;
+    };
+    StepOutcomeDto: {
+      /** @enum {string} */
+      step:
+        | "trim_whitespace"
+        | "tidy_headers"
+        | "drop_empty_rows"
+        | "drop_duplicate_rows"
+        | "standardise_dates"
+        | "parse_numbers"
+        | "replace_values"
+        | "fill_empty"
+        | "change_case"
+        | "rename_column"
+        | "drop_column"
+        | "mask_column";
+      /** @description The step in words, e.g. "Trim spaces in Name". */
+      label: string;
+      /** @description Cells changed (or rows or columns removed, for the steps that do that). */
+      changed: number;
+      /** @description Why the step did nothing, when it did not apply. */
+      skipped: string | null;
+      /** @description Things worth saying, e.g. values that could not be read as dates. */
+      notes: string[];
+    };
+    SampleCellDto: {
+      before: string | null;
+      after: string | null;
+    };
+    SampleRowDto: {
+      /** @description The row's number in the file as uploaded, counting the header as row 1. */
+      row: number;
+      /** @description One per column of the cleaned file, in order. */
+      cells: components["schemas"]["SampleCellDto"][];
+    };
+    CleanPreviewResultDto: {
+      rowsBefore: number;
+      rowsAfter: number;
+      /** @description The columns the cleaned file would have. */
+      columns: string[];
+      /** @description What each step did, counted over the WHOLE file. */
+      steps: components["schemas"]["StepOutcomeDto"][];
+      /** @description The first rows the steps change, each cell before and after. */
+      samples: components["schemas"]["SampleRowDto"][];
+    };
+    CleanFileDto: {
+      /** @description The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, { "step": "standardise_dates", "column": "when", "order": "dmy" } ] }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`, `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`, `replace_values`, `fill_empty`, `change_case`, `rename_column`, `drop_column`, `mask_column`. A step about a column the file does not have is skipped, not refused. */
+      recipe: {
+        [key: string]: unknown;
+      };
+      /**
+       * @description For a workbook with several sheets: the one to clean. Omit for the sheet the report covers.
+       * @example Sales
+       */
+      sheet?: string;
+      /**
+       * @description Keep this recipe for the file (its dataset), so it is offered again next time.
+       * @default false
+       */
+      saveRecipe: boolean;
+      /**
+       * @description Clean every NEW version of this dataset with this recipe, keeping each upload as it arrived and adding the cleaned data after it. Needs `saveRecipe`, and a Basic or Premium plan.
+       * @default false
+       */
+      autoClean: boolean;
+    };
+    CleaningJobDto: {
+      id: string;
+      fileId: string;
+      /** @enum {string} */
+      status: "queued" | "running" | "succeeded" | "failed";
+      /**
+       * @description `auto` when a dataset's "clean every new version" setting started it.
+       * @enum {string}
+       */
+      trigger: "manual" | "auto";
+      /** @description The new version, once it exists. */
+      resultFileId: string | null;
+      errorMessage: string | null;
+      /** @description What each step did; empty until the job has run. */
+      steps: components["schemas"]["StepOutcomeDto"][];
+      rowsBefore: number | null;
+      rowsAfter: number | null;
+      /** Format: date-time */
+      createdAt: string;
+    };
+    DatasetSettingsDto: {
+      datasetId: string;
+      /** @description The columns that together identify a row, for comparing two versions row by row. */
+      keyColumns: string[];
+      /** @description The saved cleaning recipe, or null. */
+      recipe: {
+        [key: string]: unknown;
+      } | null;
+      /** @description Every new version is cleaned with the saved recipe. */
+      autoClean: boolean;
+      /** @description Whether this company's plan includes automatic cleaning. */
+      autoCleanAvailable: boolean;
+    };
+    UpdateDatasetSettingsDto: {
+      /** @description REPLACES the key columns. */
+      keyColumns?: string[];
+      /** @description The cleaning recipe to keep; `null` removes it (and switches automatic cleaning off). */
+      recipe?: {
+        [key: string]: unknown;
+      } | null;
+      /** @description Clean every new version automatically. Needs a saved recipe, and a Basic or Premium plan. */
+      autoClean?: boolean;
+    };
+    RowDiffVersionDto: {
+      /** Format: uuid */
+      fileId: string;
+      version: number;
+      originalName: string;
+    };
+    ColumnChangeCountDto: {
+      column: string;
+      changed: number;
+    };
+    RowDiffSummaryDto: {
+      keyColumns: string[];
+      rowsBefore: number;
+      rowsAfter: number;
+      added: number;
+      removed: number;
+      changed: number;
+      unchanged: number;
+      /** @description Rows with an empty key, or a key that appears more than once, in either version. They cannot be matched and are not counted above. */
+      unmatchable: number;
+      /** @description Columns in both versions, with how many rows changed in each, most first. */
+      columnsChanged: components["schemas"]["ColumnChangeCountDto"][];
+      columnsAdded: string[];
+      columnsRemoved: string[];
+    };
+    ChangedCellDto: {
+      column: string;
+      before: string | null;
+      after: string | null;
+    };
+    RowChangeDto: {
+      /** @enum {string} */
+      change: "added" | "removed" | "changed";
+      /** @description The values of the key columns, in the order of `keyColumns`. */
+      key: string[];
+      /** @description For a changed row only the cells that differ; for an added or removed row every cell. */
+      cells: components["schemas"]["ChangedCellDto"][];
+    };
+    RowDiffDto: {
+      from: components["schemas"]["RowDiffVersionDto"];
+      to: components["schemas"]["RowDiffVersionDto"];
+      /**
+       * @description `none` until a comparison has been asked for (or made automatically).
+       * @enum {string}
+       */
+      status: "queued" | "running" | "ready" | "failed" | "none";
+      /** @description The columns the comparison used or, before one is made, those saved for the dataset. */
+      keyColumns: string[];
+      /** @description Columns whose names say they identify a row, found in both versions: a suggestion to confirm. */
+      suggestedKeyColumns: string[];
+      summary: components["schemas"]["RowDiffSummaryDto"] | null;
+      /** @description The first 500 changes: rows removed, then added, then changed. All of them are in the CSV. */
+      sample: components["schemas"]["RowChangeDto"][];
+      /** @description Why a comparison could not be made. */
+      errorMessage: string | null;
+    };
+    RowDiffRequestDto: {
+      /**
+       * @description The columns that together identify a row (up to 10), so a row in one version can be matched with the same row in the other. Omit to use the ones saved for the dataset (`PUT /datasets/{datasetId}/settings`).
+       * @example [
+       *       "customer_id"
+       *     ]
+       */
+      keyColumns?: string[];
+    };
+    ExploreRequestDto: {
+      /** @description A query: `filters` (each `{ column, op, value }`; `op` is `equals`, `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy` (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes no column), an optional `sort` (`{ by: "group" | "measure", index, direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50). Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum", "column": "revenue" }], "sort": { "by": "measure", "index": 0, "direction": "desc" } }`. */
+      query: {
+        [key: string]: unknown;
+      };
+    };
+    ResultColumnDto: {
+      name: string;
+      /** @enum {string} */
+      kind: "group" | "measure";
+    };
+    QueryResultDto: {
+      /** @description The group-by columns first, then one column per measure. */
+      columns: components["schemas"]["ResultColumnDto"][];
+      /** @description One row per group (one row in all when there is no `groupBy`), cells in the order of `columns`. A measure that has nothing to work on is null. */
+      rows: ((string | number) | null)[][];
+      /** @description Rows that passed the filters. */
+      rowsMatched: number;
+      /** @description Rows in the file. */
+      rowsScanned: number;
+      /** @description How many groups there were before `limit` cut the list. */
+      groupCount: number;
+      /** @description Things worth saying, such as cells that were not numbers and were left out. */
+      notes: string[];
+    };
+    AskRequestDto: {
+      /**
+       * @description A question about the file, in words. The assistant is shown it and the column names and types, never a value.
+       * @example Total revenue by region, highest first
+       */
+      question: string;
+    };
+    AskResultDto: {
+      question: string;
+      /** @description The query the assistant planned, validated and run by the server. A query: `filters` (each `{ column, op, value }`; `op` is `equals`, `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy` (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes no column), an optional `sort` (`{ by: "group" | "measure", index, direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50). Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum", "column": "revenue" }], "sort": { "by": "measure", "index": 0, "direction": "desc" } }`. */
+      spec: {
+        [key: string]: unknown;
+      };
+      result: components["schemas"]["QueryResultDto"];
+      /** @description The model that planned the query. */
+      model: string | null;
+      /** @description Questions answered so far this billing period, this one included. */
+      questionsUsed: number;
+      /** @description Questions the plan answers a billing period. */
+      questionsLimit: number;
+    };
+    AllowanceDto: {
+      /** @description False when the AI assistant is switched off on this server: the query builder still works. */
+      aiAvailable: boolean;
+      questionsUsed: number;
+      questionsLimit: number;
+    };
     BillingPeriodDto: {
       /**
        * Format: date-time
@@ -1905,6 +2342,9 @@ export interface components {
         | "rules.failed"
         | "file.sensitive_data"
         | "dataset.schema_changed"
+        | "file.cleaned"
+        | "cleaning.failed"
+        | "dataset.changed"
         | "file.shared"
         | "invoice.finalized"
         | "comment.mentioned";
@@ -1951,8 +2391,10 @@ export interface components {
       rateLimitPerMinute: number;
       /** @description Data-quality rules the company may keep, enabled or not; null = unlimited. */
       maxQualityRules: number | null;
-      /** @description Versions one file may hold (each version still counts toward the file quota); null = unlimited. */
+      /** @description Versions one file may hold (an uploaded version counts toward the file quota, a cleaned one does not); null = unlimited. */
       maxVersionsPerDataset: number | null;
+      /** @description Plain-language questions the AI assistant may answer about your files per billing period. The query builder is not counted. */
+      questionsPerPeriod: number;
     };
     PeriodDto: {
       /**
@@ -2515,6 +2957,8 @@ export interface components {
         | "file.uploaded"
         | "file.access_changed"
         | "file.deleted"
+        | "file.cleaned"
+        | "dataset.settings_updated"
         | "comment.created"
         | "comment.updated"
         | "comment.deleted"
@@ -2579,6 +3023,8 @@ export interface components {
         | "file.uploaded"
         | "file.access_changed"
         | "file.deleted"
+        | "file.cleaned"
+        | "dataset.settings_updated"
         | "comment.created"
         | "comment.updated"
         | "comment.deleted"
@@ -3203,6 +3649,266 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["PreviewDto"];
+        };
+      };
+    };
+  };
+  CleaningController_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CleanPreviewDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CleanPreviewResultDto"];
+        };
+      };
+    };
+  };
+  CleaningController_clean: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CleanFileDto"];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CleaningJobDto"];
+        };
+      };
+    };
+  };
+  CleaningController_job: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CleaningJobDto"];
+        };
+      };
+    };
+  };
+  CleaningController_settings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        datasetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetSettingsDto"];
+        };
+      };
+    };
+  };
+  CleaningController_saveSettings: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        datasetId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateDatasetSettingsDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatasetSettingsDto"];
+        };
+      };
+    };
+  };
+  RowDiffController_view: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        otherId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RowDiffDto"];
+        };
+      };
+    };
+  };
+  RowDiffController_start: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        otherId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["RowDiffRequestDto"];
+      };
+    };
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RowDiffDto"];
+        };
+      };
+    };
+  };
+  RowDiffController_csv: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+        otherId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Every change as a CSV file. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/csv": string;
+        };
+      };
+    };
+  };
+  ExploreController_run: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ExploreRequestDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["QueryResultDto"];
+        };
+      };
+    };
+  };
+  ExploreController_ask: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["AskRequestDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AskResultDto"];
+        };
+      };
+    };
+  };
+  ExploreController_allowance: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AllowanceDto"];
         };
       };
     };
@@ -4465,6 +5171,8 @@ export interface operations {
           | "file.uploaded"
           | "file.access_changed"
           | "file.deleted"
+          | "file.cleaned"
+          | "dataset.settings_updated"
           | "comment.created"
           | "comment.updated"
           | "comment.deleted"

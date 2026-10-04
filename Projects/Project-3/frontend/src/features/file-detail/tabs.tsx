@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 export const TABS = [
   { id: "report", label: "Report" },
   { id: "preview", label: "Preview" },
+  { id: "explore", label: "Explore" },
   { id: "versions", label: "Versions" },
   { id: "comments", label: "Comments" },
 ] as const;
