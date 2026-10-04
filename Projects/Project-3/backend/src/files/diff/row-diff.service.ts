@@ -9,6 +9,7 @@ import { DataSource, type EntityManager } from 'typeorm';
 import { z } from 'zod';
 import { StorageService } from '#/core/storage/storage.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
+import { AuditService } from '#/core/audit/audit.service.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { DataQualityReport } from '../data-quality-report.entity.js';
@@ -18,7 +19,8 @@ import { FilesService } from '../files.service.js';
 import { UnreadableFileError, type ParsedSheet, readSpreadsheet } from '../parsing/spreadsheet-reader.js';
 import { PROFILE_LIMITS, metricsSchema } from '../quality/metrics.js';
 import { SPREADSHEET_MIME_TYPES, type SpreadsheetMime } from '../spreadsheet-types.js';
-import { type DiffSummary, type RowChangeEntry, checkKeys, diffRows, suggestKeyColumns } from './row-diff.js';
+import { SheetCache } from '../explore/sheet-cache.js';
+import { type DiffSummary, type RowChangeEntry, checkKeys, diffRows, suggestKeyColumns, suggestKeysFromData } from './row-diff.js';
 import { VersionDiff } from './version-diff.entity.js';
 
 const summarySchema = z.object({
@@ -70,6 +72,8 @@ export class RowDiffService {
     private readonly queue: TaskQueue,
     private readonly notifications: NotificationsService,
     private readonly webhooks: WebhookPublisher,
+    private readonly cache: SheetCache,
+    private readonly audit: AuditService,
   ) {}
 
   /** The two versions, oldest first, once the caller is known to see both and they are of one dataset. */
@@ -93,6 +97,16 @@ export class RowDiffService {
     return metrics?.success ? metrics.data.columns.map((column) => column.name) : [];
   }
 
+  /** Before a comparison exists: the column that is filled in and never repeated in both versions; failing that, one whose name says it is a key. */
+  private async suggest(from: FileAsset, to: FileAsset): Promise<string[]> {
+    try {
+      return suggestKeysFromData(await this.read(from), await this.read(to));
+    } catch (error) {
+      if (error instanceof HttpException) return suggestKeyColumns(await this.columnNames(from), await this.columnNames(to));
+      throw error;
+    }
+  }
+
   /** What is known about the comparison of these two versions: nothing yet (`none`), under way, done, or why it could not be. */
   async view(aId: string, bId: string): Promise<RowDiffView> {
     const { from, to } = await this.pair(aId, bId);
@@ -104,7 +118,7 @@ export class RowDiffService {
       to: { fileId: to.id, version: to.version, originalName: to.originalName },
       status: row?.status ?? 'none',
       keyColumns: row?.keyColumns ?? (await this.savedKeys(from)),
-      suggestedKeyColumns: suggestKeyColumns(await this.columnNames(from), await this.columnNames(to)),
+      suggestedKeyColumns: row ? [] : await this.suggest(from, to),
       summary: summary?.success ? summary.data : null,
       sample: sample?.success ? sample.data : [],
       errorMessage: row?.errorMessage ?? null,
@@ -122,7 +136,17 @@ export class RowDiffService {
     if (existing && (existing.status === 'queued' || existing.status === 'running')) {
       throw new ConflictException('This comparison is already being made. Try again in a moment.');
     }
-    await this.dataSource.transaction((manager) => this.enqueue(manager, from, to, keyColumns, 'manual'));
+    await this.dataSource.transaction(async (manager) => {
+      await this.enqueue(manager, from, to, keyColumns, 'manual');
+      await this.audit.record(
+        {
+          action: 'file.diff_requested',
+          target: { type: 'file', id: to.id },
+          metadata: { datasetId: to.datasetId, fromFileId: from.id, fromVersion: from.version, toVersion: to.version, keyColumns },
+        },
+        manager,
+      );
+    });
     return this.view(from.id, to.id);
   }
 
@@ -170,6 +194,8 @@ export class RowDiffService {
     const report = await this.dataSource.getRepository(DataQualityReport).findOne({ where: { fileId: file.id, companyId: file.companyId } });
     const parsedMetrics = report?.metrics ? metricsSchema.safeParse(report.metrics) : null;
     const sheet = parsedMetrics?.success ? (parsedMetrics.data.sheet?.name ?? undefined) : undefined;
+    const cached = this.cache.get(file.id, sheet);
+    if (cached) return cached;
     let parsed: ParsedSheet;
     try {
       parsed = await readSpreadsheet(await this.storage.get(file.storageKey), mime, PROFILE_LIMITS, sheet === undefined ? {} : { sheet });
@@ -178,6 +204,7 @@ export class RowDiffService {
       throw error;
     }
     if (parsed.truncated || parsed.columnCount > PROFILE_LIMITS.maxColumns) throw new UnprocessableEntityException(TOO_BIG);
+    this.cache.set(file.id, sheet, parsed);
     return parsed;
   }
 

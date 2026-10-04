@@ -2395,6 +2395,8 @@ export interface components {
       maxVersionsPerDataset: number | null;
       /** @description Plain-language questions the AI assistant may answer about your files per billing period. The query builder is not counted. */
       questionsPerPeriod: number;
+      /** @description Whether every new version of a file can be cleaned automatically with its saved recipe. Cleaning by hand is on every plan. */
+      autoClean: boolean;
     };
     PeriodDto: {
       /**
@@ -2958,6 +2960,7 @@ export interface components {
         | "file.access_changed"
         | "file.deleted"
         | "file.cleaned"
+        | "file.diff_requested"
         | "dataset.settings_updated"
         | "comment.created"
         | "comment.updated"
@@ -3024,6 +3027,7 @@ export interface components {
         | "file.access_changed"
         | "file.deleted"
         | "file.cleaned"
+        | "file.diff_requested"
         | "dataset.settings_updated"
         | "comment.created"
         | "comment.updated"
@@ -3681,7 +3685,10 @@ export interface operations {
   CleaningController_clean: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        /** @description A UUID. A retry with the same key and the same recipe replays the first response instead of starting a second cleaning. */
+        "Idempotency-Key"?: string;
+      };
       path: {
         id: string;
       };
@@ -5172,6 +5179,7 @@ export interface operations {
           | "file.access_changed"
           | "file.deleted"
           | "file.cleaned"
+          | "file.diff_requested"
           | "dataset.settings_updated"
           | "comment.created"
           | "comment.updated"

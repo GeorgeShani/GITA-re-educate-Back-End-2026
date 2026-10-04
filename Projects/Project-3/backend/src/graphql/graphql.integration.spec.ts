@@ -1,3 +1,4 @@
+import { DEMO_FILES } from '#/demo/demo-data.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { GraphQLSchemaHost } from '@nestjs/graphql';
@@ -161,7 +162,7 @@ describe('GraphQL analytics (integration)', () => {
       const demo = h.parseSession((await h.http().post('/auth/demo').expect(200)).body);
       const response = await gql(demo.accessToken, '{ usage { storage { liveFiles } } }');
       expect(response.errors).toBeUndefined();
-      expect(response.data).toEqual({ usage: { storage: { liveFiles: 6 } } });
+      expect(response.data).toEqual({ usage: { storage: { liveFiles: DEMO_FILES.length } } });
     });
   });
 

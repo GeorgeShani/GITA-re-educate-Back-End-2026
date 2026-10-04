@@ -47,6 +47,7 @@ export const AUDIT_ACTIONS = [
   'file.access_changed',
   'file.deleted',
   'file.cleaned',
+  'file.diff_requested',
   'dataset.settings_updated',
   'comment.created',
   'comment.updated',

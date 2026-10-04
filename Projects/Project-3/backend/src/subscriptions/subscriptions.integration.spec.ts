@@ -41,9 +41,9 @@ describe('plans and subscriptions (integration)', () => {
       const response = await h.http().get('/subscriptions/plans').expect(200);
 
       expect(response.body).toEqual([
-        { plan: 'free', maxEmployees: 0, maxSeats: 1, filesPerPeriod: 10, seatPriceCents: 0, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 30, maxQualityRules: 3, maxVersionsPerDataset: 5, questionsPerPeriod: 20 },
-        { plan: 'basic', maxEmployees: 10, maxSeats: 11, filesPerPeriod: 100, seatPriceCents: 500, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 120, maxQualityRules: 25, maxVersionsPerDataset: 50, questionsPerPeriod: 300 },
-        { plan: 'premium', maxEmployees: null, maxSeats: null, filesPerPeriod: 1000, seatPriceCents: 0, basePriceCents: 30_000, overagePerFileCents: 50, rateLimitPerMinute: 600, maxQualityRules: null, maxVersionsPerDataset: null, questionsPerPeriod: 3000 },
+        { plan: 'free', maxEmployees: 0, maxSeats: 1, filesPerPeriod: 10, seatPriceCents: 0, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 30, maxQualityRules: 3, maxVersionsPerDataset: 5, questionsPerPeriod: 20, autoClean: false },
+        { plan: 'basic', maxEmployees: 10, maxSeats: 11, filesPerPeriod: 100, seatPriceCents: 500, basePriceCents: 0, overagePerFileCents: null, rateLimitPerMinute: 120, maxQualityRules: 25, maxVersionsPerDataset: 50, questionsPerPeriod: 300, autoClean: true },
+        { plan: 'premium', maxEmployees: null, maxSeats: null, filesPerPeriod: 1000, seatPriceCents: 0, basePriceCents: 30_000, overagePerFileCents: 50, rateLimitPerMinute: 600, maxQualityRules: null, maxVersionsPerDataset: null, questionsPerPeriod: 3000, autoClean: true },
       ]);
     });
   });

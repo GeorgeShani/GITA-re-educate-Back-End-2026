@@ -820,6 +820,14 @@ paths:
           in: path
           schema:
             type: string
+        - name: Idempotency-Key
+          in: header
+          description: >-
+            A UUID. A retry with the same key and the same recipe replays the
+            first response instead of starting a second cleaning.
+          required: false
+          schema:
+            type: string
       requestBody:
         required: true
         content:
@@ -2765,6 +2773,7 @@ paths:
               - file.access_changed
               - file.deleted
               - file.cleaned
+              - file.diff_requested
               - dataset.settings_updated
               - comment.created
               - comment.updated
@@ -4812,6 +4821,11 @@ components:
           description: >-
             Plain-language questions the AI assistant may answer about your
             files per billing period. The query builder is not counted.
+        autoClean:
+          type: boolean
+          description: >-
+            Whether every new version of a file can be cleaned automatically
+            with its saved recipe. Cleaning by hand is on every plan.
       required:
         - plan
         - maxEmployees
@@ -4824,6 +4838,7 @@ components:
         - maxQualityRules
         - maxVersionsPerDataset
         - questionsPerPeriod
+        - autoClean
     PeriodDto:
       type: object
       properties:
@@ -5900,6 +5915,7 @@ components:
             - file.access_changed
             - file.deleted
             - file.cleaned
+            - file.diff_requested
             - dataset.settings_updated
             - comment.created
             - comment.updated

@@ -21,6 +21,10 @@ const ROWS: Row[] = [
     value: (plan) => limit(plan.maxVersionsPerDataset),
   },
   {
+    label: "Clean every new version automatically",
+    value: (plan) => (plan.autoClean ? "Yes" : "No"),
+  },
+  {
     label: "Questions to the AI assistant a billing period",
     value: (plan) => plan.questionsPerPeriod.toLocaleString("en-US"),
   },

@@ -13,6 +13,9 @@ import { Company } from '#/database/entities/company.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
 import { User } from '#/database/entities/user.entity.js';
 import { DemoSeedService } from './demo-seed.service.js';
+import { DatasetSettings } from '#/files/dataset-settings.entity.js';
+import { VersionDiff } from '#/files/diff/version-diff.entity.js';
+import { UsageEvent } from '#/billing/usage-event.entity.js';
 import { DEMO_ADMIN, DEMO_COMPANY, DEMO_EMPLOYEES, DEMO_FILES } from './demo-data.js';
 import { DEMO_READ_ONLY_MESSAGE } from './demo-read-only.guard.js';
 
@@ -62,6 +65,17 @@ describe('demo mode (integration)', () => {
       expect(files).toHaveLength(DEMO_FILES.length);
       // The bytes are really in storage, so downloads work.
       for (const file of files) expect((await h.storage.get(file.storageKey)).length).toBe(file.sizeBytes);
+
+      // Versions: one is cleaned from another (and is not an upload), one has a saved key and a row-by-row comparison.
+      const cleaned = files.find((file) => file.derivedFromFileId !== null);
+      expect(cleaned?.originalName).toBe('customer-export (cleaned).csv');
+      expect(cleaned).toMatchObject({ version: 2, isLatest: true });
+      expect(files.filter((file) => file.isLatest)).toHaveLength(DEMO_FILES.filter((file) => file.versionOf === undefined).length);
+      expect(await h.dataSource.getRepository(UsageEvent).count({ where: { companyId: company.id } })).toBe(DEMO_FILES.length - 1);
+      const diff = await h.dataSource.getRepository(VersionDiff).findOneByOrFail({ companyId: company.id });
+      expect(diff).toMatchObject({ status: 'ready', keyColumns: ['sku'], trigger: 'auto' });
+      expect(diff.summary).toMatchObject({ added: 3, removed: 2 });
+      expect(await h.dataSource.getRepository(DatasetSettings).count({ where: { companyId: company.id } })).toBe(1);
 
       const invoices = await h.dataSource.getRepository(Invoice).find({ where: { companyId: company.id } });
       expect(invoices).toHaveLength(1);
@@ -129,7 +143,8 @@ describe('demo mode (integration)', () => {
       const auth = h.bearer(session);
 
       const files = await h.http().get('/files').set(...auth).expect(200);
-      expect(files.body.data).toHaveLength(DEMO_FILES.length);
+      // A list shows each dataset once, as its newest version.
+      expect(files.body.data).toHaveLength(DEMO_FILES.filter((file) => file.versionOf === undefined).length);
 
       const first = files.body.data[0];
       const report = await h.http().get(`/files/${first.id}/report`).set(...auth).expect(200);

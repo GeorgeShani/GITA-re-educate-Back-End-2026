@@ -48,6 +48,20 @@ describe('plan-tiered rate limiting (integration)', () => {
   }
   const call = (key: string) => h.http().get('/subscriptions/me').set('Authorization', `Bearer ${key}`);
 
+  describe('asking a file a question', () => {
+    it('has a small budget of its own: the eleventh question in a minute is refused, while the rest of the API still answers', async () => {
+      const { session } = await company('premium');
+      const key = (await h.createApiKey(session, { scopes: ['files:read'] })).key;
+      const ask = () => h.http().post('/files/00000000-0000-4000-8000-000000000000/ask').set('Authorization', `Bearer ${key}`).send({ question: 'How many rows?' });
+
+      const statuses: number[] = [];
+      for (let index = 0; index < 11; index += 1) statuses.push((await ask()).status);
+      expect(statuses.slice(0, 10).every((status) => status !== 429)).toBe(true);
+      expect(statuses[10]).toBe(429);
+      expect((await call(key)).status).not.toBe(429);
+    });
+  });
+
   describe('API keys: per company, at the plan’s limit', () => {
     it('a Free company is throttled at 30 requests a minute; a Premium one is not', async () => {
       const free = await keyFor((await company('free')).session);

@@ -31,6 +31,10 @@ export interface DemoFile {
   daysAgo: number;
   /** Restricted files are visible to the uploader, the admin and the listed employee indexes. */
   restrictedTo?: readonly number[];
+  /** An index into `DEMO_FILES`: this file is the NEXT VERSION of that file's dataset, not a dataset of its own. */
+  versionOf?: number;
+  /** Make this version by cleaning the file it is a version of with this recipe (its `csv` is then ignored). */
+  clean?: { steps: readonly Record<string, unknown>[] };
 }
 
 const REGIONS = ['North', 'South', 'East', 'West'] as const;
@@ -65,6 +69,17 @@ function inventory(): string {
   return `${rows.join('\n')}\n`;
 }
 
+/** The next snapshot of the inventory: some counts moved, two SKUs gone, three new. */
+function inventoryNext(): string {
+  const rows = ['sku,warehouse,on_hand,reorder_level'];
+  for (let index = 1; index <= 53; index += 1) {
+    if (index === 7 || index === 31) continue;
+    const moved = index % 5 === 0 ? 25 : 0;
+    rows.push(`SKU-${String(index).padStart(4, '0')},WH-${(index % 3) + 1},${((index * 13) % 400) + moved},${20 + (index % 5) * 10}`);
+  }
+  return `${rows.join('\n')}\n`;
+}
+
 function payroll(): string {
   const rows = ['employee,department,monthly_salary'];
   for (let index = 1; index <= 20; index += 1) {
@@ -80,7 +95,28 @@ export const DEMO_FILES: readonly DemoFile[] = [
   // This period.
   { name: 'sales-february.csv', csv: sales(), uploader: 0, daysAgo: 6 },
   { name: 'customer-export.csv', csv: customers(), uploader: 1, daysAgo: 4 },
-  { name: 'warehouse-levels.csv', csv: inventory(), uploader: 2, daysAgo: 2 },
+  // The next version of the inventory snapshot: its dataset has a saved key, so Gridline compared it row by row.
+  { name: 'warehouse-levels.csv', csv: inventoryNext(), uploader: 2, daysAgo: 2, versionOf: 1 },
   // Restricted: only the admin, its uploader and Luka (index 1) can see it.
   { name: 'payroll-draft.csv', csv: payroll(), uploader: 'admin', daysAgo: 1, restrictedTo: [1] },
+  // A cleaned version of the customer export: duplicates dropped, placeholders emptied, emails hidden.
+  {
+    name: 'customer-export (cleaned).csv',
+    csv: '',
+    uploader: 1,
+    daysAgo: 3,
+    versionOf: 3,
+    clean: {
+      steps: [
+        { step: 'drop_duplicate_rows' },
+        { step: 'replace_values', column: 'age', values: ['n/a'] },
+        { step: 'mask_column', column: 'email', mode: 'last4' },
+      ],
+    },
+  },
+];
+
+/** What the demo company has remembered about its datasets, by the index of the dataset's first file in `DEMO_FILES`. */
+export const DEMO_DATASET_SETTINGS: ReadonlyArray<{ firstFile: number; keyColumns: readonly string[] }> = [
+  { firstFile: 1, keyColumns: ['sku'] },
 ];

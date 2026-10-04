@@ -1,7 +1,8 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put } from '@nestjs/common';
-import { ApiAcceptedResponse, ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Put, UseInterceptors } from '@nestjs/common';
+import { ApiAcceptedResponse, ApiBearerAuth, ApiHeader, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
+import { IdempotencyInterceptor } from '#/core/idempotency/idempotency.interceptor.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { DemoWritesCheckedByHandler } from '#/demo/demo-writes-checked.decorator.js';
 import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
@@ -40,6 +41,12 @@ export class CleaningController {
   }
 
   @Post('files/:id/clean')
+  @UseInterceptors(IdempotencyInterceptor)
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'A UUID. A retry with the same key and the same recipe replays the first response instead of starting a second cleaning.',
+  })
   @HttpCode(202)
   @ApiAcceptedResponse({ type: CleaningJobDto })
   async clean(@Param('id', ParseUUIDPipe) id: string, @Body() body: CleanFileDto): Promise<CleaningJobDto> {

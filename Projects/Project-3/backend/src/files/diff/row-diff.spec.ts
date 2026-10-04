@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ParsedSheet } from '../parsing/spreadsheet-reader.js';
 import type { CellValue } from '../quality/metrics.js';
-import { SAMPLE_SIZE, checkKeys, diffRows, suggestKeyColumns } from './row-diff.js';
+import { SAMPLE_SIZE, checkKeys, diffRows, suggestKeyColumns, suggestKeysFromData } from './row-diff.js';
 
 function sheet(header: string[], rows: CellValue[][]): ParsedSheet {
   return { header, rows, truncated: false, columnCount: header.length, sheet: null };
@@ -103,5 +103,22 @@ describe('suggestKeyColumns', () => {
     expect(suggestKeyColumns(['name', 'Customer ID'], ['Customer ID', 'name'])).toEqual(['Customer ID']);
     expect(suggestKeyColumns(['name', 'city'], ['name', 'city'])).toEqual([]);
     expect(suggestKeyColumns(['sku'], ['name'])).toEqual([]);
+  });
+});
+
+describe('suggestKeysFromData', () => {
+  it('offers the column that is filled in and never repeated in both versions, preferring one named like a key', () => {
+    const before = sheet(['city', 'code', 'name'], [['A', 'x1', 'Ana'], ['B', 'x2', 'Ben'], ['A', 'x3', 'Cleo']]);
+    const after = sheet(['city', 'code', 'name'], [['A', 'x1', 'Ana'], ['C', 'x2', 'Dan']]);
+    // city repeats in one version; code and name are unique in both; "code" is named like a key.
+    expect(suggestKeysFromData(before, after)).toEqual(['code']);
+  });
+
+  it('refuses a column with a gap or a repeat in either version, and says nothing when none fits', () => {
+    const before = sheet(['a'], [['1'], ['2']]);
+    expect(suggestKeysFromData(before, sheet(['a'], [['1'], ['']]))).toEqual([]);
+    expect(suggestKeysFromData(before, sheet(['a'], [['1'], ['1']]))).toEqual([]);
+    expect(suggestKeysFromData(before, sheet(['b'], [['1']]))).toEqual([]);
+    expect(suggestKeysFromData(sheet(['a'], []), sheet(['a'], []))).toEqual([]);
   });
 });

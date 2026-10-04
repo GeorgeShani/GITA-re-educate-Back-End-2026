@@ -61,6 +61,10 @@ export class PlanDto {
   @Expose()
   questionsPerPeriod!: number;
 
+  @ApiProperty({ description: 'Whether every new version of a file can be cleaned automatically with its saved recipe. Cleaning by hand is on every plan.' })
+  @Expose()
+  autoClean!: boolean;
+
   static from(plan: Plan): PlanDto {
     return toDto(PlanDto, { plan, maxSeats: maxSeats(plan), ...PLAN_CATALOG[plan] });
   }

@@ -15,6 +15,7 @@ describe('PLAN_CATALOG', () => {
       maxVersionsPerDataset: 5,
       maxWebhookEndpoints: 1,
       questionsPerPeriod: 20,
+      autoClean: false,
     });
   });
 

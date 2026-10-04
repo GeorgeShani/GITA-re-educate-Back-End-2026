@@ -19,7 +19,7 @@ import { StorageService } from '#/core/storage/storage.service.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
-import type { Plan } from '#/subscriptions/plan-catalog.js';
+import { PLAN_CATALOG, type Plan } from '#/subscriptions/plan-catalog.js';
 import { DataQualityReport } from '../data-quality-report.entity.js';
 import { DatasetSettings } from '../dataset-settings.entity.js';
 import { FileAsset } from '../file-asset.entity.js';
@@ -27,7 +27,6 @@ import { FilesService } from '../files.service.js';
 import { UnreadableFileError, type ParsedSheet, readSpreadsheet } from '../parsing/spreadsheet-reader.js';
 import { PROFILE_LIMITS, metricsSchema } from '../quality/metrics.js';
 import { type SpreadsheetMime, SPREADSHEET_MIME_TYPES, XLS_MIME } from '../spreadsheet-types.js';
-import { AUTO_CLEAN_PLANS } from './auto-clean-plans.js';
 import { CleaningJob } from './cleaning-job.entity.js';
 import type {
   CleanFileDto,
@@ -168,7 +167,7 @@ export class CleaningService {
     if (wantsAuto && dto.saveRecipe !== true) {
       throw new BadRequestException('`autoClean` needs `saveRecipe`: there has to be a saved recipe to apply.');
     }
-    if (wantsAuto && !AUTO_CLEAN_PLANS.includes(plan)) throw new HttpException(AUTO_CLEAN_REFUSAL, HttpStatus.PAYMENT_REQUIRED);
+    if (wantsAuto && !PLAN_CATALOG[plan].autoClean) throw new HttpException(AUTO_CLEAN_REFUSAL, HttpStatus.PAYMENT_REQUIRED);
 
     const actorUserId = this.context.userId;
     if (!actorUserId) throw new BadRequestException('A signed-in person is needed.');
@@ -330,7 +329,7 @@ export class CleaningService {
       keyColumns: row?.keyColumns ?? [],
       recipe: recipe?.success ? recipe.data : null,
       autoClean: row?.autoClean ?? false,
-      autoCleanAvailable: plan !== null && AUTO_CLEAN_PLANS.includes(plan),
+      autoCleanAvailable: plan !== null && PLAN_CATALOG[plan].autoClean,
     };
   }
 
@@ -359,7 +358,7 @@ export class CleaningService {
     const autoClean = recipe === null ? false : dto.autoClean;
     if (autoClean === true) {
       if (!hasRecipe) throw new BadRequestException('Save a `recipe` first: automatic cleaning applies it.');
-      if (plan === null || !AUTO_CLEAN_PLANS.includes(plan)) throw new HttpException(AUTO_CLEAN_REFUSAL, HttpStatus.PAYMENT_REQUIRED);
+      if (plan === null || !PLAN_CATALOG[plan].autoClean) throw new HttpException(AUTO_CLEAN_REFUSAL, HttpStatus.PAYMENT_REQUIRED);
     }
     const saved = await this.dataSource.transaction((manager) =>
       this.upsertSettings(manager, file, actorUserId, {

@@ -1941,6 +1941,11 @@ components:
           description: >-
             Plain-language questions the AI assistant may answer about your
             files per billing period. The query builder is not counted.
+        autoClean:
+          type: boolean
+          description: >-
+            Whether every new version of a file can be cleaned automatically
+            with its saved recipe. Cleaning by hand is on every plan.
       required:
         - plan
         - maxEmployees
@@ -1953,6 +1958,7 @@ components:
         - maxQualityRules
         - maxVersionsPerDataset
         - questionsPerPeriod
+        - autoClean
     PeriodDto:
       type: object
       properties:
@@ -3029,6 +3035,7 @@ components:
             - file.access_changed
             - file.deleted
             - file.cleaned
+            - file.diff_requested
             - dataset.settings_updated
             - comment.created
             - comment.updated

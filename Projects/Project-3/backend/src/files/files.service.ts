@@ -50,7 +50,6 @@ import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { FilesQueryDto } from './dto/files-query.dto.js';
 import type { UpdateFileDto } from './dto/update-file.dto.js';
 import type { UploadFileDto } from './dto/upload-file.dto.js';
-import { AUTO_CLEAN_PLANS } from './cleaning/auto-clean-plans.js';
 import { CleaningJob } from './cleaning/cleaning-job.entity.js';
 import { recipeSchema } from './cleaning/recipe.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
@@ -444,7 +443,7 @@ export class FilesService {
     plan: Plan,
     uploaderId: string,
   ): Promise<void> {
-    if (!AUTO_CLEAN_PLANS.includes(plan)) return;
+    if (!PLAN_CATALOG[plan].autoClean) return;
     const settings = await manager.findOne(DatasetSettings, {
       where: { companyId: version.companyId, datasetId: version.datasetId },
     });

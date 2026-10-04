@@ -150,6 +150,19 @@ describe('cleaning a file (integration)', () => {
   // ---- making the new version ----------------------------------------------------
 
   describe('POST /files/:id/clean', () => {
+    it('with an Idempotency-Key, a retry replays the first answer and starts one cleaning, not two', async () => {
+      const { session } = await company();
+      const file = await profiled(session);
+      const key = '6f1e0c52-6a5e-4a52-8a7d-3b6b0b8d2f10';
+      const send = () => h.http().post(`/files/${file.id}/clean`).set(...h.bearer(session)).set('Idempotency-Key', key).send({ recipe: RECIPE });
+
+      const first = jobSchema.parse((await send().expect(202)).body);
+      const second = jobSchema.parse((await send().expect(202)).body);
+      expect(second.id).toBe(first.id);
+      await h.drainTasks();
+      expect(await h.dataSource.getRepository(FileAsset).count({ where: { datasetId: file.datasetId } })).toBe(2);
+    });
+
     it('writes the cleaned data as the next version, keeps the original, and spends no file quota', async () => {
       const { session } = await company();
       const file = await profiled(session);

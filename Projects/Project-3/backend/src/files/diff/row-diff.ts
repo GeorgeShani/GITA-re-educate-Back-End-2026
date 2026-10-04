@@ -217,3 +217,32 @@ export function suggestKeyColumns(before: readonly string[], after: readonly str
   if (exactId) return [exactId];
   return candidates.slice(0, 1);
 }
+
+/** Whether a column has a value in every row and no value twice: what a key must be (case and spaces ignored). */
+function identifiesRows(sheet: ParsedSheet, at: number): boolean {
+  if (sheet.rows.length === 0) return false;
+  const seen = new Set<string>();
+  for (const row of sheet.rows) {
+    const value = text(row[at]).toLowerCase();
+    if (value === '' || seen.has(value)) return false;
+    seen.add(value);
+  }
+  return true;
+}
+
+/**
+ * The column that identifies a row in BOTH versions: filled in every row and never repeated. A column whose name says it is a key
+ * wins over one that merely happens to be unique; none at all is an honest answer. The person confirms either way.
+ */
+export function suggestKeysFromData(before: ParsedSheet, after: ParsedSheet): string[] {
+  const left = names(before);
+  const right = names(after);
+  const rightAt = new Map(right.map((name, index) => [norm(name), index] as const));
+  const unique = left.flatMap((name, index) => {
+    const other = rightAt.get(norm(name));
+    return other !== undefined && identifiesRows(before, index) && identifiesRows(after, other) ? [name] : [];
+  });
+  const named = unique.find((name) => /^(id|uuid|guid)$/i.test(name.trim())) ?? unique.find((name) => KEY_NAME.test(name.trim()));
+  const pick = named ?? unique[0];
+  return pick === undefined ? [] : [pick];
+}

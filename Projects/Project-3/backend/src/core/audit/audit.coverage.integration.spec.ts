@@ -240,6 +240,15 @@ describe('audit coverage (integration)', () => {
       .send({ recipe: { steps: [{ step: 'trim_whitespace' }] } })
       .expect(202);
     await h.drainTasks();
+    // Comparing the rows of the version cleaning made with the one it came from.
+    const versions = await h.http().get(`/files/${uploaded.body.id}/versions`).set(...h.bearer(session)).expect(200);
+    const cleanedId = z.object({ data: z.array(z.object({ id: z.uuid(), version: z.number() })) }).parse(versions.body).data.find((version) => version.version === 2)?.id;
+    await h
+      .http()
+      .post(`/files/${uploaded.body.id}/compare/${cleanedId}/rows`)
+      .set(...h.bearer(session))
+      .send({ keyColumns: ['id'] })
+      .expect(202);
     await h
       .http()
       .put(`/datasets/${uploaded.body.datasetId}/settings`)

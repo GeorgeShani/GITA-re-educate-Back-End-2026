@@ -32,6 +32,8 @@ export interface PlanRules {
   maxWebhookEndpoints: number | null;
   /** Plain-language questions the AI assistant may answer about a company's files in a billing period. The query builder is not counted. */
   questionsPerPeriod: number;
+  /** Whether a dataset may have every new version cleaned automatically with its saved recipe. Cleaning by hand is on every plan. */
+  autoClean: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxVersionsPerDataset: 5,
     maxWebhookEndpoints: 1,
     questionsPerPeriod: 20,
+    autoClean: false,
   },
   basic: {
     maxEmployees: 10,
@@ -64,6 +67,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxVersionsPerDataset: 50,
     maxWebhookEndpoints: 5,
     questionsPerPeriod: 300,
+    autoClean: true,
   },
   premium: {
     maxEmployees: null,
@@ -76,6 +80,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxVersionsPerDataset: null,
     maxWebhookEndpoints: null,
     questionsPerPeriod: 3000,
+    autoClean: true,
   },
 };
 

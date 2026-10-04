@@ -63,6 +63,10 @@ export const ACTIONS: Record<AuditAction, { label: string; group: string }> = {
   "file.access_changed": { label: "File access changed", group: "Files" },
   "file.deleted": { label: "File deleted", group: "Files" },
   "file.cleaned": { label: "File cleaned", group: "Files" },
+  "file.diff_requested": {
+    label: "Rows of two versions compared",
+    group: "Files",
+  },
   "dataset.settings_updated": {
     label: "File settings saved",
     group: "Files",

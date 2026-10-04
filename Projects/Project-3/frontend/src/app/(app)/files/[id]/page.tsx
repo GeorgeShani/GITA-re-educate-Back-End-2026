@@ -82,6 +82,10 @@ export default async function Page({
   );
   const latest =
     versions.data?.data.find((version) => version.isLatest) ?? null;
+  const sourceVersion =
+    versions.data?.data.find(
+      (version) => version.id === file.data.derivedFromFileId,
+    ) ?? null;
 
   const [preview, comments, allowance] = await Promise.all([
     tab === "preview"
@@ -113,6 +117,27 @@ export default async function Page({
         meId={session.user.id}
         people={people}
       />
+
+      {file.data.derivedFromFileId ? (
+        <p role="note" className="text-sm text-text-muted">
+          Cleaned from{" "}
+          <Link
+            href={`/files/${file.data.derivedFromFileId}`}
+            className="font-semibold text-text underline underline-offset-2"
+          >
+            {sourceVersion
+              ? `version ${sourceVersion.version}`
+              : "the version before it"}
+          </Link>
+          .{" "}
+          <Link
+            href={`/files/${file.data.derivedFromFileId}/compare/${file.data.id}`}
+            className="font-semibold text-text underline underline-offset-2"
+          >
+            See what changed
+          </Link>
+        </p>
+      ) : null}
 
       {file.data.isLatest || !latest ? null : (
         <p

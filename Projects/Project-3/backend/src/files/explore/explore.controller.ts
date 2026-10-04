@@ -4,6 +4,7 @@ import { RequireScopes } from '#/common/auth/require-scopes.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
 import { toDto } from '#/common/response/to-dto.js';
 import { DemoWritesCheckedByHandler } from '#/demo/demo-writes-checked.decorator.js';
+import { StrictThrottle } from '#/throttling/strict-throttle.decorator.js';
 import { RequiresSubscription } from '#/subscriptions/requires-subscription.decorator.js';
 import { AllowanceDto, AskRequestDto, AskResultDto, ExploreRequestDto, QueryResultDto } from './explore.dto.js';
 import { ExploreService } from './explore.service.js';
@@ -27,7 +28,9 @@ export class ExploreController {
     return toDto(QueryResultDto, await this.explore.explore(id, body.query));
   }
 
+  /** Each answer is a call to the model, so asking has a small budget of its own on top of the plan's questions. */
   @Post('ask')
+  @StrictThrottle(10)
   @HttpCode(200)
   @ApiOkResponse({ type: AskResultDto })
   async ask(@Param('id', ParseUUIDPipe) id: string, @Body() body: AskRequestDto): Promise<AskResultDto> {
