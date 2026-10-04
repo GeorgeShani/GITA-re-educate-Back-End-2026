@@ -93,7 +93,7 @@ export function connect(
               ),
             5_000,
           );
-          socket.emit('auth.refresh', { token: replacement }, (result) => {
+          socket.emit('auth.refresh', { token: replacement }, (result: AuthRefreshResult) => {
             clearTimeout(timeout);
             done(result);
           });

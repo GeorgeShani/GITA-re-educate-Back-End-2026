@@ -170,12 +170,13 @@ describe('evaluateRules', () => {
   describe('a rule about a column the file does not have', () => {
     it('is skipped, not failed: rules cover every upload, and only required_column demands a column', () => {
       const data = metricsOf(['other'], [['1']]);
-      for (const spec of [
+      const specs: RuleSpec[] = [
         { kind: 'max_null_percent', params: { max: 0 } },
         { kind: 'min_value', params: { min: 0 } },
         { kind: 'unique', params: {} },
         { kind: 'type_is', params: { type: 'integer', maxInconsistentPercent: 0 } },
-      ] as const) {
+      ];
+      for (const spec of specs) {
         expect(one(rule(spec, 'amount'), data)).toMatchObject({ status: 'skipped', message: 'Column "amount" is not in this file.' });
       }
     });

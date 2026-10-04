@@ -1,0 +1,68 @@
+name: Gridline (Project-3)
+
+# Runs only when Project-3 changes. The backend job also runs the integration suite against a real Postgres, because
+# the access rules and the money maths are proven there, not in unit tests.
+on:
+  push:
+    paths: ['Projects/Project-3/**', '.github/workflows/project-3.yml']
+  pull_request:
+    paths: ['Projects/Project-3/**', '.github/workflows/project-3.yml']
+
+concurrency:
+  group: project-3-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Projects/Project-3/backend
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: gridline
+          POSTGRES_PASSWORD: gridline
+          POSTGRES_DB: gridline
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U gridline" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgres://gridline:gridline@localhost:5432/gridline
+      DIRECT_URL: postgres://gridline:gridline@localhost:5432/gridline
+      JWT_ACCESS_SECRET: ci-only-secret-not-used-anywhere-else
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_PATH: ./.ci-storage
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Projects/Project-3/backend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint
+      - run: npx tsc --noEmit -p tsconfig.json
+      - run: npm test
+      - run: npm run migration:run
+      - run: npm run test:int
+      - run: npm run docs:check
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Projects/Project-3/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Projects/Project-3/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit

@@ -96,7 +96,7 @@ describe('realtime (integration, over a real socket)', () => {
     it('accepts a valid session token', async () => {
       const listener = await join(adminSession);
       const gateway = h.app.get(RealtimeGateway);
-      const socket = gateway.server.sockets.sockets.get(listener.socket.id);
+      const socket = gateway.server.sockets.sockets.get(listener.socket.id ?? '');
       if (!socket) throw new Error('server socket missing');
 
       expect(listener.socket.connected).toBe(true);
@@ -178,7 +178,7 @@ describe('realtime (integration, over a real socket)', () => {
       const result = await listener.refresh(replacement.accessToken);
       expect(result.ok).toBe(true);
 
-      const socket = gateway.server.sockets.sockets.get(listener.socket.id);
+      const socket = gateway.server.sockets.sockets.get(listener.socket.id ?? '');
       if (!socket) throw new Error('server socket missing');
       expect(socket.data.role).toBe('employee');
       expect(socket.rooms.has(`admins:${admin.companyId}`)).toBe(false);

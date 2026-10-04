@@ -50,7 +50,7 @@ describe('outgoing webhook destinations', () => {
     );
   });
 
-  it.each([
+  it.each<[string, 4 | 6]>([
     ['127.0.0.1', 4],
     ['10.0.0.1', 4],
     ['100.64.0.1', 4],

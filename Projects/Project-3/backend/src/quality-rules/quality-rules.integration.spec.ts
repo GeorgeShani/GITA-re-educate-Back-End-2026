@@ -78,14 +78,8 @@ describe('quality rules: CRUD, evaluation on upload, and rebuild (integration)',
     return { admin, session, companyId: admin.companyId };
   }
 
-  type NewRule = Partial<{
-    name: string;
-    kind: string;
-    columnName: string;
-    params: Record<string, unknown>;
-    severity: string;
-    enabled: boolean;
-  }>;
+  // Loose on purpose: several cases send a body the API must refuse (an unknown kind, a smuggled company id).
+  type NewRule = Record<string, unknown>;
   const postRule = (session: SessionBody, body: NewRule = {}) =>
     h
       .http()

@@ -58,7 +58,7 @@ describe('requestOf / responseOf', () => {
 describe('the global guards over GraphQL', () => {
   const roles = new RolesGuard(new Reflector());
   const scopes = new ScopesGuard(new Reflector());
-  const demo = new DemoReadOnlyGuard();
+  const demo = new DemoReadOnlyGuard(new Reflector());
 
   it('RolesGuard enforces @Roles (it would see "no user" and refuse everyone if it read the root object)', () => {
     expect(roles.canActivate(graphqlContext('adminOnly', admin).host)).toBe(true);
