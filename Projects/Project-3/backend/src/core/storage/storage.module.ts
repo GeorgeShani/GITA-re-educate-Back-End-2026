@@ -23,13 +23,15 @@ function buildDriver(config: AppConfig, clock: Clock): StorageDriver {
     });
   }
 
-  const { AWS_REGION, AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY } = config;
+  const { AWS_REGION, AWS_S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL, AWS_S3_FORCE_PATH_STYLE } = config;
   if (AWS_REGION && AWS_S3_BUCKET && AWS_ACCESS_KEY_ID && AWS_SECRET_ACCESS_KEY) {
     return new S3StorageDriver({
       region: AWS_REGION,
       bucket: AWS_S3_BUCKET,
       accessKeyId: AWS_ACCESS_KEY_ID,
       secretAccessKey: AWS_SECRET_ACCESS_KEY,
+      ...(AWS_ENDPOINT_URL ? { endpoint: AWS_ENDPOINT_URL } : {}),
+      forcePathStyle: AWS_S3_FORCE_PATH_STYLE,
     });
   }
 

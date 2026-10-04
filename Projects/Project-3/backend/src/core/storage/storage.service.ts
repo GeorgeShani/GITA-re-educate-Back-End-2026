@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
-import { STORAGE_DRIVER, type StorageDriver } from './storage-driver.js';
+import { STORAGE_DRIVER, type StorageDriver, type StoredObject } from './storage-driver.js';
 
 /** Downloads are minted per request and short-lived: access is checked, then the link expires. */
 export const PRESIGN_TTL_SECONDS = 5 * 60;
@@ -28,6 +28,10 @@ export class StorageService {
 
   delete(key: string): Promise<void> {
     return this.driver.delete(key);
+  }
+
+  list(prefix: string): AsyncIterable<StoredObject> {
+    return this.driver.list(prefix);
   }
 
   async downloadLink(key: string, downloadName: string): Promise<DownloadLink> {

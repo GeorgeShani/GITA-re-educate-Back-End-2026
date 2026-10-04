@@ -11,11 +11,19 @@ export interface PresignOptions {
  * one — so a driver never needs to defend against a hostile key, but the local
  * driver checks anyway.
  */
+/** One stored object, as a listing reports it. */
+export interface StoredObject {
+  key: string;
+  modifiedAt: Date;
+}
+
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
   get(key: string): Promise<Buffer>;
   /** Idempotent: removing an object that is already gone is not an error. */
   delete(key: string): Promise<void>;
+  /** Every object whose key starts with `prefix`, in no particular order. Used only by the orphan sweeper. */
+  list(prefix: string): AsyncIterable<StoredObject>;
   presignedGetUrl(key: string, options: PresignOptions): Promise<string>;
 }
 

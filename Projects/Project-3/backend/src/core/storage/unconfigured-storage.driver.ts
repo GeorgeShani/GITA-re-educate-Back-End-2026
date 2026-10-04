@@ -22,6 +22,11 @@ export class UnconfiguredStorageDriver implements StorageDriver {
     return this.fail();
   }
 
+  // biome-ignore lint: a generator that only throws
+  async *list(): AsyncGenerator<never> {
+    this.fail();
+  }
+
   presignedGetUrl(): Promise<string> {
     return this.fail();
   }

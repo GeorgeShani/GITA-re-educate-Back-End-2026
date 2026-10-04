@@ -1,17 +1,21 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { type PresignOptions, type StorageDriver, attachmentDisposition } from './storage-driver.js';
+import { type PresignOptions, type StorageDriver, type StoredObject, attachmentDisposition } from './storage-driver.js';
 
 export interface S3DriverOptions {
   region: string;
   bucket: string;
   accessKeyId: string;
   secretAccessKey: string;
+  /** An S3-compatible store's address (R2, MinIO). Absent: AWS. */
+  endpoint?: string;
+  forcePathStyle?: boolean;
 }
 
 /**
@@ -30,6 +34,8 @@ export class S3StorageDriver implements StorageDriver {
       client ??
       new S3Client({
         region: options.region,
+        ...(options.endpoint ? { endpoint: options.endpoint } : {}),
+        ...(options.forcePathStyle ? { forcePathStyle: true } : {}),
         credentials: {
           accessKeyId: options.accessKeyId,
           secretAccessKey: options.secretAccessKey,
@@ -54,6 +60,19 @@ export class S3StorageDriver implements StorageDriver {
     );
     if (!response.Body) throw new Error(`S3 returned no body for ${key}`);
     return Buffer.from(await response.Body.transformToByteArray());
+  }
+
+  async *list(prefix: string): AsyncGenerator<StoredObject> {
+    let token: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListObjectsV2Command({ Bucket: this.options.bucket, Prefix: prefix, ContinuationToken: token }),
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key && object.LastModified) yield { key: object.Key, modifiedAt: object.LastModified };
+      }
+      token = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (token);
   }
 
   async delete(key: string): Promise<void> {

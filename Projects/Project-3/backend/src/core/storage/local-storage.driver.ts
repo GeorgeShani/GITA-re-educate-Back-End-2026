@@ -1,8 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import type { Clock } from '#/core/clock/clock.js';
-import { type PresignOptions, type StorageDriver } from './storage-driver.js';
+import { type PresignOptions, type StorageDriver, type StoredObject } from './storage-driver.js';
 
 export interface LocalDriverOptions {
   /** Directory the objects live under. */
@@ -45,6 +45,25 @@ export class LocalStorageDriver implements StorageDriver {
 
   async delete(key: string): Promise<void> {
     await rm(this.pathFor(key), { force: true });
+  }
+
+  async *list(prefix: string): AsyncGenerator<StoredObject> {
+    const walk = async function* (directory: string, relative: string): AsyncGenerator<StoredObject> {
+      let entries;
+      try {
+        entries = await readdir(directory, { withFileTypes: true });
+      } catch {
+        return; // Nothing has been stored yet.
+      }
+      for (const entry of entries) {
+        const key = relative === '' ? entry.name : `${relative}/${entry.name}`;
+        if (entry.isDirectory()) yield* walk(resolve(directory, entry.name), key);
+        else yield { key, modifiedAt: (await stat(resolve(directory, entry.name))).mtime };
+      }
+    };
+    for await (const object of walk(this.root, '')) {
+      if (object.key.startsWith(prefix)) yield object;
+    }
   }
 
   async presignedGetUrl(key: string, options: PresignOptions): Promise<string> {

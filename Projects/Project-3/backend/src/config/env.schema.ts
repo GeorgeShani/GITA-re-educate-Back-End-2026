@@ -109,6 +109,10 @@ export const envSchema = z
     AWS_S3_BUCKET: optionalString(),
     AWS_ACCESS_KEY_ID: optionalString(),
     AWS_SECRET_ACCESS_KEY: optionalString(),
+    /** For an S3-compatible store (Cloudflare R2, MinIO, Backblaze): its address. Absent means AWS itself. */
+    AWS_ENDPOINT_URL: optionalUrl(),
+    /** MinIO and some others want `https://host/bucket/key`, not `https://bucket.host/key`. */
+    AWS_S3_FORCE_PATH_STYLE: booleanFlag(false),
 
     /** `console` prints the rendered email instead of sending it. */
     MAIL_TRANSPORT: z.enum(['smtp', 'console']).default('console'),
