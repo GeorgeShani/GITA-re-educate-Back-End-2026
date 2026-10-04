@@ -83,7 +83,7 @@ database tools edit data but do not check each incoming file against rules or ke
   - Basic: 100 files, up to 10 employees at $5 per employee per month.
   - Premium: $300 per month with 1000 files included, then $0.50 per file.
   - Limits by plan: rate limits of 30/120/600 requests per minute; quality rules 3/25/unlimited; versions per dataset
-    5/50/unlimited; webhook endpoints.
+    5/50/unlimited; webhook endpoints; plain-language questions to the assistant 20/300/3,000 per period.
   - Prices and limits are served by `GET /subscriptions/plans` and must never be hard-coded in UI or copy.
 - **Billing:** paid plans are collected by Stripe (Checkout, proration, seat quantity, metered overage, dunning with a grace period,
   then suspension). A suspended company can still reach billing to recover.
@@ -92,6 +92,18 @@ database tools edit data but do not check each incoming file against rules or ke
 - **File types** are decided from the bytes, never the file name. Legacy `.xls` files are stored and downloadable but not profiled.
   A preview shows the first 50 rows × 50 columns.
 - **The AI summary** sees aggregates only, never a cell value. It is optional (it can be turned off).
+- **Personal-data scan:** every report names the columns that look like emails, phones, card numbers, IBANs, IP addresses, birth
+  dates or secret keys, by patterns and checksums, never by AI and never showing a value. A company-visible file with such a column
+  tells its uploader and the admins; a rule can fail it.
+- **Clean:** a recipe of small steps (trim, de-duplicate, dates, numbers, placeholders, case, rename, drop, hide personal data)
+  is previewed over the whole file and written as the next version. The upload is never touched. A cleaned version uses no file
+  quota but counts toward versions per dataset. Basic and Premium can clean every new version automatically.
+- **Row changes:** a dataset's key columns line two versions up row by row (added, removed, changed, unchanged, old and new cell
+  values, a CSV of every change); with a saved key each new version is compared automatically, with a notification and a
+  `dataset.changed` webhook.
+- **Explore and ask:** a query builder (filter, group by up to two columns, count/sum/average/min/max/distinct) computed over
+  every row of a file, and plain-language questions planned by the assistant from the question and column names and types only.
+  The server validates and runs the query; the answer never goes back to the model.
 - **Terminology:**
   - company (the tenant);
   - admin / employee;
@@ -105,7 +117,8 @@ database tools edit data but do not check each incoming file against rules or ke
 - **Known limits, stated honestly:**
   - realtime and rate limiting run on a single instance;
   - there is no company deletion or data export yet;
-  - a crash mid-upload can orphan a stored object.
+  - personal-data detection is by pattern, so free-text names and addresses are not recognised;
+  - cleaning and exploring work on files up to 100,000 rows and 200 columns.
 
 ## Brand Commitments
 

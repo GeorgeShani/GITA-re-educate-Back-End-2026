@@ -230,6 +230,22 @@ describe('audit coverage (integration)', () => {
       .post(`/files/${uploaded.body.id}/report/rebuild`)
       .set(...h.bearer(session))
       .expect(200);
+    await h.drainTasks();
+
+    // Cleaning a file (the next version, made in the background) and saving what is remembered for its dataset.
+    await h
+      .http()
+      .post(`/files/${uploaded.body.id}/clean`)
+      .set(...h.bearer(session))
+      .send({ recipe: { steps: [{ step: 'trim_whitespace' }] } })
+      .expect(202);
+    await h.drainTasks();
+    await h
+      .http()
+      .put(`/datasets/${uploaded.body.datasetId}/settings`)
+      .set(...h.bearer(session))
+      .send({ keyColumns: ['id'] })
+      .expect(200);
 
     await h
       .http()

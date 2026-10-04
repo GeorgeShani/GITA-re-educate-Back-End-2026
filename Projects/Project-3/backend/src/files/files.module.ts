@@ -5,6 +5,15 @@ import { DatabaseModule } from '#/database/database.module.js';
 import { SubscriptionsModule } from '#/subscriptions/subscriptions.module.js';
 import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
 import { OrphanedObjectsJanitor } from './orphaned-objects-janitor.service.js';
+import { ExploreController } from './explore/explore.controller.js';
+import { ExploreService } from './explore/explore.service.js';
+import { SheetCache } from './explore/sheet-cache.js';
+import { BuildVersionDiffHandler } from './diff/build-version-diff.handler.js';
+import { RowDiffController } from './diff/row-diff.controller.js';
+import { RowDiffService } from './diff/row-diff.service.js';
+import { ApplyCleaningRecipeHandler } from './cleaning/apply-cleaning-recipe.handler.js';
+import { CleaningController } from './cleaning/cleaning.controller.js';
+import { CleaningService } from './cleaning/cleaning.service.js';
 import { BuildDataQualityReportHandler } from './build-data-quality-report.handler.js';
 import { FilesController } from './files.controller.js';
 import { FilesService } from './files.service.js';
@@ -23,8 +32,8 @@ import { ReportsService } from './quality/reports.service.js';
     SubscriptionsModule,
     WebhookPublishingModule,
   ],
-  controllers: [FilesController],
-  providers: [FilesService, ReportsService, BuildDataQualityReportHandler, OrphanedObjectsJanitor],
-  exports: [FilesService, ReportsService, BuildDataQualityReportHandler],
+  controllers: [FilesController, CleaningController, RowDiffController, ExploreController],
+  providers: [FilesService, ReportsService, BuildDataQualityReportHandler, OrphanedObjectsJanitor, CleaningService, ApplyCleaningRecipeHandler, RowDiffService, BuildVersionDiffHandler, ExploreService, SheetCache],
+  exports: [FilesService, ReportsService, BuildDataQualityReportHandler, ApplyCleaningRecipeHandler, RowDiffService, BuildVersionDiffHandler, ExploreService],
 })
 export class FilesModule {}

@@ -44,13 +44,17 @@ import { BillingSyncService } from '#/payments/billing-sync.service.js';
 import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { RealtimeEmitter } from '#/realtime/realtime-emitter.service.js';
 import type { QuotaUpdatedEvent } from '#/realtime/realtime-events.js';
-import { PLAN_CATALOG } from '#/subscriptions/plan-catalog.js';
+import { PLAN_CATALOG, type Plan } from '#/subscriptions/plan-catalog.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { SubscriptionsService } from '#/subscriptions/subscriptions.service.js';
 import type { FilesQueryDto } from './dto/files-query.dto.js';
 import type { UpdateFileDto } from './dto/update-file.dto.js';
 import type { UploadFileDto } from './dto/upload-file.dto.js';
+import { AUTO_CLEAN_PLANS } from './cleaning/auto-clean-plans.js';
+import { CleaningJob } from './cleaning/cleaning-job.entity.js';
+import { recipeSchema } from './cleaning/recipe.js';
 import { DataQualityReport } from './data-quality-report.entity.js';
+import { DatasetSettings } from './dataset-settings.entity.js';
 import { FileAccessGrant } from './file-access-grant.entity.js';
 import { FileAsset, type FileVisibility } from './file-asset.entity.js';
 import { type FileViewer, applyFileVisibility } from './file-visibility.js';
@@ -99,6 +103,7 @@ const LIST_COLUMNS = [
   'f.datasetId',
   'f.version',
   'f.isLatest',
+  'f.derivedFromFileId',
   'f.deletedAt',
   'f.createdAt',
   'f.updatedAt',
@@ -286,20 +291,7 @@ export class FilesService {
           datasetId = target.datasetId;
           version = Math.max(...rows.map((row) => row.version)) + 1;
           visibility = latest.visibility;
-          // Whoever could see the latest version can see this one: its grantees AND its uploader (who is
-          // not a grantee, but would otherwise lose the file when someone else uploads the next version).
-          grants =
-            latest.visibility === 'restricted'
-              ? await this.activeMembers(
-                  manager,
-                  companyId,
-                  [
-                    ...(await this.grantIds(manager, latest.id)),
-                    latest.uploaderId,
-                  ],
-                  viewer.userId,
-                )
-              : [];
+          grants = await this.inheritedGrants(manager, latest, viewer.userId);
           await manager.update(
             FileAsset,
             { datasetId, companyId, isLatest: true },
@@ -369,6 +361,8 @@ export class FilesService {
           { fileId, companyId },
           { manager },
         );
+        if (target.kind === 'version')
+          await this.queueAutoClean(manager, saved, subscription.plan, viewer.userId);
         await this.audit.record(
           {
             action: 'file.uploaded',
@@ -419,6 +413,185 @@ export class FilesService {
     await this.realtime.fileStatus(fileId);
     await this.realtime.quotaUpdated(companyId, committed.quota);
     return committed.result;
+  }
+
+  /**
+   * Whoever could see the latest version can see the next one: its grantees AND its uploader (who is not a grantee, but
+   * would otherwise lose the file when someone else adds the next version). `except` is the person adding it.
+   */
+  private async inheritedGrants(
+    manager: EntityManager,
+    latest: FileAsset,
+    except: string,
+  ): Promise<string[]> {
+    if (latest.visibility !== 'restricted') return [];
+    return this.activeMembers(
+      manager,
+      latest.companyId,
+      [...(await this.grantIds(manager, latest.id)), latest.uploaderId],
+      except,
+    );
+  }
+
+  /**
+   * When a dataset is set to clean every new version, an upload of a version is followed by a cleaning job (in the same
+   * transaction, so a rolled-back upload leaves no job). Only on the plans that offer it, and never for a cleaned version,
+   * which is not made through `store`.
+   */
+  private async queueAutoClean(
+    manager: EntityManager,
+    version: FileAsset,
+    plan: Plan,
+    uploaderId: string,
+  ): Promise<void> {
+    if (!AUTO_CLEAN_PLANS.includes(plan)) return;
+    const settings = await manager.findOne(DatasetSettings, {
+      where: { companyId: version.companyId, datasetId: version.datasetId },
+    });
+    if (!settings?.autoClean) return;
+    const recipe = recipeSchema.safeParse(settings.recipe);
+    if (!recipe.success) return;
+    const job = await manager.save(
+      manager.create(CleaningJob, {
+        companyId: version.companyId,
+        fileId: version.id,
+        requestedByUserId: uploaderId,
+        trigger: 'auto',
+        recipe: recipe.data,
+        sheet: null,
+        status: 'queued',
+      }),
+    );
+    await this.queue.enqueue(
+      'apply_cleaning_recipe',
+      { jobId: job.id, companyId: version.companyId },
+      { manager },
+    );
+  }
+
+  /**
+   * Writes cleaned data as the next version of `source`'s dataset. It is NOT an upload: no usage event and no file quota
+   * (the person did not upload it), but it counts towards the plan's versions-per-dataset cap, takes the dataset's access
+   * from its latest version, gets a report of its own and an audit entry. Runs in the background, so who asked comes in
+   * as `actorUserId`, not from a request.
+   */
+  async createDerivedVersion(input: {
+    companyId: string;
+    actorUserId: string;
+    source: FileAsset;
+    bytes: Buffer;
+    mimeType: string;
+    name: string;
+    derivation: Record<string, unknown>;
+  }): Promise<FileAsset> {
+    const { companyId, actorUserId, source } = input;
+    const fileId = randomUUID();
+    const storageKey = `companies/${companyId}/files/${fileId}`;
+    await this.storage.put(storageKey, input.bytes, input.mimeType);
+
+    let saved: FileAsset;
+    try {
+      saved = await this.dataSource.transaction(async (manager) => {
+        const subscription = await manager.findOne(Subscription, { where: { companyId } });
+        if (!subscription) throw new HttpException(NO_PLAN, HttpStatus.PAYMENT_REQUIRED);
+        const rows = await this.lockDataset(manager, companyId, source.datasetId);
+        const live = rows.filter((row) => !row.deletedAt);
+        const latest = live.reduce<FileAsset | null>(
+          (best, row) => (best && best.version > row.version ? best : row),
+          null,
+        );
+        if (!latest) throw new NotFoundException(NOT_FOUND);
+        const cap = PLAN_CATALOG[subscription.plan].maxVersionsPerDataset;
+        if (cap !== null && live.length >= cap) {
+          throw new ConflictException(
+            `Your ${subscription.plan} plan keeps up to ${cap} versions of a file and this one has ${live.length}. ` +
+              'Delete an old version or upgrade with PATCH /subscriptions/me.',
+          );
+        }
+        const version = Math.max(...rows.map((row) => row.version)) + 1;
+        const grants = await this.inheritedGrants(manager, latest, actorUserId);
+        await manager.update(
+          FileAsset,
+          { datasetId: source.datasetId, companyId, isLatest: true },
+          { isLatest: false },
+        );
+        const created = await manager.save(
+          manager.create(FileAsset, {
+            id: fileId,
+            companyId,
+            uploaderId: actorUserId,
+            originalName: sanitizeFileName(input.name),
+            mimeType: input.mimeType,
+            sizeBytes: input.bytes.length,
+            storageKey,
+            visibility: latest.visibility,
+            datasetId: source.datasetId,
+            version,
+            isLatest: true,
+            deletedAt: null,
+            derivedFromFileId: source.id,
+            derivation: input.derivation,
+          }),
+        );
+        if (grants.length > 0) {
+          await manager.insert(
+            FileAccessGrant,
+            grants.map((userId) => ({ fileId, userId })),
+          );
+        }
+        await manager.insert(DataQualityReport, { companyId, fileId, status: 'queued' });
+        await this.queue.enqueue('build_data_quality_report', { fileId, companyId }, { manager });
+        await this.audit.record(
+          {
+            action: 'file.cleaned',
+            companyId,
+            actorUserId,
+            target: { type: 'file', id: fileId },
+            metadata: {
+              sourceFileId: source.id,
+              sourceVersion: source.version,
+              datasetId: source.datasetId,
+              version,
+              originalName: created.originalName,
+              sizeBytes: created.sizeBytes,
+              ...input.derivation,
+            },
+          },
+          manager,
+        );
+        await this.webhooks.publish(manager, companyId, 'file.uploaded', {
+          fileId,
+          datasetId: source.datasetId,
+          version,
+          derived: true,
+        });
+        return created;
+      });
+    } catch (error) {
+      await this.discardObject(storageKey);
+      throw error;
+    }
+    await this.realtime.fileStatus(fileId);
+    return saved;
+  }
+
+  /** The newest live version of a dataset, if the caller can see it (404 otherwise): the gate for dataset-level settings. */
+  async latestOfDataset(datasetId: string): Promise<FileAsset> {
+    const { viewer } = this.caller();
+    const file = await this.visibleFiles(this.dataSource.manager, 'f', viewer)
+      .andWhere('f.datasetId = :datasetId', { datasetId })
+      .orderBy('f.version', 'DESC')
+      .getOne();
+    if (!file) throw new NotFoundException(NOT_FOUND);
+    return file;
+  }
+
+  /** The same, for someone who may change the dataset (the latest version's uploader, or an admin). */
+  async requireManageableDataset(datasetId: string): Promise<FileAsset> {
+    const { viewer } = this.caller();
+    const file = await this.latestOfDataset(datasetId);
+    this.assertCanManage(file, viewer);
+    return file;
   }
 
   /** Newest first by default, keyset-paginated; the visibility predicate always applies first. */

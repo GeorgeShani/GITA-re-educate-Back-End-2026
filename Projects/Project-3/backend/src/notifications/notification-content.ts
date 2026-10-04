@@ -73,6 +73,41 @@ export const notificationContentSchema = z.discriminatedUnion('type', [
     }),
   }),
   z.object({
+    type: z.literal('file.cleaned'),
+    payload: z.object({
+      /** The new, cleaned version. */
+      fileId: z.uuid(),
+      sourceFileId: z.uuid(),
+      fileName: z.string(),
+      version: z.number().int(),
+      steps: z.number().int(),
+      changed: z.number().int(),
+      trigger: z.enum(['manual', 'auto']),
+    }),
+  }),
+  z.object({
+    type: z.literal('cleaning.failed'),
+    payload: z.object({
+      fileId: z.uuid(),
+      fileName: z.string(),
+      reason: z.string(),
+      trigger: z.enum(['manual', 'auto']),
+    }),
+  }),
+  z.object({
+    type: z.literal('dataset.changed'),
+    payload: z.object({
+      datasetId: z.uuid(),
+      fileId: z.uuid(),
+      fileName: z.string(),
+      version: z.number().int(),
+      previousVersion: z.number().int(),
+      added: z.number().int(),
+      removed: z.number().int(),
+      changed: z.number().int(),
+    }),
+  }),
+  z.object({
     type: z.literal('file.shared'),
     payload: z.object({
       fileId: z.uuid(),

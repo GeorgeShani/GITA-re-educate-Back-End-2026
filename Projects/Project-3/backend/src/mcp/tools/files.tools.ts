@@ -8,6 +8,8 @@ import { FILE_VISIBILITIES } from '#/files/file-asset.entity.js';
 import { FileDto, FilePageDto, FileVersionPageDto } from '#/files/dto/file.dto.js';
 import { FILE_SORTS, FilesQueryDto } from '#/files/dto/files-query.dto.js';
 import { ComparisonDto, PreviewDto, ReportDto } from '#/files/dto/report.dto.js';
+import { AskResultDto, QueryResultDto } from '#/files/explore/explore.dto.js';
+import { RowDiffDto } from '#/files/diff/row-diff.dto.js';
 import { UploadFileDto } from '#/files/dto/upload-file.dto.js';
 import { SPREADSHEET_MIME_TYPES } from '#/files/spreadsheet-types.js';
 import { SubscriptionDto } from '#/subscriptions/dto/subscription.dto.js';
@@ -140,6 +142,97 @@ export const FILES_TOOLS: readonly Tool[] = [
     },
     { id: fileId.describe('The earlier version.'), otherId: z.uuid().describe('The later version.') },
     async ({ id, otherId }, s) => toDto(ComparisonDto, await s.reports.compare(id, otherId)),
+  ),
+
+  defineTool(
+    {
+      name: 'compare_version_rows',
+      title: 'See which rows changed between two versions',
+      description:
+        'Row by row: how many rows were added, removed and changed between two versions, which columns changed most, and the first 500 ' +
+        'changes with each changed cell’s old and new value. Rows are matched by the dataset’s key columns. `status` is `none` until one ' +
+        'has been asked for: call `start_row_comparison`, then this again until it is `ready`.',
+      scope: 'files:read',
+      roles: ANY,
+      write: false,
+      needsPlan: true,
+    },
+    { id: fileId.describe('One version.'), otherId: z.uuid().describe('The other version of the same file.') },
+    async ({ id, otherId }, s) => toDto(RowDiffDto, await s.rowDiffs.view(id, otherId)),
+  ),
+
+  defineTool(
+    {
+      name: 'start_row_comparison',
+      title: 'Compare two versions row by row',
+      description:
+        'Starts the row-by-row comparison of two versions, matched by `keyColumns` (the columns that together identify a row, such as a customer id; ' +
+        'omit to use the ones saved for the file). It runs in the background: read the result with `compare_version_rows`.',
+      scope: 'files:read',
+      roles: ANY,
+      write: false,
+      needsPlan: true,
+    },
+    {
+      id: fileId.describe('One version.'),
+      otherId: z.uuid().describe('The other version of the same file.'),
+      keyColumns: z.array(z.string().min(1).max(200)).min(1).max(10).optional(),
+    },
+    async ({ id, otherId, keyColumns }, s) => toDto(RowDiffDto, await s.rowDiffs.start(id, otherId, keyColumns)),
+  ),
+
+  defineTool(
+    {
+      name: 'explore_file',
+      title: 'Group and total a file’s rows',
+      description:
+        'Runs a query over every row of a file (up to 100,000) and returns the answer, without downloading the file: filter rows, group by up to 2 columns, ' +
+        'and compute up to 4 measures per group (count, sum, average, min, max, distinct). Column names come from `get_quality_report`. ' +
+        'Example: {"groupBy": ["region"], "measures": [{"fn": "sum", "column": "revenue"}], "sort": {"by": "measure", "index": 0, "direction": "desc"}}.',
+      scope: 'files:read',
+      roles: ANY,
+      write: false,
+      needsPlan: true,
+    },
+    {
+      id: fileId,
+      filters: z
+        .array(
+          z.object({
+            column: z.string(),
+            op: z.enum(['equals', 'contains', 'greater', 'less', 'empty', 'not_empty']),
+            value: z.union([z.string(), z.number()]).optional(),
+          }),
+        )
+        .max(5)
+        .optional(),
+      groupBy: z.array(z.string()).max(2).optional(),
+      measures: z
+        .array(z.object({ fn: z.enum(['count', 'sum', 'average', 'min', 'max', 'distinct']), column: z.string().optional() }))
+        .min(1)
+        .max(4)
+        .optional(),
+      sort: z.object({ by: z.enum(['group', 'measure']), index: z.number().int().min(0).max(3), direction: z.enum(['asc', 'desc']) }).optional(),
+      limit: z.number().int().min(1).max(200).optional(),
+    },
+    async ({ id, ...query }, s) => toDto(QueryResultDto, await s.explore.explore(id, query)),
+  ),
+
+  defineTool(
+    {
+      name: 'ask_file',
+      title: 'Ask a file a question',
+      description:
+        'Answers a question about a file’s rows in plain language, e.g. "total revenue by region". The assistant sees only the question and the column ' +
+        'names and types, plans a query, and the server runs it. Returns the query it planned and the result. Counts against the plan’s questions per ' +
+        'billing period (402 when used up); prefer `explore_file` when you already know the query, which is free.',
+      scope: 'files:read',
+      roles: ANY,
+      write: false,
+      needsPlan: true,
+    },
+    { id: fileId, question: z.string().min(3).max(500) },
+    async ({ id, question }, s) => toDto(AskResultDto, await s.explore.ask(id, question)),
   ),
 
   defineTool(

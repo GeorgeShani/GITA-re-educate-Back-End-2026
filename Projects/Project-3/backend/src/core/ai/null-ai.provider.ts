@@ -8,4 +8,8 @@ export class NullAiProvider implements AiProvider {
   async generateNarrative(): Promise<null> {
     return null;
   }
+
+  async planQuery(): Promise<null> {
+    return null;
+  }
 }

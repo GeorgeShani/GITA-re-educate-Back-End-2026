@@ -52,10 +52,14 @@ export class PlanDto {
   @ApiProperty({
     type: Number,
     nullable: true,
-    description: 'Versions one file may hold (each version still counts toward the file quota); null = unlimited.',
+    description: 'Versions one file may hold (an uploaded version counts toward the file quota, a cleaned one does not); null = unlimited.',
   })
   @Expose()
   maxVersionsPerDataset!: number | null;
+
+  @ApiProperty({ description: 'Plain-language questions the AI assistant may answer about your files per billing period. The query builder is not counted.' })
+  @Expose()
+  questionsPerPeriod!: number;
 
   static from(plan: Plan): PlanDto {
     return toDto(PlanDto, { plan, maxSeats: maxSeats(plan), ...PLAN_CATALOG[plan] });

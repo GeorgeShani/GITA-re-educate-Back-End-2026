@@ -177,3 +177,104 @@ FilesController_compare:
     5 percentage points or more), the change in rows, columns, duplicate rows and quality score, and
     `schemaChanged`: true when a column was removed or retyped — the changes that break a reader of the data.
     New columns and shifts in blanks do not set it.
+
+CleaningController_preview:
+  summary: Preview what a cleaning recipe would change
+  description: >-
+    Counts what each step of the recipe would do across the **whole** file and returns the first
+    rows that change, each cell before and after. Nothing is written. Steps run in order; a step
+    about a column the file does not have is skipped, not refused. A file over 100,000 rows or 200
+    columns, or a legacy `.xls`, answers 422. The uploader or an admin only; a file you cannot see
+    is a 404. Needs the `files:write` scope for an API key.
+
+CleaningController_clean:
+  summary: Clean a file as its next version
+  description: >-
+    Queues the recipe. It answers **202** with a job to poll; the work runs in the background and
+    ends as the **next version** of the file's dataset, shared with the same people and given a
+    report of its own. The original is never touched. A cleaned version is not an upload: it uses
+    no file quota, but it counts towards the plan's versions-per-dataset cap and appears in the
+    audit log as `file.cleaned`. `saveRecipe` keeps the recipe for the dataset; `autoClean` (which
+    needs `saveRecipe`, and a Basic or Premium plan, else 402) cleans every new version
+    automatically. A cleaned version is never cleaned again.
+
+CleaningController_job:
+  summary: Read a cleaning job
+  description: >-
+    The job's `status` (`queued`, `running`, `succeeded` or `failed`), what each step did, the rows
+    before and after, and, once it has succeeded, `resultFileId` (the new version) or, if it failed,
+    the reason.
+
+CleaningController_settings:
+  summary: Read a dataset's saved settings
+  description: >-
+    The saved cleaning recipe, whether every new version is cleaned, and whether the plan offers
+    that (`autoCleanAvailable`). A dataset with nothing saved answers with the defaults. Visible to
+    anyone who can see the dataset.
+
+CleaningController_saveSettings:
+  summary: Save a dataset's settings
+  description: >-
+    Saves the cleaning recipe, whether to clean every new version, and/or the columns that identify
+    a row. Any of them may be sent alone. The uploader of the latest version or an admin only.
+    `autoClean` needs a saved recipe and a Basic or Premium plan (402 otherwise).
+
+RowDiffController_view:
+  summary: Read the row-by-row comparison of two versions
+  description: >-
+    What changed between two versions of one file **row by row**: rows added, removed, changed and
+    unchanged, which columns changed most, and the first 500 changes with the old and the new value
+    of each changed cell. Rows are matched by the dataset's key columns (`keyColumns`), ignoring case
+    and surrounding spaces; columns are matched by name, so a reordered file does not look changed.
+    `status` is `none` until a comparison has been asked for, `queued` or `running` while it is made,
+    then `ready` or `failed` (with the reason in `errorMessage`). `suggestedKeyColumns` offers the
+    columns whose names say they identify a row. Either order of the two ids names the older version
+    first. Both versions must be visible to the caller (else 404) and belong to one dataset (else 422).
+
+RowDiffController_start:
+  summary: Compare two versions row by row
+  description: >-
+    Queues the comparison with the given `keyColumns` (up to 10), or with the ones saved for the
+    dataset when none are given. Answers **202** with the comparison as it stands (`queued`); read it
+    again with `GET` until it is `ready`. Asking again replaces the earlier result; asking while one
+    is being made answers 409. A key column that one of the versions lacks makes the comparison fail
+    with the reason. Files over 100,000 rows or 200 columns cannot be compared. Once the dataset has
+    saved key columns every new version is compared with the one before it automatically, and the
+    uploader and the admins are told (`dataset.changed`).
+
+RowDiffController_csv:
+  summary: Download every change as a CSV file
+  description: >-
+    Every added, removed and changed row, not only the first 500: a `change` column, the key columns,
+    each column's value and, for a changed row, what each changed cell was before. Answers 409 until
+    the comparison is `ready`.
+
+ExploreController_run:
+  summary: Run a query over a file's rows
+  description: >-
+    Filters, groups and totals **every row** of the file (up to 100,000 rows and 200 columns) on the
+    server, without downloading it. Group by up to 2 columns; compute up to 4 measures per group
+    (`count`, `sum`, `average`, `min`, `max`, `distinct`); filter with `equals`, `contains`, `greater`,
+    `less`, `empty` and `not_empty`; sort and limit the groups. Columns are found by name, ignoring
+    case and spaces. A sum, average, lowest or highest skips cells that are not numbers and says how
+    many in `notes`. A column the file does not have, or a number asked of a column of text, answers
+    422 with the reason. Free: it does not use the plan's questions. A file whose report is still
+    being built answers 409. Needs the `files:read` scope for an API key.
+
+ExploreController_ask:
+  summary: Ask a file a question in words
+  description: >-
+    Turns a sentence such as "total revenue by region, highest first" into the same query `explore`
+    takes, and runs it. The AI assistant is shown **only the question and each column's name and
+    type, never a value**; the server validates the query it plans and runs it itself, and the answer
+    is never sent back to the model. The response carries the planned query (`spec`), so it can be
+    checked and adjusted, and the result. Counts against the plan's questions per billing period
+    (Free 20, Basic 300, Premium 3,000): **402** once used up, pointing to `explore`, which is free.
+    A question the assistant cannot answer from these columns is 422 with its reason, and an
+    assistant that is switched off or does not answer is 503; neither is counted.
+
+ExploreController_allowance:
+  summary: How many questions are left this period
+  description: >-
+    Whether the AI assistant is available on this server (`aiAvailable`) and how many of the plan's
+    questions the company has used this billing period. The query builder works either way.

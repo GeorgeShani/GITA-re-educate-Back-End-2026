@@ -14,6 +14,7 @@ const fileSchema = z.object({
   originalName: z.string(),
   visibility: z.enum(['company', 'restricted']),
   uploaderId: z.uuid(),
+  derivedFromFileId: z.null(),
   datasetId: z.uuid(),
   version: z.number().int(),
   isLatest: z.boolean(),

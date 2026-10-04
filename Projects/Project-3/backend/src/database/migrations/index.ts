@@ -16,6 +16,9 @@ import { CommentsPresence1790450821659 } from './1790450821659-CommentsPresence.
 import { OutgoingWebhooks1790488051110 } from './1790488051110-OutgoingWebhooks.js';
 import { WebhookDeliveryRetention1790582400000 } from './1790582400000-WebhookDeliveryRetention.js';
 import { CancelStripeSubscriptionTask1790668800000 } from './1790668800000-CancelStripeSubscriptionTask.js';
+import { Cleaning1790755200000 } from './1790755200000-Cleaning.js';
+import { VersionDiff1790841600000 } from './1790841600000-VersionDiff.js';
+import { Explore1790928000000 } from './1790928000000-Explore.js';
 
 /**
  * Explicit array of migration classes, in run order. Migrations don't get an
@@ -45,4 +48,7 @@ export const MIGRATIONS: MixedList<Function> = [
   OutgoingWebhooks1790488051110,
   WebhookDeliveryRetention1790582400000,
   CancelStripeSubscriptionTask1790668800000,
+  Cleaning1790755200000,
+  VersionDiff1790841600000,
+  Explore1790928000000,
 ];

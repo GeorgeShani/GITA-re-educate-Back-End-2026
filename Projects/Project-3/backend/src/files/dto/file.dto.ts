@@ -50,6 +50,15 @@ export class FileDto {
   uploaderId!: string;
 
   @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'For a version made by cleaning: the version it was cleaned from. Null for an upload.',
+  })
+  @Expose()
+  derivedFromFileId!: string | null;
+
+  @ApiProperty({
     type: [String],
     nullable: true,
     description:

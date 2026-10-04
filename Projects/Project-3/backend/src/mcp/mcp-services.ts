@@ -5,6 +5,8 @@ import { BillingService } from '#/billing/billing.service.js';
 import { CommentsService } from '#/comments/comments.service.js';
 import { RequestContextService } from '#/core/context/request-context.service.js';
 import { IdempotencyStore } from '#/core/idempotency/idempotency-store.js';
+import { ExploreService } from '#/files/explore/explore.service.js';
+import { RowDiffService } from '#/files/diff/row-diff.service.js';
 import { FilesService } from '#/files/files.service.js';
 import { ReportsService } from '#/files/quality/reports.service.js';
 import { NotificationsService } from '#/notifications/notifications.service.js';
@@ -20,6 +22,8 @@ export class McpServices {
   constructor(
     readonly files: FilesService,
     readonly reports: ReportsService,
+    readonly explore: ExploreService,
+    readonly rowDiffs: RowDiffService,
     readonly comments: CommentsService,
     readonly rules: QualityRulesService,
     readonly subscriptions: SubscriptionsService,

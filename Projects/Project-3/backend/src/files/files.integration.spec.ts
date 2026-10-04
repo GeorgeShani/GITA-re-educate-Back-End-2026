@@ -23,6 +23,7 @@ const fileSchema = z
     sizeBytes: z.number(),
     visibility: z.enum(['company', 'restricted']),
     uploaderId: z.uuid(),
+    derivedFromFileId: z.null(),
     datasetId: z.uuid(),
     version: z.number().int(),
     isLatest: z.boolean(),

@@ -150,6 +150,20 @@ describe('demo mode (integration)', () => {
       await h.http().get('/analytics/usage').set(...auth).expect(200);
     });
 
+    it('can explore a file and preview a cleaning, which read and write nothing, but not clean or ask', async () => {
+      const session = await demoSession();
+      const auth = h.bearer(session);
+      const files = await h.http().get('/files').set(...auth).expect(200);
+      const fileId = files.body.data[0].id;
+
+      const explored = await h.http().post(`/files/${fileId}/explore`).set(...auth).send({ query: { measures: [{ fn: 'count' }] } }).expect(200);
+      expect(explored.body.rows[0][0]).toBeGreaterThan(0);
+      await h.http().post(`/files/${fileId}/clean/preview`).set(...auth).send({ recipe: { steps: [{ step: 'trim_whitespace' }] } }).expect(200);
+
+      await h.http().post(`/files/${fileId}/clean`).set(...auth).send({ recipe: { steps: [{ step: 'trim_whitespace' }] } }).expect(403);
+      await h.http().post(`/files/${fileId}/ask`).set(...auth).send({ question: 'How many rows?' }).expect(403);
+    });
+
     it('refuses every write with the reason, whatever the route', async () => {
       const session = await demoSession();
       const auth = h.bearer(session);

@@ -9,6 +9,10 @@ import { IdempotencyRecord } from '#/core/idempotency/idempotency-record.entity.
 import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
 import { DataQualityReport } from '#/files/data-quality-report.entity.js';
 import { FileAccessGrant } from '#/files/file-access-grant.entity.js';
+import { CleaningJob } from '#/files/cleaning/cleaning-job.entity.js';
+import { DatasetSettings } from '#/files/dataset-settings.entity.js';
+import { VersionDiff } from '#/files/diff/version-diff.entity.js';
+import { AskEvent } from '#/files/explore/ask-event.entity.js';
 import { FileAsset } from '#/files/file-asset.entity.js';
 import { Notification } from '#/notifications/notification.entity.js';
 import { QuotaAlert } from '#/notifications/quota-alert.entity.js';
@@ -55,6 +59,10 @@ export const ENTITIES: (new () => object)[] = [
   UsageEvent,
   SeatInterval,
   FileAsset,
+  CleaningJob,
+  DatasetSettings,
+  VersionDiff,
+  AskEvent,
   FileAccessGrant,
   IdempotencyRecord,
   DataQualityReport,

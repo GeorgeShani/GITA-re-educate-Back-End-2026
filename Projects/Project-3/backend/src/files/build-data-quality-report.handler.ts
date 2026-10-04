@@ -17,6 +17,7 @@ import {
   UnsupportedFormatError,
   readSpreadsheet,
 } from './parsing/spreadsheet-reader.js';
+import { RowDiffService } from './diff/row-diff.service.js';
 import { diffMetrics } from './quality/diff.js';
 import {
   type DataQualityMetrics,
@@ -124,6 +125,7 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
     private readonly realtime: RealtimeEmitter,
     private readonly notifications: NotificationsService,
     private readonly webhooks: WebhookPublisher,
+    private readonly rowDiffs: RowDiffService,
     @Inject(CLOCK) private readonly clock: Clock,
   ) {
     this.logger.setContext(BuildDataQualityReportHandler.name);
@@ -251,6 +253,15 @@ export class BuildDataQualityReportHandler implements TaskHandler<BuildDataQuali
         },
       );
     }
+    if (outcome.status === 'ready' && outcome.schemaChange) {
+      await this.webhooks.publish(manager, file.companyId, 'dataset.schema_changed', {
+        datasetId: file.datasetId,
+        fileId: file.id,
+        version: file.version,
+        ...outcome.schemaChange,
+      });
+    }
+    if (outcome.status === 'ready') await this.rowDiffs.queueAuto(manager, file);
     if (outcome.status === 'ready' && outcome.failedErrorRules.length > 0) {
       await this.notifications.notify(
         manager,

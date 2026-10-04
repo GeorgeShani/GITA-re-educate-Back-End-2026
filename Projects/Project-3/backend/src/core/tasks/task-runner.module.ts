@@ -3,6 +3,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from '#/database/database.module.js';
 import { MailModule } from '#/core/mail/mail.module.js';
 import { SendEmailHandler } from '#/core/mail/send-email.handler.js';
+import { BuildVersionDiffHandler } from '#/files/diff/build-version-diff.handler.js';
+import { ApplyCleaningRecipeHandler } from '#/files/cleaning/apply-cleaning-recipe.handler.js';
 import { BuildDataQualityReportHandler } from '#/files/build-data-quality-report.handler.js';
 import { FilesModule } from '#/files/files.module.js';
 import { CancelStripeSubscriptionHandler } from '#/payments/cancel-stripe-subscription.handler.js';
@@ -41,6 +43,8 @@ import { TaskScheduler } from './task-scheduler.service.js';
         ReportStripeUsageHandler,
         DeliverWebhookHandler,
         CancelStripeSubscriptionHandler,
+        ApplyCleaningRecipeHandler,
+        BuildVersionDiffHandler,
       ],
       useFactory: (
         sendEmail: SendEmailHandler,
@@ -49,6 +53,8 @@ import { TaskScheduler } from './task-scheduler.service.js';
         reportUsage: ReportStripeUsageHandler,
         deliverWebhook: DeliverWebhookHandler,
         cancelSubscription: CancelStripeSubscriptionHandler,
+        applyCleaning: ApplyCleaningRecipeHandler,
+        versionDiff: BuildVersionDiffHandler,
       ): TaskHandler[] => [
         sendEmail,
         buildReport,
@@ -56,6 +62,8 @@ import { TaskScheduler } from './task-scheduler.service.js';
         reportUsage,
         deliverWebhook,
         cancelSubscription,
+        applyCleaning,
+        versionDiff,
       ],
     },
     TaskRunner,

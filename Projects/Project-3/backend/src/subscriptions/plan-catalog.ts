@@ -26,10 +26,12 @@ export interface PlanRules {
   rateLimitPerMinute: number;
   /** Data-quality rules a company may keep (enabled or not). `null` = unlimited. */
   maxQualityRules: number | null;
-  /** Live versions one file (dataset) may hold. `null` = unlimited. Every version still counts toward the file quota. */
+  /** Live versions one file (dataset) may hold. `null` = unlimited. An uploaded version counts toward the file quota; a cleaned one does not. */
   maxVersionsPerDataset: number | null;
   /** Active outgoing webhook endpoints. `null` = unlimited. */
   maxWebhookEndpoints: number | null;
+  /** Plain-language questions the AI assistant may answer about a company's files in a billing period. The query builder is not counted. */
+  questionsPerPeriod: number;
 }
 
 /**
@@ -49,6 +51,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxQualityRules: 3,
     maxVersionsPerDataset: 5,
     maxWebhookEndpoints: 1,
+    questionsPerPeriod: 20,
   },
   basic: {
     maxEmployees: 10,
@@ -60,6 +63,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxQualityRules: 25,
     maxVersionsPerDataset: 50,
     maxWebhookEndpoints: 5,
+    questionsPerPeriod: 300,
   },
   premium: {
     maxEmployees: null,
@@ -71,6 +75,7 @@ export const PLAN_CATALOG: Readonly<Record<Plan, PlanRules>> = {
     maxQualityRules: null,
     maxVersionsPerDataset: null,
     maxWebhookEndpoints: null,
+    questionsPerPeriod: 3000,
   },
 };
 

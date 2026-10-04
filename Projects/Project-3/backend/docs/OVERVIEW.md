@@ -219,7 +219,28 @@ not "forbidden", it is **404**: nothing discloses that it exists.
 - Audit entries made through it say `via: "mcp"` and which key acted. The demo company's agents see no write tools.
 - Not exposed: comments, people, plans, API keys, webhooks, file deletion and access changes — those stay with a signed-in person.
 
-### 12. Operations
+### 12. Working with a file's contents
+
+- **Personal-data scan.** Profiling marks columns that look like emails, phone numbers, card numbers (Luhn), IBANs (mod 97), IP
+  addresses, birth dates or secrets, by patterns and checksums over a bounded sample. Never an AI; a report holds the column and
+  the kind, never a value. A company-visible file with such a column notifies its uploader and the admins and publishes
+  `file.sensitive_data_found`; the `no_sensitive_data` rule can fail it. Workbooks with several sheets name the sheet profiled, and
+  `POST /files/:id/report/rebuild` can choose another.
+- **Clean.** `POST /files/:id/clean/preview` counts what a recipe of steps would do over the whole file; `POST /files/:id/clean`
+  queues it (`apply_cleaning_recipe`) and the result is the **next version** (`derivedFromFileId` says which). It is not an upload:
+  no usage event or file quota, but it counts toward versions per dataset, is audited (`file.cleaned`) and gets its own report.
+  Dataset settings (`/datasets/:id/settings`) hold the saved recipe, "clean every new version" (Basic and Premium) and key columns.
+  A cleaned version is never cleaned again.
+- **Row-level changes.** `GET|POST /files/:a/compare/:b/rows` and `rows.csv`: with key columns, two versions are matched row by
+  row (added, removed, changed, unchanged, unmatchable) by the `build_version_diff` task. With saved keys every new version is
+  compared with the previous one automatically, with a `dataset.changed` notification and webhook (and `dataset.schema_changed`
+  is a webhook too).
+- **Explore and ask.** `POST /files/:id/explore` runs a validated query (filters, up to two group-bys, up to four measures) over
+  every row, cached per process. `POST /files/:id/ask` has `AiProvider.planQuery` turn a sentence into that same query from the
+  question and each column's name and type only; the server validates and runs it. Counted per plan in `ask_event`
+  (`questionsPerPeriod` 20/300/3,000). MCP tools: `explore_file`, `ask_file`, `compare_version_rows`, `start_row_comparison`.
+
+### 13. Operations
 
 - **Telemetry:** requests are tagged with the tenant; counters for uploads, quota hits, plan changes and invoices (plan label only).
   Tokens and one-time links are redacted from logs.
@@ -251,7 +272,8 @@ npm run docs:generate      # regenerate the OpenAPI documents
 ## Known limitations (on purpose, and written down)
 
 - Rate-limit counters are in memory: right for one API instance; scaling out needs a shared store.
-- A crash between storing a file and committing its row can leave an orphaned object; there is no sweeper yet.
+- A crash between storing a file and committing its row can leave an orphaned object; a daily janitor removes objects no row points to.
+- Personal-data detection is by pattern; free-text names and addresses are not recognised. Cleaning, row diffs and explore read up to 100,000 rows and 200 columns.
 - Legacy `.xls` files are accepted and stored but not profiled (the available parsers carry security advisories).
 - Socket rooms and rate-limit counters are process-local; horizontal scale needs shared Redis-backed adapters.
 - No CI workflow for now; the gate is run by hand.

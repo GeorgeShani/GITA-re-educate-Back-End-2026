@@ -271,6 +271,8 @@ components:
               - invoice.finalized
               - file.uploaded
               - file.sensitive_data_found
+              - dataset.changed
+              - dataset.schema_changed
       required:
         - name
         - url
@@ -518,6 +520,13 @@ components:
           description: The newest version. A default list shows only these.
         uploaderId:
           type: string
+        derivedFromFileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            For a version made by cleaning: the version it was cleaned from.
+            Null for an upload.
         grantedUserIds:
           nullable: true
           description: >-
@@ -539,6 +548,7 @@ components:
         - version
         - isLatest
         - uploaderId
+        - derivedFromFileId
         - grantedUserIds
         - createdAt
     UploadVersionBodyDoc:
@@ -1113,6 +1123,589 @@ components:
           example: If that account exists, an email is on its way.
       required:
         - message
+    CleanPreviewDto:
+      type: object
+      properties:
+        recipe:
+          type: object
+          additionalProperties: true
+          description: >-
+            The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, {
+            "step": "standardise_dates", "column": "when", "order": "dmy" } ]
+            }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`,
+            `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`,
+            `replace_values`, `fill_empty`, `change_case`, `rename_column`,
+            `drop_column`, `mask_column`. A step about a column the file does
+            not have is skipped, not refused.
+        sheet:
+          type: string
+          description: >-
+            For a workbook with several sheets: the one to clean. Omit for the
+            sheet the report covers.
+          example: Sales
+      required:
+        - recipe
+    StepOutcomeDto:
+      type: object
+      properties:
+        step:
+          type: string
+          enum:
+            - trim_whitespace
+            - tidy_headers
+            - drop_empty_rows
+            - drop_duplicate_rows
+            - standardise_dates
+            - parse_numbers
+            - replace_values
+            - fill_empty
+            - change_case
+            - rename_column
+            - drop_column
+            - mask_column
+        label:
+          type: string
+          description: The step in words, e.g. "Trim spaces in Name".
+        changed:
+          type: number
+          description: >-
+            Cells changed (or rows or columns removed, for the steps that do
+            that).
+        skipped:
+          type: string
+          nullable: true
+          description: Why the step did nothing, when it did not apply.
+        notes:
+          description: Things worth saying, e.g. values that could not be read as dates.
+          type: array
+          items:
+            type: string
+      required:
+        - step
+        - label
+        - changed
+        - skipped
+        - notes
+    SampleCellDto:
+      type: object
+      properties:
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+      required:
+        - before
+        - after
+    SampleRowDto:
+      type: object
+      properties:
+        row:
+          type: number
+          description: >-
+            The row's number in the file as uploaded, counting the header as row
+            1.
+        cells:
+          description: One per column of the cleaned file, in order.
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleCellDto'
+      required:
+        - row
+        - cells
+    CleanPreviewResultDto:
+      type: object
+      properties:
+        rowsBefore:
+          type: number
+        rowsAfter:
+          type: number
+        columns:
+          description: The columns the cleaned file would have.
+          type: array
+          items:
+            type: string
+        steps:
+          description: What each step did, counted over the WHOLE file.
+          type: array
+          items:
+            $ref: '#/components/schemas/StepOutcomeDto'
+        samples:
+          description: The first rows the steps change, each cell before and after.
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleRowDto'
+      required:
+        - rowsBefore
+        - rowsAfter
+        - columns
+        - steps
+        - samples
+    CleanFileDto:
+      type: object
+      properties:
+        recipe:
+          type: object
+          additionalProperties: true
+          description: >-
+            The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, {
+            "step": "standardise_dates", "column": "when", "order": "dmy" } ]
+            }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`,
+            `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`,
+            `replace_values`, `fill_empty`, `change_case`, `rename_column`,
+            `drop_column`, `mask_column`. A step about a column the file does
+            not have is skipped, not refused.
+        sheet:
+          type: string
+          description: >-
+            For a workbook with several sheets: the one to clean. Omit for the
+            sheet the report covers.
+          example: Sales
+        saveRecipe:
+          type: boolean
+          description: >-
+            Keep this recipe for the file (its dataset), so it is offered again
+            next time.
+          default: false
+        autoClean:
+          type: boolean
+          description: >-
+            Clean every NEW version of this dataset with this recipe, keeping
+            each upload as it arrived and adding the cleaned data after it.
+            Needs `saveRecipe`, and a Basic or Premium plan.
+          default: false
+      required:
+        - recipe
+    CleaningJobDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fileId:
+          type: string
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - succeeded
+            - failed
+        trigger:
+          type: string
+          enum:
+            - manual
+            - auto
+          description: >-
+            `auto` when a dataset's "clean every new version" setting started
+            it.
+        resultFileId:
+          type: string
+          nullable: true
+          description: The new version, once it exists.
+        errorMessage:
+          type: string
+          nullable: true
+        steps:
+          description: What each step did; empty until the job has run.
+          type: array
+          items:
+            $ref: '#/components/schemas/StepOutcomeDto'
+        rowsBefore:
+          type: number
+          nullable: true
+        rowsAfter:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fileId
+        - status
+        - trigger
+        - resultFileId
+        - errorMessage
+        - steps
+        - rowsBefore
+        - rowsAfter
+        - createdAt
+    DatasetSettingsDto:
+      type: object
+      properties:
+        datasetId:
+          type: string
+        keyColumns:
+          description: >-
+            The columns that together identify a row, for comparing two versions
+            row by row.
+          type: array
+          items:
+            type: string
+        recipe:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: The saved cleaning recipe, or null.
+        autoClean:
+          type: boolean
+          description: Every new version is cleaned with the saved recipe.
+        autoCleanAvailable:
+          type: boolean
+          description: Whether this company's plan includes automatic cleaning.
+      required:
+        - datasetId
+        - keyColumns
+        - recipe
+        - autoClean
+        - autoCleanAvailable
+    UpdateDatasetSettingsDto:
+      type: object
+      properties:
+        keyColumns:
+          description: REPLACES the key columns.
+          type: array
+          items:
+            type: string
+        recipe:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >-
+            The cleaning recipe to keep; `null` removes it (and switches
+            automatic cleaning off).
+        autoClean:
+          type: boolean
+          description: >-
+            Clean every new version automatically. Needs a saved recipe, and a
+            Basic or Premium plan.
+    RowDiffVersionDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        version:
+          type: number
+        originalName:
+          type: string
+      required:
+        - fileId
+        - version
+        - originalName
+    ColumnChangeCountDto:
+      type: object
+      properties:
+        column:
+          type: string
+        changed:
+          type: number
+      required:
+        - column
+        - changed
+    RowDiffSummaryDto:
+      type: object
+      properties:
+        keyColumns:
+          type: array
+          items:
+            type: string
+        rowsBefore:
+          type: number
+        rowsAfter:
+          type: number
+        added:
+          type: number
+        removed:
+          type: number
+        changed:
+          type: number
+        unchanged:
+          type: number
+        unmatchable:
+          type: number
+          description: >-
+            Rows with an empty key, or a key that appears more than once, in
+            either version. They cannot be matched and are not counted above.
+        columnsChanged:
+          description: >-
+            Columns in both versions, with how many rows changed in each, most
+            first.
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnChangeCountDto'
+        columnsAdded:
+          type: array
+          items:
+            type: string
+        columnsRemoved:
+          type: array
+          items:
+            type: string
+      required:
+        - keyColumns
+        - rowsBefore
+        - rowsAfter
+        - added
+        - removed
+        - changed
+        - unchanged
+        - unmatchable
+        - columnsChanged
+        - columnsAdded
+        - columnsRemoved
+    ChangedCellDto:
+      type: object
+      properties:
+        column:
+          type: string
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+      required:
+        - column
+        - before
+        - after
+    RowChangeDto:
+      type: object
+      properties:
+        change:
+          type: string
+          enum:
+            - added
+            - removed
+            - changed
+        key:
+          description: The values of the key columns, in the order of `keyColumns`.
+          type: array
+          items:
+            type: string
+        cells:
+          description: >-
+            For a changed row only the cells that differ; for an added or
+            removed row every cell.
+          type: array
+          items:
+            $ref: '#/components/schemas/ChangedCellDto'
+      required:
+        - change
+        - key
+        - cells
+    RowDiffDto:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/RowDiffVersionDto'
+        to:
+          $ref: '#/components/schemas/RowDiffVersionDto'
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - ready
+            - failed
+            - none
+          description: >-
+            `none` until a comparison has been asked for (or made
+            automatically).
+        keyColumns:
+          description: >-
+            The columns the comparison used or, before one is made, those saved
+            for the dataset.
+          type: array
+          items:
+            type: string
+        suggestedKeyColumns:
+          description: >-
+            Columns whose names say they identify a row, found in both versions:
+            a suggestion to confirm.
+          type: array
+          items:
+            type: string
+        summary:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/RowDiffSummaryDto'
+        sample:
+          description: >-
+            The first 500 changes: rows removed, then added, then changed. All
+            of them are in the CSV.
+          type: array
+          items:
+            $ref: '#/components/schemas/RowChangeDto'
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why a comparison could not be made.
+      required:
+        - from
+        - to
+        - status
+        - keyColumns
+        - suggestedKeyColumns
+        - summary
+        - sample
+        - errorMessage
+    RowDiffRequestDto:
+      type: object
+      properties:
+        keyColumns:
+          description: >-
+            The columns that together identify a row (up to 10), so a row in one
+            version can be matched with the same row in the other. Omit to use
+            the ones saved for the dataset (`PUT
+            /datasets/{datasetId}/settings`).
+          example:
+            - customer_id
+          type: array
+          items:
+            type: string
+    ExploreRequestDto:
+      type: object
+      properties:
+        query:
+          type: object
+          additionalProperties: true
+          description: >-
+            A query: `filters` (each `{ column, op, value }`; `op` is `equals`,
+            `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy`
+            (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is
+            `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes
+            no column), an optional `sort` (`{ by: "group" | "measure", index,
+            direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50).
+            Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum",
+            "column": "revenue" }], "sort": { "by": "measure", "index": 0,
+            "direction": "desc" } }`.
+      required:
+        - query
+    ResultColumnDto:
+      type: object
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - group
+            - measure
+      required:
+        - name
+        - kind
+    QueryResultDto:
+      type: object
+      properties:
+        columns:
+          description: The group-by columns first, then one column per measure.
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultColumnDto'
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: number
+              nullable: true
+          description: >-
+            One row per group (one row in all when there is no `groupBy`), cells
+            in the order of `columns`. A measure that has nothing to work on is
+            null.
+        rowsMatched:
+          type: number
+          description: Rows that passed the filters.
+        rowsScanned:
+          type: number
+          description: Rows in the file.
+        groupCount:
+          type: number
+          description: How many groups there were before `limit` cut the list.
+        notes:
+          description: >-
+            Things worth saying, such as cells that were not numbers and were
+            left out.
+          type: array
+          items:
+            type: string
+      required:
+        - columns
+        - rows
+        - rowsMatched
+        - rowsScanned
+        - groupCount
+        - notes
+    AskRequestDto:
+      type: object
+      properties:
+        question:
+          type: string
+          description: >-
+            A question about the file, in words. The assistant is shown it and
+            the column names and types, never a value.
+          example: Total revenue by region, highest first
+      required:
+        - question
+    AskResultDto:
+      type: object
+      properties:
+        question:
+          type: string
+        spec:
+          type: object
+          additionalProperties: true
+          description: >-
+            The query the assistant planned, validated and run by the server. A
+            query: `filters` (each `{ column, op, value }`; `op` is `equals`,
+            `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy`
+            (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is
+            `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes
+            no column), an optional `sort` (`{ by: "group" | "measure", index,
+            direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50).
+            Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum",
+            "column": "revenue" }], "sort": { "by": "measure", "index": 0,
+            "direction": "desc" } }`.
+        result:
+          $ref: '#/components/schemas/QueryResultDto'
+        model:
+          type: string
+          nullable: true
+          description: The model that planned the query.
+        questionsUsed:
+          type: number
+          description: Questions answered so far this billing period, this one included.
+        questionsLimit:
+          type: number
+          description: Questions the plan answers a billing period.
+      required:
+        - question
+        - spec
+        - result
+        - model
+        - questionsUsed
+        - questionsLimit
+    AllowanceDto:
+      type: object
+      properties:
+        aiAvailable:
+          type: boolean
+          description: >-
+            False when the AI assistant is switched off on this server: the
+            query builder still works.
+        questionsUsed:
+          type: number
+        questionsLimit:
+          type: number
+      required:
+        - aiAvailable
+        - questionsUsed
+        - questionsLimit
     BillingPeriodDto:
       type: object
       properties:
@@ -1318,6 +1911,9 @@ components:
             - rules.failed
             - file.sensitive_data
             - dataset.schema_changed
+            - file.cleaned
+            - cleaning.failed
+            - dataset.changed
             - file.shared
             - invoice.finalized
             - comment.mentioned
@@ -1418,8 +2014,13 @@ components:
           type: number
           nullable: true
           description: >-
-            Versions one file may hold (each version still counts toward the
-            file quota); null = unlimited.
+            Versions one file may hold (an uploaded version counts toward the
+            file quota, a cleaned one does not); null = unlimited.
+        questionsPerPeriod:
+          type: number
+          description: >-
+            Plain-language questions the AI assistant may answer about your
+            files per billing period. The query builder is not counted.
       required:
         - plan
         - maxEmployees
@@ -1431,6 +2032,7 @@ components:
         - rateLimitPerMinute
         - maxQualityRules
         - maxVersionsPerDataset
+        - questionsPerPeriod
     PeriodDto:
       type: object
       properties:
@@ -2506,6 +3108,8 @@ components:
             - file.uploaded
             - file.access_changed
             - file.deleted
+            - file.cleaned
+            - dataset.settings_updated
             - comment.created
             - comment.updated
             - comment.deleted

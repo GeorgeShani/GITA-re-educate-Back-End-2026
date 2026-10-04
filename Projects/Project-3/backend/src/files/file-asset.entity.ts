@@ -85,6 +85,14 @@ export class FileAsset extends BaseEntity {
   @Column({ type: 'boolean', default: true })
   isLatest!: boolean;
 
+  /** The version this one was cleaned from; null for an upload. A cleaned version is not an upload: it uses no file quota. */
+  @Column({ type: 'uuid', nullable: true })
+  derivedFromFileId!: string | null;
+
+  /** What was done to make it (steps, rows before and after, who triggered it); null for an upload. */
+  @Column({ type: 'jsonb', nullable: true })
+  derivation!: unknown;
+
   @Column({ type: 'timestamptz', nullable: true })
   deletedAt!: Date | null;
 }

@@ -539,6 +539,364 @@ paths:
         long cells are cut to 200 characters. Returns 409 while the report is
         still being prepared, and 422 with the reason when no preview can be
         made (`unsupported` or `failed`). Visible exactly when the file is.
+  /files/{id}/clean/preview:
+    post:
+      operationId: CleaningController_preview
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CleanPreviewDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleanPreviewResultDto'
+      security: &ref_2
+        - bearer: []
+      tags: &ref_3
+        - files
+      summary: Preview what a cleaning recipe would change
+      description: >-
+        Counts what each step of the recipe would do across the **whole** file
+        and returns the first rows that change, each cell before and after.
+        Nothing is written. Steps run in order; a step about a column the file
+        does not have is skipped, not refused. A file over 100,000 rows or 200
+        columns, or a legacy `.xls`, answers 422. The uploader or an admin only;
+        a file you cannot see is a 404. Needs the `files:write` scope for an API
+        key.
+  /files/{id}/clean:
+    post:
+      operationId: CleaningController_clean
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CleanFileDto'
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleaningJobDto'
+      security: *ref_2
+      tags: *ref_3
+      summary: Clean a file as its next version
+      description: >-
+        Queues the recipe. It answers **202** with a job to poll; the work runs
+        in the background and ends as the **next version** of the file's
+        dataset, shared with the same people and given a report of its own. The
+        original is never touched. A cleaned version is not an upload: it uses
+        no file quota, but it counts towards the plan's versions-per-dataset cap
+        and appears in the audit log as `file.cleaned`. `saveRecipe` keeps the
+        recipe for the dataset; `autoClean` (which needs `saveRecipe`, and a
+        Basic or Premium plan, else 402) cleans every new version automatically.
+        A cleaned version is never cleaned again.
+  /files/{id}/clean/jobs/{jobId}:
+    get:
+      operationId: CleaningController_job
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: jobId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CleaningJobDto'
+      security: *ref_2
+      tags: *ref_3
+      summary: Read a cleaning job
+      description: >-
+        The job's `status` (`queued`, `running`, `succeeded` or `failed`), what
+        each step did, the rows before and after, and, once it has succeeded,
+        `resultFileId` (the new version) or, if it failed, the reason.
+  /datasets/{datasetId}/settings:
+    get:
+      operationId: CleaningController_settings
+      parameters:
+        - name: datasetId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetSettingsDto'
+      security: *ref_2
+      tags: *ref_3
+      summary: Read a dataset's saved settings
+      description: >-
+        The saved cleaning recipe, whether every new version is cleaned, and
+        whether the plan offers that (`autoCleanAvailable`). A dataset with
+        nothing saved answers with the defaults. Visible to anyone who can see
+        the dataset.
+    put:
+      operationId: CleaningController_saveSettings
+      parameters:
+        - name: datasetId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDatasetSettingsDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DatasetSettingsDto'
+      security: *ref_2
+      tags: *ref_3
+      summary: Save a dataset's settings
+      description: >-
+        Saves the cleaning recipe, whether to clean every new version, and/or
+        the columns that identify a row. Any of them may be sent alone. The
+        uploader of the latest version or an admin only. `autoClean` needs a
+        saved recipe and a Basic or Premium plan (402 otherwise).
+  /files/{id}/compare/{otherId}/rows:
+    get:
+      operationId: RowDiffController_view
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: otherId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RowDiffDto'
+      security: &ref_4
+        - bearer: []
+      tags: &ref_5
+        - files
+      summary: Read the row-by-row comparison of two versions
+      description: >-
+        What changed between two versions of one file **row by row**: rows
+        added, removed, changed and unchanged, which columns changed most, and
+        the first 500 changes with the old and the new value of each changed
+        cell. Rows are matched by the dataset's key columns (`keyColumns`),
+        ignoring case and surrounding spaces; columns are matched by name, so a
+        reordered file does not look changed. `status` is `none` until a
+        comparison has been asked for, `queued` or `running` while it is made,
+        then `ready` or `failed` (with the reason in `errorMessage`).
+        `suggestedKeyColumns` offers the columns whose names say they identify a
+        row. Either order of the two ids names the older version first. Both
+        versions must be visible to the caller (else 404) and belong to one
+        dataset (else 422).
+    post:
+      operationId: RowDiffController_start
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: otherId
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RowDiffRequestDto'
+      responses:
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RowDiffDto'
+      security: *ref_4
+      tags: *ref_5
+      summary: Compare two versions row by row
+      description: >-
+        Queues the comparison with the given `keyColumns` (up to 10), or with
+        the ones saved for the dataset when none are given. Answers **202** with
+        the comparison as it stands (`queued`); read it again with `GET` until
+        it is `ready`. Asking again replaces the earlier result; asking while
+        one is being made answers 409. A key column that one of the versions
+        lacks makes the comparison fail with the reason. Files over 100,000 rows
+        or 200 columns cannot be compared. Once the dataset has saved key
+        columns every new version is compared with the one before it
+        automatically, and the uploader and the admins are told
+        (`dataset.changed`).
+  /files/{id}/compare/{otherId}/rows.csv:
+    get:
+      operationId: RowDiffController_csv
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: otherId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Every change as a CSV file.
+          content:
+            text/csv:
+              schema:
+                type: string
+      security: *ref_4
+      tags: *ref_5
+      summary: Download every change as a CSV file
+      description: >-
+        Every added, removed and changed row, not only the first 500: a `change`
+        column, the key columns, each column's value and, for a changed row,
+        what each changed cell was before. Answers 409 until the comparison is
+        `ready`.
+  /files/{id}/explore:
+    post:
+      operationId: ExploreController_run
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExploreRequestDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryResultDto'
+      security: &ref_6
+        - bearer: []
+      tags: &ref_7
+        - files
+      summary: Run a query over a file's rows
+      description: >-
+        Filters, groups and totals **every row** of the file (up to 100,000 rows
+        and 200 columns) on the server, without downloading it. Group by up to 2
+        columns; compute up to 4 measures per group (`count`, `sum`, `average`,
+        `min`, `max`, `distinct`); filter with `equals`, `contains`, `greater`,
+        `less`, `empty` and `not_empty`; sort and limit the groups. Columns are
+        found by name, ignoring case and spaces. A sum, average, lowest or
+        highest skips cells that are not numbers and says how many in `notes`. A
+        column the file does not have, or a number asked of a column of text,
+        answers 422 with the reason. Free: it does not use the plan's questions.
+        A file whose report is still being built answers 409. Needs the
+        `files:read` scope for an API key.
+  /files/{id}/ask:
+    post:
+      operationId: ExploreController_ask
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AskRequestDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AskResultDto'
+      security: *ref_6
+      tags: *ref_7
+      summary: Ask a file a question in words
+      description: >-
+        Turns a sentence such as "total revenue by region, highest first" into
+        the same query `explore` takes, and runs it. The AI assistant is shown
+        **only the question and each column's name and type, never a value**;
+        the server validates the query it plans and runs it itself, and the
+        answer is never sent back to the model. The response carries the planned
+        query (`spec`), so it can be checked and adjusted, and the result.
+        Counts against the plan's questions per billing period (Free 20, Basic
+        300, Premium 3,000): **402** once used up, pointing to `explore`, which
+        is free. A question the assistant cannot answer from these columns is
+        422 with its reason, and an assistant that is switched off or does not
+        answer is 503; neither is counted.
+  /files/{id}/ask/allowance:
+    get:
+      operationId: ExploreController_allowance
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllowanceDto'
+      security: *ref_6
+      tags: *ref_7
+      summary: How many questions are left this period
+      description: >-
+        Whether the AI assistant is available on this server (`aiAvailable`) and
+        how many of the plan's questions the company has used this billing
+        period. The query builder works either way.
 info:
   title: Gridline API
   description: >-
@@ -585,7 +943,7 @@ components:
           type: array
           items:
             type: string
-            enum: &ref_2
+            enum: &ref_8
               - report.ready
               - report.failed
               - rules.failed
@@ -593,6 +951,8 @@ components:
               - invoice.finalized
               - file.uploaded
               - file.sensitive_data_found
+              - dataset.changed
+              - dataset.schema_changed
       required:
         - name
         - url
@@ -610,9 +970,9 @@ components:
           format: uri
         events:
           type: array
-          items: &ref_3
+          items: &ref_9
             type: string
-            enum: *ref_2
+            enum: *ref_8
         active:
           type: boolean
         consecutiveFailures:
@@ -650,7 +1010,7 @@ components:
           format: uri
         events:
           type: array
-          items: *ref_3
+          items: *ref_9
         active:
           type: boolean
         consecutiveFailures:
@@ -717,7 +1077,7 @@ components:
           type: array
           items:
             type: string
-            enum: *ref_2
+            enum: *ref_8
         active:
           type: boolean
     RotatedWebhookSecretDto:
@@ -791,7 +1151,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: &ref_4
+          enum: &ref_10
             - company
             - restricted
           default: company
@@ -823,7 +1183,7 @@ components:
           type: number
         visibility:
           type: string
-          enum: *ref_4
+          enum: *ref_10
         datasetId:
           type: string
           format: uuid
@@ -840,6 +1200,13 @@ components:
           description: The newest version. A default list shows only these.
         uploaderId:
           type: string
+        derivedFromFileId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >-
+            For a version made by cleaning: the version it was cleaned from.
+            Null for an upload.
         grantedUserIds:
           nullable: true
           description: >-
@@ -861,6 +1228,7 @@ components:
         - version
         - isLatest
         - uploaderId
+        - derivedFromFileId
         - grantedUserIds
         - createdAt
     UploadVersionBodyDoc:
@@ -905,7 +1273,7 @@ components:
           type: string
         from:
           type: string
-          enum: &ref_5
+          enum: &ref_11
             - integer
             - number
             - boolean
@@ -914,7 +1282,7 @@ components:
             - empty
         to:
           type: string
-          enum: *ref_5
+          enum: *ref_11
       required:
         - column
         - from
@@ -1139,7 +1507,7 @@ components:
           description: Percent of the column that is empty, 0–100, two decimals.
         inferredType:
           type: string
-          enum: *ref_5
+          enum: *ref_11
           description: The dominant kind of value in the column.
         typeCounts:
           $ref: '#/components/schemas/TypeCountsDto'
@@ -1253,7 +1621,7 @@ components:
           type: string
         kind:
           type: string
-          enum: &ref_10
+          enum: &ref_16
             - required_column
             - max_null_percent
             - type_is
@@ -1267,7 +1635,7 @@ components:
           nullable: true
         severity:
           type: string
-          enum: &ref_11
+          enum: &ref_17
             - error
             - warning
         status:
@@ -1379,7 +1747,7 @@ components:
           type: string
         inferredType:
           type: string
-          enum: *ref_5
+          enum: *ref_11
       required:
         - name
         - inferredType
@@ -1419,7 +1787,7 @@ components:
       properties:
         visibility:
           type: string
-          enum: *ref_4
+          enum: *ref_10
         grantedUserIds:
           description: >-
             REPLACES the set of colleagues granted access. Only meaningful for a
@@ -1435,6 +1803,589 @@ components:
           example: If that account exists, an email is on its way.
       required:
         - message
+    CleanPreviewDto:
+      type: object
+      properties:
+        recipe:
+          type: object
+          additionalProperties: true
+          description: >-
+            The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, {
+            "step": "standardise_dates", "column": "when", "order": "dmy" } ]
+            }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`,
+            `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`,
+            `replace_values`, `fill_empty`, `change_case`, `rename_column`,
+            `drop_column`, `mask_column`. A step about a column the file does
+            not have is skipped, not refused.
+        sheet:
+          type: string
+          description: >-
+            For a workbook with several sheets: the one to clean. Omit for the
+            sheet the report covers.
+          example: Sales
+      required:
+        - recipe
+    StepOutcomeDto:
+      type: object
+      properties:
+        step:
+          type: string
+          enum:
+            - trim_whitespace
+            - tidy_headers
+            - drop_empty_rows
+            - drop_duplicate_rows
+            - standardise_dates
+            - parse_numbers
+            - replace_values
+            - fill_empty
+            - change_case
+            - rename_column
+            - drop_column
+            - mask_column
+        label:
+          type: string
+          description: The step in words, e.g. "Trim spaces in Name".
+        changed:
+          type: number
+          description: >-
+            Cells changed (or rows or columns removed, for the steps that do
+            that).
+        skipped:
+          type: string
+          nullable: true
+          description: Why the step did nothing, when it did not apply.
+        notes:
+          description: Things worth saying, e.g. values that could not be read as dates.
+          type: array
+          items:
+            type: string
+      required:
+        - step
+        - label
+        - changed
+        - skipped
+        - notes
+    SampleCellDto:
+      type: object
+      properties:
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+      required:
+        - before
+        - after
+    SampleRowDto:
+      type: object
+      properties:
+        row:
+          type: number
+          description: >-
+            The row's number in the file as uploaded, counting the header as row
+            1.
+        cells:
+          description: One per column of the cleaned file, in order.
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleCellDto'
+      required:
+        - row
+        - cells
+    CleanPreviewResultDto:
+      type: object
+      properties:
+        rowsBefore:
+          type: number
+        rowsAfter:
+          type: number
+        columns:
+          description: The columns the cleaned file would have.
+          type: array
+          items:
+            type: string
+        steps:
+          description: What each step did, counted over the WHOLE file.
+          type: array
+          items:
+            $ref: '#/components/schemas/StepOutcomeDto'
+        samples:
+          description: The first rows the steps change, each cell before and after.
+          type: array
+          items:
+            $ref: '#/components/schemas/SampleRowDto'
+      required:
+        - rowsBefore
+        - rowsAfter
+        - columns
+        - steps
+        - samples
+    CleanFileDto:
+      type: object
+      properties:
+        recipe:
+          type: object
+          additionalProperties: true
+          description: >-
+            The steps, in order: `{ "steps": [ { "step": "trim_whitespace" }, {
+            "step": "standardise_dates", "column": "when", "order": "dmy" } ]
+            }`. Steps: `trim_whitespace`, `tidy_headers`, `drop_empty_rows`,
+            `drop_duplicate_rows`, `standardise_dates`, `parse_numbers`,
+            `replace_values`, `fill_empty`, `change_case`, `rename_column`,
+            `drop_column`, `mask_column`. A step about a column the file does
+            not have is skipped, not refused.
+        sheet:
+          type: string
+          description: >-
+            For a workbook with several sheets: the one to clean. Omit for the
+            sheet the report covers.
+          example: Sales
+        saveRecipe:
+          type: boolean
+          description: >-
+            Keep this recipe for the file (its dataset), so it is offered again
+            next time.
+          default: false
+        autoClean:
+          type: boolean
+          description: >-
+            Clean every NEW version of this dataset with this recipe, keeping
+            each upload as it arrived and adding the cleaned data after it.
+            Needs `saveRecipe`, and a Basic or Premium plan.
+          default: false
+      required:
+        - recipe
+    CleaningJobDto:
+      type: object
+      properties:
+        id:
+          type: string
+        fileId:
+          type: string
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - succeeded
+            - failed
+        trigger:
+          type: string
+          enum:
+            - manual
+            - auto
+          description: >-
+            `auto` when a dataset's "clean every new version" setting started
+            it.
+        resultFileId:
+          type: string
+          nullable: true
+          description: The new version, once it exists.
+        errorMessage:
+          type: string
+          nullable: true
+        steps:
+          description: What each step did; empty until the job has run.
+          type: array
+          items:
+            $ref: '#/components/schemas/StepOutcomeDto'
+        rowsBefore:
+          type: number
+          nullable: true
+        rowsAfter:
+          type: number
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fileId
+        - status
+        - trigger
+        - resultFileId
+        - errorMessage
+        - steps
+        - rowsBefore
+        - rowsAfter
+        - createdAt
+    DatasetSettingsDto:
+      type: object
+      properties:
+        datasetId:
+          type: string
+        keyColumns:
+          description: >-
+            The columns that together identify a row, for comparing two versions
+            row by row.
+          type: array
+          items:
+            type: string
+        recipe:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: The saved cleaning recipe, or null.
+        autoClean:
+          type: boolean
+          description: Every new version is cleaned with the saved recipe.
+        autoCleanAvailable:
+          type: boolean
+          description: Whether this company's plan includes automatic cleaning.
+      required:
+        - datasetId
+        - keyColumns
+        - recipe
+        - autoClean
+        - autoCleanAvailable
+    UpdateDatasetSettingsDto:
+      type: object
+      properties:
+        keyColumns:
+          description: REPLACES the key columns.
+          type: array
+          items:
+            type: string
+        recipe:
+          type: object
+          additionalProperties: true
+          nullable: true
+          description: >-
+            The cleaning recipe to keep; `null` removes it (and switches
+            automatic cleaning off).
+        autoClean:
+          type: boolean
+          description: >-
+            Clean every new version automatically. Needs a saved recipe, and a
+            Basic or Premium plan.
+    RowDiffVersionDto:
+      type: object
+      properties:
+        fileId:
+          type: string
+          format: uuid
+        version:
+          type: number
+        originalName:
+          type: string
+      required:
+        - fileId
+        - version
+        - originalName
+    ColumnChangeCountDto:
+      type: object
+      properties:
+        column:
+          type: string
+        changed:
+          type: number
+      required:
+        - column
+        - changed
+    RowDiffSummaryDto:
+      type: object
+      properties:
+        keyColumns:
+          type: array
+          items:
+            type: string
+        rowsBefore:
+          type: number
+        rowsAfter:
+          type: number
+        added:
+          type: number
+        removed:
+          type: number
+        changed:
+          type: number
+        unchanged:
+          type: number
+        unmatchable:
+          type: number
+          description: >-
+            Rows with an empty key, or a key that appears more than once, in
+            either version. They cannot be matched and are not counted above.
+        columnsChanged:
+          description: >-
+            Columns in both versions, with how many rows changed in each, most
+            first.
+          type: array
+          items:
+            $ref: '#/components/schemas/ColumnChangeCountDto'
+        columnsAdded:
+          type: array
+          items:
+            type: string
+        columnsRemoved:
+          type: array
+          items:
+            type: string
+      required:
+        - keyColumns
+        - rowsBefore
+        - rowsAfter
+        - added
+        - removed
+        - changed
+        - unchanged
+        - unmatchable
+        - columnsChanged
+        - columnsAdded
+        - columnsRemoved
+    ChangedCellDto:
+      type: object
+      properties:
+        column:
+          type: string
+        before:
+          type: string
+          nullable: true
+        after:
+          type: string
+          nullable: true
+      required:
+        - column
+        - before
+        - after
+    RowChangeDto:
+      type: object
+      properties:
+        change:
+          type: string
+          enum:
+            - added
+            - removed
+            - changed
+        key:
+          description: The values of the key columns, in the order of `keyColumns`.
+          type: array
+          items:
+            type: string
+        cells:
+          description: >-
+            For a changed row only the cells that differ; for an added or
+            removed row every cell.
+          type: array
+          items:
+            $ref: '#/components/schemas/ChangedCellDto'
+      required:
+        - change
+        - key
+        - cells
+    RowDiffDto:
+      type: object
+      properties:
+        from:
+          $ref: '#/components/schemas/RowDiffVersionDto'
+        to:
+          $ref: '#/components/schemas/RowDiffVersionDto'
+        status:
+          type: string
+          enum:
+            - queued
+            - running
+            - ready
+            - failed
+            - none
+          description: >-
+            `none` until a comparison has been asked for (or made
+            automatically).
+        keyColumns:
+          description: >-
+            The columns the comparison used or, before one is made, those saved
+            for the dataset.
+          type: array
+          items:
+            type: string
+        suggestedKeyColumns:
+          description: >-
+            Columns whose names say they identify a row, found in both versions:
+            a suggestion to confirm.
+          type: array
+          items:
+            type: string
+        summary:
+          nullable: true
+          type: object
+          allOf:
+            - $ref: '#/components/schemas/RowDiffSummaryDto'
+        sample:
+          description: >-
+            The first 500 changes: rows removed, then added, then changed. All
+            of them are in the CSV.
+          type: array
+          items:
+            $ref: '#/components/schemas/RowChangeDto'
+        errorMessage:
+          type: string
+          nullable: true
+          description: Why a comparison could not be made.
+      required:
+        - from
+        - to
+        - status
+        - keyColumns
+        - suggestedKeyColumns
+        - summary
+        - sample
+        - errorMessage
+    RowDiffRequestDto:
+      type: object
+      properties:
+        keyColumns:
+          description: >-
+            The columns that together identify a row (up to 10), so a row in one
+            version can be matched with the same row in the other. Omit to use
+            the ones saved for the dataset (`PUT
+            /datasets/{datasetId}/settings`).
+          example:
+            - customer_id
+          type: array
+          items:
+            type: string
+    ExploreRequestDto:
+      type: object
+      properties:
+        query:
+          type: object
+          additionalProperties: true
+          description: >-
+            A query: `filters` (each `{ column, op, value }`; `op` is `equals`,
+            `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy`
+            (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is
+            `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes
+            no column), an optional `sort` (`{ by: "group" | "measure", index,
+            direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50).
+            Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum",
+            "column": "revenue" }], "sort": { "by": "measure", "index": 0,
+            "direction": "desc" } }`.
+      required:
+        - query
+    ResultColumnDto:
+      type: object
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+            - group
+            - measure
+      required:
+        - name
+        - kind
+    QueryResultDto:
+      type: object
+      properties:
+        columns:
+          description: The group-by columns first, then one column per measure.
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultColumnDto'
+        rows:
+          type: array
+          items:
+            type: array
+            items:
+              oneOf:
+                - type: string
+                - type: number
+              nullable: true
+          description: >-
+            One row per group (one row in all when there is no `groupBy`), cells
+            in the order of `columns`. A measure that has nothing to work on is
+            null.
+        rowsMatched:
+          type: number
+          description: Rows that passed the filters.
+        rowsScanned:
+          type: number
+          description: Rows in the file.
+        groupCount:
+          type: number
+          description: How many groups there were before `limit` cut the list.
+        notes:
+          description: >-
+            Things worth saying, such as cells that were not numbers and were
+            left out.
+          type: array
+          items:
+            type: string
+      required:
+        - columns
+        - rows
+        - rowsMatched
+        - rowsScanned
+        - groupCount
+        - notes
+    AskRequestDto:
+      type: object
+      properties:
+        question:
+          type: string
+          description: >-
+            A question about the file, in words. The assistant is shown it and
+            the column names and types, never a value.
+          example: Total revenue by region, highest first
+      required:
+        - question
+    AskResultDto:
+      type: object
+      properties:
+        question:
+          type: string
+        spec:
+          type: object
+          additionalProperties: true
+          description: >-
+            The query the assistant planned, validated and run by the server. A
+            query: `filters` (each `{ column, op, value }`; `op` is `equals`,
+            `contains`, `greater`, `less`, `empty` or `not_empty`), `groupBy`
+            (up to 2 columns), `measures` (1 to 4 of `{ fn, column }`; `fn` is
+            `count`, `sum`, `average`, `min`, `max` or `distinct`; `count` takes
+            no column), an optional `sort` (`{ by: "group" | "measure", index,
+            direction: "asc" | "desc" }`) and a `limit` (1 to 200, default 50).
+            Example: `{ "groupBy": ["region"], "measures": [{ "fn": "sum",
+            "column": "revenue" }], "sort": { "by": "measure", "index": 0,
+            "direction": "desc" } }`.
+        result:
+          $ref: '#/components/schemas/QueryResultDto'
+        model:
+          type: string
+          nullable: true
+          description: The model that planned the query.
+        questionsUsed:
+          type: number
+          description: Questions answered so far this billing period, this one included.
+        questionsLimit:
+          type: number
+          description: Questions the plan answers a billing period.
+      required:
+        - question
+        - spec
+        - result
+        - model
+        - questionsUsed
+        - questionsLimit
+    AllowanceDto:
+      type: object
+      properties:
+        aiAvailable:
+          type: boolean
+          description: >-
+            False when the AI assistant is switched off on this server: the
+            query builder still works.
+        questionsUsed:
+          type: number
+        questionsLimit:
+          type: number
+      required:
+        - aiAvailable
+        - questionsUsed
+        - questionsLimit
     BillingPeriodDto:
       type: object
       properties:
@@ -1495,7 +2446,7 @@ components:
       properties:
         plan:
           type: string
-          enum: &ref_6
+          enum: &ref_12
             - free
             - basic
             - premium
@@ -1541,7 +2492,7 @@ components:
           type: string
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
           description: The plan that was live during the billed period.
         periodStart:
           type: string
@@ -1640,6 +2591,9 @@ components:
             - rules.failed
             - file.sensitive_data
             - dataset.schema_changed
+            - file.cleaned
+            - cleaning.failed
+            - dataset.changed
             - file.shared
             - invoice.finalized
             - comment.mentioned
@@ -1701,7 +2655,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         maxEmployees:
           type: number
           nullable: true
@@ -1740,8 +2694,13 @@ components:
           type: number
           nullable: true
           description: >-
-            Versions one file may hold (each version still counts toward the
-            file quota); null = unlimited.
+            Versions one file may hold (an uploaded version counts toward the
+            file quota, a cleaned one does not); null = unlimited.
+        questionsPerPeriod:
+          type: number
+          description: >-
+            Plain-language questions the AI assistant may answer about your
+            files per billing period. The query builder is not counted.
       required:
         - plan
         - maxEmployees
@@ -1753,6 +2712,7 @@ components:
         - rateLimitPerMinute
         - maxQualityRules
         - maxVersionsPerDataset
+        - questionsPerPeriod
     PeriodDto:
       type: object
       properties:
@@ -1812,7 +2772,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         billingAnchorDay:
           type: number
           minimum: 1
@@ -1840,7 +2800,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
       required:
         - plan
     PendingPlanDto:
@@ -1855,7 +2815,7 @@ components:
           format: uuid
         targetPlan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         checkoutUrl:
           type: object
           nullable: true
@@ -1873,7 +2833,7 @@ components:
           $ref: '#/components/schemas/SubscriptionDto'
         previousPlan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         prorationCents:
           type: number
           description: >-
@@ -1905,7 +2865,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: &ref_7
+          enum: &ref_13
             - finance
             - e-commerce
             - healthcare
@@ -2041,12 +3001,12 @@ components:
           type: string
         role:
           type: string
-          enum: &ref_8
+          enum: &ref_14
             - admin
             - employee
         status:
           type: string
-          enum: &ref_9
+          enum: &ref_15
             - invited
             - active
             - disabled
@@ -2076,7 +3036,7 @@ components:
           example: GE
         industry:
           type: string
-          enum: *ref_7
+          enum: *ref_13
         status:
           type: string
           enum:
@@ -2191,7 +3151,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_7
+          enum: *ref_13
         oauthRegistrationToken:
           type: string
           description: The `oauthRegistration` token from the redirect to `/register`.
@@ -2305,7 +3265,7 @@ components:
           description: ISO 3166-1 alpha-2 country code
         industry:
           type: string
-          enum: *ref_7
+          enum: *ref_13
         billingEmail:
           type: string
           example: nino@acme.com
@@ -2338,10 +3298,10 @@ components:
           type: string
         role:
           type: string
-          enum: *ref_8
+          enum: *ref_14
         status:
           type: string
-          enum: *ref_9
+          enum: *ref_15
         activatedAt:
           type: string
           format: date-time
@@ -2481,7 +3441,7 @@ components:
           type: string
         kind:
           type: string
-          enum: *ref_10
+          enum: *ref_16
         columnName:
           type: string
           nullable: true
@@ -2491,7 +3451,7 @@ components:
           additionalProperties: true
         severity:
           type: string
-          enum: *ref_11
+          enum: *ref_17
         enabled:
           type: boolean
         createdByUserId:
@@ -2536,7 +3496,7 @@ components:
           maxLength: 80
         kind:
           type: string
-          enum: *ref_10
+          enum: *ref_16
           description: >-
             `required_column` the column must exist; `max_null_percent` at most
             that share empty; `type_is` the column is that type; `min_value` /
@@ -2566,7 +3526,7 @@ components:
             `required_column` and `unique` take `{}`.
         severity:
           type: string
-          enum: *ref_11
+          enum: *ref_17
           default: error
           description: >-
             An `error` counts double in the quality score, and a failing one
@@ -2605,7 +3565,7 @@ components:
             `{}`.
         severity:
           type: string
-          enum: *ref_11
+          enum: *ref_17
         enabled:
           type: boolean
     DayRangeDto:
@@ -2703,7 +3663,7 @@ components:
       properties:
         plan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         limit:
           type: number
           description: Files included per billing period on this plan.
@@ -2737,12 +3697,12 @@ components:
           format: date-time
         fromPlan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
           nullable: true
           description: Null for the first plan chosen.
         toPlan:
           type: string
-          enum: *ref_6
+          enum: *ref_12
         prorationCents:
           type: number
           description: Integer cents billed for the outgoing plan’s part-period.
@@ -2799,7 +3759,7 @@ components:
           type: string
         action:
           type: string
-          enum: &ref_12
+          enum: &ref_18
             - company.registered
             - company.activated
             - company.activation_resent
@@ -2828,6 +3788,8 @@ components:
             - file.uploaded
             - file.access_changed
             - file.deleted
+            - file.cleaned
+            - dataset.settings_updated
             - comment.created
             - comment.updated
             - comment.deleted
@@ -2896,7 +3858,7 @@ components:
           type: string
         action:
           type: string
-          enum: *ref_12
+          enum: *ref_18
           description: What happened, `<area>.<what_happened>`.
         actorUserId:
           type: string
@@ -2962,7 +3924,7 @@ components:
             `audit:read`.
           items:
             type: string
-            enum: &ref_13
+            enum: &ref_19
               - files:read
               - files:write
               - billing:read
@@ -2986,9 +3948,9 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: &ref_14
+          items: &ref_20
             type: string
-            enum: *ref_13
+            enum: *ref_19
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
@@ -3034,7 +3996,7 @@ components:
           description: The first part of the key. Not a secret.
         scopes:
           type: array
-          items: *ref_14
+          items: *ref_20
         createdByUserId:
           type: string
           description: Whose key this is. Requests made with it act as this person.
