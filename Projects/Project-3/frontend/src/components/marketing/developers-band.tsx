@@ -6,6 +6,12 @@ const UPLOAD = `curl -X POST "$GRIDLINE_URL/api/files" \\
   -H "Idempotency-Key: $(uuidgen)" \\
   -F "file=@payroll-march.csv"`;
 
+const EXPLORE = `curl -X POST "$GRIDLINE_URL/api/files/$FILE/explore" \\
+  -H "Authorization: Bearer $GRIDLINE_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{ "query": { "groupBy": ["region"],
+        "measures": [{ "fn": "sum", "column": "revenue" }] } }'`;
+
 const WEBHOOK = `POST /your/endpoint
 webhook-id: 6c1f9e2a-…
 webhook-timestamp: 1790000000
@@ -29,6 +35,10 @@ const POINTS = [
   [
     "Read-only GraphQL",
     "One request for a whole page of files, reports and versions.",
+  ],
+  [
+    "An MCP server for agents",
+    "An AI agent can list files, read reports, clean, compare versions row by row, and ask a file a question, with the same keys, scopes and limits as the API.",
   ],
 ] as const;
 
@@ -66,6 +76,11 @@ export function DevelopersBand() {
             title="Upload a file"
             code={UPLOAD}
             label="Copy the upload command"
+          />
+          <Snippet
+            title="Ask a file for a total by region"
+            code={EXPLORE}
+            label="Copy the query command"
           />
           <Snippet
             title="What your endpoint receives"

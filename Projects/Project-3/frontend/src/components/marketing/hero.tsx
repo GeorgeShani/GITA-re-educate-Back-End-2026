@@ -27,8 +27,9 @@ export function Hero() {
           </h1>
           <p className="copy max-w-xl text-text-muted">
             Gridline checks every CSV and XLSX upload the moment it lands: a
-            quality score, your own rules, what changed since the last version,
-            and exactly who can open it.
+            quality score, any personal data, your own rules, which rows changed
+            since the last version, and exactly who can open it. Then it cleans
+            the file and answers questions about it.
           </p>
           <div className="flex flex-wrap items-center gap-2.5">
             <Button variant="primary" size="lg" asChild>

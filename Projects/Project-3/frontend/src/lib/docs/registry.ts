@@ -61,6 +61,18 @@ export const DOC_SECTIONS: readonly DocSection[] = [
           "What the Report and Preview tabs show: the score, every column, the plain-language summary.",
       },
       {
+        slug: "cleaning",
+        title: "Cleaning files",
+        summary:
+          "Fix what a report found: trim, de-duplicate, standardise dates and numbers, hide personal data, and save the result as the next version.",
+      },
+      {
+        slug: "explore",
+        title: "Exploring and asking",
+        summary:
+          "Group, count and total a file's rows, or ask a question in words. Computed over every row; the assistant never sees your data.",
+      },
+      {
         slug: "rules",
         title: "Quality rules",
         summary:

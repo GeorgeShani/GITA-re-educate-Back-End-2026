@@ -31,8 +31,8 @@ const COMPARISONS: Comparison[] = [
     builtFor:
       "Editing and analysing data: formulas, pivots, charts, and working on the numbers together.",
     differs:
-      "Gridline checks a file that arrives. Your rules run on every upload, a score comes back, each new version is compared with the last, and only the people you name can open it.",
-    keep: "Any time you need to change or calculate something. Gridline does not edit your data.",
+      "Gridline checks a file that arrives. Your rules run on every upload, a score comes back, personal data is flagged, each new version is compared with the last down to the rows that changed, and only the people you name can open it. You can ask the file questions, and fix what is wrong as a new version.",
+    keep: "Any time you need to change or calculate something by hand. Gridline cleans a file by a recipe of steps and answers grouped and totalled questions, but it is not a place to type into cells or write formulas.",
     together:
       "Upload the exported file to Gridline first, and open it in the spreadsheet once it has passed.",
   },
@@ -44,7 +44,7 @@ const COMPARISONS: Comparison[] = [
     builtFor:
       "Building the tables, views and workflows a team runs its work in.",
     differs:
-      "Gridline is where files land, not where a process runs. Every version is kept and compared, access is set per person per file, and every change is written to an audit log that cannot be edited.",
+      "Gridline is where files land, not where a process runs. Every version is kept and compared row by row, personal data is found in the file, access is set per person per file, and every change is written to an audit log that cannot be edited.",
     keep: "Managing projects, records and automations.",
     together: "Import a file into them only after Gridline has checked it.",
   },
@@ -56,7 +56,7 @@ const COMPARISONS: Comparison[] = [
     builtFor:
       "Validating data inside pipelines, usually configured and operated by engineers.",
     differs:
-      "Gridline is where the whole team uploads and shares files, with rules an admin sets in the app and a report a non-engineer can read. The same rules are reachable through an API, and results arrive as signed webhooks for your pipeline.",
+      "Gridline is where the whole team uploads and shares files, with rules an admin sets in the app and a report a non-engineer can read. It also scans for personal data, cleans a file into a new version, and answers questions about its rows. The same capabilities are reachable through an API and an MCP server, and results arrive as signed webhooks for your pipeline.",
     keep: "Testing warehouse tables and pipeline stages at scale.",
     together:
       "Use Gridline at the door where people hand over files, and your pipeline tool deeper inside.",
@@ -68,7 +68,7 @@ const COMPARISONS: Comparison[] = [
     examples: "Box, Dropbox",
     builtFor: "Storing and syncing files of every kind, in folders you share.",
     differs:
-      "Gridline stores spreadsheets only, and tells you what is inside them: a quality report, your rules, versions compared, an alert when a column disappears. A file someone may not see is not found, rather than merely denied.",
+      "Gridline stores spreadsheets only, and tells you what is inside them: a quality report, personal data flagged, your rules, versions compared row by row, an alert when a column disappears. You can ask a file a question without opening it. A file someone may not see is not found, rather than merely denied.",
     keep: "Everything that is not a spreadsheet: documents, images, video, large files, desktop sync.",
     together:
       "Leave the folder tree where it is and send the spreadsheets that matter through Gridline.",
@@ -78,7 +78,11 @@ const COMPARISONS: Comparison[] = [
 const NOT_FOR = [
   [
     "Editing",
-    "Gridline never changes the file you uploaded, and it does not open cells for editing.",
+    "Gridline never changes the file you uploaded, and it does not open cells for editing. Cleaning writes a new version from steps you choose.",
+  ],
+  [
+    "A full analytics tool",
+    "Explore groups, counts and totals the rows of one file. It does not join files, draw dashboards or run formulas.",
   ],
   [
     "Every kind of file",

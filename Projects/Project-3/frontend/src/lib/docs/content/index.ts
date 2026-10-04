@@ -8,7 +8,9 @@ import {
   RATE_LIMITS,
 } from "./api-basics";
 import { COMPANY_API, FILES_API, RULES_API, TEAM_API } from "./api-resources";
+import { CLEANING } from "./guides-clean";
 import { ACCOUNT, ANALYTICS, AUDIT_LOG, BILLING, DEMO } from "./guides-company";
+import { EXPLORE } from "./guides-explore";
 import { FILES, REPORTS, VERSIONS } from "./guides-files";
 import { ACCESS, RULES } from "./guides-quality";
 import { COMMENTS, NOTIFICATIONS, PEOPLE } from "./guides-team";
@@ -27,6 +29,8 @@ export const DOC_BODIES: Readonly<Record<string, readonly Block[]>> = {
   files: FILES,
   versions: VERSIONS,
   reports: REPORTS,
+  cleaning: CLEANING,
+  explore: EXPLORE,
   rules: RULES,
   access: ACCESS,
   comments: COMMENTS,

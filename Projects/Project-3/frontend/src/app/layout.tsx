@@ -27,7 +27,7 @@ const martian = Martian_Mono({
 export const metadata: Metadata = {
   title: { default: "Gridline", template: "%s · Gridline" },
   description:
-    "Where a company's spreadsheets live: checked on arrival, permissioned per person, versioned, and billed by seat and volume.",
+    "Where a company's spreadsheets live: checked on arrival, scanned for personal data, cleaned, compared row by row, open to your questions, permissioned per person, and billed by seat and volume.",
 };
 
 // Sets the theme before the first paint so a dark visitor never sees a flash of light. It is emitted as HTML inside a hidden

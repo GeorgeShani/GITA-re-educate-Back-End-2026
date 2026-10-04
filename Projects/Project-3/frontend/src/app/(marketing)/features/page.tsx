@@ -3,9 +3,13 @@ import { DemoButton } from "@/components/marketing/demo-button";
 import { DevelopersBand } from "@/components/marketing/developers-band";
 import { Exhibit } from "@/components/marketing/exhibit";
 import { AccessViewer } from "@/components/marketing/exhibits/access-viewer";
+import { AskResult } from "@/components/marketing/exhibits/ask-result";
 import { AuditLog } from "@/components/marketing/exhibits/audit-log";
+import { CleanSteps } from "@/components/marketing/exhibits/clean-steps";
 import { ColumnBars } from "@/components/marketing/exhibits/column-bars";
 import { CommentThread } from "@/components/marketing/exhibits/comment-thread";
+import { PersonalData } from "@/components/marketing/exhibits/personal-data";
+import { RowChanges } from "@/components/marketing/exhibits/row-changes";
 import { RuleList } from "@/components/marketing/exhibits/rule-list";
 import { VersionDiff } from "@/components/marketing/exhibits/version-diff";
 import { PageHead } from "@/components/marketing/page-head";
@@ -14,7 +18,7 @@ import { Button } from "@/components/ui/button";
 export const metadata = {
   title: "Features",
   description:
-    "Quality reports, your own rules, versions, per-person access, an audit log, comments and a full API: what Gridline does with a spreadsheet.",
+    "Quality reports, a personal-data scan, cleaning, row-by-row version changes, questions answered over every row, your own rules, per-person access, an audit log, comments and a full API: what Gridline does with a spreadsheet.",
 };
 
 export default function Page() {
@@ -32,9 +36,11 @@ export default function Page() {
         }
       >
         <p>
-          Upload a CSV or XLSX file and it is checked on arrival, held to your
-          rules, versioned, shared with exactly the people you name, and written
-          into an audit log. Every capability below is in the product today.
+          Upload a CSV or XLSX file and it is checked on arrival, scanned for
+          personal data, held to your rules, cleaned if you ask, versioned and
+          compared row by row, shared with exactly the people you name, open to
+          your questions, and written into an audit log. Every capability below
+          is in the product today.
         </p>
       </PageHead>
 
@@ -57,22 +63,70 @@ export default function Page() {
       </Exhibit>
 
       <Exhibit
+        id="personal-data"
+        hue="sienna"
+        title="A scan for personal and secret data."
+        visual={<PersonalData />}
+        flip
+      >
+        <p>
+          Each report names the columns that look like email addresses, phone
+          numbers, card numbers, IBANs, IP addresses, birth dates or secret keys
+          (an API key or a private key pasted into a cell). Cards and IBANs must
+          pass their checksum, so an order number is not mistaken for a card.
+        </p>
+        <p className="mt-4">
+          It is found by patterns, never by an AI, and a value is never shown or
+          sent anywhere. When a file with personal data is open to the whole
+          company, the uploader and your admins are told, and a webhook can tell
+          your own systems. A rule can also fail any file that has it.
+        </p>
+      </Exhibit>
+
+      <Exhibit
         id="rules"
         hue="grass"
         title="Your own rules, on every upload."
         visual={<RuleList />}
-        flip
       >
         <p>
           Require a column, cap empty cells, expect a type, set a minimum or a
-          maximum, demand unique values, limit duplicate rows. Each rule is an
-          error or a warning. An error counts double in the score and raises an
-          alert when it fails.
+          maximum, demand unique values, limit duplicate rows, or require that a
+          file holds no personal data. Each rule is an error or a warning. An
+          error counts double in the score and raises an alert when it fails.
         </p>
         <p className="mt-4">
           A rule about a column a file does not have is skipped, not failed, so
           one company rule set can cover many different files. A report keeps
           the rules as they were when it ran.
+        </p>
+      </Exhibit>
+
+      <Exhibit
+        id="clean"
+        hue="yellow"
+        title="Clean a file into its next version."
+        visual={<CleanSteps />}
+        flip
+      >
+        <p>
+          Pick steps from a short list: trim spaces, remove empty or repeated
+          rows, write dates as YYYY-MM-DD, read text as numbers, replace
+          placeholders such as N/A, fill empty cells, change case, rename or
+          remove a column, and hide personal data (all of it, the last four
+          characters, or a fingerprint you can still count and join on).
+        </p>
+        <p className="mt-4">
+          Before anything is written, Gridline counts what each step would do
+          across the <strong>whole file</strong> and shows the first rows that
+          change. The result is the next version, with a report of its own. Your
+          upload is never touched, and a cleaned version does not use your file
+          allowance.
+        </p>
+        <p className="mt-4">
+          Save the recipe for a file and it is there next month. On Basic and
+          Premium, every new upload can be cleaned automatically, the original
+          kept exactly as it arrived.
         </p>
       </Exhibit>
 
@@ -94,8 +148,52 @@ export default function Page() {
       </Exhibit>
 
       <Exhibit
-        id="access"
+        id="changes"
+        hue="ink"
+        title="Which rows changed, not just that something did."
+        visual={<RowChanges />}
+        flip
+      >
+        <p>
+          The comparison above is about the shape of a file. Choose the column
+          or columns that identify a row, such as a customer number, and two
+          versions are lined up row by row: rows added, removed, changed and
+          unchanged, which columns changed most, and the old and new value of
+          each changed cell.
+        </p>
+        <p className="mt-4">
+          The first 500 changes are browsable on the page, and{" "}
+          <strong>Download all changes</strong> is a CSV of every one. Save the
+          key and each new version is compared with the one before it as soon as
+          its report is ready: the uploader and your admins are told how many
+          rows were added, removed and changed, and a webhook says it too.
+        </p>
+      </Exhibit>
+
+      <Exhibit
+        id="ask"
         hue="blue"
+        title="Explore a file, or just ask it."
+        visual={<AskResult />}
+      >
+        <p>
+          Build a query from plain choices: filter rows, group by up to two
+          columns, and work out a count, total, average, lowest, highest or the
+          number of different values. It is computed by Gridline over{" "}
+          <strong>every row</strong> (up to 100,000), shown as a chart and a
+          table, and downloadable as CSV.
+        </p>
+        <p className="mt-4">
+          Or type a question in words. The assistant is given your question and
+          the column names and kinds, never a value, and answers with a query
+          that Gridline checks and runs itself. You see the query it chose and
+          can change it. Questions are counted by plan; the builder is free.
+        </p>
+      </Exhibit>
+
+      <Exhibit
+        id="access"
+        hue="orange"
         title="Invisible, not forbidden."
         visual={<AccessViewer />}
         flip

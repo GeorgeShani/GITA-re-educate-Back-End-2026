@@ -16,6 +16,10 @@ const FACTS = [
     "Every change is written to an audit log that the database itself refuses to alter or delete.",
   ],
   [
+    "The assistant never sees your rows",
+    "A summary or a question is answered from column names and statistics. Personal data is found by patterns and checksums, and Gridline runs every query itself.",
+  ],
+  [
     "Secrets are never stored as typed",
     "Passwords and API keys are stored hashed, and webhook secrets are stored encrypted.",
   ],

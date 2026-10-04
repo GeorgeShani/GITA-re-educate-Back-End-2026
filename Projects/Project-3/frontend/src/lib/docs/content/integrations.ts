@@ -97,6 +97,21 @@ console.log(endpoint.secret); // whsec_… shown once`,
       "`fileId`, `datasetId`, `version`",
     ],
     [
+      "`file.sensitive_data_found`",
+      "A report found personal or secret data in a file the whole company can see.",
+      "`fileId`, `datasetId`, `version`, `columns` (names and kinds, never values)",
+    ],
+    [
+      "`dataset.changed`",
+      "A new version was compared row by row with the one before it, and rows differ.",
+      "`fileId`, `datasetId`, `version`, `previousVersion`, `added`, `removed`, `changed`, `unchanged`",
+    ],
+    [
+      "`dataset.schema_changed`",
+      "A new version removed or retyped a column its predecessor had.",
+      "`datasetId`, `fileId`, `version`, `previousVersion`, `columnsAdded`, `columnsRemoved`, `typeChanges`",
+    ],
+    [
       "`report.ready`",
       "A report finished successfully.",
       "`fileId`, `reportStatus`",

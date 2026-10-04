@@ -78,6 +78,42 @@ const TOPICS: Topic[] = [
       "The type of a file is decided from its bytes, never from its name or declared type: an executable renamed .csv is refused.",
       "A refused or failed upload stores nothing and uses no quota.",
       "The optional AI summary is built from aggregate statistics only. It is never shown a row or a cell value.",
+      "A file nobody points to any more (an upload that crashed half way) is removed by a daily sweep.",
+    ],
+  },
+  {
+    id: "personal-data",
+    title: "Personal data is found, not guessed.",
+    body: (
+      <p>
+        Each report lists the columns that look like email addresses, phone
+        numbers, card numbers, IBANs, IP addresses, birth dates or secret keys.
+        It is decided by patterns and checksums in Gridline itself. No AI is
+        involved and no value ever leaves the file.
+      </p>
+    ),
+    points: [
+      "A card number must pass the Luhn check and an IBAN its checksum, so an order number is not reported as a card.",
+      "The report says which column and what kind, never a value.",
+      "A file with personal data that the whole company can open tells its uploader and your admins, and can fail a rule you set.",
+      "Cleaning can hide a column: all of it, the last four characters, or a keyed fingerprint that cannot be reversed.",
+    ],
+  },
+  {
+    id: "assistant",
+    title: "The assistant answers from names, not rows.",
+    body: (
+      <p>
+        A summary or a question is written by a model from column names, types
+        and statistics. The model plans a query; Gridline checks it and runs it
+        on the file itself, and the answer never goes back to the model.
+      </p>
+    ),
+    points: [
+      "A question and the column names are the only free text the model is given, and are passed as data, never as instructions.",
+      "What the model returns is validated against the same rules as a query you build, so it can do no more than the builder can.",
+      "Who can ask is who can see the file: a file you cannot see is not found.",
+      "Questions are counted against the plan. The builder, which uses no model, is not.",
     ],
   },
   {
@@ -142,7 +178,7 @@ const TOPICS: Topic[] = [
 const LIMITS = [
   "Realtime updates and request limits run on a single API instance today, so they are not shared across servers.",
   "There is no self-service company deletion or data export yet.",
-  "A crash in the middle of an upload can leave a stored file that no record points to. There is no sweeper for those yet.",
+  "Personal-data detection is by pattern. A column of names or addresses written as free text is not recognised, so a clear result is not a guarantee.",
   "Rotating a webhook secret has no overlap period, so a delivery in flight when you rotate is signed with the new secret.",
 ];
 

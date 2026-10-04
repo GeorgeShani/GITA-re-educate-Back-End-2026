@@ -60,6 +60,12 @@ export const SAMPLES: Sample[] = [
         ok: true,
         severity: "warning",
       },
+      {
+        text: "No card numbers or secret keys",
+        result: "none found",
+        ok: true,
+        severity: "error",
+      },
     ],
   },
   {

@@ -1,9 +1,13 @@
 import {
+  Eraser,
   GitCompareArrows,
   ListChecks,
   Lock,
+  MessageCircleQuestion,
+  Rows3,
   ScanSearch,
   ScrollText,
+  ShieldAlert,
   Webhook,
 } from "lucide-react";
 
@@ -16,16 +20,40 @@ export const PRODUCT_LINKS = [
     icon: ScanSearch,
   },
   {
+    href: "/features#personal-data",
+    label: "Personal-data scan",
+    text: "Emails, cards, IBANs and keys found by checksum, never by AI.",
+    icon: ShieldAlert,
+  },
+  {
     href: "/features#rules",
     label: "Your own rules",
     text: "Required columns, empty-cell limits, types, unique values.",
     icon: ListChecks,
   },
   {
+    href: "/features#clean",
+    label: "Clean",
+    text: "Fix what the report found as the next version. Your upload is kept.",
+    icon: Eraser,
+  },
+  {
     href: "/features#versions",
     label: "Versions",
     text: "Each upload becomes the next version, compared for you.",
     icon: GitCompareArrows,
+  },
+  {
+    href: "/features#changes",
+    label: "Row changes",
+    text: "Which rows were added, removed and changed between versions.",
+    icon: Rows3,
+  },
+  {
+    href: "/features#ask",
+    label: "Explore and ask",
+    text: "Group and total every row, or ask a question in words.",
+    icon: MessageCircleQuestion,
   },
   {
     href: "/features#access",
@@ -67,6 +95,10 @@ export const FOOTER_COLUMNS = [
     title: "Product",
     links: [
       { href: "/features", label: "Features" },
+      { href: "/features#personal-data", label: "Personal-data scan" },
+      { href: "/features#clean", label: "Clean" },
+      { href: "/features#changes", label: "Row changes" },
+      { href: "/features#ask", label: "Explore and ask" },
       { href: "/pricing", label: "Pricing" },
       { href: "/compare", label: "Compare" },
       { href: "/security", label: "Security" },

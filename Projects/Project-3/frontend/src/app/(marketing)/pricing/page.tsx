@@ -22,8 +22,11 @@ export default async function Page() {
       <PageHead title={["Priced by seat", "and by volume."]}>
         <p>
           Start free. Pay per employee on Basic, or a flat monthly price with a
-          generous file allowance on Premium. Every number on this page is read
-          from the same catalog the product enforces.
+          generous file allowance on Premium. Every plan has the personal-data
+          scan, cleaning, row-by-row version changes and the query builder.
+          Plans differ in volume, people, and how many questions the assistant
+          answers. Every number on this page is read from the same catalog the
+          product enforces.
         </p>
       </PageHead>
 

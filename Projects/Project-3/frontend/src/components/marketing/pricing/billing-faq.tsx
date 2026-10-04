@@ -22,6 +22,14 @@ const QUESTIONS = [
     "On Free and Basic, an upload past the quota is refused with a message that names the plan, the count and the date the quota resets. On Premium it is accepted and billed at the per-file rate.",
   ],
   [
+    "Does a cleaned version use my file allowance?",
+    "No. A cleaned version is made by Gridline, not uploaded by you, so it does not count towards the files a billing period allows. It does count towards the number of versions of one file your plan keeps. An upload that is cleaned automatically counts once, as the upload.",
+  ],
+  [
+    "What is a question to the assistant?",
+    "Each plain-language question the assistant answers about a file counts: 20 a billing period on Free, 300 on Basic and 3,000 on Premium. The query builder is not counted, and neither is a question the assistant could not answer.",
+  ],
+  [
     "Can I move to a smaller plan?",
     "Yes, once the company fits the smaller plan. If it has more employees, rules or file versions than the plan allows, Gridline tells you exactly which numbers must come down first.",
   ],

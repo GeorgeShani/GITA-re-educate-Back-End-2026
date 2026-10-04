@@ -291,6 +291,32 @@ export const VERSIONS: Block[] = [
     ],
   ),
 
+  h2("See which rows changed"),
+  p(
+    "The comparison above is about the shape of the file. Under it, **The rows** says which rows were added, removed or changed, and what each changed cell used to say.",
+  ),
+  steps(
+    {
+      title: "Choose the columns that identify a row",
+      text: "A customer number, an order id, an email address. Gridline ticks one when a column's name says it is one. You can choose several, and the combination is used.",
+    },
+    {
+      title: "Compare the rows",
+      text: "Every row of both versions is lined up by those columns, in the background. Case and spaces around a key do not matter, and a reordered file does not look changed.",
+    },
+    {
+      title: "Read the result",
+      text: "Counts of rows added, removed, changed and unchanged; the columns that changed most; and the first 500 changes, each with the old value struck through. **Download all changes** is a CSV of every one.",
+    },
+  ),
+  note(
+    "A row whose key is empty, or appears more than once, cannot be matched. It is left out and counted, with a hint to choose a different column.",
+  ),
+  h3("Compare every new version automatically"),
+  p(
+    "Tick **Remember these columns for this file** and each new version is compared with the one before it as soon as its report is ready. The person who uploaded it and the admins are told, for example “Version 4 of customers.csv differs from the one before it: 120 added, 3 removed and 57 changed.” A `dataset.changed` webhook is sent too. Only the uploader of the file or an admin can save the columns.",
+  ),
+
   h2("From code"),
   p(
     "Adding versions and comparing them are both available over HTTP: see [Files, versions and reports](/docs/files-api#versions-and-comparing).",

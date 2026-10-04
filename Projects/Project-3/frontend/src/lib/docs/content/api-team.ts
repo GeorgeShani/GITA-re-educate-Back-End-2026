@@ -149,6 +149,26 @@ export const NOTIFICATIONS_REF: Block[] = [
       "The uploader and every admin",
       "A new version removed or retyped a column its predecessor had.",
     ],
+    [
+      "`file.cleaned`",
+      "The person who asked",
+      "A cleaned version was made, with how many cells and rows changed.",
+    ],
+    [
+      "`cleaning.failed`",
+      "The person who asked",
+      "A cleaned version could not be made, with the reason.",
+    ],
+    [
+      "`dataset.changed`",
+      "The uploader and every admin",
+      "A new version differs from the one before it: how many rows were added, removed and changed. Needs the file's key columns to be saved.",
+    ],
+    [
+      "`file.sensitive_data`",
+      "The uploader and every admin",
+      "A file the whole company can open holds personal or secret data. It names the columns and the kind, never a value.",
+    ],
     ["`file.shared`", "The people added", "A file was shared with you."],
     [
       "`comment.mentioned`",
