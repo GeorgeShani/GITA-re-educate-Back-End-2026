@@ -42,7 +42,7 @@ export function CleanSteps() {
       <ul className="flex flex-col gap-2 rounded-md border border-line bg-sunken p-3 font-mono text-xs">
         {CELLS.map(([column, before, after]) => (
           <li key={column} className="flex flex-wrap items-center gap-2">
-            <span className="w-24 text-text-subtle">{column}</span>
+            <span className="w-28 shrink-0 text-text-subtle">{column}</span>
             <del className="whitespace-pre text-text-subtle">
               {visibleSpaces(before)}
             </del>
