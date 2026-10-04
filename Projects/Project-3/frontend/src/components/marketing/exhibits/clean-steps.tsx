@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { stagger } from "@/lib/css-vars";
+import { visibleSpaces } from "@/lib/format/spaces";
 import { Panel } from "../exhibit";
 
 const STEPS = [
@@ -11,7 +12,7 @@ const STEPS = [
 
 const CELLS = [
   ["joined", "03 Apr 2026", "2026-04-03"],
-  ["name", "  Ada Lovelace ", "Ada Lovelace"],
+  ["name", "  Ada  Lovelace ", "Ada Lovelace"],
   ["card_on_file", "4111 1111 1111 1111", "•••• 1111"],
 ] as const;
 
@@ -42,7 +43,9 @@ export function CleanSteps() {
         {CELLS.map(([column, before, after]) => (
           <li key={column} className="flex flex-wrap items-center gap-2">
             <span className="w-24 text-text-subtle">{column}</span>
-            <del className="text-text-subtle">{before}</del>
+            <del className="whitespace-pre text-text-subtle">
+              {visibleSpaces(before)}
+            </del>
             <ArrowRight aria-hidden className="size-3 text-text-subtle" />
             <span className="font-semibold">{after}</span>
           </li>

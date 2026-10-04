@@ -10,6 +10,7 @@ import { Stamp } from "@/components/ui/stamp";
 import { messageFor } from "@/features/files/upload";
 import { callApi, succeeded } from "@/lib/api/call";
 import { cn } from "@/lib/cn";
+import { visibleSpaces } from "@/lib/format/spaces";
 import { type Job, type Preview, toJob, toPreview } from "./api";
 import {
   type Draft,
@@ -644,7 +645,9 @@ function PreviewPanel({
                             {cell.before !== cell.after ? (
                               <span className="flex flex-col">
                                 <del className="text-text-subtle">
-                                  {cell.before ?? "(empty)"}
+                                  {cell.before === null
+                                    ? "(empty)"
+                                    : visibleSpaces(cell.before)}
                                 </del>
                                 <ins className="font-semibold no-underline">
                                   {cell.after ?? "(empty)"}
