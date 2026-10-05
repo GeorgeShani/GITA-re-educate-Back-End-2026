@@ -1,0 +1,2 @@
+# Compose reads this for SITE_ADDRESS (see DEPLOYMENT.md). It is per-machine, never committed.
+.env

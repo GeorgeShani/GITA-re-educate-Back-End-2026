@@ -1,4 +1,6 @@
-:3000 {
+# The address Caddy serves. Locally it is the plain-HTTP port :3000. In production SITE_ADDRESS is the domain (for example
+# app.example.com): Caddy then gets and renews a TLS certificate for it by itself. See DEPLOYMENT.md.
+{$SITE_ADDRESS::3000} {
 	# Next's own BFF route handlers: exchange the API's JWT for an httpOnly
 	# session cookie. Must be matched before the generic /api/* rule below —
 	# otherwise every login attempt would be forwarded straight to the real

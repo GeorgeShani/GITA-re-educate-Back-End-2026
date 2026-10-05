@@ -1,0 +1,28 @@
+# Production additions, layered on docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# The proxy also listens on 80 and 443 (Caddy answers on them for the domain in SITE_ADDRESS, set in a `.env` file next to this
+# one, for example SITE_ADDRESS=app.example.com), keeps its certificates between restarts, and every service restarts after a
+# reboot. The base file's port 3000 stays published but nothing answers on it when SITE_ADDRESS is a domain, and the server's
+# firewall should only allow 80 and 443.
+services:
+  proxy:
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  api:
+    restart: unless-stopped
+
+  web:
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
