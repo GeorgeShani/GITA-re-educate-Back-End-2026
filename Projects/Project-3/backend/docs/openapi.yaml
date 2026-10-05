@@ -1,242 +1,5 @@
 openapi: 3.0.0
 paths:
-  /webhooks/stripe:
-    post:
-      operationId: StripeWebhookController_receive
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StripeWebhookDto'
-      tags:
-        - webhooks
-      summary: Receive a Stripe billing event
-      description: >-
-        Public Stripe callback. The API verifies the signature over the exact
-        raw request body, deduplicates the event, retrieves current Stripe state
-        to defeat out-of-order delivery, and then mirrors subscription or
-        invoice state transactionally. Browser redirects never provision a paid
-        plan. Invalid signatures return 400 and reveal no tenant information.
-  /outgoing-webhooks:
-    post:
-      operationId: WebhooksController_create
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateWebhookEndpointDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CreatedWebhookEndpointDto'
-      security: &ref_0
-        - bearer: []
-      tags: &ref_1
-        - outgoing-webhooks
-      summary: Register an outgoing webhook
-      description: >-
-        Registers an HTTPS receiver for selected company events. The `whsec_`
-        signing secret is returned once in this response and stored encrypted;
-        save it immediately. Only signed-in admins may manage endpoints. Active
-        endpoint limits are Free 1, Basic 5, and Premium unlimited.
-    get:
-      operationId: WebhooksController_list
-      parameters:
-        - name: page
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            default: 1
-            type: number
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookEndpointPageDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: List webhook endpoints
-      description: >-
-        Lists the company's endpoints newest first with offset pagination.
-        Recoverable secret material is never returned. Disabled endpoints remain
-        visible with their failure count and disabled timestamp.
-  /outgoing-webhooks/{id}:
-    patch:
-      operationId: WebhooksController_update
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateWebhookEndpointDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookEndpointDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Update a webhook endpoint
-      description: >-
-        Changes the endpoint name, HTTPS URL, subscribed events, or active
-        state. Re-enabling an endpoint resets its terminal failure count and is
-        rejected when the current plan's active-endpoint limit is full.
-    delete:
-      operationId: WebhooksController_remove
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookEndpointDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Delete a webhook endpoint
-      description: >-
-        Soft-deletes and disables the endpoint while preserving its delivery
-        history. Future business events no longer create deliveries for it.
-  /outgoing-webhooks/{id}/rotate-secret:
-    post:
-      operationId: WebhooksController_rotateSecret
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RotatedWebhookSecretDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Rotate a webhook signing secret
-      description: >-
-        Replaces the endpoint's AES-256-GCM encrypted secret and returns the new
-        `whsec_` value once. The old secret stops verifying all deliveries
-        created after rotation.
-  /outgoing-webhooks/{id}/ping:
-    post:
-      operationId: WebhooksController_ping
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookDeliveryDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Queue a test delivery
-      description: >-
-        Queues a signed `ping` event through the same durable retry path as
-        business events. A 202 means the delivery was persisted, not that the
-        receiver has already accepted it.
-  /outgoing-webhooks/{id}/deliveries:
-    get:
-      operationId: WebhooksController_deliveries
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-        - name: page
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            default: 1
-            type: number
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookDeliveryPageDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: List endpoint deliveries
-      description: >-
-        Lists delivery status, attempts, receiver status, last error, and
-        completion time newest first. Event payloads intentionally contain
-        identifiers and non-sensitive summaries; fetch full details through the
-        API.
-  /outgoing-webhooks/deliveries/{deliveryId}/redeliver:
-    post:
-      operationId: WebhooksController_redeliver
-      parameters:
-        - name: deliveryId
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/WebhookDeliveryDto'
-      security: *ref_0
-      tags: *ref_1
-      summary: Redeliver a completed event
-      description: >-
-        Resets a succeeded or failed delivery and queues the same immutable
-        event envelope again. Pending deliveries cannot be duplicated, and a
-        disabled endpoint must be re-enabled first.
   /files:
     post:
       operationId: FilesController_upload
@@ -262,9 +25,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: &ref_2
+      security: &ref_0
         - bearer: []
-      tags: &ref_3
+      tags: &ref_1
         - files
       summary: Upload a spreadsheet
       description: >-
@@ -402,8 +165,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FilePageDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: List files
       description: >-
         The files the caller may see: everything company-wide, plus restricted
@@ -448,8 +211,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Upload a new version of a file
       description: >-
         Adds the next version to the file `id` belongs to (any of its versions
@@ -511,8 +274,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileVersionPageDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: List a file's versions
       description: >-
         Every version of the file `id` belongs to that the caller may see,
@@ -540,8 +303,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ComparisonDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Compare two versions of a file
       description: >-
         What changed from `id` to `otherId` (normally an older version to a
@@ -575,8 +338,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Get a file
       description: >-
         A file the caller cannot see is **404**, never 403, so its existence is
@@ -603,8 +366,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Change who can see a file
       description: >-
         Uploader or admin only. `visibility` switches between `company` and
@@ -628,8 +391,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/MessageResponseDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Delete a file
       description: >-
         Uploader or admin only. A soft delete: the file disappears from every
@@ -651,8 +414,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/FileDownloadDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Get a download link
       description: >-
         Checks the caller's access, then returns a signed link that expires in
@@ -676,8 +439,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Get a file's data-quality report
       description: >-
         Every upload queues a report, so this is never a 404 for a file you can
@@ -737,8 +500,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReportDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Rebuild a file's report against today's rules
       description: >-
         Builds the report again from the same stored file, checking it against
@@ -766,8 +529,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PreviewDto'
-      security: *ref_2
-      tags: *ref_3
+      security: *ref_0
+      tags: *ref_1
       summary: Preview a file's first rows
       description: >-
         The first 50 rows of the file and the inferred type of each column, for
@@ -798,9 +561,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CleanPreviewResultDto'
-      security: &ref_4
+      security: &ref_2
         - bearer: []
-      tags: &ref_5
+      tags: &ref_3
         - files
       summary: Preview what a cleaning recipe would change
       description: >-
@@ -841,8 +604,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CleaningJobDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_2
+      tags: *ref_3
       summary: Clean a file as its next version
       description: >-
         Queues the recipe. It answers **202** with a job to poll; the work runs
@@ -875,8 +638,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CleaningJobDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_2
+      tags: *ref_3
       summary: Read a cleaning job
       description: >-
         The job's `status` (`queued`, `running`, `succeeded` or `failed`), what
@@ -898,8 +661,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetSettingsDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_2
+      tags: *ref_3
       summary: Read a dataset's saved settings
       description: >-
         The saved cleaning recipe, whether every new version is cleaned, and
@@ -927,8 +690,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DatasetSettingsDto'
-      security: *ref_4
-      tags: *ref_5
+      security: *ref_2
+      tags: *ref_3
       summary: Save a dataset's settings
       description: >-
         Saves the cleaning recipe, whether to clean every new version, and/or
@@ -956,9 +719,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RowDiffDto'
-      security: &ref_6
+      security: &ref_4
         - bearer: []
-      tags: &ref_7
+      tags: &ref_5
         - files
       summary: Read the row-by-row comparison of two versions
       description: >-
@@ -1000,8 +763,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/RowDiffDto'
-      security: *ref_6
-      tags: *ref_7
+      security: *ref_4
+      tags: *ref_5
       summary: Compare two versions row by row
       description: >-
         Queues the comparison with the given `keyColumns` (up to 10), or with
@@ -1035,8 +798,8 @@ paths:
             text/csv:
               schema:
                 type: string
-      security: *ref_6
-      tags: *ref_7
+      security: *ref_4
+      tags: *ref_5
       summary: Download every change as a CSV file
       description: >-
         Every added, removed and changed row, not only the first 500: a `change`
@@ -1065,9 +828,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QueryResultDto'
-      security: &ref_8
+      security: &ref_6
         - bearer: []
-      tags: &ref_9
+      tags: &ref_7
         - files
       summary: Run a query over a file's rows
       description: >-
@@ -1104,8 +867,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AskResultDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_6
+      tags: *ref_7
       summary: Ask a file a question in words
       description: >-
         Turns a sentence such as "total revenue by region, highest first" into
@@ -1135,53 +898,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AllowanceDto'
-      security: *ref_8
-      tags: *ref_9
+      security: *ref_6
+      tags: *ref_7
       summary: How many questions are left this period
       description: >-
         Whether the AI assistant is available on this server (`aiAvailable`) and
         how many of the plan's questions the company has used this billing
         period. The query builder works either way.
-  /billing/current:
+  /quality-rules:
     get:
-      operationId: BillingController_current
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StatementDto'
-      security: &ref_10
-        - bearer: []
-      tags: &ref_11
-        - billing
-      summary: The running bill for this period
-      description: >-
-        What this period's invoice will be if nothing changes, with the
-        line-item breakdown, the seat count and the due date. Admin only. It is
-        computed on demand by the same calculator that finalizes invoices, so
-        the two cannot disagree.
-
-
-        - **Free** has no line items.
-
-        - **Basic** has one line per employee stretch: $5 × (active days ÷ days
-        in the period), rounded half-up to the cent. An employee who joined
-        mid-period pays for the days since; a removed employee stops that day;
-        an invited employee who has not accepted yet costs nothing. Employees
-        active now are assumed to stay active to the end of the period.
-
-        - **Premium** is $300 plus $0.50 for every file past the 1000 included.
-
-
-        All amounts are integer cents. If the daily job has not yet rolled a
-        finished period over, the period we are actually in is priced — reading
-        never changes anything. A suspended company can still read this.
-  /billing/invoices:
-    get:
-      operationId: BillingController_invoices
+      operationId: QualityRulesController_list
       parameters:
         - name: page
           required: false
@@ -1204,18 +930,111 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoicePageDto'
-      security: *ref_10
-      tags: *ref_11
-      summary: List invoices
+                $ref: '#/components/schemas/QualityRulePageDto'
+      security: &ref_8
+        - bearer: []
+      tags: &ref_9
+        - quality-rules
+      summary: List the company's quality rules
       description: >-
-        Finalized invoices, newest period first, offset-paginated (`page`,
-        `limit`). Admin only; a suspended company can still read them. There is
-        one invoice per billing period, plus one for the part-period closed when
-        the plan changed.
-  /billing/invoices/{id}:
-    get:
-      operationId: BillingController_invoice
+        The data-quality rules every upload is checked against, oldest first,
+        offset-paginated. Anyone in the company can read them (an employee wants
+        to know what an upload is held to), and so can an API key with
+        `files:read`. A rule is a small check on a file's statistics — never on
+        its rows.
+    post:
+      operationId: QualityRulesController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQualityRuleDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRuleDto'
+      security: *ref_8
+      tags: *ref_9
+      summary: Create a quality rule
+      description: >-
+        Adds a rule that every later upload is checked against (an existing file
+        is re-checked when its report is rebuilt). Admin only; an API key needs
+        the opt-in `rules:write` scope.
+
+
+        The `kind` decides what is checked and which `params` it takes:
+
+        - `required_column` — the column must exist. `{}`.
+
+        - `max_null_percent` — at most that share of the column may be empty. `{
+        max: 0–100 }`.
+
+        - `type_is` — the column is that type (`integer`, `number`, `boolean`,
+        `date`, `string`), with `maxInconsistentPercent` (default 0) of values
+        allowed to disagree.
+
+        - `min_value` / `max_value` — the smallest / largest number in the
+        column. `{ min }` / `{ max }`.
+
+        - `unique` — no value repeats (blank cells are not values). `{}`. At
+        most 10 per company, because each is checked by remembering the values
+        of its column while the file is read.
+
+        - `max_duplicate_rows` — about the whole file, so it takes **no**
+        `columnName`. `{ max }`.
+
+
+        `columnName` is matched to the file's header ignoring case. A rule about
+        a column a file does not have is **skipped** for that file rather than
+        failed (rules cover every upload; use `required_column` to demand a
+        column). `severity` is `error` (the default) or `warning`: an error
+        counts double in the quality score, and a file that fails one notifies
+        the uploader and the admins.
+
+
+        Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited;
+        a disabled rule still counts). Beyond it the answer is 409 naming the
+        plan and the number; leaving for a plan that allows fewer than the
+        company has is refused the same way.
+  /quality-rules/{id}:
+    patch:
+      operationId: QualityRulesController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQualityRuleDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QualityRuleDto'
+      security: *ref_8
+      tags: *ref_9
+      summary: Change a quality rule
+      description: >-
+        Changes a rule's name, column, `params` (which REPLACE the old ones and
+        are checked against the rule's kind), severity or whether it is enabled.
+        The kind cannot change — that is a different rule. Admin only; an API
+        key needs the opt-in `rules:write` scope. Reports that were already
+        built keep the rule as it was; rebuild a file's report to check it
+        against the change.
+    delete:
+      operationId: QualityRulesController_remove
       parameters:
         - name: id
           required: true
@@ -1228,34 +1047,138 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InvoiceDto'
-      security: *ref_10
-      tags: *ref_11
-      summary: Get one invoice
+                $ref: '#/components/schemas/QualityRuleDto'
+      security: *ref_8
+      tags: *ref_9
+      summary: Delete a quality rule
       description: >-
-        An invoice with its line items. Invoices are immutable: what this
-        returns is what was issued, even if the plan has changed since. Another
-        company's invoice is a 404. Admin only.
-  /billing/portal-session:
-    post:
-      operationId: BillingController_portalSession
-      parameters: []
+        Removes the rule and returns it. Reports that already used it keep their
+        result for it. Admin only; an API key needs the opt-in `rules:write`
+        scope.
+  /files/{id}/comments:
+    get:
+      operationId: FileCommentsController_list
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: cursor
+          required: false
+          in: query
+          description: Opaque; take it from `meta.nextCursor` of the previous page.
+          schema:
+            type: string
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
       responses:
         '200':
           description: ''
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PortalSessionDto'
+                $ref: '#/components/schemas/CommentPageDto'
+      security:
+        - bearer: []
+      tags:
+        - comments
+      summary: List a file's comment thread
+      description: >-
+        Lists comments oldest first with cursor pagination. The same visibility
+        rule as the file applies: callers who cannot see the file receive 404.
+        Deleted comments remain as bodyless tombstones so replies keep their
+        place. A personal API key needs `files:read`.
+    post:
+      operationId: CommentMutationsController_create
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
+      security: &ref_10
+        - bearer: []
+      tags: &ref_11
+        - comments
+      summary: Comment on a file
+      description: >-
+        Creates a top-level comment or a one-level reply. Mentioned users must
+        be active company members who can already see the file; mentioning
+        someone never grants access. Newly mentioned people receive an inbox
+        notification. Session authentication is required—API keys cannot create
+        comments.
+  /comments/{id}:
+    patch:
+      operationId: CommentMutationsController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCommentDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
       security: *ref_10
       tags: *ref_11
-      summary: Open Stripe billing management
+      summary: Edit your comment
       description: >-
-        Creates a short-lived Stripe Customer Portal session for the company.
-        The portal permits payment-method changes and invoice history only; plan
-        changes stay in Gridline so its downgrade checks cannot be bypassed.
-        Admin only, and deliberately available while the company is suspended
-        for an overdue payment.
+        Authors may replace the body and mention set of a live comment. Only
+        newly added mentions are notified. Comment text is never copied into
+        audit metadata. Session authentication is required.
+    delete:
+      operationId: CommentMutationsController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentDto'
+      security: *ref_10
+      tags: *ref_11
+      summary: Delete a comment
+      description: >-
+        Authors and company admins may delete a comment. Deletion preserves a
+        bodyless tombstone, clears all mention rows, and leaves replies in
+        place. Repeating the request is safe. Session authentication is
+        required.
   /notifications:
     get:
       operationId: NotificationsController_list
@@ -1380,1276 +1303,6 @@ paths:
         reading one that is already read changes nothing and keeps its first
         `readAt`. A notification that is not yours — or does not exist — is a
         404.
-  /subscriptions/plans:
-    get:
-      operationId: SubscriptionsController_plans
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PlanDto'
-      tags: &ref_14
-        - subscriptions
-      summary: List the plans
-      description: >-
-        The public plan catalog — limits and prices for Free, Basic and Premium.
-        No account needed, so a pricing page can render it. Prices are integer
-        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
-        seats.
-  /subscriptions/me:
-    get:
-      operationId: SubscriptionsController_me
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionDto'
-      security:
-        - bearer: []
-      tags: *ref_14
-      summary: Get the company's subscription
-      description: >-
-        The current plan, its limits, usage so far this period (files,
-        employees, seats), the period window and when it is next due. Available
-        to admins and employees. Returns 404 until an admin has chosen a plan.
-    post:
-      operationId: SubscriptionsController_choose
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChoosePlanDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionDto'
-        '202':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PendingPlanDto'
-      security:
-        - bearer: []
-      tags: *ref_14
-      summary: Choose the first plan
-      description: >-
-        The mandatory step after activation: features that need a plan answer
-        402 until one is chosen. Admin only. Billing is anchored to today's day
-        of the month; the first period starts at UTC midnight today. Free
-        activates immediately. Basic and Premium return 202 with a hosted Stripe
-        Checkout URL and remain inactive until a verified Stripe webhook
-        provisions them. Returns 409 if a plan already exists — use `PATCH
-        /subscriptions/me` to change it.
-    patch:
-      operationId: SubscriptionsController_change
-      parameters:
-        - name: Idempotency-Key
-          in: header
-          description: >-
-            A UUID. A retry with the same key and body replays the first
-            response instead of changing the plan (and billing the proration)
-            twice.
-          required: false
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChoosePlanDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PlanChangeResultDto'
-        '202':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PendingPlanDto'
-      security:
-        - bearer: []
-      tags: *ref_14
-      summary: Change plan
-      description: >-
-        Upgrade or downgrade. With Stripe configured, the request returns 202
-        while the current local plan remains authoritative; Stripe applies
-        immediate proration and resets the billing cycle, and only a verified
-        webhook changes Gridline's local plan. The local development fallback
-        keeps the deterministic calculator path. Rejected with 409, naming the
-        numbers, if the company is over the target plan's employee cap or (for
-        Free and Basic) has already uploaded more files this period than it
-        allows, or while a dataset exceeds the target's version cap. Admin only.
-
-
-        Send an `Idempotency-Key` (a UUID) so a retried request is not applied —
-        or prorated and billed — twice: the same key with the same body replays
-        the first response (`Idempotent-Replayed: true`); the same key with a
-        different body is 422.
-
-
-        **Rate limits.** Every plan has a request budget for API keys, shared by
-        the whole company (all of its keys together): 30 requests per minute on
-        Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan
-        catalog). A person signed in to the dashboard is not counted against it:
-        each person has a separate limit of 300 requests per minute. The current
-        budget is on every response in `X-RateLimit-Limit`,
-        `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an
-        over-limit request gets 429 with `Retry-After`, naming the plan and the
-        way up. A plan change applies from the very next request, and this route
-        (and choosing a first plan) keeps a small budget of its own, so a
-        company that has used up its requests can still upgrade.
-  /health:
-    get:
-      operationId: HealthController_check
-      parameters: []
-      responses:
-        '200':
-          description: The Health Check is successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - ok
-                      - degraded
-                    example: ok
-                  info:
-                    type: object
-                    example: &ref_15
-                      database:
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example: {}
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example: *ref_15
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-        '503':
-          description: The Health Check is not successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum:
-                      - error
-                      - shutting_down
-                    example: error
-                  info:
-                    type: object
-                    example:
-                      database: &ref_16
-                        status: up
-                        responseTime: 12
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  error:
-                    type: object
-                    example:
-                      redis: &ref_17
-                        status: down
-                        message: Could not connect
-                        responseTime: 3005
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-                    nullable: true
-                  details:
-                    type: object
-                    example:
-                      database: *ref_16
-                      redis: *ref_17
-                    additionalProperties:
-                      type: object
-                      required:
-                        - status
-                      properties:
-                        status:
-                          type: string
-                          enum:
-                            - up
-                            - degraded
-                            - down
-                        responseTime:
-                          type: number
-                          description: Time the health indicator took to respond, in ms
-                      additionalProperties: true
-      tags:
-        - health
-      summary: Liveness and readiness check
-      description: >-
-        Confirms the process is running and that Postgres is reachable. Excluded
-        from the (not-yet-registered) global auth guard and from Observe's event
-        budget — a platform healthcheck should never need credentials or count
-        against a telemetry quota.
-  /auth/register-company:
-    post:
-      operationId: AuthController_registerCompany
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterCompanyDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RegisterCompanyResponseDto'
-      tags: &ref_18
-        - auth
-      summary: Register a company
-      description: >-
-        Creates the company (`pending_activation`), its first admin (`invited`)
-        and their password identity in one transaction, then emails an
-        activation link valid for 24 hours. The admin cannot sign in until the
-        link is used. The form has no name field, so `fullName` starts as the
-        local part of the email; change it with `PATCH /users/me`. A password
-        sign-in email identifies exactly one account, so an address already
-        registered returns 409.
-  /auth/activate:
-    get:
-      operationId: AuthController_activate
-      parameters:
-        - name: token
-          required: true
-          in: query
-          description: The single-use token from the emailed link.
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_18
-      summary: Activate a company
-      description: >-
-        Spends the single-use token from the activation email and turns the
-        company and its admin `active`. An expired, unknown or already-used
-        token returns 400 — request a fresh one with `POST
-        /auth/resend-activation`.
-  /auth/resend-activation:
-    post:
-      operationId: AuthController_resendActivation
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EmailOnlyDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_18
-      summary: Resend the activation email
-      description: >-
-        Issues a fresh activation link and invalidates the previous one. Always
-        answers 200 with the same message, whether or not the address is
-        registered, so it cannot be used to discover accounts.
-  /auth/login:
-    post:
-      operationId: AuthController_login
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionDto'
-      tags: *ref_18
-      summary: Sign in with email and password
-      description: >-
-        Returns a 15-minute access token and a 30-day, single-use refresh token.
-        Refused with 403 while the company or the user is not yet active, and
-        with 401 for a wrong email or password (the two are indistinguishable).
-  /auth/refresh:
-    post:
-      operationId: AuthController_refresh
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionDto'
-      tags: *ref_18
-      summary: Exchange a refresh token for a new session
-      description: >-
-        Rotates the refresh token: the one presented is spent and a new pair is
-        returned. Presenting an already-spent token means it was copied, so
-        every session descended from that login is revoked and both holders must
-        sign in again.
-  /auth/logout:
-    post:
-      operationId: AuthController_logout
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_18
-      summary: Sign out
-      description: >-
-        Revokes the session the refresh token belongs to. Public, because the
-        access token has usually expired by the time someone signs out. Always
-        answers 200.
-  /auth/password/forgot:
-    post:
-      operationId: AuthController_forgotPassword
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/EmailOnlyDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_18
-      summary: Request a password reset email
-      description: >-
-        Emails a reset link valid for one hour to an active account. Always
-        answers 200 with the same message, whether or not the address is
-        registered.
-  /auth/password/reset:
-    post:
-      operationId: AuthController_resetPassword
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ResetPasswordDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      tags: *ref_18
-      summary: Reset a forgotten password
-      description: >-
-        Sets a new password using the emailed token and signs the account out of
-        every device. The token is single-use.
-  /auth/accept-invite:
-    post:
-      operationId: AuthController_acceptInvite
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AcceptInviteDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionDto'
-      tags: *ref_18
-      summary: Accept an invitation
-      description: >-
-        Spends the single-use token from an invitation email, sets the
-        employee's password, activates them and signs them in — returning the
-        same session as login. The link itself proves who they are, so nothing
-        compares email addresses. Billing for their seat starts now, not when
-        they were invited. An unknown, expired, used or superseded link returns
-        400.
-  /auth/password:
-    patch:
-      operationId: AuthController_changePassword
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ChangePasswordDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionDto'
-      security:
-        - bearer: []
-      tags: *ref_18
-      summary: Change your password
-      description: >-
-        Requires the current password. Signs out every session, including this
-        one, and returns a fresh session so the calling device stays signed in.
-        A confirmation email is sent.
-  /auth/me:
-    get:
-      operationId: AuthController_me
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MeDto'
-      security:
-        - bearer: []
-      tags: *ref_18
-      summary: Get the signed-in user and their company
-      description: >-
-        The caller's own user record and company. Role and status come from the
-        database on every request, not from the token, so a change of role or a
-        disabled account is reflected immediately.
-  /auth/oauth/google/url:
-    post:
-      operationId: OAuthController_googleUrl
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GoogleUrlDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthUrlDto'
-      tags: &ref_19
-        - auth
-      summary: Start signing in, registering or accepting an invite with Google
-      description: >-
-        Returns the Google authorization URL to send the browser to, and sets an
-        httpOnly `gl_oauth_nonce` cookie that pins the flow to this browser —
-        the callback refuses to continue without it, which is what stops a
-        victim being signed into an attacker's account. Call it from the
-        browser, or forward the `Set-Cookie` if a server makes the call. `login`
-        and `register` behave identically: a Google account already known signs
-        in, an unknown one is offered company registration. `invite` needs the
-        `inviteToken` from the invitation email and binds the Google account to
-        the invited user, with no email comparison. A dead invite is refused
-        here with 400, before any trip to Google. Answers 503 when Google
-        sign-in is not configured; password auth is unaffected.
-  /auth/google/callback:
-    get:
-      operationId: OAuthController_googleCallback
-      parameters:
-        - name: error
-          required: false
-          in: query
-          schema: {}
-        - name: state
-          required: false
-          in: query
-          schema: {}
-        - name: code
-          required: false
-          in: query
-          schema: {}
-      responses:
-        '302':
-          description: Redirects the browser to the web app.
-      tags: *ref_19
-      summary: Google redirects the browser back here
-      description: >-
-        Not called by API clients: Google navigates the browser to it, and it
-        always answers with a redirect to the web app — never JSON, because a
-        person is looking at the page. Success redirects to
-        `/session/oauth-complete?code=…`, where `code` is a single-use,
-        60-second value to trade at `POST /auth/oauth/exchange`; no token ever
-        appears in a URL. An unknown Google account redirects to
-        `/register?oauthRegistration=…`. A linking flow redirects to
-        `/settings/linked-accounts?linked=google`. Any refusal redirects with
-        `?error=` set to one of `invalid_state`, `access_denied`,
-        `provider_error`, `invalid_invite`, `identity_in_use`, `already_linked`,
-        `not_activated`, `account_unavailable` or `ambiguous_email`. A known
-        `(google, sub)` signs in whatever email Google now reports. An unknown
-        one is linked to an existing user only when Google verified the address,
-        it is not a relay/alias address, and it exactly matches one active
-        user's contact address.
-  /auth/oauth/exchange:
-    post:
-      operationId: OAuthController_exchange
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OAuthExchangeDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SessionDto'
-      tags: *ref_19
-      summary: Trade the callback's code for a session
-      description: >-
-        Called by the web app's server after the redirect to
-        `/session/oauth-complete`. The code is single-use and expires after 60
-        seconds; the account is re-checked at this moment, so someone disabled
-        in the meantime gets 401. Returns the same session as login.
-  /auth/oauth/registration/preview:
-    post:
-      operationId: OAuthController_registrationPreview
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OAuthRegistrationTokenDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthRegistrationPreviewDto'
-      tags: *ref_19
-      summary: Read what a Google registration token prefills
-      description: >-
-        Decodes the `oauthRegistration` token from the redirect to `/register`
-        into what the form should prefill. `email` is null when Google reported
-        a relay or alias address — the person must supply a real one.
-        `emailVerified` says whether Google vouches for it, which decides
-        whether registration skips the activation email.
-  /auth/oauth/register-company:
-    post:
-      operationId: OAuthController_registerCompany
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OAuthRegisterCompanyDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthRegisterCompanyResponseDto'
-      tags: *ref_19
-      summary: Register a company with a Google account
-      description: >-
-        The same form as `POST /auth/register-company` minus the password
-        (Google is the credential), plus the `oauthRegistration` token. When
-        Google vouches for the address it becomes the contact address, the
-        company is active at once, no activation email is sent, and the response
-        carries a session. Otherwise `email` is required and the flow is a
-        password registration's: an activation email is sent and no session is
-        returned. The token is valid for 15 minutes. Returns 409 when the
-        company address or the Google account is already registered.
-  /auth/identities/google/link:
-    post:
-      operationId: OAuthController_linkGoogle
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthUrlDto'
-      security:
-        - bearer: []
-      tags: *ref_19
-      summary: Start linking a Google account to the signed-in user
-      description: >-
-        "Settings → Linked accounts." Returns the Google URL and sets the same
-        flow cookie as `POST /auth/oauth/google/url`. When the callback returns,
-        the Google account is bound to the signed-in user with no email
-        comparison at all — a relay address, a personal Gmail and an unrelated
-        one all work. A Google account that already belongs to someone else, or
-        a user who already has a different one, is refused with `?error=`.
-  /auth/identities:
-    get:
-      operationId: OAuthController_listIdentities
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/IdentityListDto'
-      security:
-        - bearer: []
-      tags: *ref_19
-      summary: List your sign-in methods
-      description: >-
-        The caller's own identities — password and/or Google — with the address
-        each provider reports, which may differ from the work address forever.
-        Never returns a hash or the provider's subject.
-  /auth/identities/{id}:
-    delete:
-      operationId: OAuthController_unlinkIdentity
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageResponseDto'
-      security:
-        - bearer: []
-      tags: *ref_19
-      summary: Remove a sign-in method
-      description: >-
-        Removes one of the caller's own identities. Returns 409 when it is the
-        only one left — a user with no way to sign in cannot be helped by anyone
-        but a DBA. Someone else's identity is a 404.
-  /users/me:
-    patch:
-      operationId: UsersController_updateMe
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserProfileDto'
-      security:
-        - bearer: []
-      tags:
-        - users
-      summary: Update your own profile
-      description: >-
-        Changes the signed-in person's own `fullName` — the personal-data half
-        of "change password and personal data". Available to admins and
-        employees.
-  /companies/me/members:
-    get:
-      operationId: CompaniesController_members
-      parameters: []
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/MemberDto'
-      security: &ref_20
-        - bearer: []
-      tags: &ref_21
-        - companies
-      summary: List members (names only)
-      description: >-
-        Any signed-in user. Returns `{ id, fullName }` for each active person in
-        the company and nothing else — no email, role or status — so an employee
-        can name grantees for a restricted file without being able to list or
-        profile colleagues. People who are invited-but-not-yet-joined or removed
-        are left out.
-  /companies/me:
-    patch:
-      operationId: CompaniesController_updateMine
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCompanyDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CompanyDto'
-      security: *ref_20
-      tags: *ref_21
-      summary: Update your company profile
-      description: >-
-        Admin only; employees receive 403. Changes only the fields named:
-        `name`, `country`, `industry`, `billingEmail`. The company is always the
-        caller's own, taken from the session — there is no way to name another
-        tenant. A `billingEmail` already used by another company returns 409.
-  /employees:
-    post:
-      operationId: EmployeesController_invite
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InviteEmployeeDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: &ref_22
-        - bearer: []
-      tags: &ref_23
-        - employees
-      summary: Invite an employee
-      description: >-
-        Creates an `invited` employee and emails them a link valid for 7 days.
-        An invitation holds a seat immediately but bills nothing until they
-        accept, so the seat cap counts `invited` and `active` people together:
-        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
-        409 with the numbers. The address must not already belong to a Gridline
-        account (409).
-    get:
-      operationId: EmployeesController_list
-      parameters:
-        - name: page
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            default: 1
-            type: number
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-        - name: status
-          required: false
-          in: query
-          schema:
-            type: string
-            enum:
-              - invited
-              - active
-              - disabled
-        - name: role
-          required: false
-          in: query
-          schema:
-            type: string
-            enum:
-              - admin
-              - employee
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeePageDto'
-      security: *ref_22
-      tags: *ref_23
-      summary: List the company's people
-      description: >-
-        Full records, offset-paginated, oldest first. Filter with `status`
-        (`invited`, `active`, `disabled`) and `role`. Removed employees are
-        included so they can be reactivated. Employees cannot call this — they
-        get the names-only `GET /companies/me/members` instead.
-  /employees/{id}/resend-invite:
-    post:
-      operationId: EmployeesController_resendInvite
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_22
-      tags: *ref_23
-      summary: Resend an invitation
-      description: >-
-        Issues a fresh link and kills the previous one. Only for someone still
-        `invited`; anyone else returns 409.
-  /employees/{id}:
-    delete:
-      operationId: EmployeesController_disable
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_22
-      tags: *ref_23
-      summary: Remove an employee
-      description: >-
-        A soft-disable, not a delete. The employee is signed out everywhere,
-        their login is removed, any pending link is spent, their seat is freed
-        and billing for it stops today. The files they uploaded stay with the
-        company. You cannot remove yourself or an admin. Removing someone twice
-        returns 409.
-  /employees/{id}/reactivate:
-    post:
-      operationId: EmployeesController_reactivate
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EmployeeDto'
-      security: *ref_22
-      tags: *ref_23
-      summary: Bring a removed employee back
-      description: >-
-        Their login was deleted on removal, so this sends a fresh invitation:
-        they become `invited`, hold a seat again (the plan's cap is re-checked,
-        409 if full) and set a password when they accept. Only for a removed
-        employee.
-  /files/{id}/comments:
-    get:
-      operationId: FileCommentsController_list
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-        - name: cursor
-          required: false
-          in: query
-          description: Opaque; take it from `meta.nextCursor` of the previous page.
-          schema:
-            type: string
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommentPageDto'
-      security:
-        - bearer: []
-      tags:
-        - comments
-      summary: List a file's comment thread
-      description: >-
-        Lists comments oldest first with cursor pagination. The same visibility
-        rule as the file applies: callers who cannot see the file receive 404.
-        Deleted comments remain as bodyless tombstones so replies keep their
-        place. A personal API key needs `files:read`.
-    post:
-      operationId: CommentMutationsController_create
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateCommentDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommentDto'
-      security: &ref_24
-        - bearer: []
-      tags: &ref_25
-        - comments
-      summary: Comment on a file
-      description: >-
-        Creates a top-level comment or a one-level reply. Mentioned users must
-        be active company members who can already see the file; mentioning
-        someone never grants access. Newly mentioned people receive an inbox
-        notification. Session authentication is required—API keys cannot create
-        comments.
-  /comments/{id}:
-    patch:
-      operationId: CommentMutationsController_update
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateCommentDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommentDto'
-      security: *ref_24
-      tags: *ref_25
-      summary: Edit your comment
-      description: >-
-        Authors may replace the body and mention set of a live comment. Only
-        newly added mentions are notified. Comment text is never copied into
-        audit metadata. Session authentication is required.
-    delete:
-      operationId: CommentMutationsController_remove
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CommentDto'
-      security: *ref_24
-      tags: *ref_25
-      summary: Delete a comment
-      description: >-
-        Authors and company admins may delete a comment. Deletion preserves a
-        bodyless tombstone, clears all mention rows, and leaves replies in
-        place. Repeating the request is safe. Session authentication is
-        required.
-  /quality-rules:
-    get:
-      operationId: QualityRulesController_list
-      parameters:
-        - name: page
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            default: 1
-            type: number
-        - name: limit
-          required: false
-          in: query
-          schema:
-            minimum: 1
-            maximum: 100
-            default: 20
-            type: number
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityRulePageDto'
-      security: &ref_26
-        - bearer: []
-      tags: &ref_27
-        - quality-rules
-      summary: List the company's quality rules
-      description: >-
-        The data-quality rules every upload is checked against, oldest first,
-        offset-paginated. Anyone in the company can read them (an employee wants
-        to know what an upload is held to), and so can an API key with
-        `files:read`. A rule is a small check on a file's statistics — never on
-        its rows.
-    post:
-      operationId: QualityRulesController_create
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateQualityRuleDto'
-      responses:
-        '201':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_26
-      tags: *ref_27
-      summary: Create a quality rule
-      description: >-
-        Adds a rule that every later upload is checked against (an existing file
-        is re-checked when its report is rebuilt). Admin only; an API key needs
-        the opt-in `rules:write` scope.
-
-
-        The `kind` decides what is checked and which `params` it takes:
-
-        - `required_column` — the column must exist. `{}`.
-
-        - `max_null_percent` — at most that share of the column may be empty. `{
-        max: 0–100 }`.
-
-        - `type_is` — the column is that type (`integer`, `number`, `boolean`,
-        `date`, `string`), with `maxInconsistentPercent` (default 0) of values
-        allowed to disagree.
-
-        - `min_value` / `max_value` — the smallest / largest number in the
-        column. `{ min }` / `{ max }`.
-
-        - `unique` — no value repeats (blank cells are not values). `{}`. At
-        most 10 per company, because each is checked by remembering the values
-        of its column while the file is read.
-
-        - `max_duplicate_rows` — about the whole file, so it takes **no**
-        `columnName`. `{ max }`.
-
-
-        `columnName` is matched to the file's header ignoring case. A rule about
-        a column a file does not have is **skipped** for that file rather than
-        failed (rules cover every upload; use `required_column` to demand a
-        column). `severity` is `error` (the default) or `warning`: an error
-        counts double in the quality score, and a file that fails one notifies
-        the uploader and the admins.
-
-
-        Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited;
-        a disabled rule still counts). Beyond it the answer is 409 naming the
-        plan and the number; leaving for a plan that allows fewer than the
-        company has is refused the same way.
-  /quality-rules/{id}:
-    patch:
-      operationId: QualityRulesController_update
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateQualityRuleDto'
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_26
-      tags: *ref_27
-      summary: Change a quality rule
-      description: >-
-        Changes a rule's name, column, `params` (which REPLACE the old ones and
-        are checked against the rule's kind), severity or whether it is enabled.
-        The kind cannot change — that is a different rule. Admin only; an API
-        key needs the opt-in `rules:write` scope. Reports that were already
-        built keep the rule as it was; rebuild a file's report to check it
-        against the change.
-    delete:
-      operationId: QualityRulesController_remove
-      parameters:
-        - name: id
-          required: true
-          in: path
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ''
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/QualityRuleDto'
-      security: *ref_26
-      tags: *ref_27
-      summary: Delete a quality rule
-      description: >-
-        Removes the rule and returns it. Reports that already used it keep their
-        result for it. Admin only; an API key needs the opt-in `rules:write`
-        scope.
   /analytics/usage:
     get:
       operationId: AnalyticsController_usage
@@ -2720,6 +1373,980 @@ paths:
 
         A deleted file still counts as an upload: deleting does not undo that it
         happened.
+  /auth/register-company:
+    post:
+      operationId: AuthController_registerCompany
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterCompanyDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterCompanyResponseDto'
+      tags: &ref_14
+        - auth
+      summary: Register a company
+      description: >-
+        Creates the company (`pending_activation`), its first admin (`invited`)
+        and their password identity in one transaction, then emails an
+        activation link valid for 24 hours. The admin cannot sign in until the
+        link is used. The form has no name field, so `fullName` starts as the
+        local part of the email; change it with `PATCH /users/me`. A password
+        sign-in email identifies exactly one account, so an address already
+        registered returns 409.
+  /auth/activate:
+    get:
+      operationId: AuthController_activate
+      parameters:
+        - name: token
+          required: true
+          in: query
+          description: The single-use token from the emailed link.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      tags: *ref_14
+      summary: Activate a company
+      description: >-
+        Spends the single-use token from the activation email and turns the
+        company and its admin `active`. An expired, unknown or already-used
+        token returns 400 — request a fresh one with `POST
+        /auth/resend-activation`.
+  /auth/resend-activation:
+    post:
+      operationId: AuthController_resendActivation
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      tags: *ref_14
+      summary: Resend the activation email
+      description: >-
+        Issues a fresh activation link and invalidates the previous one. Always
+        answers 200 with the same message, whether or not the address is
+        registered, so it cannot be used to discover accounts.
+  /auth/login:
+    post:
+      operationId: AuthController_login
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_14
+      summary: Sign in with email and password
+      description: >-
+        Returns a 15-minute access token and a 30-day, single-use refresh token.
+        Refused with 403 while the company or the user is not yet active, and
+        with 401 for a wrong email or password (the two are indistinguishable).
+  /auth/refresh:
+    post:
+      operationId: AuthController_refresh
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_14
+      summary: Exchange a refresh token for a new session
+      description: >-
+        Rotates the refresh token: the one presented is spent and a new pair is
+        returned. Presenting an already-spent token means it was copied, so
+        every session descended from that login is revoked and both holders must
+        sign in again.
+  /auth/logout:
+    post:
+      operationId: AuthController_logout
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      tags: *ref_14
+      summary: Sign out
+      description: >-
+        Revokes the session the refresh token belongs to. Public, because the
+        access token has usually expired by the time someone signs out. Always
+        answers 200.
+  /auth/password/forgot:
+    post:
+      operationId: AuthController_forgotPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailOnlyDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      tags: *ref_14
+      summary: Request a password reset email
+      description: >-
+        Emails a reset link valid for one hour to an active account. Always
+        answers 200 with the same message, whether or not the address is
+        registered.
+  /auth/password/reset:
+    post:
+      operationId: AuthController_resetPassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      tags: *ref_14
+      summary: Reset a forgotten password
+      description: >-
+        Sets a new password using the emailed token and signs the account out of
+        every device. The token is single-use.
+  /auth/accept-invite:
+    post:
+      operationId: AuthController_acceptInvite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInviteDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_14
+      summary: Accept an invitation
+      description: >-
+        Spends the single-use token from an invitation email, sets the
+        employee's password, activates them and signs them in — returning the
+        same session as login. The link itself proves who they are, so nothing
+        compares email addresses. Billing for their seat starts now, not when
+        they were invited. An unknown, expired, used or superseded link returns
+        400.
+  /auth/password:
+    patch:
+      operationId: AuthController_changePassword
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      security:
+        - bearer: []
+      tags: *ref_14
+      summary: Change your password
+      description: >-
+        Requires the current password. Signs out every session, including this
+        one, and returns a fresh session so the calling device stays signed in.
+        A confirmation email is sent.
+  /auth/me:
+    get:
+      operationId: AuthController_me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeDto'
+      security:
+        - bearer: []
+      tags: *ref_14
+      summary: Get the signed-in user and their company
+      description: >-
+        The caller's own user record and company. Role and status come from the
+        database on every request, not from the token, so a change of role or a
+        disabled account is reflected immediately.
+  /auth/oauth/google/url:
+    post:
+      operationId: OAuthController_googleUrl
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GoogleUrlDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthUrlDto'
+      tags: &ref_15
+        - auth
+      summary: Start signing in, registering or accepting an invite with Google
+      description: >-
+        Returns the Google authorization URL to send the browser to, and sets an
+        httpOnly `gl_oauth_nonce` cookie that pins the flow to this browser —
+        the callback refuses to continue without it, which is what stops a
+        victim being signed into an attacker's account. Call it from the
+        browser, or forward the `Set-Cookie` if a server makes the call. `login`
+        and `register` behave identically: a Google account already known signs
+        in, an unknown one is offered company registration. `invite` needs the
+        `inviteToken` from the invitation email and binds the Google account to
+        the invited user, with no email comparison. A dead invite is refused
+        here with 400, before any trip to Google. Answers 503 when Google
+        sign-in is not configured; password auth is unaffected.
+  /auth/google/callback:
+    get:
+      operationId: OAuthController_googleCallback
+      parameters:
+        - name: error
+          required: false
+          in: query
+          schema: {}
+        - name: state
+          required: false
+          in: query
+          schema: {}
+        - name: code
+          required: false
+          in: query
+          schema: {}
+      responses:
+        '302':
+          description: Redirects the browser to the web app.
+      tags: *ref_15
+      summary: Google redirects the browser back here
+      description: >-
+        Not called by API clients: Google navigates the browser to it, and it
+        always answers with a redirect to the web app — never JSON, because a
+        person is looking at the page. Success redirects to
+        `/session/oauth-complete?code=…`, where `code` is a single-use,
+        60-second value to trade at `POST /auth/oauth/exchange`; no token ever
+        appears in a URL. An unknown Google account redirects to
+        `/register?oauthRegistration=…`. A linking flow redirects to
+        `/settings/linked-accounts?linked=google`. Any refusal redirects with
+        `?error=` set to one of `invalid_state`, `access_denied`,
+        `provider_error`, `invalid_invite`, `identity_in_use`, `already_linked`,
+        `not_activated`, `account_unavailable` or `ambiguous_email`. A known
+        `(google, sub)` signs in whatever email Google now reports. An unknown
+        one is linked to an existing user only when Google verified the address,
+        it is not a relay/alias address, and it exactly matches one active
+        user's contact address.
+  /auth/oauth/exchange:
+    post:
+      operationId: OAuthController_exchange
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthExchangeDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags: *ref_15
+      summary: Trade the callback's code for a session
+      description: >-
+        Called by the web app's server after the redirect to
+        `/session/oauth-complete`. The code is single-use and expires after 60
+        seconds; the account is re-checked at this moment, so someone disabled
+        in the meantime gets 401. Returns the same session as login.
+  /auth/oauth/registration/preview:
+    post:
+      operationId: OAuthController_registrationPreview
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRegistrationTokenDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthRegistrationPreviewDto'
+      tags: *ref_15
+      summary: Read what a Google registration token prefills
+      description: >-
+        Decodes the `oauthRegistration` token from the redirect to `/register`
+        into what the form should prefill. `email` is null when Google reported
+        a relay or alias address — the person must supply a real one.
+        `emailVerified` says whether Google vouches for it, which decides
+        whether registration skips the activation email.
+  /auth/oauth/register-company:
+    post:
+      operationId: OAuthController_registerCompany
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthRegisterCompanyDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthRegisterCompanyResponseDto'
+      tags: *ref_15
+      summary: Register a company with a Google account
+      description: >-
+        The same form as `POST /auth/register-company` minus the password
+        (Google is the credential), plus the `oauthRegistration` token. When
+        Google vouches for the address it becomes the contact address, the
+        company is active at once, no activation email is sent, and the response
+        carries a session. Otherwise `email` is required and the flow is a
+        password registration's: an activation email is sent and no session is
+        returned. The token is valid for 15 minutes. Returns 409 when the
+        company address or the Google account is already registered.
+  /auth/identities/google/link:
+    post:
+      operationId: OAuthController_linkGoogle
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthUrlDto'
+      security:
+        - bearer: []
+      tags: *ref_15
+      summary: Start linking a Google account to the signed-in user
+      description: >-
+        "Settings → Linked accounts." Returns the Google URL and sets the same
+        flow cookie as `POST /auth/oauth/google/url`. When the callback returns,
+        the Google account is bound to the signed-in user with no email
+        comparison at all — a relay address, a personal Gmail and an unrelated
+        one all work. A Google account that already belongs to someone else, or
+        a user who already has a different one, is refused with `?error=`.
+  /auth/identities:
+    get:
+      operationId: OAuthController_listIdentities
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdentityListDto'
+      security:
+        - bearer: []
+      tags: *ref_15
+      summary: List your sign-in methods
+      description: >-
+        The caller's own identities — password and/or Google — with the address
+        each provider reports, which may differ from the work address forever.
+        Never returns a hash or the provider's subject.
+  /auth/identities/{id}:
+    delete:
+      operationId: OAuthController_unlinkIdentity
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponseDto'
+      security:
+        - bearer: []
+      tags: *ref_15
+      summary: Remove a sign-in method
+      description: >-
+        Removes one of the caller's own identities. Returns 409 when it is the
+        only one left — a user with no way to sign in cannot be helped by anyone
+        but a DBA. Someone else's identity is a 404.
+  /auth/demo:
+    post:
+      operationId: DemoController_login
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionDto'
+      tags:
+        - auth
+      summary: Explore the read-only demo
+      description: >-
+        Signs in as the admin of the seeded demo company — no email or password
+        — so anyone can look around a populated account: a Basic plan, four
+        people, six files (one restricted) with data-quality reports, a
+        finalized invoice and an audit trail. Returns the same session as `POST
+        /auth/login`.
+
+
+        The demo is strictly **look, don't touch**: every request that would
+        change anything (any method other than GET) is refused with 403 and an
+        explanation, so visitors cannot alter it or each other's view of it.
+        Answers 404 if the demo has not been seeded on this server (`npm run
+        seed:demo`). Limited to 20 requests per minute per address.
+  /users/me:
+    patch:
+      operationId: UsersController_updateMe
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileDto'
+      security:
+        - bearer: []
+      tags:
+        - users
+      summary: Update your own profile
+      description: >-
+        Changes the signed-in person's own `fullName` — the personal-data half
+        of "change password and personal data". Available to admins and
+        employees.
+  /companies/me/members:
+    get:
+      operationId: CompaniesController_members
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberDto'
+      security: &ref_16
+        - bearer: []
+      tags: &ref_17
+        - companies
+      summary: List members (names only)
+      description: >-
+        Any signed-in user. Returns `{ id, fullName }` for each active person in
+        the company and nothing else — no email, role or status — so an employee
+        can name grantees for a restricted file without being able to list or
+        profile colleagues. People who are invited-but-not-yet-joined or removed
+        are left out.
+  /companies/me:
+    patch:
+      operationId: CompaniesController_updateMine
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCompanyDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyDto'
+      security: *ref_16
+      tags: *ref_17
+      summary: Update your company profile
+      description: >-
+        Admin only; employees receive 403. Changes only the fields named:
+        `name`, `country`, `industry`, `billingEmail`. The company is always the
+        caller's own, taken from the session — there is no way to name another
+        tenant. A `billingEmail` already used by another company returns 409.
+  /employees:
+    post:
+      operationId: EmployeesController_invite
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteEmployeeDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: &ref_18
+        - bearer: []
+      tags: &ref_19
+        - employees
+      summary: Invite an employee
+      description: >-
+        Creates an `invited` employee and emails them a link valid for 7 days.
+        An invitation holds a seat immediately but bills nothing until they
+        accept, so the seat cap counts `invited` and `active` people together:
+        Free allows none, Basic 10, Premium is unlimited. Over the cap returns
+        409 with the numbers. The address must not already belong to a Gridline
+        account (409).
+    get:
+      operationId: EmployeesController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+        - name: status
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - invited
+              - active
+              - disabled
+        - name: role
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - admin
+              - employee
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePageDto'
+      security: *ref_18
+      tags: *ref_19
+      summary: List the company's people
+      description: >-
+        Full records, offset-paginated, oldest first. Filter with `status`
+        (`invited`, `active`, `disabled`) and `role`. Removed employees are
+        included so they can be reactivated. Employees cannot call this — they
+        get the names-only `GET /companies/me/members` instead.
+  /employees/{id}/resend-invite:
+    post:
+      operationId: EmployeesController_resendInvite
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_18
+      tags: *ref_19
+      summary: Resend an invitation
+      description: >-
+        Issues a fresh link and kills the previous one. Only for someone still
+        `invited`; anyone else returns 409.
+  /employees/{id}:
+    delete:
+      operationId: EmployeesController_disable
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_18
+      tags: *ref_19
+      summary: Remove an employee
+      description: >-
+        A soft-disable, not a delete. The employee is signed out everywhere,
+        their login is removed, any pending link is spent, their seat is freed
+        and billing for it stops today. The files they uploaded stay with the
+        company. You cannot remove yourself or an admin. Removing someone twice
+        returns 409.
+  /employees/{id}/reactivate:
+    post:
+      operationId: EmployeesController_reactivate
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeeDto'
+      security: *ref_18
+      tags: *ref_19
+      summary: Bring a removed employee back
+      description: >-
+        Their login was deleted on removal, so this sends a fresh invitation:
+        they become `invited`, hold a seat again (the plan's cap is re-checked,
+        409 if full) and set a password when they accept. Only for a removed
+        employee.
+  /subscriptions/plans:
+    get:
+      operationId: SubscriptionsController_plans
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlanDto'
+      tags: &ref_20
+        - subscriptions
+      summary: List the plans
+      description: >-
+        The public plan catalog — limits and prices for Free, Basic and Premium.
+        No account needed, so a pricing page can render it. Prices are integer
+        cents. Seats are the admin plus employees, so Basic's 10 employees is 11
+        seats.
+  /subscriptions/me:
+    get:
+      operationId: SubscriptionsController_me
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+      security:
+        - bearer: []
+      tags: *ref_20
+      summary: Get the company's subscription
+      description: >-
+        The current plan, its limits, usage so far this period (files,
+        employees, seats), the period window and when it is next due. Available
+        to admins and employees. Returns 404 until an admin has chosen a plan.
+    post:
+      operationId: SubscriptionsController_choose
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionDto'
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingPlanDto'
+      security:
+        - bearer: []
+      tags: *ref_20
+      summary: Choose the first plan
+      description: >-
+        The mandatory step after activation: features that need a plan answer
+        402 until one is chosen. Admin only. Billing is anchored to today's day
+        of the month; the first period starts at UTC midnight today. Free
+        activates immediately. Basic and Premium return 202 with a hosted Stripe
+        Checkout URL and remain inactive until a verified Stripe webhook
+        provisions them. Returns 409 if a plan already exists — use `PATCH
+        /subscriptions/me` to change it.
+    patch:
+      operationId: SubscriptionsController_change
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          description: >-
+            A UUID. A retry with the same key and body replays the first
+            response instead of changing the plan (and billing the proration)
+            twice.
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChoosePlanDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanChangeResultDto'
+        '202':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingPlanDto'
+      security:
+        - bearer: []
+      tags: *ref_20
+      summary: Change plan
+      description: >-
+        Upgrade or downgrade. With Stripe configured, the request returns 202
+        while the current local plan remains authoritative; Stripe applies
+        immediate proration and resets the billing cycle, and only a verified
+        webhook changes Gridline's local plan. The local development fallback
+        keeps the deterministic calculator path. Rejected with 409, naming the
+        numbers, if the company is over the target plan's employee cap or (for
+        Free and Basic) has already uploaded more files this period than it
+        allows, or while a dataset exceeds the target's version cap. Admin only.
+
+
+        Send an `Idempotency-Key` (a UUID) so a retried request is not applied —
+        or prorated and billed — twice: the same key with the same body replays
+        the first response (`Idempotent-Replayed: true`); the same key with a
+        different body is 422.
+
+
+        **Rate limits.** Every plan has a request budget for API keys, shared by
+        the whole company (all of its keys together): 30 requests per minute on
+        Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan
+        catalog). A person signed in to the dashboard is not counted against it:
+        each person has a separate limit of 300 requests per minute. The current
+        budget is on every response in `X-RateLimit-Limit`,
+        `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an
+        over-limit request gets 429 with `Retry-After`, naming the plan and the
+        way up. A plan change applies from the very next request, and this route
+        (and choosing a first plan) keeps a small budget of its own, so a
+        company that has used up its requests can still upgrade.
+  /billing/current:
+    get:
+      operationId: BillingController_current
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatementDto'
+      security: &ref_21
+        - bearer: []
+      tags: &ref_22
+        - billing
+      summary: The running bill for this period
+      description: >-
+        What this period's invoice will be if nothing changes, with the
+        line-item breakdown, the seat count and the due date. Admin only. It is
+        computed on demand by the same calculator that finalizes invoices, so
+        the two cannot disagree.
+
+
+        - **Free** has no line items.
+
+        - **Basic** has one line per employee stretch: $5 × (active days ÷ days
+        in the period), rounded half-up to the cent. An employee who joined
+        mid-period pays for the days since; a removed employee stops that day;
+        an invited employee who has not accepted yet costs nothing. Employees
+        active now are assumed to stay active to the end of the period.
+
+        - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+
+
+        All amounts are integer cents. If the daily job has not yet rolled a
+        finished period over, the period we are actually in is priced — reading
+        never changes anything. A suspended company can still read this.
+  /billing/invoices:
+    get:
+      operationId: BillingController_invoices
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoicePageDto'
+      security: *ref_21
+      tags: *ref_22
+      summary: List invoices
+      description: >-
+        Finalized invoices, newest period first, offset-paginated (`page`,
+        `limit`). Admin only; a suspended company can still read them. There is
+        one invoice per billing period, plus one for the part-period closed when
+        the plan changed.
+  /billing/invoices/{id}:
+    get:
+      operationId: BillingController_invoice
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceDto'
+      security: *ref_21
+      tags: *ref_22
+      summary: Get one invoice
+      description: >-
+        An invoice with its line items. Invoices are immutable: what this
+        returns is what was issued, even if the plan has changed since. Another
+        company's invoice is a 404. Admin only.
+  /billing/portal-session:
+    post:
+      operationId: BillingController_portalSession
+      parameters: []
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortalSessionDto'
+      security: *ref_21
+      tags: *ref_22
+      summary: Open Stripe billing management
+      description: >-
+        Creates a short-lived Stripe Customer Portal session for the company.
+        The portal permits payment-method changes and invoice history only; plan
+        changes stay in Gridline so its downgrade checks cannot be bypassed.
+        Admin only, and deliberately available while the company is suspended
+        for an overdue payment.
   /audit:
     get:
       operationId: AuditLogController_list
@@ -2822,9 +2449,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditPageDto'
-      security: &ref_28
+      security: &ref_23
         - bearer: []
-      tags: &ref_29
+      tags: &ref_24
         - audit
       summary: List audit entries
       description: >-
@@ -2860,8 +2487,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditEntryDetailDto'
-      security: *ref_28
-      tags: *ref_29
+      security: *ref_23
+      tags: *ref_24
       summary: Get one audit entry
       description: >-
         One entry with its `metadata`: the details specific to the action, such
@@ -2884,9 +2511,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreatedApiKeyDto'
-      security: &ref_30
+      security: &ref_25
         - bearer: []
-      tags: &ref_31
+      tags: &ref_26
         - api-keys
       summary: Create an API key
       description: >-
@@ -2955,8 +2582,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyPageDto'
-      security: *ref_30
-      tags: *ref_31
+      security: *ref_25
+      tags: *ref_26
       summary: List API keys
       description: >-
         Newest first, paginated (`page`, `limit`). An admin sees every key in
@@ -2981,8 +2608,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiKeyDto'
-      security: *ref_30
-      tags: *ref_31
+      security: *ref_25
+      tags: *ref_26
       summary: Revoke an API key
       description: >-
         Stops the key working immediately; it cannot be restored — create a new
@@ -2990,9 +2617,226 @@ paths:
         own (someone else's key is a 404, as if it did not exist). Revoking a
         key that is already revoked succeeds and changes nothing. Removing an
         employee revokes all of their keys.
-  /auth/demo:
+  /outgoing-webhooks:
     post:
-      operationId: DemoController_login
+      operationId: WebhooksController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookEndpointDto'
+      responses:
+        '201':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreatedWebhookEndpointDto'
+      security: &ref_27
+        - bearer: []
+      tags: &ref_28
+        - outgoing-webhooks
+      summary: Register an outgoing webhook
+      description: >-
+        Registers an HTTPS receiver for selected company events. The `whsec_`
+        signing secret is returned once in this response and stored encrypted;
+        save it immediately. Only signed-in admins may manage endpoints. Active
+        endpoint limits are Free 1, Basic 5, and Premium unlimited.
+    get:
+      operationId: WebhooksController_list
+      parameters:
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointPageDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: List webhook endpoints
+      description: >-
+        Lists the company's endpoints newest first with offset pagination.
+        Recoverable secret material is never returned. Disabled endpoints remain
+        visible with their failure count and disabled timestamp.
+  /outgoing-webhooks/{id}:
+    patch:
+      operationId: WebhooksController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookEndpointDto'
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: Update a webhook endpoint
+      description: >-
+        Changes the endpoint name, HTTPS URL, subscribed events, or active
+        state. Re-enabling an endpoint resets its terminal failure count and is
+        rejected when the current plan's active-endpoint limit is full.
+    delete:
+      operationId: WebhooksController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookEndpointDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: Delete a webhook endpoint
+      description: >-
+        Soft-deletes and disables the endpoint while preserving its delivery
+        history. Future business events no longer create deliveries for it.
+  /outgoing-webhooks/{id}/rotate-secret:
+    post:
+      operationId: WebhooksController_rotateSecret
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RotatedWebhookSecretDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: Rotate a webhook signing secret
+      description: >-
+        Replaces the endpoint's AES-256-GCM encrypted secret and returns the new
+        `whsec_` value once. The old secret stops verifying all deliveries
+        created after rotation.
+  /outgoing-webhooks/{id}/ping:
+    post:
+      operationId: WebhooksController_ping
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: Queue a test delivery
+      description: >-
+        Queues a signed `ping` event through the same durable retry path as
+        business events. A 202 means the delivery was persisted, not that the
+        receiver has already accepted it.
+  /outgoing-webhooks/{id}/deliveries:
+    get:
+      operationId: WebhooksController_deliveries
+      parameters:
+        - name: id
+          required: true
+          in: path
+          schema:
+            type: string
+        - name: page
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            default: 1
+            type: number
+        - name: limit
+          required: false
+          in: query
+          schema:
+            minimum: 1
+            maximum: 100
+            default: 20
+            type: number
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryPageDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: List endpoint deliveries
+      description: >-
+        Lists delivery status, attempts, receiver status, last error, and
+        completion time newest first. Event payloads intentionally contain
+        identifiers and non-sensitive summaries; fetch full details through the
+        API.
+  /outgoing-webhooks/deliveries/{deliveryId}/redeliver:
+    post:
+      operationId: WebhooksController_redeliver
+      parameters:
+        - name: deliveryId
+          required: true
+          in: path
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookDeliveryDto'
+      security: *ref_27
+      tags: *ref_28
+      summary: Redeliver a completed event
+      description: >-
+        Resets a succeeded or failed delivery and queues the same immutable
+        event envelope again. Pending deliveries cannot be duplicated, and a
+        disabled endpoint must be re-enabled first.
+  /webhooks/stripe:
+    post:
+      operationId: StripeWebhookController_receive
       parameters: []
       responses:
         '200':
@@ -3000,31 +2844,248 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SessionDto'
+                $ref: '#/components/schemas/StripeWebhookDto'
       tags:
-        - auth
-      summary: Explore the read-only demo
+        - webhooks
+      summary: Receive a Stripe billing event
       description: >-
-        Signs in as the admin of the seeded demo company — no email or password
-        — so anyone can look around a populated account: a Basic plan, four
-        people, six files (one restricted) with data-quality reports, a
-        finalized invoice and an audit trail. Returns the same session as `POST
-        /auth/login`.
-
-
-        The demo is strictly **look, don't touch**: every request that would
-        change anything (any method other than GET) is refused with 403 and an
-        explanation, so visitors cannot alter it or each other's view of it.
-        Answers 404 if the demo has not been seeded on this server (`npm run
-        seed:demo`). Limited to 20 requests per minute per address.
+        Public Stripe callback. The API verifies the signature over the exact
+        raw request body, deduplicates the event, retrieves current Stripe state
+        to defeat out-of-order delivery, and then mirrors subscription or
+        invoice state transactionally. Browser redirects never provision a paid
+        plan. Invalid signatures return 400 and reveal no tenant information.
+  /health:
+    get:
+      operationId: HealthController_check
+      parameters: []
+      responses:
+        '200':
+          description: The Health Check is successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                    example: ok
+                  info:
+                    type: object
+                    example: &ref_29
+                      database:
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example: {}
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example: *ref_29
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+        '503':
+          description: The Health Check is not successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - error
+                      - shutting_down
+                    example: error
+                  info:
+                    type: object
+                    example:
+                      database: &ref_30
+                        status: up
+                        responseTime: 12
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  error:
+                    type: object
+                    example:
+                      redis: &ref_31
+                        status: down
+                        message: Could not connect
+                        responseTime: 3005
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+                    nullable: true
+                  details:
+                    type: object
+                    example:
+                      database: *ref_30
+                      redis: *ref_31
+                    additionalProperties:
+                      type: object
+                      required:
+                        - status
+                      properties:
+                        status:
+                          type: string
+                          enum:
+                            - up
+                            - degraded
+                            - down
+                        responseTime:
+                          type: number
+                          description: Time the health indicator took to respond, in ms
+                      additionalProperties: true
+      tags:
+        - health
+      summary: Liveness and readiness check
+      description: >-
+        Confirms the process is running and that Postgres is reachable. Excluded
+        from the (not-yet-registered) global auth guard and from Observe's event
+        budget — a platform healthcheck should never need credentials or count
+        against a telemetry quota.
 info:
   title: Gridline API
   description: >-
-    Multi-tenant SaaS backend for spreadsheet upload, per-file permissions, and
-    seat + usage billing.
+    Gridline is where a company’s spreadsheets live. Upload a CSV or XLSX file
+    and it is checked on arrival: a quality report, personal data flagged, your
+    own rules applied. From there you can clean it into a new version, compare
+    versions row by row, and ask it questions. Access is per person, every
+    change is audited, and billing is by seat and volume.
+
+
+    **Start with Files**, the core of the API. **Accounts and people** covers
+    signing in; sign in with `POST /auth/login` and send the access token as a
+    Bearer token, or create an API key under **Developers** for a program.
+    Webhooks, which tell your own systems when something happens, are in
+    **Developers**.
   version: 0.1.0
   contact: {}
-tags: []
+tags:
+  - name: files
+    description: >-
+      The heart of Gridline. Upload a spreadsheet and its versions, read its
+      quality report and preview, compare versions (statistics and, by key, row
+      by row), clean it into a new version, group and total its rows, or ask it
+      a question.
+  - name: quality-rules
+    description: >-
+      The company's own checks (a required column, a limit on empty cells, no
+      personal data…) that every report is held to.
+  - name: comments
+    description: >-
+      The discussion on a file, with mentions of colleagues who can already see
+      it.
+  - name: notifications
+    description: >-
+      A person's own inbox: report ready, rules failed, personal data found,
+      rows changed, quota alerts.
+  - name: analytics
+    description: >-
+      How the company uses Gridline: uploads over time, storage and who uploads
+      what.
+  - name: auth
+    description: >-
+      Create a company, sign in (password or Google), keep a session alive,
+      accept an invitation, link or unlink identities.
+  - name: users
+    description: The signed-in person’s own profile.
+  - name: companies
+    description: 'The company (the tenant): its details and its members.'
+  - name: employees
+    description: >-
+      Inviting, listing, disabling and re-enabling the people in a company.
+      Admins only.
+  - name: subscriptions
+    description: The plan catalog, and choosing or changing the company’s plan.
+  - name: billing
+    description: The running bill, invoices, and the Stripe customer portal. Admins only.
+  - name: audit
+    description: The record of every change, which cannot be edited. Admins only.
+  - name: api-keys
+    description: Scoped keys that let a program act as the person who made them.
+  - name: outgoing-webhooks
+    description: >-
+      Endpoints Gridline calls when something happens (a report is ready, a new
+      version differs, personal data is found), with signed deliveries and a
+      delivery log.
+  - name: webhooks
+    description: Inbound notifications from Stripe. Called by Stripe, never by you.
+  - name: health
+    description: Liveness and readiness for load balancers.
 servers:
   - url: /api
   - url: http://localhost:4000
@@ -6161,3 +6222,32 @@ components:
       required:
         - data
         - meta
+x-tagGroups:
+  - name: Your data
+    tags:
+      - files
+      - quality-rules
+      - comments
+      - notifications
+      - analytics
+  - name: Accounts and people
+    tags:
+      - auth
+      - users
+      - companies
+      - employees
+  - name: Plans and billing
+    tags:
+      - subscriptions
+      - billing
+  - name: Governance
+    tags:
+      - audit
+  - name: Developers
+    tags:
+      - api-keys
+      - outgoing-webhooks
+  - name: System
+    tags:
+      - webhooks
+      - health

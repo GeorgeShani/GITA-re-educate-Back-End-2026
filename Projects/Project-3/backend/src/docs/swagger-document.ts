@@ -1,5 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { DocumentBuilder, type OpenAPIObject, SwaggerModule } from '@nestjs/swagger';
+import { organise } from './api-structure.js';
 
 /**
  * Explicit, not Nest's default. The default operationIdFactory produces
@@ -32,7 +33,12 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
   const config = new DocumentBuilder()
     .setTitle('Gridline API')
     .setDescription(
-      'Multi-tenant SaaS backend for spreadsheet upload, per-file permissions, and seat + usage billing.',
+      'Gridline is where a company’s spreadsheets live. Upload a CSV or XLSX file and it is checked on arrival: a quality report, ' +
+        'personal data flagged, your own rules applied. From there you can clean it into a new version, compare versions row by row, ' +
+        'and ask it questions. Access is per person, every change is audited, and billing is by seat and volume.\n\n' +
+        '**Start with Files**, the core of the API. **Accounts and people** covers signing in; sign in with `POST /auth/login` and send ' +
+        'the access token as a Bearer token, or create an API key under **Developers** for a program. Webhooks, which tell your own ' +
+        'systems when something happens, are in **Developers**.',
     )
     .setVersion('0.1.0')
     .addBearerAuth()
@@ -40,5 +46,5 @@ export function buildOpenApiDocument(app: INestApplication): OpenAPIObject {
     .addServer('http://localhost:4000')
     .build();
 
-  return SwaggerModule.createDocument(app, config, { operationIdFactory });
+  return organise(SwaggerModule.createDocument(app, config, { operationIdFactory }));
 }

@@ -29,11 +29,72 @@ paths:
 info:
   title: Gridline API
   description: >-
-    Multi-tenant SaaS backend for spreadsheet upload, per-file permissions, and
-    seat + usage billing.
+    Gridline is where a company’s spreadsheets live. Upload a CSV or XLSX file
+    and it is checked on arrival: a quality report, personal data flagged, your
+    own rules applied. From there you can clean it into a new version, compare
+    versions row by row, and ask it questions. Access is per person, every
+    change is audited, and billing is by seat and volume.
+
+
+    **Start with Files**, the core of the API. **Accounts and people** covers
+    signing in; sign in with `POST /auth/login` and send the access token as a
+    Bearer token, or create an API key under **Developers** for a program.
+    Webhooks, which tell your own systems when something happens, are in
+    **Developers**.
   version: 0.1.0
   contact: {}
-tags: []
+tags:
+  - name: files
+    description: >-
+      The heart of Gridline. Upload a spreadsheet and its versions, read its
+      quality report and preview, compare versions (statistics and, by key, row
+      by row), clean it into a new version, group and total its rows, or ask it
+      a question.
+  - name: quality-rules
+    description: >-
+      The company's own checks (a required column, a limit on empty cells, no
+      personal data…) that every report is held to.
+  - name: comments
+    description: >-
+      The discussion on a file, with mentions of colleagues who can already see
+      it.
+  - name: notifications
+    description: >-
+      A person's own inbox: report ready, rules failed, personal data found,
+      rows changed, quota alerts.
+  - name: analytics
+    description: >-
+      How the company uses Gridline: uploads over time, storage and who uploads
+      what.
+  - name: auth
+    description: >-
+      Create a company, sign in (password or Google), keep a session alive,
+      accept an invitation, link or unlink identities.
+  - name: users
+    description: The signed-in person’s own profile.
+  - name: companies
+    description: 'The company (the tenant): its details and its members.'
+  - name: employees
+    description: >-
+      Inviting, listing, disabling and re-enabling the people in a company.
+      Admins only.
+  - name: subscriptions
+    description: The plan catalog, and choosing or changing the company’s plan.
+  - name: billing
+    description: The running bill, invoices, and the Stripe customer portal. Admins only.
+  - name: audit
+    description: The record of every change, which cannot be edited. Admins only.
+  - name: api-keys
+    description: Scoped keys that let a program act as the person who made them.
+  - name: outgoing-webhooks
+    description: >-
+      Endpoints Gridline calls when something happens (a report is ready, a new
+      version differs, personal data is found), with signed deliveries and a
+      delivery log.
+  - name: webhooks
+    description: Inbound notifications from Stripe. Called by Stripe, never by you.
+  - name: health
+    description: Liveness and readiness for load balancers.
 servers:
   - url: /api
   - url: http://localhost:4000
@@ -3170,3 +3231,32 @@ components:
       required:
         - data
         - meta
+x-tagGroups:
+  - name: Your data
+    tags:
+      - files
+      - quality-rules
+      - comments
+      - notifications
+      - analytics
+  - name: Accounts and people
+    tags:
+      - auth
+      - users
+      - companies
+      - employees
+  - name: Plans and billing
+    tags:
+      - subscriptions
+      - billing
+  - name: Governance
+    tags:
+      - audit
+  - name: Developers
+    tags:
+      - api-keys
+      - outgoing-webhooks
+  - name: System
+    tags:
+      - webhooks
+      - health

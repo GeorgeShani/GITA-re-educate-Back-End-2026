@@ -4,154 +4,6 @@
  */
 
 export interface paths {
-  "/webhooks/stripe": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Receive a Stripe billing event
-     * @description Public Stripe callback. The API verifies the signature over the exact raw request body, deduplicates the event, retrieves current Stripe state to defeat out-of-order delivery, and then mirrors subscription or invoice state transactionally. Browser redirects never provision a paid plan. Invalid signatures return 400 and reveal no tenant information.
-     */
-    post: operations["StripeWebhookController_receive"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/outgoing-webhooks": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List webhook endpoints
-     * @description Lists the company's endpoints newest first with offset pagination. Recoverable secret material is never returned. Disabled endpoints remain visible with their failure count and disabled timestamp.
-     */
-    get: operations["WebhooksController_list"];
-    put?: never;
-    /**
-     * Register an outgoing webhook
-     * @description Registers an HTTPS receiver for selected company events. The `whsec_` signing secret is returned once in this response and stored encrypted; save it immediately. Only signed-in admins may manage endpoints. Active endpoint limits are Free 1, Basic 5, and Premium unlimited.
-     */
-    post: operations["WebhooksController_create"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/outgoing-webhooks/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Delete a webhook endpoint
-     * @description Soft-deletes and disables the endpoint while preserving its delivery history. Future business events no longer create deliveries for it.
-     */
-    delete: operations["WebhooksController_remove"];
-    options?: never;
-    head?: never;
-    /**
-     * Update a webhook endpoint
-     * @description Changes the endpoint name, HTTPS URL, subscribed events, or active state. Re-enabling an endpoint resets its terminal failure count and is rejected when the current plan's active-endpoint limit is full.
-     */
-    patch: operations["WebhooksController_update"];
-    trace?: never;
-  };
-  "/outgoing-webhooks/{id}/rotate-secret": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Rotate a webhook signing secret
-     * @description Replaces the endpoint's AES-256-GCM encrypted secret and returns the new `whsec_` value once. The old secret stops verifying all deliveries created after rotation.
-     */
-    post: operations["WebhooksController_rotateSecret"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/outgoing-webhooks/{id}/ping": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Queue a test delivery
-     * @description Queues a signed `ping` event through the same durable retry path as business events. A 202 means the delivery was persisted, not that the receiver has already accepted it.
-     */
-    post: operations["WebhooksController_ping"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/outgoing-webhooks/{id}/deliveries": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List endpoint deliveries
-     * @description Lists delivery status, attempts, receiver status, last error, and completion time newest first. Event payloads intentionally contain identifiers and non-sensitive summaries; fetch full details through the API.
-     */
-    get: operations["WebhooksController_deliveries"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/outgoing-webhooks/deliveries/{deliveryId}/redeliver": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /**
-     * Redeliver a completed event
-     * @description Resets a succeeded or failed delivery and queues the same immutable event envelope again. Pending deliveries cannot be duplicated, and a disabled endpoint must be re-enabled first.
-     */
-    post: operations["WebhooksController_redeliver"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/files": {
     parameters: {
       query?: never;
@@ -538,7 +390,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/billing/current": {
+  "/quality-rules": {
     parameters: {
       query?: never;
       header?: never;
@@ -546,65 +398,35 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * The running bill for this period
-     * @description What this period's invoice will be if nothing changes, with the line-item breakdown, the seat count and the due date. Admin only. It is computed on demand by the same calculator that finalizes invoices, so the two cannot disagree.
+     * List the company's quality rules
+     * @description The data-quality rules every upload is checked against, oldest first, offset-paginated. Anyone in the company can read them (an employee wants to know what an upload is held to), and so can an API key with `files:read`. A rule is a small check on a file's statistics — never on its rows.
+     */
+    get: operations["QualityRulesController_list"];
+    put?: never;
+    /**
+     * Create a quality rule
+     * @description Adds a rule that every later upload is checked against (an existing file is re-checked when its report is rebuilt). Admin only; an API key needs the opt-in `rules:write` scope.
      *
-     *     - **Free** has no line items.
-     *     - **Basic** has one line per employee stretch: $5 × (active days ÷ days in the period), rounded half-up to the cent. An employee who joined mid-period pays for the days since; a removed employee stops that day; an invited employee who has not accepted yet costs nothing. Employees active now are assumed to stay active to the end of the period.
-     *     - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+     *     The `kind` decides what is checked and which `params` it takes:
+     *     - `required_column` — the column must exist. `{}`.
+     *     - `max_null_percent` — at most that share of the column may be empty. `{ max: 0–100 }`.
+     *     - `type_is` — the column is that type (`integer`, `number`, `boolean`, `date`, `string`), with `maxInconsistentPercent` (default 0) of values allowed to disagree.
+     *     - `min_value` / `max_value` — the smallest / largest number in the column. `{ min }` / `{ max }`.
+     *     - `unique` — no value repeats (blank cells are not values). `{}`. At most 10 per company, because each is checked by remembering the values of its column while the file is read.
+     *     - `max_duplicate_rows` — about the whole file, so it takes **no** `columnName`. `{ max }`.
      *
-     *     All amounts are integer cents. If the daily job has not yet rolled a finished period over, the period we are actually in is priced — reading never changes anything. A suspended company can still read this.
+     *     `columnName` is matched to the file's header ignoring case. A rule about a column a file does not have is **skipped** for that file rather than failed (rules cover every upload; use `required_column` to demand a column). `severity` is `error` (the default) or `warning`: an error counts double in the quality score, and a file that fails one notifies the uploader and the admins.
+     *
+     *     Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited; a disabled rule still counts). Beyond it the answer is 409 naming the plan and the number; leaving for a plan that allows fewer than the company has is refused the same way.
      */
-    get: operations["BillingController_current"];
-    put?: never;
-    post?: never;
+    post: operations["QualityRulesController_create"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/billing/invoices": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List invoices
-     * @description Finalized invoices, newest period first, offset-paginated (`page`, `limit`). Admin only; a suspended company can still read them. There is one invoice per billing period, plus one for the part-period closed when the plan changed.
-     */
-    get: operations["BillingController_invoices"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/billing/invoices/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get one invoice
-     * @description An invoice with its line items. Invoices are immutable: what this returns is what was issued, even if the plan has changed since. Another company's invoice is a 404. Admin only.
-     */
-    get: operations["BillingController_invoice"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/billing/portal-session": {
+  "/quality-rules/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -613,15 +435,67 @@ export interface paths {
     };
     get?: never;
     put?: never;
+    post?: never;
     /**
-     * Open Stripe billing management
-     * @description Creates a short-lived Stripe Customer Portal session for the company. The portal permits payment-method changes and invoice history only; plan changes stay in Gridline so its downgrade checks cannot be bypassed. Admin only, and deliberately available while the company is suspended for an overdue payment.
+     * Delete a quality rule
+     * @description Removes the rule and returns it. Reports that already used it keep their result for it. Admin only; an API key needs the opt-in `rules:write` scope.
      */
-    post: operations["BillingController_portalSession"];
+    delete: operations["QualityRulesController_remove"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a quality rule
+     * @description Changes a rule's name, column, `params` (which REPLACE the old ones and are checked against the rule's kind), severity or whether it is enabled. The kind cannot change — that is a different rule. Admin only; an API key needs the opt-in `rules:write` scope. Reports that were already built keep the rule as it was; rebuild a file's report to check it against the change.
+     */
+    patch: operations["QualityRulesController_update"];
+    trace?: never;
+  };
+  "/files/{id}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a file's comment thread
+     * @description Lists comments oldest first with cursor pagination. The same visibility rule as the file applies: callers who cannot see the file receive 404. Deleted comments remain as bodyless tombstones so replies keep their place. A personal API key needs `files:read`.
+     */
+    get: operations["FileCommentsController_list"];
+    put?: never;
+    /**
+     * Comment on a file
+     * @description Creates a top-level comment or a one-level reply. Mentioned users must be active company members who can already see the file; mentioning someone never grants access. Newly mentioned people receive an inbox notification. Session authentication is required—API keys cannot create comments.
+     */
+    post: operations["CommentMutationsController_create"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/comments/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a comment
+     * @description Authors and company admins may delete a comment. Deletion preserves a bodyless tombstone, clears all mention rows, and leaves replies in place. Repeating the request is safe. Session authentication is required.
+     */
+    delete: operations["CommentMutationsController_remove"];
+    options?: never;
+    head?: never;
+    /**
+     * Edit your comment
+     * @description Authors may replace the body and mention set of a live comment. Only newly added mentions are notified. Comment text is never copied into audit metadata. Session authentication is required.
+     */
+    patch: operations["CommentMutationsController_update"];
     trace?: never;
   };
   "/notifications": {
@@ -712,7 +586,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/subscriptions/plans": {
+  "/analytics/usage": {
     parameters: {
       query?: never;
       header?: never;
@@ -720,62 +594,24 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List the plans
-     * @description The public plan catalog — limits and prices for Free, Basic and Premium. No account needed, so a pricing page can render it. Prices are integer cents. Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
-     */
-    get: operations["SubscriptionsController_plans"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/subscriptions/me": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Get the company's subscription
-     * @description The current plan, its limits, usage so far this period (files, employees, seats), the period window and when it is next due. Available to admins and employees. Returns 404 until an admin has chosen a plan.
-     */
-    get: operations["SubscriptionsController_me"];
-    put?: never;
-    /**
-     * Choose the first plan
-     * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Free activates immediately. Basic and Premium return 202 with a hosted Stripe Checkout URL and remain inactive until a verified Stripe webhook provisions them. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
-     */
-    post: operations["SubscriptionsController_choose"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    /**
-     * Change plan
-     * @description Upgrade or downgrade. With Stripe configured, the request returns 202 while the current local plan remains authoritative; Stripe applies immediate proration and resets the billing cycle, and only a verified webhook changes Gridline's local plan. The local development fallback keeps the deterministic calculator path. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows, or while a dataset exceeds the target's version cap. Admin only.
+     * Usage analytics
+     * @description Admin only. One request returns everything a usage dashboard draws.
      *
-     *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
+     *     `from` and `to` are read as UTC days (any time of day is dropped) and `to` is exclusive; with neither the range is the current billing period so far, and it can be at most 366 days. Within the range:
      *
-     *     **Rate limits.** Every plan has a request budget for API keys, shared by the whole company (all of its keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan catalog). A person signed in to the dashboard is not counted against it: each person has a separate limit of 300 requests per minute. The current budget is on every response in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan change applies from the very next request, and this route (and choosing a first plan) keeps a small budget of its own, so a company that has used up its requests can still upgrade.
+     *     - `filesPerDay`: uploads per day, with a zero for every quiet day so a chart has a point for each.
+     *     - `byEmployee`: each uploader's files, bytes and last upload, most active first — including people since removed, whose history stays.
+     *     - `storage`: live files and bytes right now (deleted files excluded, whatever the range), and the bytes uploaded in the range (deleted files included).
+     *
+     *     Always for the CURRENT billing period, regardless of the range:
+     *
+     *     - `quota`: cumulative uploads per day against the plan's included quota, with the even-pace line to compare it to. It counts exactly what the running bill counts.
+     *
+     *     And the whole `planHistory`, newest change first: each change joined to the invoice that closed the outgoing period.
+     *
+     *     A deleted file still counts as an upload: deleting does not undo that it happened.
      */
-    patch: operations["SubscriptionsController_change"];
-    trace?: never;
-  };
-  "/health": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Liveness and readiness check
-     * @description Confirms the process is running and that Postgres is reachable. Excluded from the (not-yet-registered) global auth guard and from Observe's event budget — a platform healthcheck should never need credentials or count against a telemetry quota.
-     */
-    get: operations["HealthController_check"];
+    get: operations["AnalyticsController_usage"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1164,6 +1000,28 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/auth/demo": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Explore the read-only demo
+     * @description Signs in as the admin of the seeded demo company — no email or password — so anyone can look around a populated account: a Basic plan, four people, six files (one restricted) with data-quality reports, a finalized invoice and an audit trail. Returns the same session as `POST /auth/login`.
+     *
+     *     The demo is strictly **look, don't touch**: every request that would change anything (any method other than GET) is refused with 403 and an explanation, so visitors cannot alter it or each other's view of it. Answers 404 if the demo has not been seeded on this server (`npm run seed:demo`). Limited to 20 requests per minute per address.
+     */
+    post: operations["DemoController_login"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/users/me": {
     parameters: {
       query?: never;
@@ -1308,7 +1166,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/files/{id}/comments": {
+  "/subscriptions/plans": {
     parameters: {
       query?: never;
       header?: never;
@@ -1316,23 +1174,117 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a file's comment thread
-     * @description Lists comments oldest first with cursor pagination. The same visibility rule as the file applies: callers who cannot see the file receive 404. Deleted comments remain as bodyless tombstones so replies keep their place. A personal API key needs `files:read`.
+     * List the plans
+     * @description The public plan catalog — limits and prices for Free, Basic and Premium. No account needed, so a pricing page can render it. Prices are integer cents. Seats are the admin plus employees, so Basic's 10 employees is 11 seats.
      */
-    get: operations["FileCommentsController_list"];
+    get: operations["SubscriptionsController_plans"];
     put?: never;
-    /**
-     * Comment on a file
-     * @description Creates a top-level comment or a one-level reply. Mentioned users must be active company members who can already see the file; mentioning someone never grants access. Newly mentioned people receive an inbox notification. Session authentication is required—API keys cannot create comments.
-     */
-    post: operations["CommentMutationsController_create"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/comments/{id}": {
+  "/subscriptions/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the company's subscription
+     * @description The current plan, its limits, usage so far this period (files, employees, seats), the period window and when it is next due. Available to admins and employees. Returns 404 until an admin has chosen a plan.
+     */
+    get: operations["SubscriptionsController_me"];
+    put?: never;
+    /**
+     * Choose the first plan
+     * @description The mandatory step after activation: features that need a plan answer 402 until one is chosen. Admin only. Billing is anchored to today's day of the month; the first period starts at UTC midnight today. Free activates immediately. Basic and Premium return 202 with a hosted Stripe Checkout URL and remain inactive until a verified Stripe webhook provisions them. Returns 409 if a plan already exists — use `PATCH /subscriptions/me` to change it.
+     */
+    post: operations["SubscriptionsController_choose"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change plan
+     * @description Upgrade or downgrade. With Stripe configured, the request returns 202 while the current local plan remains authoritative; Stripe applies immediate proration and resets the billing cycle, and only a verified webhook changes Gridline's local plan. The local development fallback keeps the deterministic calculator path. Rejected with 409, naming the numbers, if the company is over the target plan's employee cap or (for Free and Basic) has already uploaded more files this period than it allows, or while a dataset exceeds the target's version cap. Admin only.
+     *
+     *     Send an `Idempotency-Key` (a UUID) so a retried request is not applied — or prorated and billed — twice: the same key with the same body replays the first response (`Idempotent-Replayed: true`); the same key with a different body is 422.
+     *
+     *     **Rate limits.** Every plan has a request budget for API keys, shared by the whole company (all of its keys together): 30 requests per minute on Free, 120 on Basic, 600 on Premium (`rateLimitPerMinute` in the plan catalog). A person signed in to the dashboard is not counted against it: each person has a separate limit of 300 requests per minute. The current budget is on every response in `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` (seconds), and an over-limit request gets 429 with `Retry-After`, naming the plan and the way up. A plan change applies from the very next request, and this route (and choosing a first plan) keeps a small budget of its own, so a company that has used up its requests can still upgrade.
+     */
+    patch: operations["SubscriptionsController_change"];
+    trace?: never;
+  };
+  "/billing/current": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * The running bill for this period
+     * @description What this period's invoice will be if nothing changes, with the line-item breakdown, the seat count and the due date. Admin only. It is computed on demand by the same calculator that finalizes invoices, so the two cannot disagree.
+     *
+     *     - **Free** has no line items.
+     *     - **Basic** has one line per employee stretch: $5 × (active days ÷ days in the period), rounded half-up to the cent. An employee who joined mid-period pays for the days since; a removed employee stops that day; an invited employee who has not accepted yet costs nothing. Employees active now are assumed to stay active to the end of the period.
+     *     - **Premium** is $300 plus $0.50 for every file past the 1000 included.
+     *
+     *     All amounts are integer cents. If the daily job has not yet rolled a finished period over, the period we are actually in is priced — reading never changes anything. A suspended company can still read this.
+     */
+    get: operations["BillingController_current"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/billing/invoices": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List invoices
+     * @description Finalized invoices, newest period first, offset-paginated (`page`, `limit`). Admin only; a suspended company can still read them. There is one invoice per billing period, plus one for the part-period closed when the plan changed.
+     */
+    get: operations["BillingController_invoices"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/billing/invoices/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get one invoice
+     * @description An invoice with its line items. Invoices are immutable: what this returns is what was issued, even if the plan has changed since. Another company's invoice is a 404. Admin only.
+     */
+    get: operations["BillingController_invoice"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/billing/portal-session": {
     parameters: {
       query?: never;
       header?: never;
@@ -1341,109 +1293,11 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post?: never;
     /**
-     * Delete a comment
-     * @description Authors and company admins may delete a comment. Deletion preserves a bodyless tombstone, clears all mention rows, and leaves replies in place. Repeating the request is safe. Session authentication is required.
+     * Open Stripe billing management
+     * @description Creates a short-lived Stripe Customer Portal session for the company. The portal permits payment-method changes and invoice history only; plan changes stay in Gridline so its downgrade checks cannot be bypassed. Admin only, and deliberately available while the company is suspended for an overdue payment.
      */
-    delete: operations["CommentMutationsController_remove"];
-    options?: never;
-    head?: never;
-    /**
-     * Edit your comment
-     * @description Authors may replace the body and mention set of a live comment. Only newly added mentions are notified. Comment text is never copied into audit metadata. Session authentication is required.
-     */
-    patch: operations["CommentMutationsController_update"];
-    trace?: never;
-  };
-  "/quality-rules": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List the company's quality rules
-     * @description The data-quality rules every upload is checked against, oldest first, offset-paginated. Anyone in the company can read them (an employee wants to know what an upload is held to), and so can an API key with `files:read`. A rule is a small check on a file's statistics — never on its rows.
-     */
-    get: operations["QualityRulesController_list"];
-    put?: never;
-    /**
-     * Create a quality rule
-     * @description Adds a rule that every later upload is checked against (an existing file is re-checked when its report is rebuilt). Admin only; an API key needs the opt-in `rules:write` scope.
-     *
-     *     The `kind` decides what is checked and which `params` it takes:
-     *     - `required_column` — the column must exist. `{}`.
-     *     - `max_null_percent` — at most that share of the column may be empty. `{ max: 0–100 }`.
-     *     - `type_is` — the column is that type (`integer`, `number`, `boolean`, `date`, `string`), with `maxInconsistentPercent` (default 0) of values allowed to disagree.
-     *     - `min_value` / `max_value` — the smallest / largest number in the column. `{ min }` / `{ max }`.
-     *     - `unique` — no value repeats (blank cells are not values). `{}`. At most 10 per company, because each is checked by remembering the values of its column while the file is read.
-     *     - `max_duplicate_rows` — about the whole file, so it takes **no** `columnName`. `{ max }`.
-     *
-     *     `columnName` is matched to the file's header ignoring case. A rule about a column a file does not have is **skipped** for that file rather than failed (rules cover every upload; use `required_column` to demand a column). `severity` is `error` (the default) or `warning`: an error counts double in the quality score, and a file that fails one notifies the uploader and the admins.
-     *
-     *     Each plan allows a number of rules (Free 3, Basic 25, Premium unlimited; a disabled rule still counts). Beyond it the answer is 409 naming the plan and the number; leaving for a plan that allows fewer than the company has is refused the same way.
-     */
-    post: operations["QualityRulesController_create"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/quality-rules/{id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post?: never;
-    /**
-     * Delete a quality rule
-     * @description Removes the rule and returns it. Reports that already used it keep their result for it. Admin only; an API key needs the opt-in `rules:write` scope.
-     */
-    delete: operations["QualityRulesController_remove"];
-    options?: never;
-    head?: never;
-    /**
-     * Change a quality rule
-     * @description Changes a rule's name, column, `params` (which REPLACE the old ones and are checked against the rule's kind), severity or whether it is enabled. The kind cannot change — that is a different rule. Admin only; an API key needs the opt-in `rules:write` scope. Reports that were already built keep the rule as it was; rebuild a file's report to check it against the change.
-     */
-    patch: operations["QualityRulesController_update"];
-    trace?: never;
-  };
-  "/analytics/usage": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Usage analytics
-     * @description Admin only. One request returns everything a usage dashboard draws.
-     *
-     *     `from` and `to` are read as UTC days (any time of day is dropped) and `to` is exclusive; with neither the range is the current billing period so far, and it can be at most 366 days. Within the range:
-     *
-     *     - `filesPerDay`: uploads per day, with a zero for every quiet day so a chart has a point for each.
-     *     - `byEmployee`: each uploader's files, bytes and last upload, most active first — including people since removed, whose history stays.
-     *     - `storage`: live files and bytes right now (deleted files excluded, whatever the range), and the bytes uploaded in the range (deleted files included).
-     *
-     *     Always for the CURRENT billing period, regardless of the range:
-     *
-     *     - `quota`: cumulative uploads per day against the plan's included quota, with the even-pace line to compare it to. It counts exactly what the running bill counts.
-     *
-     *     And the whole `planHistory`, newest change first: each change joined to the invoice that closed the outgoing period.
-     *
-     *     A deleted file still counts as an upload: deleting does not undo that it happened.
-     */
-    get: operations["AnalyticsController_usage"];
-    put?: never;
-    post?: never;
+    post: operations["BillingController_portalSession"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1549,7 +1403,55 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/auth/demo": {
+  "/outgoing-webhooks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List webhook endpoints
+     * @description Lists the company's endpoints newest first with offset pagination. Recoverable secret material is never returned. Disabled endpoints remain visible with their failure count and disabled timestamp.
+     */
+    get: operations["WebhooksController_list"];
+    put?: never;
+    /**
+     * Register an outgoing webhook
+     * @description Registers an HTTPS receiver for selected company events. The `whsec_` signing secret is returned once in this response and stored encrypted; save it immediately. Only signed-in admins may manage endpoints. Active endpoint limits are Free 1, Basic 5, and Premium unlimited.
+     */
+    post: operations["WebhooksController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/outgoing-webhooks/{id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a webhook endpoint
+     * @description Soft-deletes and disables the endpoint while preserving its delivery history. Future business events no longer create deliveries for it.
+     */
+    delete: operations["WebhooksController_remove"];
+    options?: never;
+    head?: never;
+    /**
+     * Update a webhook endpoint
+     * @description Changes the endpoint name, HTTPS URL, subscribed events, or active state. Re-enabling an endpoint resets its terminal failure count and is rejected when the current plan's active-endpoint limit is full.
+     */
+    patch: operations["WebhooksController_update"];
+    trace?: never;
+  };
+  "/outgoing-webhooks/{id}/rotate-secret": {
     parameters: {
       query?: never;
       header?: never;
@@ -1559,12 +1461,110 @@ export interface paths {
     get?: never;
     put?: never;
     /**
-     * Explore the read-only demo
-     * @description Signs in as the admin of the seeded demo company — no email or password — so anyone can look around a populated account: a Basic plan, four people, six files (one restricted) with data-quality reports, a finalized invoice and an audit trail. Returns the same session as `POST /auth/login`.
-     *
-     *     The demo is strictly **look, don't touch**: every request that would change anything (any method other than GET) is refused with 403 and an explanation, so visitors cannot alter it or each other's view of it. Answers 404 if the demo has not been seeded on this server (`npm run seed:demo`). Limited to 20 requests per minute per address.
+     * Rotate a webhook signing secret
+     * @description Replaces the endpoint's AES-256-GCM encrypted secret and returns the new `whsec_` value once. The old secret stops verifying all deliveries created after rotation.
      */
-    post: operations["DemoController_login"];
+    post: operations["WebhooksController_rotateSecret"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/outgoing-webhooks/{id}/ping": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Queue a test delivery
+     * @description Queues a signed `ping` event through the same durable retry path as business events. A 202 means the delivery was persisted, not that the receiver has already accepted it.
+     */
+    post: operations["WebhooksController_ping"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/outgoing-webhooks/{id}/deliveries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List endpoint deliveries
+     * @description Lists delivery status, attempts, receiver status, last error, and completion time newest first. Event payloads intentionally contain identifiers and non-sensitive summaries; fetch full details through the API.
+     */
+    get: operations["WebhooksController_deliveries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/outgoing-webhooks/deliveries/{deliveryId}/redeliver": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Redeliver a completed event
+     * @description Resets a succeeded or failed delivery and queues the same immutable event envelope again. Pending deliveries cannot be duplicated, and a disabled endpoint must be re-enabled first.
+     */
+    post: operations["WebhooksController_redeliver"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/webhooks/stripe": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Receive a Stripe billing event
+     * @description Public Stripe callback. The API verifies the signature over the exact raw request body, deduplicates the event, retrieves current Stripe state to defeat out-of-order delivery, and then mirrors subscription or invoice state transactionally. Browser redirects never provision a paid plan. Invalid signatures return 400 and reveal no tenant information.
+     */
+    post: operations["StripeWebhookController_receive"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/health": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Liveness and readiness check
+     * @description Confirms the process is running and that Postgres is reachable. Excluded from the (not-yet-registered) global auth guard and from Observe's event budget — a platform healthcheck should never need credentials or count against a telemetry quota.
+     */
+    get: operations["HealthController_check"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3162,203 +3162,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  StripeWebhookController_receive: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["StripeWebhookDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_list: {
-    parameters: {
-      query?: {
-        page?: number;
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookEndpointPageDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_create: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateWebhookEndpointDto"];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CreatedWebhookEndpointDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_remove: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookEndpointDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateWebhookEndpointDto"];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookEndpointDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_rotateSecret: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["RotatedWebhookSecretDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_ping: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookDeliveryDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_deliveries: {
-    parameters: {
-      query?: {
-        page?: number;
-        limit?: number;
-      };
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookDeliveryPageDto"];
-        };
-      };
-    };
-  };
-  WebhooksController_redeliver: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        deliveryId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["WebhookDeliveryDto"];
-        };
-      };
-    };
-  };
   FilesController_list: {
     parameters: {
       query?: {
@@ -3920,26 +3723,7 @@ export interface operations {
       };
     };
   };
-  BillingController_current: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["StatementDto"];
-        };
-      };
-    };
-  };
-  BillingController_invoices: {
+  QualityRulesController_list: {
     parameters: {
       query?: {
         page?: number;
@@ -3956,12 +3740,35 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["InvoicePageDto"];
+          "application/json": components["schemas"]["QualityRulePageDto"];
         };
       };
     };
   };
-  BillingController_invoice: {
+  QualityRulesController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateQualityRuleDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["QualityRuleDto"];
+        };
+      };
+    };
+  };
+  QualityRulesController_remove: {
     parameters: {
       query?: never;
       header?: never;
@@ -3977,16 +3784,47 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["InvoiceDto"];
+          "application/json": components["schemas"]["QualityRuleDto"];
         };
       };
     };
   };
-  BillingController_portalSession: {
+  QualityRulesController_update: {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateQualityRuleDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["QualityRuleDto"];
+        };
+      };
+    };
+  };
+  FileCommentsController_list: {
+    parameters: {
+      query?: {
+        /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -3996,7 +3834,78 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PortalSessionDto"];
+          "application/json": components["schemas"]["CommentPageDto"];
+        };
+      };
+    };
+  };
+  CommentMutationsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateCommentDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentDto"];
+        };
+      };
+    };
+  };
+  CommentMutationsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentDto"];
+        };
+      };
+    };
+  };
+  CommentMutationsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateCommentDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentDto"];
         };
       };
     };
@@ -4085,9 +3994,14 @@ export interface operations {
       };
     };
   };
-  SubscriptionsController_plans: {
+  AnalyticsController_usage: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description First day, inclusive. Default: the first day of the current billing period. */
+        from?: string;
+        /** @description Last day, exclusive. Default: through today. At most 366 days after `from`. */
+        to?: string;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -4099,239 +4013,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PlanDto"][];
-        };
-      };
-    };
-  };
-  SubscriptionsController_me: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SubscriptionDto"];
-        };
-      };
-    };
-  };
-  SubscriptionsController_choose: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ChoosePlanDto"];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SubscriptionDto"];
-        };
-      };
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PendingPlanDto"];
-        };
-      };
-    };
-  };
-  SubscriptionsController_change: {
-    parameters: {
-      query?: never;
-      header?: {
-        /** @description A UUID. A retry with the same key and body replays the first response instead of changing the plan (and billing the proration) twice. */
-        "Idempotency-Key"?: string;
-      };
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ChoosePlanDto"];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PlanChangeResultDto"];
-        };
-      };
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PendingPlanDto"];
-        };
-      };
-    };
-  };
-  HealthController_check: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description The Health Check is successful */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            /**
-             * @example ok
-             * @enum {string}
-             */
-            status?: "ok" | "degraded";
-            /**
-             * @example {
-             *       "database": {
-             *         "status": "up",
-             *         "responseTime": 12
-             *       }
-             *     }
-             */
-            info?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            } | null;
-            /** @example {} */
-            error?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            } | null;
-            /**
-             * @example {
-             *       "database": {
-             *         "status": "up",
-             *         "responseTime": 12
-             *       }
-             *     }
-             */
-            details?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            };
-          };
-        };
-      };
-      /** @description The Health Check is not successful */
-      503: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            /**
-             * @example error
-             * @enum {string}
-             */
-            status?: "error" | "shutting_down";
-            /**
-             * @example {
-             *       "database": {
-             *         "status": "up",
-             *         "responseTime": 12
-             *       }
-             *     }
-             */
-            info?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            } | null;
-            /**
-             * @example {
-             *       "redis": {
-             *         "status": "down",
-             *         "message": "Could not connect",
-             *         "responseTime": 3005
-             *       }
-             *     }
-             */
-            error?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            } | null;
-            /**
-             * @example {
-             *       "database": {
-             *         "status": "up",
-             *         "responseTime": 12
-             *       },
-             *       "redis": {
-             *         "status": "down",
-             *         "message": "Could not connect",
-             *         "responseTime": 3005
-             *       }
-             *     }
-             */
-            details?: {
-              [key: string]: {
-                /** @enum {string} */
-                status: "up" | "degraded" | "down";
-                /** @description Time the health indicator took to respond, in ms */
-                responseTime?: number;
-              } & {
-                [key: string]: unknown;
-              };
-            };
-          };
+          "application/json": components["schemas"]["UsageAnalyticsDto"];
         };
       };
     };
@@ -4757,6 +4439,25 @@ export interface operations {
       };
     };
   };
+  DemoController_login: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SessionDto"];
+        };
+      };
+    };
+  };
   UsersController_updateMe: {
     parameters: {
       query?: never;
@@ -4932,17 +4633,11 @@ export interface operations {
       };
     };
   };
-  FileCommentsController_list: {
+  SubscriptionsController_plans: {
     parameters: {
-      query?: {
-        /** @description Opaque; take it from `meta.nextCursor` of the previous page. */
-        cursor?: string;
-        limit?: number;
-      };
+      query?: never;
       header?: never;
-      path: {
-        id: string;
-      };
+      path?: never;
       cookie?: never;
     };
     requestBody?: never;
@@ -4952,23 +4647,40 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CommentPageDto"];
+          "application/json": components["schemas"]["PlanDto"][];
         };
       };
     };
   };
-  CommentMutationsController_create: {
+  SubscriptionsController_me: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        id: string;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SubscriptionDto"];
+        };
       };
+    };
+  };
+  SubscriptionsController_choose: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["CreateCommentDto"];
+        "application/json": components["schemas"]["ChoosePlanDto"];
       };
     };
     responses: {
@@ -4977,18 +4689,58 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CommentDto"];
+          "application/json": components["schemas"]["SubscriptionDto"];
+        };
+      };
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PendingPlanDto"];
         };
       };
     };
   };
-  CommentMutationsController_remove: {
+  SubscriptionsController_change: {
+    parameters: {
+      query?: never;
+      header?: {
+        /** @description A UUID. A retry with the same key and body replays the first response instead of changing the plan (and billing the proration) twice. */
+        "Idempotency-Key"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ChoosePlanDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PlanChangeResultDto"];
+        };
+      };
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PendingPlanDto"];
+        };
+      };
+    };
+  };
+  BillingController_current: {
     parameters: {
       query?: never;
       header?: never;
-      path: {
-        id: string;
-      };
+      path?: never;
       cookie?: never;
     };
     requestBody?: never;
@@ -4998,37 +4750,12 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CommentDto"];
+          "application/json": components["schemas"]["StatementDto"];
         };
       };
     };
   };
-  CommentMutationsController_update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateCommentDto"];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CommentDto"];
-        };
-      };
-    };
-  };
-  QualityRulesController_list: {
+  BillingController_invoices: {
     parameters: {
       query?: {
         page?: number;
@@ -5045,35 +4772,12 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["QualityRulePageDto"];
+          "application/json": components["schemas"]["InvoicePageDto"];
         };
       };
     };
   };
-  QualityRulesController_create: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CreateQualityRuleDto"];
-      };
-    };
-    responses: {
-      201: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["QualityRuleDto"];
-        };
-      };
-    };
-  };
-  QualityRulesController_remove: {
+  BillingController_invoice: {
     parameters: {
       query?: never;
       header?: never;
@@ -5089,44 +4793,14 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["QualityRuleDto"];
+          "application/json": components["schemas"]["InvoiceDto"];
         };
       };
     };
   };
-  QualityRulesController_update: {
+  BillingController_portalSession: {
     parameters: {
       query?: never;
-      header?: never;
-      path: {
-        id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateQualityRuleDto"];
-      };
-    };
-    responses: {
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["QualityRuleDto"];
-        };
-      };
-    };
-  };
-  AnalyticsController_usage: {
-    parameters: {
-      query?: {
-        /** @description First day, inclusive. Default: the first day of the current billing period. */
-        from?: string;
-        /** @description Last day, exclusive. Default: through today. At most 366 days after `from`. */
-        to?: string;
-      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -5138,7 +4812,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["UsageAnalyticsDto"];
+          "application/json": components["schemas"]["PortalSessionDto"];
         };
       };
     };
@@ -5305,7 +4979,185 @@ export interface operations {
       };
     };
   };
-  DemoController_login: {
+  WebhooksController_list: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookEndpointPageDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateWebhookEndpointDto"];
+      };
+    };
+    responses: {
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CreatedWebhookEndpointDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookEndpointDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateWebhookEndpointDto"];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookEndpointDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_rotateSecret: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["RotatedWebhookSecretDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_ping: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookDeliveryDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_deliveries: {
+    parameters: {
+      query?: {
+        page?: number;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookDeliveryPageDto"];
+        };
+      };
+    };
+  };
+  WebhooksController_redeliver: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        deliveryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["WebhookDeliveryDto"];
+        };
+      };
+    };
+  };
+  StripeWebhookController_receive: {
     parameters: {
       query?: never;
       header?: never;
@@ -5319,7 +5171,155 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SessionDto"];
+          "application/json": components["schemas"]["StripeWebhookDto"];
+        };
+      };
+    };
+  };
+  HealthController_check: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The Health Check is successful */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /**
+             * @example ok
+             * @enum {string}
+             */
+            status?: "ok" | "degraded";
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up",
+             *         "responseTime": 12
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /** @example {} */
+            error?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up",
+             *         "responseTime": 12
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            };
+          };
+        };
+      };
+      /** @description The Health Check is not successful */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            /**
+             * @example error
+             * @enum {string}
+             */
+            status?: "error" | "shutting_down";
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up",
+             *         "responseTime": 12
+             *       }
+             *     }
+             */
+            info?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect",
+             *         "responseTime": 3005
+             *       }
+             *     }
+             */
+            error?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            } | null;
+            /**
+             * @example {
+             *       "database": {
+             *         "status": "up",
+             *         "responseTime": 12
+             *       },
+             *       "redis": {
+             *         "status": "down",
+             *         "message": "Could not connect",
+             *         "responseTime": 3005
+             *       }
+             *     }
+             */
+            details?: {
+              [key: string]: {
+                /** @enum {string} */
+                status: "up" | "degraded" | "down";
+                /** @description Time the health indicator took to respond, in ms */
+                responseTime?: number;
+              } & {
+                [key: string]: unknown;
+              };
+            };
+          };
         };
       };
     };
