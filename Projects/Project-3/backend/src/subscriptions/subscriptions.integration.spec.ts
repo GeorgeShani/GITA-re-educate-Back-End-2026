@@ -434,11 +434,19 @@ describe('plans and subscriptions (integration)', () => {
         ).map((response) => response.status);
 
         expect(statuses).toEqual([200, 200]);
-        const history = await changes().find({ order: { createdAt: 'ASC', id: 'ASC' } });
-        expect(history).toHaveLength(3);
-        // Each change starts from where the previous one ended — no interleaving.
-        expect(history[1]?.fromPlan).toBe(history[0]?.toPlan);
-        expect(history[2]?.fromPlan).toBe(history[1]?.toPlan);
+        const rows = await changes().find();
+        expect(rows).toHaveLength(3);
+        // Each change starts from where the previous one ended — no interleaving. The chain is followed by
+        // plan rather than by timestamp: a row's createdAt is the database's transaction-start time, so the
+        // change that waited for the lock can carry the earlier one.
+        const history = [rows.find((row) => row.fromPlan === null)];
+        for (let step = 1; step < rows.length; step += 1) {
+          const from = history[step - 1]?.toPlan;
+          const next = rows.filter((row) => row.fromPlan === from);
+          expect(next).toHaveLength(1);
+          history.push(next[0]);
+        }
+        expect(history[0]?.toPlan).toBe('basic');
         const after = await subscriptions().findOneByOrFail({ companyId: admin.companyId });
         expect(after.plan).toBe(history[2]?.toPlan);
         expect(after.version).toBe(before.version + 2);

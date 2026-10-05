@@ -6,6 +6,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { AppHarness, type SessionBody } from '#test/support/app-harness.js';
 import { AnalyticsService } from '#/analytics/analytics.service.js';
+import { DEMO_FILES } from '#/demo/demo-data.js';
 import { DemoSeedService } from '#/demo/demo-seed.service.js';
 import { MAX_QUERY_COMPLEXITY, MAX_QUERY_DEPTH } from './query-limits.js';
 import { SCHEMA_FILE } from './schema-sdl.js';
@@ -161,7 +162,7 @@ describe('GraphQL analytics (integration)', () => {
       const demo = h.parseSession((await h.http().post('/auth/demo').expect(200)).body);
       const response = await gql(demo.accessToken, '{ usage { storage { liveFiles } } }');
       expect(response.errors).toBeUndefined();
-      expect(response.data).toEqual({ usage: { storage: { liveFiles: 6 } } });
+      expect(response.data).toEqual({ usage: { storage: { liveFiles: DEMO_FILES.length } } });
     });
   });
 

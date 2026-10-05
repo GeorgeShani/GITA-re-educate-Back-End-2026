@@ -682,12 +682,14 @@ describe('employees: invite, accept, disable, reactivate (integration)', () => {
     });
 
     it('is ordered by name and open to admins too', async () => {
-      await h.inviteAndAccept(adminSession, admin.companyId, { fullName: 'Zed' });
-      await h.inviteAndAccept(adminSession, admin.companyId, { fullName: 'Abe' });
+      // All lower case, so code-point order and the database's collation (en_US on CI, C elsewhere) agree.
+      await h.inviteAndAccept(adminSession, admin.companyId, { fullName: 'zed' });
+      await h.inviteAndAccept(adminSession, admin.companyId, { fullName: 'abe' });
 
       const response = await h.http().get('/companies/me/members').set(...auth()).expect(200);
 
       const names = response.body.map((m: { fullName: string }) => m.fullName);
+      expect(names).toHaveLength(3);
       expect(names).toEqual([...names].sort());
     });
 
