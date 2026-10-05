@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
+    "typecheck": "next typegen && tsc --noEmit",
     "api:types": "openapi-typescript ../backend/docs/openapi.yaml -o src/lib/api/schema.d.ts"
   },
   "dependencies": {

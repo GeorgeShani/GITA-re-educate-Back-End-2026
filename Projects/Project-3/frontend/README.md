@@ -44,7 +44,7 @@ No Stripe key is needed here: payments use Stripe's hosted Checkout, reached by 
 | `npm run build` / `npm start` | Production build (a standalone server bundle) and run it |
 | `npm run lint` | Biome check (lint and formatting) |
 | `npm run format` | Biome format, writing files |
-| `npx tsc --noEmit` | Type check |
+| `npm run typecheck` | Type check. It first runs `next typegen`, which generates the `PageProps` and `LayoutProps` types the pages use (a fresh checkout has none until then) |
 | `npm run api:types` | Regenerate `src/lib/api/schema.d.ts` from the backend's `docs/openapi.yaml` |
 | `node ../design/build-tokens.mjs` | Regenerate the CSS design tokens from `../design/tokens.json` (`--check` verifies them and the contrast pairs) |
 
