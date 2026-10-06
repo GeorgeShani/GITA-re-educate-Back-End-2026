@@ -13,6 +13,7 @@ import { RowChanges } from "@/components/marketing/exhibits/row-changes";
 import { RuleList } from "@/components/marketing/exhibits/rule-list";
 import { VersionDiff } from "@/components/marketing/exhibits/version-diff";
 import { PageHead } from "@/components/marketing/page-head";
+import { StageHeading, StageIndex } from "@/components/marketing/stage-heading";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
@@ -43,6 +44,10 @@ export default function Page() {
           is in the product today.
         </p>
       </PageHead>
+
+      <StageIndex />
+
+      <StageHeading id="stage-check" />
 
       <Exhibit
         id="quality"
@@ -102,6 +107,8 @@ export default function Page() {
         </p>
       </Exhibit>
 
+      <StageHeading id="stage-fix" />
+
       <Exhibit
         id="clean"
         hue="yellow"
@@ -129,6 +136,8 @@ export default function Page() {
           kept exactly as it arrived.
         </p>
       </Exhibit>
+
+      <StageHeading id="stage-compare" />
 
       <Exhibit
         id="versions"
@@ -170,6 +179,8 @@ export default function Page() {
         </p>
       </Exhibit>
 
+      <StageHeading id="stage-ask" />
+
       <Exhibit
         id="ask"
         hue="blue"
@@ -190,6 +201,8 @@ export default function Page() {
           can change it. Questions are counted by plan; the builder is free.
         </p>
       </Exhibit>
+
+      <StageHeading id="stage-control" />
 
       <Exhibit
         id="access"
