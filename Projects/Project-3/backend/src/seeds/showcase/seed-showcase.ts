@@ -107,4 +107,10 @@ async function main(): Promise<void> {
   }
 }
 
-await main();
+// A refusal ("run again with --confirm-production", a missing plan, a wrong mailbox) is an answer, not a crash: say it plainly.
+try {
+  await main();
+} catch (error) {
+  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 1;
+}
