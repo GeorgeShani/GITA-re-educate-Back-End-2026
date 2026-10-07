@@ -1,0 +1,84 @@
+sku,item,warehouse,on_hand,supplier
+SKU-03001,Safety vest 2,Tbilisi DC,894,Black Sea Lines
+SKU-03002,Thermal blanket 5,Batumi Port,545,Silk Road Express
+SKU-03003,Euro pallet 1,Kutaisi Hub,753,Caucasus Freight
+SKU-03004,Pallet wrap 4,Batumi Port,465,Black Sea Lines
+SKU-03005,Thermal blanket 3,Kutaisi Hub,75,Silk Road Express
+SKU-03006,Dock bumper 4,Kutaisi Hub,392,Caucasus Freight
+SKU-03007,Euro pallet 2,Batumi Port,295,Black Sea Lines
+SKU-03009,Pallet wrap 6,Tbilisi DC,634,Caucasus Freight
+SKU-03010,Dock bumper 5,Batumi Port,847,Caucasus Freight
+SKU-03011,Label roll 3,Batumi Port,708,Black Sea Lines
+SKU-03012,Pallet wrap 8,Tbilisi DC,185,Silk Road Express
+SKU-03013,Safety vest 3,Batumi Port,376,Caucasus Freight
+SKU-03014,Dock bumper 2,Kutaisi Hub,486,Black Sea Lines
+SKU-03015,Carton 60x40 7,Tbilisi DC,124,Silk Road Express
+SKU-03016,Carton 60x40 5,Tbilisi DC,136,Caucasus Freight
+SKU-03017,Bubble film 1,Tbilisi DC,795,Black Sea Lines
+SKU-03018,Euro pallet 6,Kutaisi Hub,706,Silk Road Express
+SKU-03019,Label roll 3,Tbilisi DC,529,Caucasus Freight
+SKU-03020,Pallet wrap 6,Kutaisi Hub,474,Caucasus Freight
+SKU-03021,Label roll 2,Kutaisi Hub,719,Black Sea Lines
+SKU-03022,Corner boards 5,Tbilisi DC,305,Silk Road Express
+SKU-03023,Euro pallet 5,Kutaisi Hub,765,Caucasus Freight
+SKU-03025,Corner boards 6,Kutaisi Hub,732,Silk Road Express
+SKU-03026,Thermal blanket 6,Tbilisi DC,896,Caucasus Freight
+SKU-03027,Thermal blanket 5,Batumi Port,177,Black Sea Lines
+SKU-03028,Thermal blanket 2,Kutaisi Hub,507,Silk Road Express
+SKU-03029,Safety vest 5,Tbilisi DC,559,Caucasus Freight
+SKU-03030,Thermal blanket 5,Kutaisi Hub,431,Caucasus Freight
+SKU-03031,Thermal blanket 7,Kutaisi Hub,694,Black Sea Lines
+SKU-03032,Euro pallet 7,Tbilisi DC,447,Silk Road Express
+SKU-03033,Label roll 8,Tbilisi DC,553,Caucasus Freight
+SKU-03034,Dock bumper 3,Tbilisi DC,134,Black Sea Lines
+SKU-03035,Pallet wrap 3,Batumi Port,326,Silk Road Express
+SKU-03036,Label roll 8,Kutaisi Hub,133,Caucasus Freight
+SKU-03037,Pallet wrap 1,Kutaisi Hub,731,Black Sea Lines
+SKU-03038,Thermal blanket 3,Tbilisi DC,317,Silk Road Express
+SKU-03039,Dock bumper 3,Kutaisi Hub,147,Caucasus Freight
+SKU-03040,Label roll 9,Kutaisi Hub,344,Caucasus Freight
+SKU-03041,Carton 60x40 5,Batumi Port,401,Black Sea Lines
+SKU-03043,Carton 60x40 8,Tbilisi DC,74,Caucasus Freight
+SKU-03044,Carton 60x40 4,Tbilisi DC,111,Black Sea Lines
+SKU-03045,Bubble film 1,Batumi Port,705,Silk Road Express
+SKU-03046,Euro pallet 4,Batumi Port,617,Caucasus Freight
+SKU-03047,Corner boards 8,Tbilisi DC,767,Black Sea Lines
+SKU-03048,Dock bumper 6,Kutaisi Hub,0,Silk Road Express
+SKU-03049,Corner boards 3,Kutaisi Hub,301,Caucasus Freight
+SKU-03050,Safety vest 2,Tbilisi DC,836,Caucasus Freight
+SKU-03051,Euro pallet 5,Tbilisi DC,908,Black Sea Lines
+SKU-03052,Euro pallet 3,Kutaisi Hub,516,Silk Road Express
+SKU-03053,Dock bumper 9,Kutaisi Hub,517,Caucasus Freight
+SKU-03054,Thermal blanket 4,Kutaisi Hub,434,Black Sea Lines
+SKU-03055,Label roll 8,Batumi Port,488,Silk Road Express
+SKU-03056,Cargo straps 8,Batumi Port,436,Caucasus Freight
+SKU-03057,Bubble film 5,Kutaisi Hub,728,Black Sea Lines
+SKU-03058,Safety vest 3,Tbilisi DC,136,Silk Road Express
+SKU-03059,Safety vest 8,Batumi Port,28,Caucasus Freight
+SKU-03060,Bubble film 9,Batumi Port,173,Caucasus Freight
+SKU-03061,Pallet wrap 9,Tbilisi DC,0,Black Sea Lines
+SKU-03062,Euro pallet 6,Kutaisi Hub,723,Silk Road Express
+SKU-03063,Thermal blanket 8,Batumi Port,597,Caucasus Freight
+SKU-03064,Dock bumper 5,Tbilisi DC,39,Black Sea Lines
+SKU-03065,Dock bumper 9,Kutaisi Hub,707,Silk Road Express
+SKU-03066,Carton 60x40 5,Tbilisi DC,284,Caucasus Freight
+SKU-03067,Corner boards 9,Batumi Port,625,Black Sea Lines
+SKU-03068,Cargo straps 1,Kutaisi Hub,876,Silk Road Express
+SKU-03069,Cargo straps 4,Tbilisi DC,40,Caucasus Freight
+SKU-03070,Cargo straps 9,Tbilisi DC,219,Caucasus Freight
+SKU-03071,Corner boards 9,Tbilisi DC,193,Black Sea Lines
+SKU-03072,Label roll 3,Kutaisi Hub,688,Silk Road Express
+SKU-03073,Carton 60x40 5,Batumi Port,240,Caucasus Freight
+SKU-03074,Euro pallet 4,Tbilisi DC,47,Black Sea Lines
+SKU-03075,Carton 60x40 7,Tbilisi DC,758,Silk Road Express
+SKU-03076,Euro pallet 8,Batumi Port,472,Caucasus Freight
+SKU-03077,Carton 60x40 4,Kutaisi Hub,611,Black Sea Lines
+SKU-03078,Carton 60x40 1,Kutaisi Hub,125,Silk Road Express
+SKU-03079,Pallet wrap 9,Batumi Port,183,Caucasus Freight
+SKU-03080,Safety vest 5,Kutaisi Hub,565,Caucasus Freight
+SKU-03081,New line 1,Tbilisi DC,327,Black Sea Lines
+SKU-03082,New line 2,Batumi Port,102,Silk Road Express
+SKU-03083,New line 3,Tbilisi DC,124,Caucasus Freight
+SKU-03084,New line 4,Batumi Port,250,Black Sea Lines
+SKU-03085,New line 5,Batumi Port,173,Silk Road Express
+SKU-03086,New line 6,Batumi Port,138,Caucasus Freight

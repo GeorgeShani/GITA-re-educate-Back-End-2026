@@ -1,0 +1,162 @@
+customer_id,company,city,signup_date,status,credit_limit
+C-02001,Svaneti Honey,Kutaisi,12/08/2025,Active,
+C-02002,Rioni Packaging,Gori,18/05/2026,Active,62000
+C-02003,Kolkheti Tea,Telavi,31/07/2026,Dormant,
+C-02004,Kolkheti Tea,Kutaisi ,15/02/2026,active,8000
+C-02005,Kakheti Cellars,Zugdidi,2025-10-05,Active,66000
+C-02006,Kolkheti Tea,Kutaisi ,2025-08-22,Active,15000
+C-02006,Kolkheti Tea,Kutaisi ,2025-08-22,Active,15000
+C-02007,Kolkheti Tea,Batumi,2025-08-16,Active,53000
+C-02008,Bakuriani Supply,Zugdidi,2026-02-07,Active,51000
+C-02008,Bakuriani Supply,Zugdidi,2026-02-07,Active,51000
+C-02009,Alazani Dairy,Kutaisi,26/08/2025,N/A,56000
+C-02010,Iveria Pharma,Tbilisi,2025-03-08,Dormant,65000
+C-02011,Iveria Pharma,Telavi,2025-06-24,Active,66000
+C-02012,Aragvi Foods,Tbilisi,2025-03-05,Active,56000
+C-02013,Alazani Dairy,Gori ,2026-06-05,Active,n/a
+C-02014,Kakheti Cellars,Kutaisi ,2025-09-06,Active,
+C-02015,Kakheti Cellars,Zugdidi,22/03/2025,active,n/a
+C-02016, Aragvi Foods  ,Zugdidi,2025-03-03,Active,69000
+C-02017,Alazani Dairy,Telavi,2026-03-05,Closed,57000
+C-02018, Rioni Packaging  ,Gori,2026-03-25,Closed,13000
+C-02019,Svaneti Honey,Gori,6-2-2026,active,67000
+C-02020,Svaneti Honey,Gori,30/10/2025,Active,11000
+C-02020,Svaneti Honey,Gori,30/10/2025,Active,11000
+C-02021,Alazani Dairy,Zugdidi,2025-09-24,Active,51000
+C-02022,Mtkvari Textiles,Batumi,2025-09-29,Active,49000
+C-02023,Black Sea Timber,Tbilisi,2025-12-23,Closed,51000
+C-02024,Kakheti Cellars,Zugdidi,2025-05-03,Closed,61000
+C-02025,Rioni Packaging,Batumi,29/08/2025,Active,74000
+C-02026,Alazani Dairy,Tbilisi,01/01/2026,Active,67000
+C-02027,Kakheti Cellars,Tbilisi,18/08/2025,active,64000
+C-02028,Black Sea Timber,Gori,2025-12-22,active,21000
+C-02029,Mtkvari Textiles,Telavi,30/01/2025,Dormant,49000
+C-02030,Black Sea Timber,Tbilisi,2026-05-24,Closed,27000
+C-02031,Mtkvari Textiles,Tbilisi,5-30-2026,active,80000
+C-02032,Svaneti Honey,Zugdidi,7-6-2026,Active,71000
+C-02033,Alazani Dairy,Kutaisi,2025-03-08,Active,44000
+C-02034,Aragvi Foods,Batumi,02/03/2025,N/A,50000
+C-02035,Kakheti Cellars,Kutaisi,2026-01-11,closed,59000
+C-02036,Mtkvari Textiles,Tbilisi,2026-01-19,Active,82000
+C-02037,Kolkheti Tea,Kutaisi,2025-06-14,N/A,18000
+C-02038,Rioni Packaging,Tbilisi,2025-11-05,Closed,62000
+C-02039,Alazani Dairy,Zugdidi,2026-02-07,N/A,
+C-02040, Rioni Packaging  ,Batumi ,2025-12-06,Closed,70000
+C-02041,Black Sea Timber,Batumi,2025-06-25,Dormant,85000
+C-02042, Svaneti Honey  ,Gori,4-9-2025,Dormant,43000
+C-02043,Kakheti Cellars,Zugdidi,2026-07-26,N/A,75000
+C-02044,Alazani Dairy,Tbilisi,2025-02-26,Active,80000
+C-02045,Rioni Packaging,Batumi,2026-04-30,active,43000
+C-02046,Iveria Pharma,Gori,2025-08-02,Dormant,30000
+C-02047,Aragvi Foods,Zugdidi,7-8-2026,Active,89000
+C-02048,Rioni Packaging,Telavi,2025-11-16,Dormant,
+C-02049,Alazani Dairy,Kutaisi,2025-06-26,Dormant,46000
+C-02050,Iveria Pharma,Telavi,2025-11-24,Active,6000
+C-02051,Alazani Dairy,Kutaisi,2025-11-30,Dormant,42000
+C-02051,Alazani Dairy,Kutaisi,2025-11-30,Dormant,42000
+C-02052,Alazani Dairy,Batumi,2025-03-29,active,14000
+C-02053,Kolkheti Tea,Kutaisi ,2025-01-22,Dormant,25000
+C-02054,Kakheti Cellars,Kutaisi,15/11/2025,Active,
+C-02055,Mtkvari Textiles,Tbilisi,2026-03-17,Active,
+C-02056, Kolkheti Tea  ,Telavi,2025-12-29,Closed,34000
+C-02057,Aragvi Foods,Gori,2025-02-18,Closed,44000
+C-02058,Mtkvari Textiles,Telavi,2025-06-05,Closed,19000
+C-02059,Rioni Packaging,Zugdidi,02/12/2025,Closed,47000
+C-02059,Rioni Packaging,Zugdidi,02/12/2025,Closed,47000
+C-02060,Black Sea Timber,Zugdidi,11/02/2025,N/A,85000
+C-02061,Black Sea Timber,Zugdidi ,2025-05-22,Active,86000
+C-02061,Black Sea Timber,Zugdidi ,2025-05-22,Active,86000
+C-02062,Black Sea Timber,Gori,2026-01-04,Active,43000
+C-02063,Kakheti Cellars,Zugdidi,2025-03-01,Dormant,70000
+C-02064,Aragvi Foods,Tbilisi,2025-06-06,Active,82000
+C-02065,Kakheti Cellars,Gori ,2026-05-12,Closed,8000
+C-02066,Mtkvari Textiles,Batumi,2025-03-29,Active,n/a
+C-02067,Aragvi Foods,Batumi,6-18-2025,Dormant,20000
+C-02067,Aragvi Foods,Batumi,6-18-2025,Dormant,20000
+C-02068,Alazani Dairy,Tbilisi,10-27-2025,Closed,24000
+C-02069,Kolkheti Tea,Gori,2025-04-22,Closed,31000
+C-02070,Iveria Pharma,Batumi,2025-02-07,Active,65000
+C-02071, Svaneti Honey  ,Gori,2025-11-25,dormant,72000
+C-02072,Iveria Pharma,Telavi,2025-05-19,active,52000
+C-02073,Iveria Pharma,Tbilisi,2025-09-25,Dormant,
+C-02074,Bakuriani Supply,Tbilisi,2026-01-23,Closed,46000
+C-02075,Aragvi Foods,Tbilisi ,2025-05-01,Active,
+C-02076, Alazani Dairy  ,Tbilisi ,2025-12-10,Active,35000
+C-02077, Alazani Dairy  ,Kutaisi ,2026-02-12,Dormant,
+C-02077, Alazani Dairy  ,Kutaisi ,2026-02-12,Dormant,
+C-02078,Alazani Dairy,Tbilisi,2026-07-08,Active,35000
+C-02079, Iveria Pharma  ,Batumi ,30/05/2025,active,49000
+C-02080,Black Sea Timber,Gori ,2026-03-23,Closed,39000
+C-02081,Rioni Packaging,Kutaisi ,2026-04-14,Active,n/a
+C-02082,Aragvi Foods,Batumi,2025-05-28,Dormant,
+C-02083,Iveria Pharma,Kutaisi,2025-12-12,Closed,26000
+C-02084,Iveria Pharma,Kutaisi ,29/04/2025,Active,n/a
+C-02085, Iveria Pharma  ,Gori,2025-10-20,Closed,38000
+C-02086,Bakuriani Supply,Gori,2026-02-10,closed,59000
+C-02087,Kakheti Cellars,Telavi,2025-03-23,Closed,54000
+C-02088,Kakheti Cellars,Kutaisi,2025-11-03,Active,41000
+C-02089,Alazani Dairy,Zugdidi,2026-03-01,Active,66000
+C-02090,Kolkheti Tea,Zugdidi,2025-05-05,Closed,29000
+C-02091,Alazani Dairy,Telavi,14/03/2026,active,17000
+C-02092, Aragvi Foods  ,Gori,17/01/2026,Closed,32000
+C-02093,Rioni Packaging,Gori ,2026-01-02,Active,52000
+C-02094,Bakuriani Supply,Zugdidi,2026-07-14,Active,
+C-02095,Aragvi Foods,Tbilisi,2025-12-06,Active,43000
+C-02096,Rioni Packaging,Tbilisi,2025-07-10,Active,86000
+C-02097,Alazani Dairy,Telavi,2026-07-30,Dormant,11000
+C-02098,Black Sea Timber,Kutaisi,16/06/2025,Active,72000
+C-02099,Aragvi Foods,Gori,5-21-2026,Dormant,
+C-02100,Bakuriani Supply,Telavi,25/02/2025,Dormant,11000
+C-02101,Aragvi Foods,Batumi ,2025-10-13,Active,53000
+C-02102,Alazani Dairy,Kutaisi,2026-04-03,active,5000
+C-02103,Mtkvari Textiles,Gori,28/10/2025,Active,25000
+C-02104,Aragvi Foods,Batumi,2025-08-09,active,19000
+C-02105,Rioni Packaging,Gori,2025-09-14,Closed,11000
+C-02106,Bakuriani Supply,Tbilisi,2025-05-16,Closed,n/a
+C-02107,Aragvi Foods,Telavi,2025-01-13,Active,
+C-02108,Rioni Packaging,Tbilisi ,2025-07-10,Active,10000
+C-02109, Bakuriani Supply  ,Telavi,18/06/2026,Active,17000
+C-02110,Kakheti Cellars,Batumi,2025-08-15,N/A,
+C-02111,Black Sea Timber,Telavi,7-9-2025,closed,86000
+C-02112,Kakheti Cellars,Gori ,25/08/2025,N/A,44000
+C-02113, Svaneti Honey  ,Zugdidi ,2026-05-31,Dormant,77000
+C-02114,Rioni Packaging,Zugdidi,2025-08-11,N/A,79000
+C-02115,Kakheti Cellars,Gori ,2025-02-11,Active,67000
+C-02116,Svaneti Honey,Kutaisi,2025-09-08,Active,
+C-02117,Kakheti Cellars,Tbilisi,28/02/2025,Active,73000
+C-02118,Aragvi Foods,Tbilisi,2026-06-02,Dormant,56000
+C-02119,Black Sea Timber,Tbilisi,19/02/2025,Active,42000
+C-02120,Mtkvari Textiles,Tbilisi,2025-09-18,Dormant,80000
+C-02120,Mtkvari Textiles,Tbilisi,2025-09-18,Dormant,80000
+C-02121,Kakheti Cellars,Batumi,2025-12-03,Active,18000
+C-02122,Svaneti Honey,Tbilisi,2026-03-28,Active,33000
+C-02123,Aragvi Foods,Zugdidi,11/03/2026,Active,
+C-02124,Alazani Dairy,Zugdidi,2025-04-17,Closed,63000
+C-02125,Kakheti Cellars,Batumi,23/06/2026,Active,5000
+C-02126,Iveria Pharma,Zugdidi,25/09/2025,Dormant,16000
+C-02127,Alazani Dairy,Zugdidi,2-18-2025,active,80000
+C-02128,Aragvi Foods,Gori,28/11/2025,Closed,41000
+C-02128,Aragvi Foods,Gori,28/11/2025,Closed,41000
+C-02129,Mtkvari Textiles,Batumi,2025-07-20,active,27000
+C-02130,Bakuriani Supply,Telavi,2026-04-22,Active,21000
+C-02131,Black Sea Timber,Telavi,20/04/2026,Active,90000
+C-02132,Iveria Pharma,Zugdidi,2025-07-08,Closed,72000
+C-02133,Kakheti Cellars,Zugdidi,07/06/2026,Active,76000
+C-02134,Aragvi Foods,Tbilisi,2025-04-13,Active,25000
+C-02135,Bakuriani Supply,Zugdidi,11/07/2025,Active,n/a
+C-02136,Alazani Dairy,Batumi,11-21-2025,Active,12000
+C-02137, Bakuriani Supply  ,Batumi,2025-08-05,Dormant,60000
+C-02138,Rioni Packaging,Batumi,2025-02-06,active,76000
+C-02139,Kakheti Cellars,Tbilisi,2026-03-16,Active,12000
+C-02140,Bakuriani Supply,Telavi,7-23-2025,Active,24000
+C-02141,Svaneti Honey,Tbilisi,2025-08-30,Closed,28000
+C-02142,Mtkvari Textiles,Gori,2026-02-05,Dormant,
+C-02143,Bakuriani Supply,Tbilisi,2025-10-06,Active,84000
+C-02144, Bakuriani Supply  ,Telavi,2026-03-28,Active,
+C-02145,Kolkheti Tea,Batumi,2026-04-17,Active,51000
+C-02145,Kolkheti Tea,Batumi,2026-04-17,Active,51000
+C-02146,Iveria Pharma,Kutaisi,28/10/2025,Active,45000
+C-02147, Black Sea Timber  ,Zugdidi,2025-04-13,Active,15000
+C-02148,Kakheti Cellars,Tbilisi,24/08/2025,Active,32000
+C-02149,Aragvi Foods,Kutaisi,3-20-2026,active,45000
+C-02150,Rioni Packaging,Zugdidi,2025-12-11,Closed,29000
