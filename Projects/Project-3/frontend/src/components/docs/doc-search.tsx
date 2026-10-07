@@ -69,14 +69,14 @@ export function DocSearch() {
       <Dialog.Trigger asChild>
         <Button
           variant="secondary"
-          className="w-9 justify-center px-0 text-text-muted sm:w-64 sm:justify-start sm:px-3"
+          className="w-9 justify-center px-0 text-text-muted lg:w-64 lg:justify-start lg:px-3"
           aria-label="Search the documentation"
         >
           <Search aria-hidden />
-          <span className="hidden flex-1 text-left sm:inline">
+          <span className="hidden flex-1 text-left lg:inline">
             Search guides
           </span>
-          <kbd className="hidden rounded-xs border border-line-strong px-1.5 font-mono text-xs sm:inline">
+          <kbd className="hidden rounded-xs border border-line-strong px-1.5 font-mono text-xs lg:inline">
             /
           </kbd>
         </Button>
