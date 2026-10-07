@@ -187,7 +187,22 @@ export class StripePaymentProvider implements PaymentProvider {
     const item = subscription.items.data.find(
       (candidate) => candidate.price.id === this.config.basicSeatPriceId,
     );
-    if (!item) throw new Error(`Stripe subscription ${subscription.id} has no Basic seat item.`);
+    if (!item) {
+      // A Basic subscription started with no employees has no seat line (Stripe will not take one at quantity 0): the first
+      // employee adds it. Nothing to do while there are still none.
+      if (request.quantity < 1) return;
+      await this.stripe.subscriptionItems.create(
+        {
+          subscription: subscription.id,
+          price: this.config.basicSeatPriceId,
+          quantity: request.quantity,
+          proration_behavior: 'create_prorations',
+          proration_date: Math.floor(request.effectiveAt.getTime() / 1_000),
+        },
+        { idempotencyKey: request.idempotencyKey },
+      );
+      return;
+    }
     await this.stripe.subscriptionItems.update(
       item.id,
       {
@@ -240,7 +255,9 @@ export class StripePaymentProvider implements PaymentProvider {
     if (plan === 'basic') {
       return [
         { price: this.config.basicBasePriceId, quantity: 1 },
-        { price: this.config.basicSeatPriceId, quantity: activeEmployees },
+        // Stripe refuses a line with quantity 0, and a company that has no employees yet (the usual way to start on Basic) has no
+        // seats to bill. The seat line is added when the first employee joins (`syncSeatQuantity`).
+        ...(activeEmployees > 0 ? [{ price: this.config.basicSeatPriceId, quantity: activeEmployees }] : []),
       ];
     }
     return [
@@ -256,7 +273,7 @@ export class StripePaymentProvider implements PaymentProvider {
     if (plan === 'basic') {
       return [
         { price: this.config.basicBasePriceId, quantity: 1 },
-        { price: this.config.basicSeatPriceId, quantity: activeEmployees },
+        ...(activeEmployees > 0 ? [{ price: this.config.basicSeatPriceId, quantity: activeEmployees }] : []),
       ];
     }
     return [{ price: this.config.premiumBasePriceId, quantity: 1 }, { price: this.config.premiumOveragePriceId }];
