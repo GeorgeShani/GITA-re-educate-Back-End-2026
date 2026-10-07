@@ -11,8 +11,10 @@ export const metadata = {
     "Free, Basic and Premium: what each plan includes, and what a company of your size would pay.",
 };
 
-// The catalog is fetched at request time and cached for five minutes, so a price change never needs a deploy.
-export const revalidate = 300;
+// The catalog is fetched when someone asks (and that fetch is cached for five minutes), so a price change never needs a
+// deploy. Not prerendered at build: `docker build` cannot reach the API, and a page built then would say "plans
+// unavailable" until its first revalidation after the deploy.
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const plans = await fetchPlans();

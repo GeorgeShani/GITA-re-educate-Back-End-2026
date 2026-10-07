@@ -1,6 +1,18 @@
 # The address Caddy serves. Locally it is the plain-HTTP port :3000. In production SITE_ADDRESS is the domain (for example
 # app.example.com): Caddy then gets and renews a TLS certificate for it by itself. See DEPLOYMENT.md.
 {$SITE_ADDRESS::3000} {
+	# Headers for every response, whichever service answered. (No Content-Security-Policy here: the API sets its own through
+	# helmet, and the Next pages carry an inline script for the theme that a policy would need a per-request nonce for.)
+	# HSTS is ignored by browsers over plain HTTP, so it only takes effect once the domain serves HTTPS.
+	header {
+		Strict-Transport-Security "max-age=15552000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
 	# Next's own BFF route handlers: exchange the API's JWT for an httpOnly
 	# session cookie. Must be matched before the generic /api/* rule below —
 	# otherwise every login attempt would be forwarded straight to the real

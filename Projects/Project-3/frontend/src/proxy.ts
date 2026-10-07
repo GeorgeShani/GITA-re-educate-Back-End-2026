@@ -3,6 +3,7 @@ import {
   ACCESS_COOKIE,
   PATH_HEADER,
   REFRESH_COOKIE,
+  WANTED_PLAN_COOKIE,
 } from "@/lib/session/config";
 import { refreshTokens } from "@/lib/session/refresh";
 import { clearSession, writeSession } from "@/lib/session/tokens";
@@ -44,8 +45,25 @@ export async function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.set(PATH_HEADER, `${pathname}${search}`);
 
-  if (!isApplication(pathname))
-    return NextResponse.next({ request: { headers } });
+  if (!isApplication(pathname)) {
+    const response = NextResponse.next({ request: { headers } });
+    // "Start with Premium" on the pricing page links to /register?plan=premium. Registration is followed by an emailed
+    // link and a sign-in before the plan is chosen, so the wish is kept in a short-lived cookie for the plan picker.
+    const wanted = request.nextUrl.searchParams.get("plan");
+    if (
+      pathname === "/register" &&
+      (wanted === "basic" || wanted === "premium")
+    ) {
+      response.cookies.set(WANTED_PLAN_COOKIE, wanted, {
+        path: "/",
+        maxAge: 60 * 60 * 24,
+        sameSite: "lax",
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+      });
+    }
+    return response;
+  }
   if (request.cookies.get(ACCESS_COOKIE)?.value) {
     return NextResponse.next({ request: { headers } });
   }

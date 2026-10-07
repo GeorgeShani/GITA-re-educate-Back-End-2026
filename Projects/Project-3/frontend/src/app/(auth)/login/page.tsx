@@ -30,7 +30,7 @@ export default async function Page({ searchParams }: PageProps<"/login">) {
       ) : null}
       {error ? <Notice>{error}</Notice> : null}
 
-      <GoogleButton intent="login" />
+      <GoogleButton intent="login" next={next} />
       <OrDivider />
       <LoginForm next={next} />
 

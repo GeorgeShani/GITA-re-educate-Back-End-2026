@@ -135,10 +135,13 @@ export function GoogleMark() {
 export function GoogleButton({
   intent,
   inviteToken,
+  next,
   children = "Continue with Google",
 }: {
   intent: "login" | "register" | "invite";
   inviteToken?: string;
+  /** The page to land on after signing in, when someone was sent here from one. */
+  next?: string;
   children?: React.ReactNode;
 }) {
   return (
@@ -147,6 +150,7 @@ export function GoogleButton({
       {inviteToken ? (
         <input type="hidden" name="inviteToken" value={inviteToken} />
       ) : null}
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <Button type="submit" size="lg" className="w-full">
         <GoogleMark />
         {children}

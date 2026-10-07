@@ -1,9 +1,12 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { ActivatingPlan } from "@/components/app/activating-plan";
 import { AppShell } from "@/components/app/app-shell";
 import { Busy } from "@/components/app/busy";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
 import { apiClient } from "@/lib/session/api";
+import { PATH_HEADER } from "@/lib/session/config";
 import { apiIsAvailable, requireSession } from "@/lib/session/session";
 import { getSubscription } from "@/lib/session/subscription";
 
@@ -25,7 +28,28 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     getSubscription(session.accessToken),
     api.GET("/notifications/unread-count"),
   ]);
-  if (subscription.response.status === 404) redirect("/welcome");
+  const path = (await headers()).get(PATH_HEADER) ?? "";
+  if (subscription.response.status === 404) {
+    // Back from paying at Stripe, before its confirmation has reached the API: the plan is about to exist, so wait for it
+    // rather than showing the plan picker again (which would invite a second payment).
+    if (path.includes("checkout=success")) return <ActivatingPlan />;
+    redirect(
+      path.includes("checkout=cancelled")
+        ? "/welcome?checkout=cancelled"
+        : "/welcome",
+    );
+  }
+
+  // A suspended company reaches almost nothing: its admin gets the billing page (the one place that lets them pay), and
+  // everyone else a plain statement of why nothing opens.
+  const suspended = session.company.status === "suspended";
+  if (
+    suspended &&
+    session.user.role === "admin" &&
+    !path.startsWith("/billing")
+  ) {
+    redirect("/billing");
+  }
 
   const plan = subscription.data
     ? {
@@ -45,12 +69,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       company={{
         name: session.company.name,
         isDemo: session.company.isDemo,
-        suspended: session.company.status === "suspended",
+        suspended,
       }}
       plan={plan}
       unread={unread.data?.count ?? 0}
     >
-      {children}
+      {suspended && session.user.role !== "admin" ? (
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-6 py-16">
+          <h1 className="headline text-4xl leading-[0.98]">
+            Your company is suspended
+          </h1>
+          <p className="text-text-muted">
+            An invoice is overdue, so files and reports are closed to everyone
+            until it is paid. Ask your admin to open Billing and pay it. Nothing
+            has been deleted.
+          </p>
+        </div>
+      ) : (
+        children
+      )}
     </AppShell>
   );
 }

@@ -4,6 +4,7 @@ import { AdminsOnly } from "@/components/app/admins-only";
 import { Pager } from "@/components/app/pager";
 import { TickNumber } from "@/components/app/tick-number";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
+import { CheckoutNotice } from "@/features/billing/checkout-notice";
 import { DateRange } from "@/features/billing/date-range";
 import { InvoiceStamp } from "@/features/billing/invoice-status";
 import { LineItems } from "@/features/billing/line-items";
@@ -30,7 +31,11 @@ export default async function Page({ searchParams }: PageProps<"/billing">) {
   if (session.user.role !== "admin") {
     return <AdminsOnly what="billing" />;
   }
-  const page = pageOf((await searchParams).page);
+  const query = await searchParams;
+  const page = pageOf(query.page);
+  const returned = Array.isArray(query.checkout)
+    ? query.checkout[0]
+    : query.checkout;
   const api = apiClient(session.accessToken);
   const [statement, invoices, plans] = await Promise.all([
     api.GET("/billing/current"),
@@ -52,6 +57,13 @@ export default async function Page({ searchParams }: PageProps<"/billing">) {
           Gridline has issued.
         </p>
       </header>
+
+      {returned === "success" || returned === "cancelled" ? (
+        <CheckoutNotice
+          outcome={returned}
+          planIsPaid={bill ? bill.plan !== "free" : false}
+        />
+      ) : null}
 
       <section aria-labelledby="period-heading" className="flex flex-col gap-4">
         <h2 id="period-heading" className="text-2xl font-semibold">

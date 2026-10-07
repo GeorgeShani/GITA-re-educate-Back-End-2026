@@ -1,6 +1,8 @@
 import { isRecord } from "@/lib/guards";
 import { API_ORIGIN } from "@/lib/session/config";
+import { returnCookieHeader } from "@/lib/session/oauth-return";
 import { forbidden, isSameOrigin, seeOther } from "@/lib/session/request";
+import { safeNext } from "@/lib/session/session";
 
 const INTENTS = ["login", "register", "invite"] as const;
 type Intent = (typeof INTENTS)[number];
@@ -19,12 +21,21 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const intent = toIntent(form.get("intent"));
   const inviteToken = form.get("inviteToken");
+  const nextField = form.get("next");
   const back =
     intent === "invite"
       ? "/accept-invite"
       : intent === "register"
         ? "/register"
         : "/login";
+  // Where the person was, and where they were going, for the way back from Google (`/session/oauth-complete`).
+  const returnTo = {
+    after: safeNext(typeof nextField === "string" ? nextField : null),
+    back:
+      intent === "invite" && typeof inviteToken === "string" && inviteToken
+        ? `${back}?token=${encodeURIComponent(inviteToken)}`
+        : back,
+  };
   const failed = () =>
     seeOther(
       request,
@@ -55,6 +66,7 @@ export async function POST(request: Request) {
     for (const cookie of response.headers.getSetCookie()) {
       headers.append("Set-Cookie", cookie);
     }
+    headers.append("Set-Cookie", returnCookieHeader(returnTo));
     return new Response(null, { status: 303, headers });
   } catch {
     return failed();

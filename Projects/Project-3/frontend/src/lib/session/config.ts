@@ -7,6 +7,9 @@ export const API_ORIGIN = process.env.API_ORIGIN ?? "http://localhost:4000";
 export const ACCESS_COOKIE = "gl_access";
 export const REFRESH_COOKIE = "gl_refresh";
 
+/** The paid plan someone asked for on the pricing page before registering, so the plan picker can offer it first. */
+export const WANTED_PLAN_COOKIE = "gl_wanted_plan";
+
 /** The API's refresh tokens live 30 days (REFRESH_TOKEN_TTL_MS); the cookie outlives nothing. */
 export const REFRESH_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 

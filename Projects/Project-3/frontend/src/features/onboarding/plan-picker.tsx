@@ -43,7 +43,14 @@ function Choose({
 }
 
 /** The three plans, straight from the catalog, each with the one button that chooses it. */
-export function PlanPicker({ plans }: { plans: Plan[] }) {
+export function PlanPicker({
+  plans,
+  suggested = null,
+}: {
+  plans: Plan[];
+  /** The paid plan asked for on the pricing page, offered first. Free is the default offer otherwise. */
+  suggested?: Plan["plan"] | null;
+}) {
   const [state, action] = useActionState(choosePlan, IDLE);
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -79,7 +86,10 @@ export function PlanPicker({ plans }: { plans: Plan[] }) {
               <li>{limit(plan.maxEmployees)} employees</li>
               <li>{limit(plan.maxQualityRules)} quality rules</li>
             </ul>
-            <Choose plan={plan.plan} recommended={plan.plan === "free"} />
+            <Choose
+              plan={plan.plan}
+              recommended={plan.plan === (suggested ?? "free")}
+            />
           </section>
         ))}
       </div>

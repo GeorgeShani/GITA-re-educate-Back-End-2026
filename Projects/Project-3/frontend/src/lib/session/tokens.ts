@@ -34,7 +34,8 @@ const base = { httpOnly: true, secure: isProduction, sameSite: "lax" } as const;
 
 /**
  * Stores a session. The access cookie expires with the access token, so "no access cookie" is how the proxy learns it is
- * time to refresh. The refresh cookie is only ever sent to the session routes, never to a page.
+ * time to refresh. Both cookies are httpOnly, so no script in a page can read either; the refresh cookie is sent with
+ * every request to this site (path `/`) because the proxy renews an expired access token before a page renders.
  */
 export function writeSession(sink: CookieSink, tokens: Tokens): void {
   sink.set(ACCESS_COOKIE, tokens.accessToken, {

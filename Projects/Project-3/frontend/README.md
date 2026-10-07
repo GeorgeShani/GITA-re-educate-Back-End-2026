@@ -32,7 +32,6 @@ NEXT_PUBLIC_API_REFERENCE_URL=http://localhost:4000/reference
 | `API_ORIGIN` | Where the **server side** of this app reaches the API. In Docker it is `http://api:4000` (the default in `.env.example`). Never used by the browser. |
 | `NEXT_PUBLIC_REALTIME_URL` | Where the browser opens its live (Socket.IO) connection. Unset behind Caddy, where the site's own address is right. |
 | `NEXT_PUBLIC_API_REFERENCE_URL` | Where the "API reference" links point. Unset behind Caddy (`/reference`). |
-| `NEXT_PUBLIC_APP_NAME` | The product name in a few places. |
 
 No Stripe key is needed here: payments use Stripe's hosted Checkout, reached by a redirect.
 

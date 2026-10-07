@@ -1,7 +1,9 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PlanPicker } from "@/features/onboarding/plan-picker";
 import { fetchPlans } from "@/lib/api/plans";
 import { apiClient } from "@/lib/session/api";
+import { WANTED_PLAN_COOKIE } from "@/lib/session/config";
 import { requireSession } from "@/lib/session/session";
 
 export const metadata = { title: "Choose your plan" };
@@ -10,7 +12,11 @@ export const metadata = { title: "Choose your plan" };
  * The first thing a new company does: choose a plan. Every feature past this answers "choose a plan first", so the
  * dashboard sends people here until they have. Anyone who already has one is sent on.
  */
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ checkout?: string }>;
+}) {
   const session = await requireSession();
   const { response } = await apiClient(session.accessToken).GET(
     "/subscriptions/me",
@@ -29,7 +35,14 @@ export default async function Page() {
     );
   }
 
-  const plans = await fetchPlans();
+  const [plans, { checkout }, jar] = await Promise.all([
+    fetchPlans(),
+    searchParams,
+    cookies(),
+  ]);
+  const wanted = jar.get(WANTED_PLAN_COOKIE)?.value;
+  const suggested = wanted === "basic" || wanted === "premium" ? wanted : null;
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -41,8 +54,14 @@ export default async function Page() {
           you to our payment provider to confirm it.
         </p>
       </div>
+      {checkout === "cancelled" ? (
+        <output className="block rounded-md border border-line-strong bg-sunken p-3 text-sm font-medium">
+          Checkout was cancelled and you were not charged. Choose a plan when
+          you are ready.
+        </output>
+      ) : null}
       {plans ? (
-        <PlanPicker plans={plans} />
+        <PlanPicker plans={plans} suggested={suggested} />
       ) : (
         <p
           role="alert"
