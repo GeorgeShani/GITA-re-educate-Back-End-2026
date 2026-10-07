@@ -20,7 +20,10 @@ import { openPeriodAt } from '#/billing/period.js';
 import { SubscriptionChange } from '#/subscriptions/subscription-change.entity.js';
 import { Subscription } from '#/subscriptions/subscription.entity.js';
 import { TaskQueue } from '#/core/tasks/task-queue.service.js';
+import { NotificationsService } from '#/notifications/notifications.service.js';
+import { WebhookPublisher } from '#/outgoing-webhooks/webhook-publisher.service.js';
 import { BillingAccount } from './billing-account.entity.js';
+import { BillingSyncService } from './billing-sync.service.js';
 import {
   PAYMENT_PROVIDER,
   type PaymentInvoice,
@@ -55,6 +58,9 @@ export class StripeWebhookService {
     private readonly audit: AuditService,
     private readonly metrics: BusinessMetrics,
     private readonly queue: TaskQueue,
+    private readonly billingSync: BillingSyncService,
+    private readonly webhooks: WebhookPublisher,
+    private readonly notifications: NotificationsService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -215,6 +221,7 @@ export class StripeWebhookService {
     }
     subscription = await manager.save(subscription);
 
+    const newlyAdopted = account.stripeSubscriptionId !== external.id;
     account.stripeSubscriptionId = external.id;
     account.stripeSeatItemId = external.seatItemId;
     if (status === 'past_due') {
@@ -234,6 +241,12 @@ export class StripeWebhookService {
     account.pendingPlan = null;
     account.pendingCreatedAt = null;
     await manager.save(account);
+
+    // Seats are synced only once a subscription exists, so any invitation accepted between starting Checkout and this
+    // webhook never reached Stripe. Tell it the count as of now (the seat item is only there on Basic).
+    if (newlyAdopted && external.seatItemId) {
+      await this.billingSync.syncSeatsOnAdoption(manager, account.companyId, this.clock.now());
+    }
 
     if (previousPlan !== external.plan) {
       await manager.insert(SubscriptionChange, {
@@ -298,6 +311,28 @@ export class StripeWebhookService {
     account.pendingPlan = null;
     account.pendingCreatedAt = null;
     await manager.save(account);
+
+    // A company suspended for an unpaid invoice whose subscription Stripe then ended (it gives up after its retries) is a
+    // Free company now. Left suspended, its only way back would be paying an invoice for a plan it no longer has. Free costs
+    // nothing, so it is let back in; what it still owes stays on the invoice in Stripe.
+    const company = await manager.findOne(Company, {
+      where: { id: account.companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (company?.status === 'suspended') {
+      company.status = 'active';
+      await manager.save(company);
+      await this.audit.record(
+        {
+          action: 'billing.company_reactivated',
+          companyId: account.companyId,
+          actorUserId: null,
+          target: { type: 'company', id: company.id },
+          metadata: { reason: 'subscription_ended' },
+        },
+        manager,
+      );
+    }
 
     if (previousPlan !== 'free') {
       await manager.insert(SubscriptionChange, {
@@ -404,7 +439,25 @@ export class StripeWebhookService {
         },
         manager,
       );
+      // Announced the way a local invoice is (`InvoicingService.announce`): a webhook always, an inbox entry and an email
+      // only when there is something to pay. Without this, in production (where Stripe invoices everything that costs
+      // money) subscribers to `invoice.finalized` would only ever hear about the $0 Free-plan ones.
+      await this.webhooks.publish(manager, account.companyId, 'invoice.finalized', {
+        invoiceId: invoice.id,
+        totalCents: external.totalCents,
+        periodStart: external.periodStart.toISOString(),
+        periodEnd: external.periodEnd.toISOString(),
+      });
       if (external.totalCents > 0) {
+        await this.notifications.notifyAdmins(manager, account.companyId, {
+          type: 'invoice.finalized',
+          payload: {
+            invoiceId: invoice.id,
+            totalCents: external.totalCents,
+            periodStart: external.periodStart.toISOString().slice(0, 10),
+            periodEnd: external.periodEnd.toISOString().slice(0, 10),
+          },
+        });
         await this.queue.enqueue(
           'send_email',
           {

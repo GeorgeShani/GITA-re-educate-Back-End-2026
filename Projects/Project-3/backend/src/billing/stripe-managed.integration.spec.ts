@@ -66,7 +66,7 @@ describe('the local billing engine leaves Stripe-managed companies alone (integr
     expect(invoiceMail()).toEqual([]);
   });
 
-  it('an upload after the period ended does not invent a local invoice either', async () => {
+  it('an upload after the period ended invents no local invoice, but counts against the CURRENT period while the renewal webhook is late', async () => {
     const { admin } = await stripeCompany();
     const before = await subscriptionOf(admin.companyId);
     h.clock.advance(35 * DAY);
@@ -77,7 +77,9 @@ describe('the local billing engine leaves Stripe-managed companies alone (integr
     await h.drainTasks();
 
     expect(await invoices(admin.companyId)).toBe(0);
-    expect((await subscriptionOf(admin.companyId)).currentPeriodEnd).toEqual(before.currentPeriodEnd);
+    const after = await subscriptionOf(admin.companyId);
+    expect(after.currentPeriodEnd.getTime()).toBeGreaterThan(before.currentPeriodEnd.getTime());
+    expect(after.currentPeriodEnd.getTime()).toBeGreaterThan(h.clock.now().getTime());
     expect(invoiceMail()).toEqual([]);
   });
 
@@ -94,6 +96,21 @@ describe('the local billing engine leaves Stripe-managed companies alone (integr
 
     expect(invoice).toBeNull();
     expect(await invoices(admin.companyId)).toBe(0);
+    await h.drainTasks();
+    expect(invoiceMail()).toEqual([]);
+  });
+
+  it('never rolls the demo company: its invoice would email and notify a billing address that is not real', async () => {
+    const demo = await h.registerAndActivate();
+    await h.subscribe(await h.login(demo.email), 'free');
+    await h.dataSource.query(`UPDATE company SET "isDemo" = true WHERE id = $1`, [demo.companyId]);
+    h.clock.advance(35 * DAY);
+    h.mail.clear();
+
+    const result = await h.app.get(BillingCycleService).runCycle();
+
+    expect(result).toEqual({ companiesRolled: 0, invoicesFinalized: 0, failures: 0 });
+    expect(await invoices(demo.companyId)).toBe(0);
     await h.drainTasks();
     expect(invoiceMail()).toEqual([]);
   });

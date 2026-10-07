@@ -215,6 +215,91 @@ components:
         - received
         - duplicate
         - applied
+    NotificationDto:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - quota.threshold
+            - report.ready
+            - report.failed
+            - rules.failed
+            - file.sensitive_data
+            - dataset.schema_changed
+            - file.cleaned
+            - cleaning.failed
+            - dataset.changed
+            - file.shared
+            - invoice.finalized
+            - comment.mentioned
+          description: What happened. Decides the shape of `payload`.
+        payload:
+          type: object
+          additionalProperties: true
+          description: >-
+            Ids, counts and names for this `type` — never cell values. For
+            `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`,
+            `upgradeTo`. For `report.ready`/`report.failed`: `fileId`,
+            `fileName`. For `file.shared`: `fileId`, `fileName`,
+            `sharedByUserId`. For `invoice.finalized`: `invoiceId`,
+            `totalCents`.
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Null while unread.
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - payload
+        - readAt
+        - createdAt
+    CursorMetaDto:
+      type: object
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` to get the next page; null on the last page.
+        hasMore:
+          type: boolean
+      required:
+        - nextCursor
+        - hasMore
+    NotificationPageDto:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationDto'
+        meta:
+          $ref: '#/components/schemas/CursorMetaDto'
+      required:
+        - data
+        - meta
+    UnreadCountDto:
+      type: object
+      properties:
+        count:
+          type: number
+          description: How many of your notifications are unread.
+      required:
+        - count
+    MarkedReadDto:
+      type: object
+      properties:
+        updated:
+          type: number
+          description: How many notifications this call marked as read.
+      required:
+        - updated
     CreateWebhookEndpointDto:
       type: object
       properties:
@@ -670,18 +755,6 @@ components:
         - duplicateRows
         - qualityScore
         - schemaChanged
-    CursorMetaDto:
-      type: object
-      properties:
-        nextCursor:
-          type: string
-          nullable: true
-          description: Pass as `cursor` to get the next page; null on the last page.
-        hasMore:
-          type: boolean
-      required:
-        - nextCursor
-        - hasMore
     FilePageDto:
       type: object
       properties:
@@ -1864,79 +1937,6 @@ components:
           format: uri
       required:
         - url
-    NotificationDto:
-      type: object
-      properties:
-        id:
-          type: string
-        type:
-          type: string
-          enum:
-            - quota.threshold
-            - report.ready
-            - report.failed
-            - rules.failed
-            - file.sensitive_data
-            - dataset.schema_changed
-            - file.cleaned
-            - cleaning.failed
-            - dataset.changed
-            - file.shared
-            - invoice.finalized
-            - comment.mentioned
-          description: What happened. Decides the shape of `payload`.
-        payload:
-          type: object
-          additionalProperties: true
-          description: >-
-            Ids, counts and names for this `type` — never cell values. For
-            `quota.threshold`: `threshold`, `plan`, `filesUsed`, `filesLimit`,
-            `upgradeTo`. For `report.ready`/`report.failed`: `fileId`,
-            `fileName`. For `file.shared`: `fileId`, `fileName`,
-            `sharedByUserId`. For `invoice.finalized`: `invoiceId`,
-            `totalCents`.
-        readAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: Null while unread.
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - type
-        - payload
-        - readAt
-        - createdAt
-    NotificationPageDto:
-      type: object
-      properties:
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/NotificationDto'
-        meta:
-          $ref: '#/components/schemas/CursorMetaDto'
-      required:
-        - data
-        - meta
-    UnreadCountDto:
-      type: object
-      properties:
-        count:
-          type: number
-          description: How many of your notifications are unread.
-      required:
-        - count
-    MarkedReadDto:
-      type: object
-      properties:
-        updated:
-          type: number
-          description: How many notifications this call marked as read.
-      required:
-        - updated
     PlanDto:
       type: object
       properties:

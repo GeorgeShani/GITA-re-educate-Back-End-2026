@@ -247,7 +247,6 @@ EC2 blocks outbound port 25, so use 587.
 ### `frontend/.env`
 
 ```
-NEXT_PUBLIC_APP_NAME=Gridline
 API_ORIGIN=http://api:4000
 ```
 
@@ -372,6 +371,7 @@ That creates the read-only "Northwind Analytics (Demo)" company, reachable from 
 | Checkout says "No such price" | The Stripe key and the price ids belong to different Stripe accounts or modes |
 | No emails arrive | SMTP credentials, `MAIL_FROM` not allowed by the provider, or the message is in spam |
 | Uploads fail | The IAM user lacks `s3:PutObject` on the bucket, or `AWS_REGION` is not the bucket's region |
+| The nightly orphan sweep logs "Orphan sweep failed" | The IAM user also needs `s3:ListBucket` on the bucket itself (the ARN without `/*`) |
 | The build is killed | Out of memory: add the swap file (step 5) or use a bigger instance |
 
 ## Before a real launch

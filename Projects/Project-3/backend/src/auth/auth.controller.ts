@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, HttpCode, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { AllowWhenSuspended } from '#/common/auth/allow-when-suspended.decorator.js';
 import { CurrentUser } from '#/common/auth/current-user.decorator.js';
 import { Public } from '#/common/auth/public.decorator.js';
 import { Roles } from '#/common/auth/roles.decorator.js';
@@ -153,7 +154,12 @@ export class AuthController {
     return toDto(SessionDto, await this.passwords.change(userId, dto, { userAgent }));
   }
 
+  /**
+   * `@AllowWhenSuspended()`: the dashboard asks this first to learn who is signed in and whether the company is suspended. Refused
+   * here, a suspended admin would look signed out and never reach the billing page that lets them pay.
+   */
   @Roles('admin', 'employee')
+  @AllowWhenSuspended()
   @ApiBearerAuth()
   @Get('me')
   @ApiOkResponse({ type: MeDto })

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { PinoLogger } from 'nestjs-pino';
 import { DataSource, LessThanOrEqual } from 'typeorm';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
@@ -15,54 +16,76 @@ export class DunningEvaluator {
     private readonly dataSource: DataSource,
     private readonly audit: AuditService,
     private readonly queue: TaskQueue,
+    private readonly logger: PinoLogger,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     @Inject(CLOCK) private readonly clock: Clock,
-  ) {}
+  ) {
+    this.logger.setContext(DunningEvaluator.name);
+  }
 
+  /** Every 15 minutes. A no-op under test (specs call `evaluate`) and while generating docs; a failure is logged, never thrown. */
   @Cron('0 */15 * * * *')
+  async run(): Promise<void> {
+    if (this.config.isTest || this.config.DB_SKIP_CONNECT) return;
+    try {
+      await this.evaluate();
+    } catch (error) {
+      this.logger.error({ err: error }, 'Dunning evaluation failed');
+    }
+  }
+
+  /** Suspends every company whose grace period has ended. One company failing is logged and does not stop the others. */
   async evaluate(): Promise<number> {
     const overdue = await this.dataSource.getRepository(BillingAccount).find({
       where: { status: 'past_due', graceEndsAt: LessThanOrEqual(this.clock.now()) },
     });
     let suspended = 0;
     for (const account of overdue) {
-      suspended += await this.dataSource.transaction(async (manager) => {
-        const company = await manager.findOne(Company, {
-          where: { id: account.companyId },
-          lock: { mode: 'pessimistic_write' },
-        });
-        if (!company || company.status !== 'active') return 0;
-        const fresh = await manager.findOneByOrFail(BillingAccount, { id: account.id });
-        if (fresh.status !== 'past_due' || !fresh.graceEndsAt || fresh.graceEndsAt > this.clock.now()) {
-          return 0;
-        }
-        company.status = 'suspended';
-        await manager.save(company);
-        await this.audit.record(
-          {
-            action: 'billing.company_suspended',
-            companyId: company.id,
-            actorUserId: null,
-            target: { type: 'company', id: company.id },
-          },
-          manager,
-        );
-        // Everyone is locked out from now on, so the one address that can fix it must be told, in the same step.
-        await this.queue.enqueue(
-          'send_email',
-          {
-            template: 'company_suspended',
-            to: company.billingEmail,
-            vars: {
-              companyName: company.name,
-              billingUrl: `${this.config.APP_PUBLIC_URL}/billing`,
-            },
-          },
-          { manager },
-        );
-        return 1;
-      });
+      try {
+        suspended += await this.suspend(account);
+      } catch (error) {
+        this.logger.error({ err: error, companyId: account.companyId }, 'Could not suspend an overdue company');
+      }
     }
     return suspended;
+  }
+
+  private suspend(account: BillingAccount): Promise<number> {
+    return this.dataSource.transaction(async (manager) => {
+      const company = await manager.findOne(Company, {
+        where: { id: account.companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!company || company.status !== 'active') return 0;
+      const fresh = await manager.findOneByOrFail(BillingAccount, { id: account.id });
+      if (fresh.status !== 'past_due' || !fresh.graceEndsAt || fresh.graceEndsAt > this.clock.now()) {
+        return 0;
+      }
+      company.status = 'suspended';
+      await manager.save(company);
+      await this.audit.record(
+        {
+          action: 'billing.company_suspended',
+          companyId: company.id,
+          actorUserId: null,
+          target: { type: 'company', id: company.id },
+        },
+        manager,
+      );
+      // Everyone is locked out from now on, so the one address that can fix it must be told, in the same step.
+      await this.queue.enqueue(
+        'send_email',
+        {
+          template: 'company_suspended',
+          to: company.billingEmail,
+          vars: {
+            companyName: company.name,
+            billingUrl: `${this.config.APP_PUBLIC_URL}/billing`,
+          },
+        },
+        { manager },
+      );
+      return 1;
+    });
   }
 }

@@ -320,7 +320,7 @@ email, emailVerified, name }`). The `GOOGLE_OAUTH` token is `null` when the `GOO
   `lockForUpdate` (rollForward, real quota decision, file + grants + one `UsageEvent` +
   `build_data_quality_report` task + audit) → any failure deletes the object. A rejected
   or failed upload consumes no quota. A crash between `put` and commit can orphan an
-  object (no sweeper yet). Deleting a file soft-deletes the row, removes the object after
+  object (`OrphanedObjectsJanitor` removes it after a day). Deleting a file soft-deletes the row, removes the object after
   commit, and does **not** refund quota.
 - **Storage seam** (`core/storage`): `StorageDriver` (`put/get/delete/presignedGetUrl`);
   `S3StorageDriver` default, `LocalStorageDriver` (dev/test; signed `GET /storage/local`,
@@ -752,10 +752,22 @@ AND isLatest` — still serves the default list); `?allVersions=true` drops it a
   enqueued in the SAME transaction as the webhook event. It used to be a call made after that transaction, so a Stripe outage there
   lost it for good (the retried event was a "duplicate") and the customer kept paying. It retries with backoff and is a no-op for a
   subscription that has already ended (`ignoreIfEnded`).
-- **Stripe-managed companies are never rolled by the local engine.** `InvoicingService.rollForward`/`closePeriod` do nothing for a
+- **Stripe-managed companies are never INVOICED by the local engine.** `InvoicingService.closePeriod` writes nothing for a
   company with a `billing_account.stripeSubscriptionId` (`isStripeManaged`), and the nightly `BillingCycleService` query excludes them. A
   late webhook used to be enough to produce a second, uncollectable local invoice, email and `invoice.finalized` event. A company
-  whose Stripe subscription has ended (`stripeSubscriptionId` null, Free) is the local engine's again.
+  whose Stripe subscription has ended (`stripeSubscriptionId` null, Free) is the local engine's again. `rollForward` still moves the
+  stored period WINDOW of a Stripe-managed company (without invoicing) when it has ended and the renewal webhook is late, so uploads
+  count against the current period; the webhook overwrites the window with Stripe's dates. The nightly cycle also skips the demo
+  company (`isDemo`): an invoice for it would email and notify a billing address that is not real.
+- **Stripe never hears about an event twice, and never misses one for good.** `applyPaid` queues a seat sync when it ADOPTS a
+  subscription (invitations accepted before it existed were never synced). `StripeSyncJanitor` (every 6 h) puts `sync_stripe_seats`
+  and `report_stripe_usage` tasks that died back on the queue for a week (both are idempotent: the meter event carries the usage-event
+  id, a seat update its sequence). A Stripe-mirrored invoice is announced like a local one (`invoice.finalized` webhook always; inbox
+  and email only above $0). When Stripe ends a subscription (`applyFree`) a company suspended for non-payment is let back in, as a Free
+  company. A paid plan with NO Stripe subscription behind it (chosen while payments were off) is changed locally when going to Free and
+  through a fresh Checkout when going to another paid plan (`BillingIntentService.hasStripeSubscription`).
+- **A suspended company can still ask who it is** (`GET /auth/me` is `@AllowWhenSuspended()`), so the dashboard can send an admin to
+  `/billing` to pay instead of treating the 403 as "signed out". Login and refresh already admit a suspended admin.
 - **A payment is a "recovery" only when it recovers something** (`applyPayment`): the account was `past_due` or the company suspended. Only
   then does "payment received" go out. A past-due account is brought back ONLY by a payment (never by a subscription refresh, which
   would erase the state the payment must see), and only when no other Stripe invoice is still overdue (`open`/`uncollectible` with

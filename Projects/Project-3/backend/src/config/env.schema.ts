@@ -266,6 +266,18 @@ export const envSchema = z
         'must be stripe in production unless ALLOW_UNPAID_PLANS=true is explicitly set',
       );
     }
+    // Two settings whose development values are wrong on a real server, each in a way nobody would notice until it hurt.
+    // (TRUST_PROXY is not refused here: the migrate and seed CLIs load this same config and have no proxy of their own.
+    // docker-compose sets it to 1 on the `api` service.)
+    if (env.STORAGE_DRIVER === 'local') {
+      issue(
+        'STORAGE_DRIVER',
+        'cannot be local in production: files would sit on the container and its download links would point at localhost',
+      );
+    }
+    if (!env.RATE_LIMIT_ENABLED) {
+      issue('RATE_LIMIT_ENABLED', 'cannot be turned off in production: the plan request budgets and sign-in limits are the product');
+    }
     if (!env.ASSETS_BASE_URL) {
       issue('ASSETS_BASE_URL', 'is required in production');
     } else if (new URL(env.ASSETS_BASE_URL).protocol !== 'https:') {

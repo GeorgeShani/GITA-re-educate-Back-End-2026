@@ -113,12 +113,12 @@ real deployment:
 
 ## Deliberate limits
 
-- The backend is complete; the branded Next.js product UI is a separate
-  milestone.
+- The backend is complete, and the Next.js product UI (`../frontend`) is built on top of it.
 - Rate counters and Socket.IO rooms are process-local. More than one API
   instance requires shared Redis-backed stores/adapters.
 - A process crash between object upload and database commit can leave an S3
-  orphan. Ordinary failures clean up, but no bucket reconciliation job exists.
+  orphan. Ordinary failures clean up, and `OrphanedObjectsJanitor` removes anything older than a day that no file row
+  points to (daily, 04:27 UTC).
 - Legacy XLS files are accepted, stored and downloaded, but not profiled.
 - Company export/erasure, 2FA, i18n, invoice PDFs, trash/restore and weekly
   digests are not implemented and are not presented as complete.

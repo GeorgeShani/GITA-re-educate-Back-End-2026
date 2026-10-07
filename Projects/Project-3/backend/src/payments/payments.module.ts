@@ -2,11 +2,14 @@ import { Global, Module } from '@nestjs/common';
 import type { AppConfig } from '#/config/env.schema.js';
 import { APP_CONFIG } from '#/config/load-config.js';
 import { DatabaseModule } from '#/database/database.module.js';
+import { NotificationsModule } from '#/notifications/notifications.module.js';
+import { WebhookPublishingModule } from '#/outgoing-webhooks/webhook-publishing.module.js';
 import { BillingIntentService } from './billing-intent.service.js';
 import { NullPaymentProvider } from './null-payment.provider.js';
 import { PAYMENT_PROVIDER, type PaymentProvider } from './payment-provider.js';
 import { StripePaymentProvider, type StripePaymentConfig } from './stripe-payment.provider.js';
 import { DunningEvaluator } from './dunning-evaluator.service.js';
+import { StripeSyncJanitor } from './stripe-sync-janitor.service.js';
 import { StripeWebhookController } from './stripe-webhook.controller.js';
 import { StripeWebhookService } from './stripe-webhook.service.js';
 import { BillingSyncService } from './billing-sync.service.js';
@@ -47,7 +50,7 @@ function paymentProvider(config: AppConfig, disabled: NullPaymentProvider): Paym
 
 @Global()
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, NotificationsModule, WebhookPublishingModule],
   controllers: [StripeWebhookController],
   providers: [
     NullPaymentProvider,
@@ -59,6 +62,7 @@ function paymentProvider(config: AppConfig, disabled: NullPaymentProvider): Paym
     BillingIntentService,
     StripeWebhookService,
     DunningEvaluator,
+    StripeSyncJanitor,
     BillingSyncService,
     SyncStripeSeatsHandler,
     ReportStripeUsageHandler,

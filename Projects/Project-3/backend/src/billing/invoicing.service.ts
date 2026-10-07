@@ -177,19 +177,24 @@ export class InvoicingService {
     subscription: Subscription,
     now: Date,
   ): Promise<Invoice[]> {
-    // The period of a Stripe-managed company is Stripe's: its webhook moves it, never this loop. Rolling it here while
-    // a webhook is late would invent a period, an invoice, an email and an `invoice.finalized` event Stripe knows nothing about.
-    if (await this.isStripeManaged(manager, subscription.companyId)) return [];
+    // The invoices of a Stripe-managed company are Stripe's: this loop must never invent one, nor the email and
+    // `invoice.finalized` event that go with it. But the WINDOW still has to move with time. Stripe's renewal webhook can be
+    // late, and until it lands a stored period that has already ended would count today's uploads against the old one (a
+    // Basic company turned away at its quota, Premium overage counted in the wrong period). The webhook overwrites the
+    // window with Stripe's own dates when it arrives.
+    const stripeManaged = await this.isStripeManaged(manager, subscription.companyId);
     const invoices: Invoice[] = [];
     let advanced = false;
 
     while (subscription.currentPeriodEnd.getTime() <= now.getTime()) {
-      const invoice = await this.closePeriod(
-        manager,
-        subscription,
-        subscription.currentPeriodEnd,
-      );
-      if (invoice) invoices.push(invoice);
+      if (!stripeManaged) {
+        const invoice = await this.closePeriod(
+          manager,
+          subscription,
+          subscription.currentPeriodEnd,
+        );
+        if (invoice) invoices.push(invoice);
+      }
 
       const following = nextPeriod(subscription.billingAnchorDay, {
         start: subscription.currentPeriodStart,

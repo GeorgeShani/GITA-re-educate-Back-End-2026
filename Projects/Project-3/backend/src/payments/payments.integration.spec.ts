@@ -7,7 +7,9 @@ import { BillingAccount } from './billing-account.entity.js';
 import { DunningEvaluator } from './dunning-evaluator.service.js';
 import type { PaidPlan, PaymentInvoice, PaymentSubscription, VerifiedPaymentEvent } from './payment-provider.js';
 import { ReportStripeUsageHandler } from './report-stripe-usage.handler.js';
+import { StripeSyncJanitor } from './stripe-sync-janitor.service.js';
 import { UsageEvent } from '#/billing/usage-event.entity.js';
+import { BackgroundTask } from '#/core/tasks/background-task.entity.js';
 
 const pendingSchema = z.object({
   state: z.literal('pending'),
@@ -185,6 +187,20 @@ describe('Stripe subscriptions (integration)', () => {
     expect((await h.dataSource.getRepository(Subscription).findOneByOrFail({ companyId: admin.companyId })).plan).toBe('free');
   });
 
+  it('a paid plan with no Stripe subscription behind it can still be left: Free applies locally, another paid plan starts a Checkout', async () => {
+    // As if chosen while payments were off, or seeded: Basic, and no `stripeSubscriptionId`.
+    await h.subscribe(session, 'free');
+    await h.dataSource.query(`UPDATE subscription SET plan = 'basic' WHERE "companyId" = $1`, [admin.companyId]);
+
+    const upgrade = await h.http().patch('/subscriptions/me').set(...h.bearer(session)).send({ plan: 'premium' }).expect(202);
+    expect(pendingSchema.parse(upgrade.body).checkoutUrl).not.toBeNull();
+    expect(h.payments.changes).toHaveLength(0);
+
+    await h.http().patch('/subscriptions/me').set(...h.bearer(session)).send({ plan: 'free' }).expect(200);
+    expect((await h.dataSource.getRepository(Subscription).findOneByOrFail({ companyId: admin.companyId })).plan).toBe('free');
+    expect(h.payments.cancellations).toHaveLength(0);
+  });
+
   it('starts grace on payment failure, suspends after seven days, and reactivates after payment', async () => {
     const account = await activate('premium');
     const stripeInvoice: PaymentInvoice = {
@@ -223,6 +239,40 @@ describe('Stripe subscriptions (integration)', () => {
     expect((await h.dataSource.getRepository(Company).findOneByOrFail({ id: admin.companyId })).status).toBe('active');
   });
 
+  it('lets a suspended company back in once Stripe has ended its subscription: it is a Free company now', async () => {
+    const account = await activate('premium');
+    const stripeInvoice: PaymentInvoice = {
+      id: 'in_unpaid',
+      customerId: account.stripeCustomerId ?? 'missing',
+      subscriptionId: account.stripeSubscriptionId,
+      status: 'open',
+      totalCents: 30_000,
+      currency: 'usd',
+      periodStart: new Date('2026-03-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-04-01T00:00:00.000Z'),
+      dueAt: null,
+      hostedUrl: 'https://invoice.stripe.test/in_unpaid',
+      pdfUrl: 'https://invoice.stripe.test/in_unpaid.pdf',
+      attempts: 1,
+      attemptedAt: h.clock.now(),
+      paidAt: null,
+    };
+    h.payments.invoices.set(stripeInvoice.id, stripeInvoice);
+    await sendWebhook(event({ type: 'invoice.payment_failed', customerId: stripeInvoice.customerId, subscriptionId: null, invoiceId: stripeInvoice.id })).expect(200);
+    h.clock.advance(8 * 86_400_000);
+    expect(await h.app.get(DunningEvaluator).evaluate()).toBe(1);
+    const suspendedSession = await h.login(admin.email);
+    await h.http().get('/auth/me').set(...h.bearer(suspendedSession)).expect(200);
+
+    await sendWebhook(
+      event({ type: 'customer.subscription.deleted', customerId: stripeInvoice.customerId, subscriptionId: account.stripeSubscriptionId }),
+    ).expect(200);
+
+    expect((await h.dataSource.getRepository(Company).findOneByOrFail({ id: admin.companyId })).status).toBe('active');
+    expect((await h.dataSource.getRepository(Subscription).findOneByOrFail({ companyId: admin.companyId })).plan).toBe('free');
+    await h.http().get('/subscriptions/me').set(...h.bearer(suspendedSession)).expect(200);
+  });
+
   it('synchronizes active Basic seats in order', async () => {
     await activate('basic');
     const employee = await h.inviteAndAccept(session, admin.companyId);
@@ -233,6 +283,26 @@ describe('Stripe subscriptions (integration)', () => {
     await h.drainTasks();
     expect(h.payments.seatUpdates.map((request) => request.quantity)).toEqual([1, 0]);
     expect(h.payments.seatUpdates[0]?.idempotencyKey).not.toBe(h.payments.seatUpdates[1]?.idempotencyKey);
+  });
+
+  it('tells Stripe the seat count when it adopts a subscription for a company that already had employees', async () => {
+    // Premium without a Stripe subscription (see above), with an employee who accepted before there was anything to sync.
+    await h.subscribe(session, 'free');
+    await h.dataSource.query(`UPDATE subscription SET plan = 'premium' WHERE "companyId" = $1`, [admin.companyId]);
+    await h.inviteAndAccept(session, admin.companyId);
+    await h.drainTasks();
+    expect(h.payments.seatUpdates).toHaveLength(0);
+
+    await h.http().patch('/subscriptions/me').set(...h.bearer(session)).send({ plan: 'basic' }).expect(202);
+    const account = await h.dataSource.getRepository(BillingAccount).findOneByOrFail({ companyId: admin.companyId });
+    const external = subscription({ customerId: account.stripeCustomerId ?? undefined, plan: 'basic' });
+    h.payments.subscriptions.set(external.id, external);
+    await sendWebhook(
+      event({ customerId: external.customerId, subscriptionId: external.id, checkoutSessionId: account.pendingCheckoutSessionId }),
+    ).expect(200);
+    await h.drainTasks();
+
+    expect(h.payments.seatUpdates.map((request) => request.quantity)).toEqual([1]);
   });
 
   it('reports every Premium upload to the meter once using the immutable usage-event id', async () => {
@@ -246,6 +316,25 @@ describe('Stripe subscriptions (integration)', () => {
     ]);
     await h.app.get(ReportStripeUsageHandler).handle({ usageEventId: usage.id });
     expect(h.payments.meterEvents).toHaveLength(1);
+  });
+
+  it('puts a Stripe sync that gave up back on the queue after a few hours, and leaves other dead tasks alone', async () => {
+    const tasks = h.dataSource.getRepository(BackgroundTask);
+    const usageEventId = crypto.randomUUID();
+    const dead = await tasks.save(
+      tasks.create({ type: 'report_stripe_usage', payload: { usageEventId }, status: 'dead', attempts: 5, runAfter: new Date(), lastError: 'Stripe was down', lockedAt: null, correlationId: null }),
+    );
+    const other = await tasks.save(
+      tasks.create({ type: 'send_email', payload: {}, status: 'dead', attempts: 5, runAfter: new Date(), lastError: 'bounced', lockedAt: null, correlationId: null }),
+    );
+    const janitor = h.app.get(StripeSyncJanitor);
+
+    expect(await janitor.reviveDeadTasks(new Date())).toBe(0); // only just died
+    expect(await janitor.reviveDeadTasks(new Date(Date.now() + 7 * 60 * 60 * 1000))).toBe(1);
+
+    expect(await tasks.findOneByOrFail({ id: dead.id })).toMatchObject({ status: 'pending', attempts: 0 });
+    expect((await tasks.findOneByOrFail({ id: other.id })).status).toBe('dead');
+    expect(await janitor.reviveDeadTasks(new Date(Date.now() + 8 * 24 * 60 * 60 * 1000))).toBe(0); // a week on, it is let go
   });
 
   it('rejects unsigned webhook bodies without applying state', async () => {

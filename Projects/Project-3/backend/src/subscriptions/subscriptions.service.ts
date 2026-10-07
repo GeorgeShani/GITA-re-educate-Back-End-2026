@@ -161,6 +161,23 @@ export class SubscriptionsService {
       );
     }
     await this.assertPlanChangeAllowed(subscription, target);
+    // A paid plan with no Stripe subscription behind it (chosen while payments were off, or seeded) has nothing in Stripe to
+    // change or cancel. Going to a paid plan starts a real Checkout; going to Free is the local engine's, as before Stripe.
+    const hasStripe = await this.billingIntents.hasStripeSubscription(companyId);
+    if (subscription.plan !== 'free' && !hasStripe) {
+      if (target === 'free') {
+        const changed = await this.change(target);
+        return { kind: 'active', ...changed };
+      }
+      return {
+        kind: 'pending',
+        intent: await this.billingIntents.beginCheckout(
+          companyId,
+          target,
+          await this.activeEmployees(this.dataSource.manager, companyId),
+        ),
+      };
+    }
     if (subscription.plan === 'free' && target !== 'free') {
       return {
         kind: 'pending',

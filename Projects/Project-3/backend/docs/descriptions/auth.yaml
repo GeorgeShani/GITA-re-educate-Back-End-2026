@@ -71,7 +71,9 @@ AuthController_me:
   description: >-
     The caller's own user record and company. Role and status come from the
     database on every request, not from the token, so a change of role or a
-    disabled account is reflected immediately.
+    disabled account is reflected immediately. It also answers for a suspended
+    company, with `company.status` set to `suspended`: it is how a client learns
+    that the company must pay before anything else opens.
 
 AuthController_acceptInvite:
   summary: Accept an invitation

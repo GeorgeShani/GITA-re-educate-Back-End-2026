@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { DataSource, type EntityManager } from 'typeorm';
+import { DataSource, type EntityManager, IsNull, Not } from 'typeorm';
 import { CLOCK, type Clock } from '#/core/clock/clock.js';
 import { Company } from '#/database/entities/company.entity.js';
 import { AuditService } from '#/core/audit/audit.service.js';
@@ -73,6 +73,16 @@ export class BillingIntentService {
     }
 
     return { intentId: staged.intentId, targetPlan, checkoutUrl: checkout.url };
+  }
+
+  /**
+   * Whether this company's plan follows a Stripe subscription. A paid plan WITHOUT one (the company chose it while
+   * payments were off, or it was seeded) has nothing in Stripe to change or cancel, so changing it must not go there.
+   */
+  hasStripeSubscription(companyId: string): Promise<boolean> {
+    return this.dataSource
+      .getRepository(BillingAccount)
+      .exists({ where: { companyId, stripeSubscriptionId: Not(IsNull()) } });
   }
 
   async beginPaidChange(

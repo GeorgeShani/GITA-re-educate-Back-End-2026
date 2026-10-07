@@ -36,7 +36,7 @@ Secrets are marked 🔒: never commit them, never paste them into a ticket, and 
 | `STORAGE_LOCAL_PATH` | — | A folder, for `local`. |
 | `AWS_REGION` | — | The bucket's region. |
 | `AWS_S3_BUCKET` | — | A **private** bucket (block all public access — downloads are 5-minute presigned links). |
-| `AWS_ACCESS_KEY_ID` 🔒 | — | An IAM user limited to `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` on that bucket. |
+| `AWS_ACCESS_KEY_ID` 🔒 | — | An IAM user limited to `s3:PutObject`, `s3:GetObject`, `s3:DeleteObject` on the objects of that bucket, plus `s3:ListBucket` on the bucket itself (the nightly cleanup of orphaned files lists it). |
 | `AWS_SECRET_ACCESS_KEY` 🔒 | — | The same IAM user. |
 
 ## Mail — `MAIL_TRANSPORT`

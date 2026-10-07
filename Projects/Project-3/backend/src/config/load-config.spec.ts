@@ -159,6 +159,24 @@ describe('loadConfig', () => {
     expect(config.ALLOW_UNPAID_PLANS).toBe(true);
   });
 
+  it('refuses the development defaults that are wrong on a real server', () => {
+    const production = validEnv({
+      NODE_ENV: 'production',
+      JWT_ACCESS_SECRET: 'production-access-secret-that-is-long-enough',
+      MAIL_TRANSPORT: 'smtp',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      APP_PUBLIC_URL: 'https://gridline.example.com',
+      ALLOW_UNPAID_PLANS: 'true',
+      DATA_ENCRYPTION_KEY: 'MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=',
+      ASSETS_BASE_URL: 'https://assets.gridline.example.com',
+    });
+    expect(loadConfig(production).isProduction).toBe(true);
+
+    expect(() => loadConfig({ ...production, RATE_LIMIT_ENABLED: 'false' })).toThrow(/RATE_LIMIT_ENABLED/);
+    expect(() => loadConfig({ ...production, STORAGE_DRIVER: 'local' })).toThrow(/STORAGE_DRIVER/);
+  });
+
   it('normalizes the public assets origin without retaining trailing slashes', () => {
     const config = loadConfig(
       validEnv({ ASSETS_BASE_URL: 'https://assets.gridline.example.com///' }),

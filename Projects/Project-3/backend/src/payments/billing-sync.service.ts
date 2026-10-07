@@ -38,6 +38,15 @@ export class BillingSyncService {
     await this.queue.enqueue('sync_stripe_seats', { companyId }, { manager });
   }
 
+  /**
+   * When a Stripe subscription is first adopted: invitations accepted before it existed were never synced (there was no
+   * subscription to sync to), so Stripe is told the count as of now. Nothing to say, and no task queued, when there are none.
+   */
+  async syncSeatsOnAdoption(manager: EntityManager, companyId: string, effectiveAt: Date): Promise<void> {
+    const active = await manager.getRepository(User).count({ where: { companyId, role: 'employee', status: 'active' } });
+    if (active > 0) await this.recordSeatChange(manager, companyId, effectiveAt);
+  }
+
   async recordUsage(manager: EntityManager, usageEvent: UsageEvent, plan: Plan): Promise<void> {
     if (plan !== 'premium') return;
     const account = await manager.findOneBy(BillingAccount, { companyId: usageEvent.companyId });

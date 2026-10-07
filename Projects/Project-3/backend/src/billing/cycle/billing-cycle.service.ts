@@ -46,11 +46,15 @@ export class BillingCycleService {
     // A system job: it deliberately spans tenants, so it does not go through `TenantScope`.
     // Everything it WRITES is per-company, under that company's lock.
     // A company on a Stripe subscription is never rolled here: Stripe owns its periods (see `isStripeManaged`).
+    // The demo company is never rolled either: it must not email anyone, and an invoice for it would announce itself
+    // (inbox, webhook, `invoice_finalized` mail) to a billing address that is not real. Its bill page prices the
+    // effective period without writing anything.
     const due = await this.dataSource
       .getRepository(Subscription)
       .createQueryBuilder('s')
       .select(['s.id', 's.companyId'])
       .where('s.currentPeriodEnd <= :now', { now })
+      .andWhere(`NOT EXISTS (SELECT 1 FROM company c WHERE c.id = s."companyId" AND c."isDemo")`)
       .andWhere(
         `NOT EXISTS (SELECT 1 FROM billing_account b WHERE b."companyId" = s."companyId" AND b."stripeSubscriptionId" IS NOT NULL)`,
       )

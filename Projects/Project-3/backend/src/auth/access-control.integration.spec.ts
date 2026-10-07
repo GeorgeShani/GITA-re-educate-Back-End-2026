@@ -130,12 +130,15 @@ describe('the global auth guard (integration)', () => {
       await h.http().patch('/companies/me').set(...h.bearer(session)).send({ name: 'X Co' }).expect(200);
     });
 
-    it('turns a suspended company away with 403', async () => {
+    it('turns a suspended company away with 403 — except /auth/me, which says the company is suspended', async () => {
       const session = await h.login(admin.email);
 
       await h.dataSource.getRepository(Company).update({ id: admin.companyId }, { status: 'suspended' });
 
-      await h.http().get('/auth/me').set(...h.bearer(session)).expect(403);
+      await h.http().get('/companies/me/members').set(...h.bearer(session)).expect(403);
+      // The dashboard asks who is signed in first. Refused here, a suspended admin would look signed out and could not pay.
+      const me = await h.http().get('/auth/me').set(...h.bearer(session)).expect(200);
+      expect(me.body.company.status).toBe('suspended');
     });
 
     it('does not let an invited (not yet accepted) user in even with a genuine token', async () => {
