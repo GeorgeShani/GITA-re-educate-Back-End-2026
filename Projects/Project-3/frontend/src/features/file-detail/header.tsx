@@ -57,10 +57,10 @@ export function FileHeader({
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-col gap-2">
           <h1 className="headline flex items-start gap-3 text-3xl leading-[1.05] break-words sm:text-5xl">
-            <Icon
-              aria-hidden
-              className="mt-1 size-7 shrink-0 text-text-muted sm:size-9"
-            />
+            {/* As tall as the first line of the name (the heading's own line height), so the icon is centred on it, whether the name fits on one line or wraps. */}
+            <span aria-hidden className="flex h-[1.05em] shrink-0 items-center">
+              <Icon className="size-7 text-text-muted sm:size-9" />
+            </span>
             <span className="min-w-0 [overflow-wrap:anywhere]">
               {file.originalName}
             </span>
