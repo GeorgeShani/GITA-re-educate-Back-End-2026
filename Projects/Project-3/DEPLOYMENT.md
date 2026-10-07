@@ -120,10 +120,10 @@ moves, and the card `4242 4242 4242 4242` works.
 
 ### Create the endpoint
 
-Replace `YOUR_DOMAIN` and use your own test key. This is the same call as in development, with the real URL:
+Use your own test key. This is the same call as in development, with this deployment's URL:
 
 ```powershell
-curl.exe https://api.stripe.com/v1/webhook_endpoints -u "sk_test_YOUR_KEY:" -d "url=https://YOUR_DOMAIN/api/webhooks/stripe" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=customer.subscription.created" -d "enabled_events[]=customer.subscription.updated" -d "enabled_events[]=customer.subscription.deleted" -d "enabled_events[]=invoice.finalized" -d "enabled_events[]=invoice.payment_failed" -d "enabled_events[]=invoice.payment_succeeded"
+curl.exe https://api.stripe.com/v1/webhook_endpoints -u "sk_test_YOUR_KEY:" -d "url=https://gridline-data-analysis-app.duckdns.org/api/webhooks/stripe" -d "enabled_events[]=checkout.session.completed" -d "enabled_events[]=customer.subscription.created" -d "enabled_events[]=customer.subscription.updated" -d "enabled_events[]=customer.subscription.deleted" -d "enabled_events[]=invoice.finalized" -d "enabled_events[]=invoice.payment_failed" -d "enabled_events[]=invoice.payment_succeeded"
 ```
 
 (Or use the dashboard: **Developers → Webhooks → Add endpoint**, the same URL and the same seven events.)
@@ -138,7 +138,7 @@ From the response, take:
 Copy the secret right away. If you lose it, open the endpoint in the dashboard and use **Signing secret → Reveal**; it is
 always available there.
 
-The URL is `https://YOUR_DOMAIN/api/webhooks/stripe`. The `/api` is Caddy's public prefix. It removes it, so the backend
+The URL is `https://gridline-data-analysis-app.duckdns.org/api/webhooks/stripe`. The `/api` is Caddy's public prefix. It removes it, so the backend
 receives `POST /webhooks/stripe`.
 
 ### Remove the development leftovers
@@ -152,7 +152,7 @@ curl.exe -X DELETE https://api.stripe.com/v1/webhook_endpoints/we_OLD_ID -u "sk_
 
 ### How it is checked
 
-- Open `https://YOUR_DOMAIN/api/webhooks/stripe` in a browser or `curl.exe -i -X POST` it. A **400** answer ("missing
+- Open `https://gridline-data-analysis-app.duckdns.org/api/webhooks/stripe` in a browser or `curl.exe -i -X POST` it. A **400** answer ("missing
   signature" or similar) is correct: the route is reachable, and it refuses anything Stripe did not sign.
 - After a test payment (step 6), the endpoint's page in the Stripe dashboard shows each event with **200 OK**. A `400` there
   means the `whsec_…` in the server's env file is not this endpoint's secret.
@@ -177,7 +177,7 @@ Start from `backend/.env.example` and set at least these. Generate secrets with 
 ```
 NODE_ENV=production
 PORT=4000
-APP_PUBLIC_URL=https://YOUR_DOMAIN
+APP_PUBLIC_URL=https://gridline-data-analysis-app.duckdns.org
 
 # Neon: the pooled URL for the app, the direct URL for migrations
 DATABASE_URL=postgresql://...-pooler...?sslmode=require&channel_binding=require
@@ -200,7 +200,7 @@ SMTP_HOST=<smtp host>
 SMTP_PORT=587
 SMTP_USER=<user>
 SMTP_PASSWORD=<password>
-MAIL_FROM="Gridline <no-reply@YOUR_DOMAIN>"
+MAIL_FROM="Gridline <no-reply@gridline-data-analysis-app.duckdns.org>"
 
 # Brand assets (the CloudFront URL, https, no trailing slash)
 ASSETS_BASE_URL=https://dxxxxxxxx.cloudfront.net
@@ -226,7 +226,7 @@ TRUST_PROXY=1
 
 Compose already sets `NODE_ENV=production`, `PORT` and `TRUST_PROXY` for the containers, so those cannot be wrong. Optional:
 `AI_PROVIDER=gemini` with `GEMINI_API_KEY` (otherwise reports have metrics only, and "Ask in words" is switched off), and the
-three Google values if you want Google sign-in (its callback is `https://YOUR_DOMAIN/api/auth/google/callback`, and it must be
+three Google values if you want Google sign-in (its callback is `https://gridline-data-analysis-app.duckdns.org/api/auth/google/callback`, and it must be
 listed on the OAuth client).
 
 The backend checks all of this at start-up. If a value is missing or wrong in production, it stops and says which one.
@@ -257,7 +257,7 @@ Leave `NEXT_PUBLIC_REALTIME_URL` and `NEXT_PUBLIC_API_REFERENCE_URL` unset: behi
 ### `.env` at the project root (for Compose)
 
 ```
-SITE_ADDRESS=YOUR_DOMAIN
+SITE_ADDRESS=gridline-data-analysis-app.duckdns.org
 ```
 
 This tells Caddy which domain to get a certificate for. If it is missing, Caddy serves plain HTTP on port 3000, which is only
@@ -300,7 +300,7 @@ scp -i C:\path\to\gridline.pem frontend\.env ubuntu@203.0.113.10:~/gridline/Proj
 and create the root one on the server:
 
 ```bash
-echo "SITE_ADDRESS=YOUR_DOMAIN" > .env
+echo "SITE_ADDRESS=gridline-data-analysis-app.duckdns.org" > .env
 ```
 
 (If you would rather type the files on the server, use `nano backend/.env`.) Then lock them down:
@@ -326,13 +326,13 @@ once. After that, plain `docker compose up -d --build` works.
 ```bash
 docker compose ps                      # migrate: exited (0); api, web, proxy: running / healthy
 docker compose logs -f proxy           # look for "certificate obtained successfully"
-curl -i https://YOUR_DOMAIN/api/health # 200
+curl -i https://gridline-data-analysis-app.duckdns.org/api/health # 200
 ```
 
 Then in a browser:
 
-1. `https://YOUR_DOMAIN`: the marketing site, with a padlock.
-2. `https://YOUR_DOMAIN/reference`: the API reference.
+1. `https://gridline-data-analysis-app.duckdns.org`: the marketing site, with a padlock.
+2. `https://gridline-data-analysis-app.duckdns.org/reference`: the API reference.
 3. Register a company. You should receive the activation email (check spam). If you do not, `docker compose logs api` shows
    the SMTP error.
 4. Choose **Basic** on the billing page and pay with `4242 4242 4242 4242`, any future date, any CVC.
@@ -428,7 +428,7 @@ and wait until the plan shows as active. (Kavkasia stays on Free.)
 **Step 3. The content:**
 
 ```bash
-npm run seed:showcase -- --stage content --mailbox you@gmail.com --api https://YOUR_DOMAIN/api
+npm run seed:showcase -- --stage content --mailbox you@gmail.com --api https://gridline-data-analysis-app.duckdns.org/api
 ```
 
 It first checks that Northwind is on Basic and Meridian on Premium through Stripe, and stops with a sentence if not. It then adds
