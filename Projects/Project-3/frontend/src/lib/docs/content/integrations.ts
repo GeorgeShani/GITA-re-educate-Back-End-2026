@@ -243,7 +243,7 @@ export const REALTIME: Block[] = [
     label: "JavaScript",
     code: `import { io } from "socket.io-client";
 
-const socket = io("https://YOUR-DOMAIN", {
+const socket = io("https://gridline-data-analysis-app.duckdns.org", {
   auth: { token: accessToken },   // the access token from signing in
 });
 
@@ -363,7 +363,7 @@ export const GRAPHQL: Block[] = [
     },
     {
       label: "JavaScript",
-      code: `const response = await fetch("https://YOUR-DOMAIN/graphql", {
+      code: `const response = await fetch("https://gridline-data-analysis-app.duckdns.org/graphql", {
   method: "POST",
   headers: { Authorization: \`Bearer \${accessToken}\`, "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -445,7 +445,7 @@ export const MCP: Block[] = [
   ),
   p("With Claude Code:"),
   code(
-    `claude mcp add --transport http gridline https://YOUR-DOMAIN/api/mcp \\
+    `claude mcp add --transport http gridline https://gridline-data-analysis-app.duckdns.org/api/mcp \\
   --header "Authorization: Bearer gl_live_…"`,
     "shell",
   ),

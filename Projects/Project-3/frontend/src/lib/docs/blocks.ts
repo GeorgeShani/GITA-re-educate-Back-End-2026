@@ -89,7 +89,7 @@ export const cards = (
 export const fields = (...items: Field[]): Block => ({ t: "fields", items });
 
 /** The address every sample sends to. Behind the proxy the API is at /api on the same domain as the app. */
-export const BASE = "https://YOUR-DOMAIN/api";
+export const BASE = "https://gridline-data-analysis-app.duckdns.org/api";
 
 /**
  * Folds a guide's blocks into a section of a bigger guide: its headings go down a level, so the bigger guide's own

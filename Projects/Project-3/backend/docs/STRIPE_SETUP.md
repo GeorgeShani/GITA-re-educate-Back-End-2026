@@ -137,7 +137,7 @@ Stripe calls Gridline when a checkout finishes, a subscription changes, or an in
 ### 5a. On a deployed server (a public HTTPS address)
 
 1. **Developers** → **Webhooks** → **Add endpoint** (or **Add destination** → **Webhook endpoint**).
-2. **Endpoint URL:** `https://YOUR-DOMAIN/api/webhooks/stripe`
+2. **Endpoint URL:** `https://gridline-data-analysis-app.duckdns.org/api/webhooks/stripe`
 3. **Events to send**, exactly these seven (Stripe's picker has a search box):
    - `checkout.session.completed`
    - `customer.subscription.created`
