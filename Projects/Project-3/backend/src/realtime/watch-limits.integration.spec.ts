@@ -117,4 +117,17 @@ describe('file.watch limits (integration, over a real socket)', () => {
 
     expect(await socket.watch('00000000-0000-4000-8000-000000000000')).toEqual({ ok: false, error: 'unauthorized' });
   });
+
+  it('a watch sent without an acknowledgement callback still follows the file (and nothing throws)', async () => {
+    const socket = await join();
+    const fileId = fileIds[0] ?? '';
+
+    (socket.socket as unknown as { emit(event: string, payload: unknown): void }).emit('file.watch', { fileId });
+
+    const [presence] = (await socket.waitFor('presence.changed')) as Array<{ fileId: string; userIds: string[] }>;
+    expect(presence?.fileId).toBe(fileId);
+    expect(presence?.userIds).toHaveLength(1);
+    expect(socket.of('exception')).toEqual([]);
+    expect(socket.events.some(([name]) => name === 'exception')).toBe(false);
+  });
 });

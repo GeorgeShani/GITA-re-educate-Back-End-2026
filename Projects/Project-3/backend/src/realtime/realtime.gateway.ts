@@ -68,6 +68,14 @@ export const MAX_WATCHED_FILES_PER_SOCKET = 20;
 const WATCH_WINDOW_MS = 10_000;
 const WATCH_ACTIONS_PER_WINDOW = 20;
 
+/**
+ * A client may emit `file.watch` / `file.unwatch` without a callback (the documented form passes one, but nothing requires it).
+ * Without this the handler threw "acknowledge is not a function" before it joined the room, so the command silently did nothing.
+ */
+function optionalAcknowledgement(ack: SocketActionAcknowledgement | undefined): SocketActionAcknowledgement {
+  return typeof ack === 'function' ? ack : () => undefined;
+}
+
 interface ActionWindow {
   startedAt: number;
   count: number;
@@ -229,8 +237,9 @@ export class RealtimeGateway
   async watchFile(
     @ConnectedSocket() socket: RealtimeSocket,
     @MessageBody() payload: unknown,
-    @Ack() acknowledge: SocketActionAcknowledgement,
+    @Ack() ack: SocketActionAcknowledgement | undefined,
   ): Promise<void> {
+    const acknowledge = optionalAcknowledgement(ack);
     if (!this.allowWatchAction(socket.id)) {
       acknowledge({ ok: false, error: 'rate_limited' });
       return;
@@ -272,8 +281,9 @@ export class RealtimeGateway
   async unwatchFile(
     @ConnectedSocket() socket: RealtimeSocket,
     @MessageBody() payload: unknown,
-    @Ack() acknowledge: SocketActionAcknowledgement,
+    @Ack() ack: SocketActionAcknowledgement | undefined,
   ): Promise<void> {
+    const acknowledge = optionalAcknowledgement(ack);
     if (!this.allowWatchAction(socket.id)) {
       acknowledge({ ok: false, error: 'rate_limited' });
       return;

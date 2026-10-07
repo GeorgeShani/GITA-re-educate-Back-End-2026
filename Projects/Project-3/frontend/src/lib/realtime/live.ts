@@ -132,6 +132,9 @@ let failures = 0;
 /** Files this tab is looking at: joined again after every reconnect, because the server forgets them with the socket. */
 const watched = new Map<string, number>();
 
+/** The server answers every watch command ({ ok } or a reason); this page has nothing to do with the answer, but sends the callback the protocol expects. */
+const ignoreReply = (): void => {};
+
 async function freshToken(): Promise<string | null> {
   try {
     const response = await fetch("/session/socket-token", {
@@ -166,7 +169,7 @@ async function open(): Promise<void> {
 
   next.on("connect", () => {
     failures = 0;
-    for (const fileId of watched.keys()) next.emit("file.watch", { fileId });
+    for (const fileId of watched.keys()) next.emit("file.watch", { fileId }, ignoreReply);
   });
   next.on("presence.changed", (payload: unknown) => {
     const event = toPresence(payload);
@@ -247,7 +250,7 @@ export function subscribeLive(handlers: LiveHandlers): () => void {
 export function watchFile(fileId: string): () => void {
   watched.set(fileId, (watched.get(fileId) ?? 0) + 1);
   if (watched.get(fileId) === 1 && socket?.connected) {
-    socket.emit("file.watch", { fileId });
+    socket.emit("file.watch", { fileId }, ignoreReply);
   }
   return () => {
     const left = (watched.get(fileId) ?? 1) - 1;
@@ -256,7 +259,7 @@ export function watchFile(fileId: string): () => void {
       return;
     }
     watched.delete(fileId);
-    if (socket?.connected) socket.emit("file.unwatch", { fileId });
+    if (socket?.connected) socket.emit("file.unwatch", { fileId }, ignoreReply);
   };
 }
 
