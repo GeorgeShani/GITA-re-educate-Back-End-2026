@@ -4,9 +4,11 @@ import { LoggerModule } from 'nestjs-pino';
 import { APP_CONFIG } from '#/config/load-config.js';
 import type { AppConfig } from '#/config/env.schema.js';
 import './context/cls-store.js';
+import pinoHttp from 'pino-http';
 import {
   REDACT_CENSOR,
   REDACT_PINO_PATHS,
+  maskOneTimeQuery,
 } from './redaction.js';
 
 @Module({
@@ -32,6 +34,15 @@ import {
                   userId: cls.get('userId'),
                 }
               : {},
+
+          // The request as logged is pino-http's own, with the one-time credential in its address masked (the parsed `query` is
+          // scrubbed by the redact paths below).
+          serializers: {
+            req: (request: Parameters<typeof pinoHttp.stdSerializers.req>[0]) => {
+              const logged = pinoHttp.stdSerializers.req(request);
+              return { ...logged, url: maskOneTimeQuery(String(logged.url ?? '')) };
+            },
+          },
 
           redact: {
             paths: REDACT_PINO_PATHS,

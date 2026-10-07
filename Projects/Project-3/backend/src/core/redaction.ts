@@ -54,8 +54,23 @@ export const REDACT_PINO_PATHS = [
   'req.headers.cookie',
   'req.headers["x-api-key"]',
   'res.headers["set-cookie"]',
+  // A one-time link opened as GET /auth/activate?token=…, and the code Google's sign-in comes back with.
+  'req.query.token',
+  'req.query.code',
+  'req.query.state',
   ...REDACT_KEYS.map((key) => `*.${key}`),
   ...REDACT_KEYS.map((key) => key),
 ];
 
 export const REDACT_CENSOR = '[redacted]';
+
+/** Query parameters whose values are one-time credentials. */
+const ONE_TIME_QUERY_PARAMS = /([?&](?:token|code|state)=)[^&#]*/g;
+
+/**
+ * The request's address as it may be logged: the same, with the value of any one-time credential in its query replaced.
+ * Redacting `req.query.token` is not enough on its own, because the full address (`url`) is logged beside it.
+ */
+export function maskOneTimeQuery(url: string): string {
+  return url.replace(ONE_TIME_QUERY_PARAMS, `$1${REDACT_CENSOR}`);
+}
