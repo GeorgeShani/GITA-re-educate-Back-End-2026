@@ -82,7 +82,14 @@ function Figures({ data }: { data: AnalyticsData }) {
       aria-label="At a glance"
       className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
     >
-      <Tile label="Files uploaded" note={`in these ${data.range.days} days`}>
+      <Tile
+        label="Files uploaded"
+        note={
+          data.range.days === 1
+            ? "in the last day"
+            : `in these ${data.range.days} days`
+        }
+      >
         <TickNumber value={total} />
       </Tile>
       <Tile label="Files stored now" note="deleted ones not counted">
