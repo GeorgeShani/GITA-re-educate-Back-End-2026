@@ -31,6 +31,7 @@
     "billing:run-cycle": "node dist/billing/cycle/run-cycle.js",
     "seed:all": "node dist/seeds/seed-all.js",
     "seed:demo": "node dist/demo/seed-demo.js",
+    "seed:showcase": "node --env-file=.env.production.local dist/seeds/showcase/seed-showcase.js",
     "mail:preview": "npm run build && node dist/core/mail/preview.js",
     "stripe:verify-catalog": "npm run build && node dist/payments/verify-stripe-catalog.js",
     "verify:integrations": "node dist/ops/verify-integrations.js",

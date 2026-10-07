@@ -34,6 +34,8 @@ service you already use, outside the server:
 4. [Prepare the env files](#4-the-env-files)
 5. [Install Docker and start the app](#5-install-and-start)
 6. [Check it](#6-check-it)
+7. [Prove every integration works](#7-prove-every-integration-works)
+8. [Fill production with realistic companies](#8-fill-production-with-realistic-companies) (optional)
 
 ## What it costs, roughly
 
@@ -345,6 +347,101 @@ docker compose run --rm api npm run seed:demo
 ```
 
 That creates the read-only "Northwind Analytics (Demo)" company, reachable from the **Explore the demo** button on the home page.
+
+## 7. Prove every integration works
+
+Run this on the server once the stack is up, and again after changing any key:
+
+```bash
+docker compose run --rm api node dist/ops/verify-integrations.js
+# also send one real, rendered email:
+docker compose run --rm api node dist/ops/verify-integrations.js --send-to you@example.com
+```
+
+It goes through the same providers the app uses and prints `PASS`, `FAIL` or `SKIP` for each line; the exit code is 1 if anything fails.
+
+| Line | What a pass means |
+|---|---|
+| Postgres (Neon) | It connects and no migration is pending |
+| S3 (customer files) | The bucket accepts a write, a read (same bytes), a listing, a presigned download and a delete. This is also what proves `s3:ListBucket`. |
+| CloudFront | `ASSETS_BASE_URL/brand/v1/logo.png` answers 200 `image/png` |
+| SMTP | The mail server accepts the login (and, with `--send-to`, delivers one email) |
+| Stripe | The prices, the meter, the portal configuration and the seven webhook events exist; the webhook URL is `APP_PUBLIC_URL/api/webhooks/stripe`; the key is a test key |
+| Google sign-in | The three `GOOGLE_*` values are set, the callback is `APP_PUBLIC_URL/api/auth/google/callback`, and Google knows the client id |
+| Gemini | One question about a two-column sample comes back as a valid plan |
+| Observe | `SKIP` without credentials; otherwise one counter is sent |
+
+A real Google sign-in and a real payment can only be tried by a person, so walk through this list on the live domain. Use the
+Stripe **test** cards.
+
+1. **Register** with an email address. The activation email arrives, with the logo showing (it loads from CloudFront).
+2. **Sign in with Google.** In Settings, link and unlink the Google account.
+3. **Upload a CSV.** The object appears in S3, the report becomes ready, the AI summary is there, and the file downloads.
+4. **Ask a question in words** on that file.
+5. **Upgrade to Basic** with `4242 4242 4242 4242`. In Stripe → Developers → Webhooks every delivery is **200**, you come back to
+   "Activating your plan" and then the plan shows Basic, and the invoice appears under Billing.
+6. **Invite an employee.** The invitation email arrives; after they accept, the seat quantity on the Stripe subscription goes up.
+7. **Open the Stripe portal** from Billing.
+8. **Premium usage.** On a Premium test company, go past 1,000 files, or look for the meter event under Stripe → Billing → Meters.
+9. **A failing payment.** Pay with `4000 0000 0000 0341`: the account becomes past due. With a short `STRIPE_DUNNING_GRACE_DAYS`
+   it is suspended; the admin can still reach Billing, and paying again reactivates it.
+
+## 8. Fill production with realistic companies
+
+This creates three companies with people, files, second versions, quality rules, a cleaning, comments and questions, so there is
+something real to look at. It is run **from your own computer**, not from the server: Neon is reachable from there, and the
+uploads go through your live API, so S3, reports, quota, audit and Stripe usage all take the normal path.
+
+| Company | Plan | People |
+|---|---|---|
+| Northwind Logistics (Georgia, logistics) | Basic, through Checkout | admin and 6 employees, one more invited (a real email goes out), one removed |
+| Meridian Clinics (Germany, healthcare) | Premium, through Checkout | admin and 7 employees |
+| Kavkasia Retail (Georgia, retail) | Free | admin only (Free has no employee seats) |
+
+Everyone is a plus-address of one Gmail mailbox that you choose, such as `you+northwind-nino@gmail.com`: each is a separate
+login, and all their mail arrives in your inbox. Passwords are 20 random characters each and are written to
+`backend/.seed-credentials.local.json` and a readable `.md` beside it. Both are ignored by git. Nothing else stores them except
+as hashes.
+
+**Once, on your computer** (Node 24, the same line the Dockerfile uses):
+
+```bash
+cd Projects/Project-3/backend
+npm ci && npm run build
+```
+
+Copy the server's `backend/.env` to `backend/.env.production.local` on your computer (it is ignored by git and holds secrets, so
+keep it out of any sync folder and delete it when you are done). `DATABASE_URL` and `DIRECT_URL` must be the Neon ones.
+
+**Step 1. The accounts** (creates the three companies on Free, and their admins):
+
+```bash
+npm run seed:showcase -- --stage accounts --mailbox you@gmail.com --confirm-production
+```
+
+It refuses to run against production without `--confirm-production`, and a second run creates nothing.
+
+**Step 2. The two upgrades**, through real Checkout. Open `backend/.seed-credentials.local.md`. Sign in as the Northwind admin and
+choose **Basic**; sign in as the Meridian admin and choose **Premium**. Pay with `4242 4242 4242 4242`, any future date, any CVC,
+and wait until the plan shows as active. (Kavkasia stays on Free.)
+
+**Step 3. The content:**
+
+```bash
+npm run seed:showcase -- --stage content --mailbox you@gmail.com --api https://YOUR_DOMAIN/api
+```
+
+It first checks that Northwind is on Basic and Meridian on Premium through Stripe, and stops with a sentence if not. It then adds
+the employees (within each plan's seat cap, with Stripe's seat count following), signs in as the real people, and uploads and
+comments as them. It takes a few minutes: sign-in is limited to 10 a minute, and it waits for the reports and the cleaning,
+which the running `api` container produces. Add `--skip-ai` to skip the questions put to the assistant.
+
+If a step fails it says which and carries on; run the same command again and only what is missing is added.
+
+**Then check:** sign in as one admin and one employee from each company and look at the files, reports, versions, the row
+comparison and the comments; Stripe shows the right seat count for Northwind and the meter events for Meridian; the invitation
+for Irakli Mgaloblishvili is in your Gmail inbox. Delete `backend/.seed-credentials.local.*` and `backend/.env.production.local`
+when you no longer need them.
 
 ## Day to day
 

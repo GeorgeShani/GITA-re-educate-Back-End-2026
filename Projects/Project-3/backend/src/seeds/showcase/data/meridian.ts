@@ -93,7 +93,7 @@ function supplierInvoices(): Table {
         return [`R-${2026}-${pad(400 + index, 4)}`, random.pick(SUPPLIERS), isoDay(issued), isoDay(issued + 30), net.toFixed(2), vat.toFixed(2), (net + vat).toFixed(2), random.pick(['Paid', 'Paid', 'Open', 'Disputed'])];
       }),
     },
-    { duplicateRows: 0.015, spaces: { columns: ['supplier'], rate: 0.04 } },
+    { duplicateRows: 0.05, spaces: { columns: ['supplier'], rate: 0.04 } },
     random,
   );
 }
@@ -108,7 +108,7 @@ function patientRecalls(): Table {
       return [
         `RC-${pad(index + 1, 4)}`,
         name,
-        exampleEmail(name, random, 'example.de'),
+        exampleEmail(name, random, 'example.com'),
         germanPhone(random),
         adultBirthDate(random),
         isoDay(random.int(3, 60)),

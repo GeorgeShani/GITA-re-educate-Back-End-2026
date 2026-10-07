@@ -11,6 +11,8 @@ const personSchema = z.object({
 });
 const fileSchema = z.object({
   mailbox: z.string(),
+  /** Steps of the content stage that must not be repeated (a question put to the AI, say), by key. */
+  done: z.array(z.string()).default([]),
   companies: z.array(
     z.object({ slug: z.string(), name: z.string(), billingEmail: z.string(), plan: z.string(), people: z.array(personSchema) }),
   ),
@@ -53,7 +55,7 @@ export class Credentials {
       if (data.mailbox !== mailbox) throw new Error(`${path} was made for ${data.mailbox}, not ${mailbox}. Use the same --mailbox, or move that file away.`);
       return new Credentials(path, data);
     } catch (error) {
-      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return new Credentials(path, { mailbox, companies: [] });
+      if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return new Credentials(path, { mailbox, done: [], companies: [] });
       throw error;
     }
   }
@@ -75,6 +77,21 @@ export class Credentials {
     entry.people.push(created);
     await this.save();
     return created;
+  }
+
+  /** Every person saved, across companies. */
+  everyone(): Person[] {
+    return this.data.companies.flatMap((company) => company.people);
+  }
+
+  isDone(key: string): boolean {
+    return this.data.done.includes(key);
+  }
+
+  async markDone(key: string): Promise<void> {
+    if (this.isDone(key)) return;
+    this.data.done.push(key);
+    await this.save();
   }
 
   find(slug: string, email: string): Person | undefined {
