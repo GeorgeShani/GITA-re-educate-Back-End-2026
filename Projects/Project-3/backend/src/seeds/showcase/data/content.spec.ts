@@ -96,6 +96,11 @@ describe.each(SHOWCASE.map((company) => [company.slug, company] as const))('the 
     }
   });
 
+  it('has no rule that fails every file that is not the one it was written for', () => {
+    // Rules apply to the whole company. "required_column" fails on any file without the column, which would mark most files bad.
+    expect(content.rules.filter((rule) => rule.kind === 'required_column')).toEqual([]);
+  });
+
   it('plants flaws for the reports and Clean to find, and never an address that could be mailed', () => {
     const cells = content.files.flatMap((file) => file.table.rows.flat());
     expect(cells.some((cell) => cell === '')).toBe(true);

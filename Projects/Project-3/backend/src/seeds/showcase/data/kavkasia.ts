@@ -80,7 +80,7 @@ export function kavkasiaContent(): CompanyContent {
     versions: [{ of: 'prices', name: 'supplier-prices.csv', format: 'csv', table: supplierPrices(2), uploader: 'admin' }],
     keyColumns: { prices: ['sku'] },
     rules: [
-      { name: 'Every product has a SKU', kind: 'required_column', columnName: 'sku', severity: 'error' },
+      { name: 'Products always have a SKU', kind: 'max_null_percent', columnName: 'sku', params: { max: 0 }, severity: 'error' },
       { name: 'Prices are numbers', kind: 'type_is', columnName: 'price_gel', params: { type: 'number' }, severity: 'error' },
       { name: 'No personal data', kind: 'no_sensitive_data', severity: 'warning' },
     ],

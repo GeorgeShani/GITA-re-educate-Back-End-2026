@@ -265,7 +265,7 @@ export function northwindContent(): CompanyContent {
     ],
     keyColumns: { shipments: ['shipment_id'], stock: ['sku'] },
     rules: [
-      { name: 'Every shipment has an id', kind: 'required_column', columnName: 'shipment_id', severity: 'error' },
+      { name: 'Shipment ids are never blank', kind: 'max_null_percent', columnName: 'shipment_id', params: { max: 0 }, severity: 'error' },
       { name: 'Shipment ids are unique', kind: 'unique', columnName: 'shipment_id', severity: 'error' },
       { name: 'No more than 2% of weights missing', kind: 'max_null_percent', columnName: 'weight_kg', params: { max: 2 }, severity: 'warning' },
       { name: 'Freight cost is a number', kind: 'type_is', columnName: 'freight_cost_usd', params: { type: 'number' }, severity: 'error' },
