@@ -33,6 +33,7 @@
     "seed:demo": "node dist/demo/seed-demo.js",
     "mail:preview": "npm run build && node dist/core/mail/preview.js",
     "stripe:verify-catalog": "npm run build && node dist/payments/verify-stripe-catalog.js",
+    "verify:integrations": "node dist/ops/verify-integrations.js",
     "migration:generate": "npm run build && typeorm migration:generate -d dist/database/data-source.js",
     "migration:run": "node dist/database/migrate.js",
     "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",

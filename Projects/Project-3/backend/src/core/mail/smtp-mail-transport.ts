@@ -26,6 +26,11 @@ export class SmtpMailTransport implements MailTransport {
     });
   }
 
+  /** Connects, upgrades to TLS and logs in, exactly as a send would, and stops there. */
+  async verify(): Promise<void> {
+    await this.transporter.verify();
+  }
+
   async send(email: RenderedEmail): Promise<void> {
     await this.transporter.sendMail({
       from: this.settings.from,
