@@ -2,6 +2,7 @@
 
 The API behind Gridline, a multi-tenant SaaS where a company's spreadsheets live: checked on arrival, scanned for personal
 data, cleaned into new versions, compared row by row, and open to questions. NestJS 12 (ESM), TypeORM 1.x, Neon Postgres.
+It is live at [https://gridline-data-analysis-app.duckdns.org](https://gridline-data-analysis-app.duckdns.org) (API reference: [https://gridline-data-analysis-app.duckdns.org/reference](https://gridline-data-analysis-app.duckdns.org/reference)).
 The whole project is described in [`../README.md`](../README.md), and putting it on a server in
 [`../DEPLOYMENT.md`](../DEPLOYMENT.md). See [`../SCOPE.md`](../SCOPE.md) for the full design and grading rubric, and
 [`AGENTS.md`](./AGENTS.md) for the coding conventions this codebase follows.

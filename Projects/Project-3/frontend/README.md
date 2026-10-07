@@ -4,6 +4,7 @@ The website and the dashboard: the public marketing site, the documentation, and
 read reports, clean and compare versions, ask questions of a file, and manage their company, billing and integrations.
 
 Next.js 16 (App Router), React 19 with the React Compiler, Tailwind CSS 4, Radix UI primitives, Recharts, Socket.IO client.
+It is live at [https://gridline-data-analysis-app.duckdns.org](https://gridline-data-analysis-app.duckdns.org) (documentation: [https://gridline-data-analysis-app.duckdns.org/docs](https://gridline-data-analysis-app.duckdns.org/docs)).
 The API it talks to is in [`../backend`](../backend); the whole project is described in [`../README.md`](../README.md).
 
 > This is a recent Next.js with breaking changes. Before writing Next-specific code, read the relevant guide in

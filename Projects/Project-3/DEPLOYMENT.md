@@ -4,6 +4,8 @@ This guide puts the whole product on one AWS EC2 server, behind one domain with 
 repo. It is written for a demonstration, so every step names the cheapest sensible option, and says what to change for a real
 launch.
 
+This deployment is live at **https://gridline-data-analysis-app.duckdns.org**.
+
 ## How it fits together
 
 `docker-compose.yml` starts four containers:

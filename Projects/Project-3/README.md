@@ -7,6 +7,19 @@ and answers questions about it. Access is per person, every change is audited, a
 This is a multi-tenant SaaS: a NestJS API, a Next.js dashboard and marketing site, and the Docker setup that runs them as
 one app.
 
+## Live
+
+Gridline is running at **https://gridline-data-analysis-app.duckdns.org**.
+
+| | |
+|---|---|
+| The app | [https://gridline-data-analysis-app.duckdns.org](https://gridline-data-analysis-app.duckdns.org) (register a company, or choose **Explore the demo** for a read-only company with sample files) |
+| Documentation | [https://gridline-data-analysis-app.duckdns.org/docs](https://gridline-data-analysis-app.duckdns.org/docs) |
+| API reference | [https://gridline-data-analysis-app.duckdns.org/reference](https://gridline-data-analysis-app.duckdns.org/reference) |
+| Health check | [https://gridline-data-analysis-app.duckdns.org/api/health](https://gridline-data-analysis-app.duckdns.org/api/health) |
+
+Payments run in Stripe **test mode**: pay with the card `4242 4242 4242 4242`, any future date and any CVC. Nothing is charged.
+
 ## What it does
 
 | | |
