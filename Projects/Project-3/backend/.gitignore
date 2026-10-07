@@ -64,3 +64,6 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Rendered email previews (npm run mail:preview)
 .mail-preview/
+
+# Passwords written by the production seed. Never commit.
+.seed-credentials.local.*
