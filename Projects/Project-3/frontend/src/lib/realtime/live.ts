@@ -169,7 +169,8 @@ async function open(): Promise<void> {
 
   next.on("connect", () => {
     failures = 0;
-    for (const fileId of watched.keys()) next.emit("file.watch", { fileId }, ignoreReply);
+    for (const fileId of watched.keys())
+      next.emit("file.watch", { fileId }, ignoreReply);
   });
   next.on("presence.changed", (payload: unknown) => {
     const event = toPresence(payload);

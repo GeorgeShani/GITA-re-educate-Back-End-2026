@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { ActivatingPlan } from "@/components/app/activating-plan";
 import { AppShell } from "@/components/app/app-shell";
 import { Busy } from "@/components/app/busy";
+import { SuspendedGate } from "@/components/app/suspended-gate";
 import { PLAN_LABEL } from "@/components/marketing/pricing/plan-copy";
 import { apiClient } from "@/lib/session/api";
 import { PATH_HEADER } from "@/lib/session/config";
@@ -40,17 +41,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  // A suspended company reaches almost nothing: its admin gets the billing page (the one place that lets them pay), and
-  // everyone else a plain statement of why nothing opens.
+  // A suspended company reaches almost nothing: its admin keeps the billing page (the one place that lets them pay), and
+  // everywhere else, for everyone, says why. This must NOT redirect: the sidebar prefetches its links, a redirect to Billing
+  // is followed by the browser's router, and for a company that is suspended it asked for /billing again and again until
+  // the API answered "too many requests". Signing in sends the admin to Billing instead (features/auth/actions.ts).
   const suspended = session.company.status === "suspended";
-  if (
-    suspended &&
-    session.user.role === "admin" &&
-    !path.startsWith("/billing")
-  ) {
-    redirect("/billing");
-  }
-
+  const isAdmin = session.user.role === "admin";
   const plan = subscription.data
     ? {
         name: PLAN_LABEL[subscription.data.plan],
@@ -74,17 +70,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       plan={plan}
       unread={unread.data?.count ?? 0}
     >
-      {suspended && session.user.role !== "admin" ? (
-        <div className="mx-auto flex w-full max-w-xl flex-col gap-3 px-6 py-16">
-          <h1 className="headline text-4xl leading-[0.98]">
-            Your company is suspended
-          </h1>
-          <p className="text-text-muted">
-            An invoice is overdue, so files and reports are closed to everyone
-            until it is paid. Ask your admin to open Billing and pay it. Nothing
-            has been deleted.
-          </p>
-        </div>
+      {suspended ? (
+        <SuspendedGate admin={isAdmin}>{children}</SuspendedGate>
       ) : (
         children
       )}

@@ -39,6 +39,7 @@ export async function login(
 ): Promise<FormState> {
   const email = text(form, "email");
   const values = { email };
+  let destination = safeNext(text(form, "next"));
   try {
     const { data, error, response } = await apiClient().POST("/auth/login", {
       body: { email, password: raw(form, "password") },
@@ -53,10 +54,22 @@ export async function login(
       });
     }
     writeSession(await cookies(), tokens);
+    // A suspended company's admin can open one page, Billing, and it is where they can fix the reason: start them there.
+    try {
+      const me = await apiClient(tokens.accessToken).GET("/auth/me");
+      if (
+        me.data?.company.status === "suspended" &&
+        me.data.user.role === "admin"
+      ) {
+        destination = "/billing";
+      }
+    } catch {
+      // Not knowing is not a reason to refuse the sign-in: they land where they were headed, and the app explains.
+    }
   } catch {
     return refused(UNREACHABLE, values);
   }
-  redirect(safeNext(text(form, "next")));
+  redirect(destination);
 }
 
 /** Create a company and its first admin. The account stays inactive until the emailed link is used. */
