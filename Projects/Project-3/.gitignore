@@ -1,3 +1,6 @@
 # Compose reads this for SITE_ADDRESS (see DEPLOYMENT.md). It is per-machine, never committed.
 .env
 *.pem
+
+# Written by scripts/deploy.sh: the commit that last failed to start.
+.deploy-last-failed
