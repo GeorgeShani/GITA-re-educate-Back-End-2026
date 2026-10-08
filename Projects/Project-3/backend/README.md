@@ -123,8 +123,7 @@ The API is also an MCP server, so an agent can list files, read data-quality rep
 (`compare_version_rows`, `start_row_comparison`) and analyse a file without downloading it (`explore_file`, `ask_file`) for a
 company. In the app, create an API key with the `mcp` scope plus what the agent should be allowed to do (`files:read`,
 `files:write`, and for an admin `rules:write`, `audit:read`, `billing:read`; `notifications:read` for the inbox). The agent only sees the tools that
-key may use, and never more than its creator may. Behind Caddy the URL is `/api/mcp`; directly it is `/mcp`.
-
+key may use, and never more than its creator may.
 ```bash
 claude mcp add --transport http gridline http://localhost:4000/mcp --header "Authorization: Bearer gl_live_…"
 ```

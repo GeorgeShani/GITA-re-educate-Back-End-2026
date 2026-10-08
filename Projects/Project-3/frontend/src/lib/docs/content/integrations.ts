@@ -450,7 +450,7 @@ export const MCP: Block[] = [
     "shell",
   ),
   p(
-    "Any client that supports Streamable HTTP and a bearer header works the same way. Behind the proxy the address is `/api/mcp`; reached directly it is `/mcp`.",
+    "Any client that supports Streamable HTTP and a bearer header works the same way.",
   ),
 
   h2("What the agent can see"),

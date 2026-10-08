@@ -226,6 +226,12 @@ export const DOC_SECTIONS: readonly DocSection[] = [
         summary:
           "Let Claude Code, Claude Desktop or Cursor list files, read reports and upload data with an API key.",
       },
+      {
+        slug: "ai-tools",
+        title: "Docs for AI tools (llms.txt)",
+        summary:
+          "Point an assistant at /llms.txt or /llms-full.txt so it can read these guides, and when to use MCP instead.",
+      },
     ],
   },
   {

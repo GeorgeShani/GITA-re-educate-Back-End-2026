@@ -1,4 +1,5 @@
 import type { Block } from "../blocks";
+import { AI_TOOLS } from "./ai-tools";
 import {
   API_KEYS,
   AUTHENTICATION,
@@ -55,6 +56,7 @@ export const DOC_BODIES: Readonly<Record<string, readonly Block[]>> = {
   realtime: REALTIME,
   graphql: GRAPHQL,
   mcp: MCP,
+  "ai-tools": AI_TOOLS,
   limits: LIMITS,
   security: SECURITY,
   troubleshooting: TROUBLESHOOTING,
