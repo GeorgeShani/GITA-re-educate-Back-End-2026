@@ -445,13 +445,53 @@ comparison and the comments; Stripe shows the right seat count for Northwind and
 for Irakli Mgaloblishvili is in your Gmail inbox. Delete `backend/.seed-credentials.local.*` and `backend/.env.production.local`
 when you no longer need them.
 
+## Automatic updates
+
+The server can follow the `main` branch by itself. `scripts/deploy.sh` fetches from GitHub, and if there is a new commit it
+fast-forwards to it, rebuilds with `docker compose up -d --build` (the `migrate` service applies new migrations first), and waits
+for `https://<your domain>/api/health`. If the new version never answers, it goes back to the previous commit, rebuilds that, and
+remembers the bad commit so it is not retried every few minutes. A fix you push afterwards is a different commit and is deployed
+normally.
+
+It is **pull-based on purpose**: the server reaches out to GitHub, so nothing has to reach in. The security group keeps SSH open
+to your own address only, which a GitHub Actions runner (a different address every time) could not use.
+
+Install it once, on the server:
+
+```bash
+cd ~/<repository>/Projects/Project-3
+git pull
+sudo scripts/install-auto-deploy.sh
+```
+
+That creates a systemd timer that runs the script 3 minutes after boot and then every 2 minutes (`DEPLOY_INTERVAL=5min sudo scripts/install-auto-deploy.sh`
+for another rhythm). It runs as your login user, the one that can use Docker.
+
+| Task | Command |
+|---|---|
+| Watch it work | `journalctl -u gridline-deploy -f` |
+| When it runs next | `systemctl list-timers gridline-deploy.timer` |
+| Deploy right now | `scripts/deploy.sh` (or `--force` to rebuild the current commit) |
+| Pause it (before editing files on the server) | `sudo systemctl stop gridline-deploy.timer` |
+| Remove it | `sudo scripts/install-auto-deploy.sh --remove` |
+
+Things to know:
+- **The server only follows.** It never commits. If you edit a tracked file on the server, the fast-forward can fail and the script
+  says so and stops; undo the edit (`git status`, `git checkout -- <file>`). Your `.env` files are not tracked, so they are safe.
+- **A rollback does not undo migrations.** Migrations here only add things (a column, a table), which the previous version tolerates.
+  Keep it that way, or a rollback can leave the old code running against a schema it does not know.
+- **A build uses memory.** On a 1 GB instance keep the swap file from step 5, or the build can be killed mid-deploy.
+- **It deploys whatever is on `main`.** Push to another branch while you work, merge when it is ready, and run the checks
+  (`npm run build && npm run lint && npm test` in `backend`, `npm run lint && npm run typecheck` in `frontend`) before you merge.
+- **Another branch:** `DEPLOY_BRANCH=release` in the service environment (`sudo systemctl edit gridline-deploy`).
+
 ## Day to day
 
 | Task | Command |
 |---|---|
 | See what is running | `docker compose ps` |
 | Follow the logs | `docker compose logs -f api` (or `web`, `proxy`) |
-| Deploy a new version | `git pull && docker compose up -d --build` |
+| Deploy a new version | automatic (see below), or by hand: `scripts/deploy.sh --force` |
 | Restart one service | `docker compose restart api` |
 | Change an env value | edit the file, then `docker compose up -d` (a changed `backend/.env` needs the containers recreated: `docker compose up -d --force-recreate api`) |
 | Stop paying while idle | stop the EC2 instance in the console (the Elastic IP keeps its address; the domain keeps working) |
@@ -484,5 +524,5 @@ This setup is deliberately simple. Before real customers:
 - A restricted Stripe key instead of the full secret key.
 - Everything runs on **one server**, and the realtime connections and rate-limit counters live in that one process. That is
   fine for a first launch; scaling to several servers needs shared state first.
-- There is no deploy pipeline yet. A GitHub Actions job that SSHes in and runs the "Deploy a new version" command is the usual
-  next step.
+- Updates are pulled by the server itself (see "Automatic updates"). There is still no test pipeline in front of them: a commit
+  that does not start is rolled back, but one that starts and is wrong is deployed.

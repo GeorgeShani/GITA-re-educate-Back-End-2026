@@ -258,7 +258,7 @@ The integration suites run against a real Postgres, because the access rules, th
 proven there. They **truncate every table in the database they use**, so point them at a throwaway database (a Neon branch
 or the local container), run one suite at a time against a shared one (parallel runs trip over each other's data), and run
 `npm run seed:all` again afterwards if you want the demo data back. Migrations must be applied first (`npm run migration:run`).
-GitHub Actions runs lint, the type check, unit and integration tests for both apps (`../.github/workflows/project-3.yml`).
+There is no CI workflow: run the same gate by hand before pushing (`npm run build && npm run lint && npm test && npm run test:int && npm run docs:check`).
 
 ## Docker
 

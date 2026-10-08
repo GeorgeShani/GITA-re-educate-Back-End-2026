@@ -613,7 +613,7 @@ failed | unsupported`), `quota.updated {plan,periodKey,filesUsed,filesLimit}`, `
 - **`scope-verification.integration.spec.ts`** executes SCOPE's _Verification_ steps 1-11, 14 and 15 (+ 8, 9, 10) as one
   ordered story against the real app. Steps 12 (Observe dashboard) and 13 (live status; `realtime.integration.spec.ts`)
   and 16 (Neon) are covered elsewhere or by hand.
-- **No CI workflow for now** (deliberately removed). The gate is run by hand: `npm run build && npm run lint && npm test &&
+- **No CI workflow** (deliberately removed; the deployed server pulls `main` itself with `scripts/deploy.sh`, so run the gate BEFORE merging to `main`). The gate is run by hand: `npm run build && npm run lint && npm test &&
 npm run test:int && npm run docs:check`. When CI is wanted, it needs a Postgres service, dummy JWT secrets and
   `RATE_LIMIT_ENABLED=false` is already forced by the integration config.
 - **CLI job contexts** (`billing:run-cycle`, `seed:demo`, `seed:all`) boot a SMALL module set. Anything they reach must be

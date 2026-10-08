@@ -97,8 +97,10 @@ them and confirming a focused test fails.
 
 ## Deployment checks that cannot be faked
 
-Automated tests intentionally do not contact production services. Before a
-real deployment:
+Automated tests intentionally do not contact production services. The app is deployed (see [`OPERATIONS.md`](./OPERATIONS.md)),
+and `npm run verify:integrations` checks the connection side of items 1 to 5 below against the real services in one command. What it
+cannot do is still done by hand (a real Google sign-in, a real Checkout and the webhook deliveries it causes: `../../DEPLOYMENT.md`
+step 6), and item 6, Observe, can only be seen in its dashboard. Before any other deployment:
 
 1. Apply migrations with the direct Neon URL and confirm `migration:show` has
    no pending entry.
@@ -128,4 +130,6 @@ real deployment:
   Comments, employees, plan changes, API keys, webhooks, file deletion and
   access changes are deliberately not exposed to agents.
 - There is no repository CI workflow by user choice; the same gate is run
-  locally before delivery.
+  locally before delivery. The deployed server updates itself from `main`
+  (`scripts/deploy.sh`, with a rollback if the new version does not answer
+  `/api/health`), so what is pushed to `main` is what runs.

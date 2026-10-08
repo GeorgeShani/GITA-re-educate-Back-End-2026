@@ -17,6 +17,7 @@ Gridline is running at **https://gridline-data-analysis-app.duckdns.org**.
 | Documentation | [https://gridline-data-analysis-app.duckdns.org/docs](https://gridline-data-analysis-app.duckdns.org/docs) |
 | API reference | [https://gridline-data-analysis-app.duckdns.org/reference](https://gridline-data-analysis-app.duckdns.org/reference) |
 | Health check | [https://gridline-data-analysis-app.duckdns.org/api/health](https://gridline-data-analysis-app.duckdns.org/api/health) |
+| For AI tools | [/llms.txt](https://gridline-data-analysis-app.duckdns.org/llms.txt) (an index of the site) and [/llms-full.txt](https://gridline-data-analysis-app.duckdns.org/llms-full.txt) (every guide in one file) |
 
 Payments run in Stripe **test mode**: pay with the card `4242 4242 4242 4242`, any future date and any CVC. Nothing is charged.
 
@@ -125,7 +126,7 @@ node ../design/build-tokens.mjs --check     # design tokens and contrast
 ```
 
 The integration tests **empty the database they run against**. Never point them at data you want to keep, and run one suite at a
-time against a shared database. GitHub Actions (`.github/workflows/project-3.yml`) runs all of this on every push.
+time against a shared database. There is no CI workflow: run this by hand before pushing.
 
 After changing an API route, regenerate the contract and the frontend's types:
 
@@ -146,7 +147,9 @@ a time, is in [`backend/docs/STRIPE_SETUP.md`](./backend/docs/STRIPE_SETUP.md).
 |---|---|
 | [`backend/README.md`](./backend/README.md) | The API: setup, database, configuration, seed data, how each part behaves |
 | [`backend/docs/OVERVIEW.md`](./backend/docs/OVERVIEW.md) | Every feature of the API and why it exists |
-| [`backend/docs/ENV_SECRETS_GUIDE.md`](./backend/docs/ENV_SECRETS_GUIDE.md) | Every environment variable |
+| [`backend/docs/ENV_SECRETS_GUIDE.md`](./backend/docs/ENV_SECRETS_GUIDE.md) | Every environment variable, and what production refuses to start without |
+| [`backend/docs/OPERATIONS.md`](./backend/docs/OPERATIONS.md) | Running it in production: services, health, scheduled jobs, Stripe, the data in it |
+| [`scripts/`](./scripts) | `deploy.sh` (update the server from `main`, roll back if it does not start) and the installer for its timer |
 | [`backend/AGENTS.md`](./backend/AGENTS.md) | Coding conventions, for people and for AI assistants |
 | [`frontend/README.md`](./frontend/README.md) | The website and dashboard |
 | [`design/`](./design) | Design tokens, brand assets, motion notes |

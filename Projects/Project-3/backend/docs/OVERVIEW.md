@@ -9,6 +9,7 @@ dashboard lives in `../frontend`.
 Design and grading scope: [`../../SCOPE.md`](../../SCOPE.md). Coding rules: [`../AGENTS.md`](../AGENTS.md).
 Settings: [`ENV_SECRETS_GUIDE.md`](./ENV_SECRETS_GUIDE.md).
 Implementation proof and remaining limitations: [`IMPLEMENTATION_AUDIT.md`](./IMPLEMENTATION_AUDIT.md).
+Running it in production (it is live at https://gridline-data-analysis-app.duckdns.org): [`OPERATIONS.md`](./OPERATIONS.md).
 
 ## The stack, and why each piece
 
@@ -276,4 +277,4 @@ npm run docs:generate      # regenerate the OpenAPI documents
 - Personal-data detection is by pattern; free-text names and addresses are not recognised. Cleaning, row diffs and explore read up to 100,000 rows and 200 columns.
 - Legacy `.xls` files are accepted and stored but not profiled (the available parsers carry security advisories).
 - Socket rooms and rate-limit counters are process-local; horizontal scale needs shared Redis-backed adapters.
-- No CI workflow for now; the gate is run by hand.
+- No CI workflow; the gate is run by hand. The server updates itself from `main`, rolling back a version that does not start.

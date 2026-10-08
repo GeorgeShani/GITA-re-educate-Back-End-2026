@@ -28,6 +28,31 @@ Secrets are marked 🔒: never commit them, never paste them into a ticket, and 
 | `CORS_ORIGIN` | `http://localhost:3000` | you | Comma-separated. Only matters for non-Docker dev (web on :3000 calling API on :4000). Behind Caddy everything is one origin. |
 | `APP_PUBLIC_URL` | `http://localhost:3000` | you | The browser-facing origin: links in emails (activation, invite, reset, invoice) and the OAuth redirect target. |
 
+## What production refuses to start with
+
+With `NODE_ENV=production` the API (and the migration and seed commands, which read the same settings) stops at boot, naming the
+variable, unless all of these hold:
+
+| Setting | Required |
+|---|---|
+| `APP_PUBLIC_URL` | A public URL, not `localhost`. |
+| `JWT_ACCESS_SECRET` | At least 32 characters and not an example value. |
+| `DATA_ENCRYPTION_KEY` | Base64 of exactly 32 bytes. |
+| `MAIL_TRANSPORT` | `smtp` (the console mailer is for development). |
+| `ASSETS_BASE_URL` | An `https://` URL. |
+| `PAYMENTS_PROVIDER` | `stripe`, unless `ALLOW_UNPAID_PLANS=true` is set on purpose. |
+| `STORAGE_DRIVER` | Not `local`: files would live on the container and their download links would point at `localhost`. |
+| `RATE_LIMIT_ENABLED` | Not turned off: the plan request budgets and the sign-in limits are part of the product. |
+| `WEBHOOKS_ALLOW_PRIVATE_DESTINATIONS` | Not `true`. |
+
+`TRUST_PROXY` is **not** checked (the migrate and seed commands have no proxy of their own), so make sure it is `1` where Caddy is in
+front: `docker-compose.yml` sets it on the `api` service. Left at `0`, every visitor shares the proxy's address and one person's failed
+sign-ins lock everyone out.
+
+**Checking a deployment.** Booting only validates the *shape* of the settings. `npm run verify:integrations` (on the server:
+`docker compose run --rm api node dist/ops/verify-integrations.js`) checks that each third party actually answers. See
+[`OPERATIONS.md`](./OPERATIONS.md).
+
 ## Storage — `STORAGE_DRIVER`
 
 | Variable | Default | Where it comes from |
