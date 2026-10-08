@@ -120,6 +120,7 @@ export const FOOTER_COLUMNS = [
       { href: API_REFERENCE_HREF, label: "API reference", plain: true },
       { href: "/docs/authentication", label: "Authentication" },
       { href: "/docs/webhooks", label: "Webhooks" },
+      { href: "/llms.txt", label: "llms.txt", plain: true },
     ],
   },
   {
