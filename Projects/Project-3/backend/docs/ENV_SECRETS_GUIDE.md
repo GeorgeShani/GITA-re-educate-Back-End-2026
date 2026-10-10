@@ -147,7 +147,7 @@ twenty consecutive failed deliveries disable it, a success resets the count, and
 | Variable | Notes |
 |---|---|
 | `OBSERVE_APP_KEY` 🔒 / `OBSERVE_APP_SECRET` 🔒 | From the Observe dashboard. **Both or neither**: the SDK does not no-op on empty credentials (it flushes and logs `Telemetry rejected (401)`), so the module is only registered when both exist. Without them the API runs clean, and the business metrics below are silent no-ops. |
-| `GIT_SHA` | The commit being run (e.g. `git rev-parse --short HEAD` at deploy); shows in Observe's Releases. |
+| `GIT_SHA` | The commit being run; shows in Observe's Releases. Leave it empty in `backend/.env`: an env file cannot run `git rev-parse` (it would be taken as literal text). `scripts/deploy.sh` writes the real commit into the root `.env` on every deploy and `docker-compose.yml` passes it to the API. |
 
 When Observe is on, requests are tagged with a `companyId` attribute and these counters are emitted:
 `gridline.files.uploaded`, `gridline.quota.exceeded`, `gridline.subscription.changed`,

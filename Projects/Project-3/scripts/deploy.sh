@@ -47,6 +47,20 @@ else
   HEALTH_URL="http://localhost:3000/api/health"
 fi
 
+# Records the commit in the root .env, where Compose reads it (docker-compose.yml passes it to the api as GIT_SHA, for Observe's
+# releases). Writing it there, not only exporting it, keeps a later hand-run `docker compose up` from blanking it.
+record_commit() {
+  local sha
+  sha="$(git rev-parse --short HEAD)"
+  touch .env
+  if grep -q '^GIT_SHA=' .env; then
+    sed -i "s/^GIT_SHA=.*/GIT_SHA=$sha/" .env
+  else
+    echo "GIT_SHA=$sha" >> .env
+  fi
+  export GIT_SHA="$sha"
+}
+
 healthy() { curl -fsS --max-time 10 -o /dev/null "$HEALTH_URL"; }
 
 wait_until_healthy() {
@@ -78,6 +92,7 @@ if [ "$current" != "$target" ]; then
   fi
 fi
 
+record_commit
 if "${COMPOSE[@]}" up -d --build && wait_until_healthy; then
   rm -f "$STATE_FILE"
   docker image prune -f >/dev/null 2>&1 || true
@@ -89,6 +104,7 @@ log "${target:0:7} did not come up healthy; going back to ${current:0:7}"
 echo "$target" > "$STATE_FILE"
 "${COMPOSE[@]}" logs --tail=60 api web migrate 2>&1 | sed 's/^/    /' || true
 git reset --hard "$current"
+record_commit
 "${COMPOSE[@]}" up -d --build
 if wait_until_healthy; then
   log "rolled back to ${current:0:7}; the app is up on the old version"

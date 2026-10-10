@@ -72,6 +72,9 @@ services:
       # One proxy (Caddy) sits in front: trust exactly one X-Forwarded-For hop, so audit
       # `ip` and per-address rate limits see the real client, not Caddy.
       TRUST_PROXY: "1"
+      # The commit being run, for Observe's releases. An env file cannot run `git rev-parse`, so scripts/deploy.sh writes the real
+      # value into the root .env on every deploy; it overrides any GIT_SHA in backend/.env.
+      GIT_SHA: ${GIT_SHA:-}
     depends_on:
       migrate:
         condition: service_completed_successfully
