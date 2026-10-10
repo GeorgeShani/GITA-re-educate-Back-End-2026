@@ -108,10 +108,12 @@ export class StripePaymentProvider implements PaymentProvider {
       request.subscriptionId,
       {
         items,
+        // A plan change starts a fresh period today (the same rule as the local engine), so the old one is credited and
+        // invoiced as of this moment. Stripe takes no `proration_date` together with `billing_cycle_anchor: 'now'`: it
+        // refuses the whole request, and the moment it prorates from is already "now".
         billing_cycle_anchor: 'now',
         proration_behavior: 'always_invoice',
         payment_behavior: 'pending_if_incomplete',
-        proration_date: Math.floor(request.effectiveAt.getTime() / 1_000),
       },
       { idempotencyKey: request.idempotencyKey },
     );

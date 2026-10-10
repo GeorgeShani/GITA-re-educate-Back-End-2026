@@ -83,6 +83,17 @@ describe('StripePaymentProvider', () => {
       expect(params.items).toEqual([{ id: 'si_old', deleted: true }, { price: 'price_basic_base', quantity: 1 }]);
     });
 
+    it('restarts the billing period without a proration date, which Stripe refuses alongside billing_cycle_anchor=now', async () => {
+      const update = vi.fn(async () => ({}));
+      const provider = providerWith({
+        subscriptions: { retrieve: async () => ({ items: { data: [{ id: 'si_old' }] } }), update },
+      });
+      await provider.changeSubscription({ subscriptionId: 'sub_1', targetPlan: 'premium', activeEmployees: 3, effectiveAt: new Date(), idempotencyKey: 'k' });
+      const params = (update.mock.calls[0] as unknown as [string, Record<string, unknown>])[1];
+      expect(params.billing_cycle_anchor).toBe('now');
+      expect(params).not.toHaveProperty('proration_date');
+    });
+
     describe('syncSeatQuantity', () => {
       const seatRequest = (quantity: number) => ({ subscriptionId: 'sub_1', quantity, effectiveAt: new Date('2026-10-07T12:00:00Z'), idempotencyKey: 'seat:1' });
 
